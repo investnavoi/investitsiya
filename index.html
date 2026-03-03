@@ -1028,7 +1028,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
     </div>
     <p style="font-size:.81rem;color:var(--text3);margin-bottom:1.4rem;line-height:1.7" id="deleteMsg"></p>
     <div style="display:flex;gap:.6rem">
-      <button class="btn btn-danger" onclick="confirmDelete()">🗑 Ha, o'chirish</button>
+      <button class="btn btn-danger" id="deleteConfirmBtn" onclick="confirmDelete()">🗑 Ha, o'chirish</button>
       <button class="btn btn-ghost" onclick="closeDeleteModal()">Bekor qilish</button>
     </div>
   </div>
@@ -2240,6 +2240,7 @@ function deleteRecord(table, id){
   confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
   newBtn.onclick = () => {
     DB[table] = DB[table].filter(r => Number(r.id) !== numId);
+    if(typeof fbDelete==='function') fbDelete(table, numId);
     ({investors:renderInvestors, local:renderLocal, zoom:renderZoom, forums:renderForums})[table]?.();
     renderOverview();
     modal.classList.remove('open');
@@ -3215,6 +3216,9 @@ function onGmailToken(resp){
     .then(r=>r.json()).then(u=>{
       _gmailUser = u.email||'';
       document.getElementById('gmailStatus').textContent = _gmailUser;
+      // Save connection state for auto-reconnect on reload
+      localStorage.setItem('_gmailWasConnected','1');
+      localStorage.setItem('_gmailUserEmail', _gmailUser);
     });
   toast('\u2705 Gmail ulandi!', 'success');
   checkGmailReplies(true);
@@ -3583,9 +3587,34 @@ function openNotifAsDrawer(idx){
 window.addEventListener('load', ()=>{
   if(Notification.permission==='default') Notification.requestPermission();
   const savedId = localStorage.getItem('_gmailClientId');
+  const wasConnected = localStorage.getItem('_gmailWasConnected');
+  const savedEmail = localStorage.getItem('_gmailUserEmail');
+
+  // Show previously connected email in UI while reconnecting
+  if(wasConnected && savedEmail){
+    _gmailUser = savedEmail;
+    const statusEl = document.getElementById('gmailStatus');
+    if(statusEl) statusEl.textContent = savedEmail + ' (qayta ulanmoqda...)';
+  }
+
   if(savedId){
     const tryConnect=(n=0)=>{
-      if(typeof google!=='undefined'&&google.accounts){ initGmailAuth(savedId); }
+      if(typeof google!=='undefined'&&google.accounts){
+        try{
+          const client = google.accounts.oauth2.initTokenClient({
+            client_id: savedId,
+            scope: GMAIL_SCOPES,
+            prompt: '',
+            callback: (resp) => {
+              if(resp && !resp.error){
+                onGmailToken(resp);
+                console.log('✅ Gmail avtomatik qayta ulandi');
+              }
+            }
+          });
+          client.requestAccessToken({ prompt: '' });
+        } catch(e){ console.warn('Gmail silent reconnect:', e); }
+      }
       else if(n<15){ setTimeout(()=>tryConnect(n+1), 500); }
     };
     setTimeout(()=>tryConnect(), 800);
@@ -3594,7 +3623,6 @@ window.addEventListener('load', ()=>{
   updateBellBadge();
   renderNotifList();
   setTimeout(updateRepliesKpi, 100);
-  // Restore saved poll interval in select
   const savedSecs = parseInt(localStorage.getItem('_pollSecs')||'60');
   const sel = document.getElementById('pollIntervalSelect');
   if(sel) sel.value = String(savedSecs);
