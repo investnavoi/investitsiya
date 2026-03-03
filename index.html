@@ -897,7 +897,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
         <div class="form-title"><div class="form-title-icon">🌍</div> Yangi Investor Qo'shish</div>
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Shahar / Tuman <span class="req">*</span></label><input class="form-input" id="inv-shahar" placeholder="Navoiy shahri"></div>
-          <div class="form-group"><label class="form-label">Tashrif Sanasi</label><input class="form-input" type="date" id="inv-sana"></div>
+          <div class="form-group"><label class="form-label">Tashrif Sanasi</label><input class="form-input" type="text" id="inv-sana" placeholder="dd.mm.yyyy" maxlength="10" oninput="dateMask(this)" autocomplete="off"></div>
           <div class="form-group"><label class="form-label">Davlat <span class="req">*</span></label><input class="form-input" id="inv-davlat" placeholder="Germaniya"></div>
           <div class="form-group"><label class="form-label">Bayroq (emoji)</label><input class="form-input" id="inv-flag" placeholder="🇩🇪"></div>
           <div class="form-group"><label class="form-label">Tashrif Maqsadi <span class="req">*</span></label>
@@ -964,7 +964,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
           <div class="form-group"><label class="form-label">Ism Familiya <span class="req">*</span></label><input class="form-input" id="zm-ism" placeholder="Thomas Müller"></div>
           <div class="form-group"><label class="form-label">Tashkilot <span class="req">*</span></label><input class="form-input" id="zm-org" placeholder="GreenTech Ventures"></div>
           <div class="form-group"><label class="form-label">Davlat</label><input class="form-input" id="zm-davlat" placeholder="🇩🇪 Germaniya"></div>
-          <div class="form-group"><label class="form-label">Sana <span class="req">*</span></label><input class="form-input" type="date" id="zm-sana"></div>
+          <div class="form-group"><label class="form-label">Sana <span class="req">*</span></label><input class="form-input" type="text" id="zm-sana" placeholder="dd.mm.yyyy" maxlength="10" oninput="dateMask(this)" autocomplete="off"></div>
           <div class="form-group"><label class="form-label">Ishtirokchilar</label><input class="form-input" type="number" id="zm-ishtirokchi" placeholder="4" min="1"></div>
           <div class="form-group"><label class="form-label">Natija holati <span class="req">*</span></label>
             <select class="form-select" id="zm-natija-holat"><option value="">Tanlang</option><option>Ijobiy</option><option>Davom etmoqda</option><option>Salbiy</option><option>Kutilmoqda</option></select>
@@ -1016,7 +1016,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
         <div class="form-title"><div class="form-title-icon">🗓</div> Yangi Forum Qo'shish</div>
         <div class="form-grid">
           <div class="form-group span-2"><label class="form-label">Forum Nomi <span class="req">*</span></label><input class="form-input" id="fr-nom" placeholder="Tashkent International Investment Forum 2026"></div>
-          <div class="form-group"><label class="form-label">Sana <span class="req">*</span></label><input class="form-input" type="date" id="fr-sana"></div>
+          <div class="form-group"><label class="form-label">Sana <span class="req">*</span></label><input class="form-input" type="text" id="fr-sana" placeholder="dd.mm.yyyy" maxlength="10" oninput="dateMask(this)" autocomplete="off"></div>
           <div class="form-group"><label class="form-label">Shahar <span class="req">*</span></label><input class="form-input" id="fr-shahar" placeholder="Toshkent"></div>
           <div class="form-group"><label class="form-label">Davlat <span class="req">*</span></label><input class="form-input" id="fr-davlat" placeholder="O'zbekiston"></div>
           <div class="form-group"><label class="form-label">Turi</label>
@@ -1126,7 +1126,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 
       <div id="bSchedOnceRow" class="form-group" style="margin-bottom:.8rem">
         <label class="form-label">Sana</label>
-        <input class="form-input" type="date" id="bSchedDate">
+        <input class="form-input" type="text" id="bSchedDate" placeholder="dd.mm.yyyy" maxlength="10" oninput="dateMask(this)" autocomplete="off">
       </div>
       <div id="bSchedMonthlyRow" class="form-group" style="display:none;margin-bottom:.8rem">
         <label class="form-label">Har oyning nechinchi kuni?</label>
@@ -1198,7 +1198,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
       <!-- Once: date -->
       <div id="schedOnceRow" class="form-group" style="margin-bottom:.8rem">
         <label class="form-label">Sana</label>
-        <input class="form-input" type="date" id="schedDate">
+        <input class="form-input" type="text" id="schedDate" placeholder="dd.mm.yyyy" maxlength="10" oninput="dateMask(this)" autocomplete="off">
       </div>
 
       <!-- Monthly: day of month -->
@@ -1448,7 +1448,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
     </div>
     <div class="form-grid" style="padding:.5rem 0">
       <div class="form-group span-2"><label class="form-label">Forum Nomi</label><input class="form-input" id="fed-nom"></div>
-      <div class="form-group"><label class="form-label">Sana</label><input class="form-input" type="date" id="fed-sana"></div>
+      <div class="form-group"><label class="form-label">Sana</label><input class="form-input" type="text" id="fed-sana" placeholder="dd.mm.yyyy" maxlength="10" oninput="dateMask(this)" autocomplete="off"></div>
       <div class="form-group"><label class="form-label">Shahar</label><input class="form-input" id="fed-shahar"></div>
       <div class="form-group"><label class="form-label">Davlat</label><input class="form-input" id="fed-davlat"></div>
       <div class="form-group"><label class="form-label">Turi</label>
@@ -1859,7 +1859,38 @@ const IJ_COLORS = {prez:'#EF233C',pa:'#7209B7',vm:'#4361EE',komissiya:'#059669',
 /* ═══════════════════════════════════════
    UTILS
 ═══════════════════════════════════════ */
-function fmtDate(s){if(!s)return'—';const p=s.split('-');if(p.length===3)return`${p[2]}.${p[1]}.${p[0]}`;return s;}
+function fmtDate(s){
+  if(!s) return '—';
+  // YYYY-MM-DD → DD.MM.YYYY
+  const p = s.split('-');
+  if(p.length===3 && p[0].length===4) return `${p[2]}.${p[1]}.${p[0]}`;
+  // already DD.MM.YYYY
+  return s;
+}
+
+// dd.mm.yyyy mask
+function dateMask(el){
+  let v = el.value.replace(/\D/g,'');
+  if(v.length>2) v = v.slice(0,2)+'.'+v.slice(2);
+  if(v.length>5) v = v.slice(0,5)+'.'+v.slice(5);
+  el.value = v.slice(0,10);
+}
+
+// dd.mm.yyyy → YYYY-MM-DD (for Firebase/sorting)
+function dateToISO(s){
+  if(!s) return '';
+  if(s.includes('-')) return s; // already ISO
+  const p = s.split('.');
+  if(p.length===3) return `${p[2]}-${p[1]}-${p[0]}`;
+  return s;
+}
+
+// YYYY-MM-DD → dd.mm.yyyy (for display in inputs)
+function dateToDisplay(s){
+  if(!s) return '';
+  if(s.includes('-')){const p=s.split('-');return`${p[2]}.${p[1]}.${p[0]}`;}
+  return s;
+}
 function fmtMoney(v){const n=parseFloat(v)||0;if(n>=1e6)return`$${(n/1e6).toFixed(1)}M`;if(n>=1000)return`$${(n/1000).toFixed(0)}K`;return`$${n}`;}
 function nextId(arr){return arr.length?Math.max(...arr.map(r=>r.id))+1:1;}
 function getInitials(name=''){return(name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase())||'??';}
@@ -2023,7 +2054,7 @@ function clearForm(ids){ids.forEach(id=>{const el=document.getElementById(id);if
 
 function addInvestor(){
   if(!v('inv-shahar')||!v('inv-davlat')||!v('inv-kompaniya')||!v('inv-loyiha')||!v('inv-makom')||!v('inv-maqsad')){toast('⚠️ Majburiy maydonlarni to\'ldiring!','error');return;}
-  const rec={id:nextId(DB.investors),shahar:v('inv-shahar'),sana:v('inv-sana'),davlat:v('inv-davlat'),flag:v('inv-flag'),maqsad:v('inv-maqsad'),kompaniya:v('inv-kompaniya'),loyiha:v('inv-loyiha'),qiymat:v('inv-qiymat'),makom:v('inv-makom'),hudud:v('inv-hudud'),izoh:v('inv-izoh')};
+  const rec={id:nextId(DB.investors),shahar:v('inv-shahar'),sana:dateToISO(v('inv-sana')),davlat:v('inv-davlat'),flag:v('inv-flag'),maqsad:v('inv-maqsad'),kompaniya:v('inv-kompaniya'),loyiha:v('inv-loyiha'),qiymat:v('inv-qiymat'),makom:v('inv-makom'),hudud:v('inv-hudud'),izoh:v('inv-izoh')};
   DB.investors.push(rec);
   if(typeof fbSave==='function') fbSave('investors',rec);
   clearForm(['inv-shahar','inv-sana','inv-davlat','inv-flag','inv-maqsad','inv-kompaniya','inv-loyiha','inv-qiymat','inv-makom','inv-hudud','inv-izoh']);
@@ -2039,7 +2070,7 @@ function addLocal(){
 }
 function addZoom(){
   if(!v('zm-ism')||!v('zm-org')||!v('zm-sana')||!v('zm-natija-holat')){toast('⚠️ Majburiy maydonlarni to\'ldiring!','error');return;}
-  const rec={id:nextId(DB.zoom),ism:v('zm-ism'),org:v('zm-org'),davlat:v('zm-davlat'),sana:v('zm-sana'),ishtirokchi:parseInt(v('zm-ishtirokchi'))||1,natijaHolat:v('zm-natija-holat'),desc:v('zm-desc'),natija:v('zm-natija'),media:[..._zmAdminMedia]};
+  const rec={id:nextId(DB.zoom),ism:v('zm-ism'),org:v('zm-org'),davlat:v('zm-davlat'),sana:dateToISO(v('zm-sana')),ishtirokchi:parseInt(v('zm-ishtirokchi'))||1,natijaHolat:v('zm-natija-holat'),desc:v('zm-desc'),natija:v('zm-natija'),media:[..._zmAdminMedia]};
   DB.zoom.push(rec);
   _zmAdminMedia=[];
   if(typeof fbSave==='function') fbSave('zoom',rec);
@@ -2443,7 +2474,7 @@ function openForumEdit(){
   const r = DB.forums.find(f=>f.id===_forumDetailId);
   if(!r) return;
   document.getElementById('fed-nom').value = r.nom||'';
-  document.getElementById('fed-sana').value = r.sana||'';
+  document.getElementById('fed-sana').value = dateToDisplay(r.sana||'');
   document.getElementById('fed-shahar').value = r.shahar||'';
   document.getElementById('fed-davlat').value = r.davlat||'';
   document.getElementById('fed-turi').value = r.turi||'';
@@ -2461,7 +2492,7 @@ function saveForumEdit(){
   const r = DB.forums.find(f=>f.id===_forumDetailId);
   if(!r) return;
   r.nom = document.getElementById('fed-nom').value.trim();
-  r.sana = document.getElementById('fed-sana').value;
+  r.sana = dateToISO(document.getElementById('fed-sana').value);
   r.shahar = document.getElementById('fed-shahar').value.trim();
   r.davlat = document.getElementById('fed-davlat').value.trim();
   r.turi = document.getElementById('fed-turi').value;
@@ -2891,7 +2922,7 @@ function saveBulkSchedule(){
 
   const schedule = {
     type, active: true, subject, message, time,
-    date:    type==='once'    ? document.getElementById('bSchedDate').value : '',
+    date:    type==='once'    ? dateToISO(document.getElementById('bSchedDate').value) : '',
     day:     type==='monthly' ? parseInt(document.getElementById('bSchedDay').value) : null,
     weekday: type==='weekly'  ? parseInt(document.getElementById('bSchedWeekday').value) : null,
   };
@@ -2933,7 +2964,7 @@ function openScheduleModal(id){
   document.querySelectorAll('input[name="schedType"]').forEach(r => r.checked = r.value === type);
   onSchedTypeChange();
 
-  document.getElementById('schedDate').value     = s.date    || '';
+  document.getElementById('schedDate').value     = dateToDisplay(s.date || '');
   document.getElementById('schedDay').value      = s.day     || '1';
   document.getElementById('schedWeekday').value  = s.weekday || '1';
   document.getElementById('schedTime').value     = s.time    || '09:00';
@@ -2979,7 +3010,7 @@ function saveSchedule(){
     subject,
     message,
     time:    document.getElementById('schedTime').value || '09:00',
-    date:    type==='once'    ? document.getElementById('schedDate').value : '',
+    date:    type==='once'    ? dateToISO(document.getElementById('schedDate').value) : '',
     day:     type==='monthly' ? parseInt(document.getElementById('schedDay').value) : null,
     weekday: type==='weekly'  ? parseInt(document.getElementById('schedWeekday').value) : null,
   };
@@ -3204,7 +3235,7 @@ function removeAdminZoomMedia(idx){
 
 function addForum(){
   if(!v('fr-nom')||!v('fr-sana')||!v('fr-shahar')||!v('fr-davlat')||!v('fr-holat')){toast(t('toast_fill'),'error');return;}
-  const rec={id:nextId(DB.forums),nom:v('fr-nom'),sana:v('fr-sana'),shahar:v('fr-shahar'),davlat:v('fr-davlat'),turi:v('fr-turi'),holat:v('fr-holat'),desc:v('fr-desc'),izoh:v('fr-izoh'),docs:[]};
+  const rec={id:nextId(DB.forums),nom:v('fr-nom'),sana:dateToISO(v('fr-sana')),shahar:v('fr-shahar'),davlat:v('fr-davlat'),turi:v('fr-turi'),holat:v('fr-holat'),desc:v('fr-desc'),izoh:v('fr-izoh'),docs:[]};
   DB.forums.push(rec);
   if(typeof fbSave==='function') fbSave('forums', rec);
   clearFrForm();
