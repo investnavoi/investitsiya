@@ -799,6 +799,9 @@ tbody td:first-child{color:var(--text);font-weight:600;}
           <button class="btn btn-blue btn-sm" onclick="sendBulkEmail()" id="bulkSendBtn" style="display:none">
             <span data-i18n="btn_bulk_send">📧 Tanlanganlarga yuborish</span>
           </button>
+          <button class="btn btn-sm" onclick="openBulkScheduleModal()" id="bulkSchedBtn" style="display:none;background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">
+            📅 Barchasiga rejalashtirish
+          </button>
         </div>
       </div>
       <div class="tscroll">
@@ -1096,6 +1099,74 @@ tbody td:first-child{color:var(--text);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== BULK SCHEDULE MODAL ===== -->
+<div class="modal-overlay" id="bulkScheduleModal" onclick="if(event.target===this)closeBulkScheduleModal()">
+  <div class="modal" style="max-width:540px;width:100%">
+    <div class="modal-head">
+      <div class="modal-title">📅 Tanlanganlarga Email Rejalashtirish</div>
+      <button class="modal-close-btn" onclick="closeBulkScheduleModal()">✕</button>
+    </div>
+    <div style="padding:.5rem 0">
+      <div id="bulkSchedInfo" style="font-size:.78rem;color:var(--text2);margin-bottom:1rem;padding:.5rem .75rem;background:var(--bg2);border-radius:8px"></div>
+
+      <div class="form-group" style="margin-bottom:.8rem">
+        <label class="form-label">Yuborish turi</label>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.78rem;padding:.45rem .8rem;border-radius:8px;border:1px solid var(--border);background:var(--bg2)">
+            <input type="radio" name="bSchedType" value="once" checked onchange="onBSchedTypeChange()"> Bir martalik
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.78rem;padding:.45rem .8rem;border-radius:8px;border:1px solid var(--border);background:var(--bg2)">
+            <input type="radio" name="bSchedType" value="monthly" onchange="onBSchedTypeChange()"> Oylik
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.78rem;padding:.45rem .8rem;border-radius:8px;border:1px solid var(--border);background:var(--bg2)">
+            <input type="radio" name="bSchedType" value="weekly" onchange="onBSchedTypeChange()"> Haftalik
+          </label>
+        </div>
+      </div>
+
+      <div id="bSchedOnceRow" class="form-group" style="margin-bottom:.8rem">
+        <label class="form-label">Sana</label>
+        <input class="form-input" type="date" id="bSchedDate">
+      </div>
+      <div id="bSchedMonthlyRow" class="form-group" style="display:none;margin-bottom:.8rem">
+        <label class="form-label">Har oyning nechinchi kuni?</label>
+        <select class="form-select" id="bSchedDay">
+          ${Array.from({length:28},(_,i)=>`<option value="${i+1}">${i+1}-kuni</option>`).join('')}
+        </select>
+      </div>
+      <div id="bSchedWeeklyRow" class="form-group" style="display:none;margin-bottom:.8rem">
+        <label class="form-label">Haftaning qaysi kuni?</label>
+        <select class="form-select" id="bSchedWeekday">
+          <option value="1">Dushanba</option><option value="2">Seshanba</option>
+          <option value="3">Chorshanba</option><option value="4">Payshanba</option>
+          <option value="5">Juma</option><option value="6">Shanba</option><option value="0">Yakshanba</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom:.8rem">
+        <label class="form-label">Yuborish vaqti</label>
+        <input class="form-input" type="time" id="bSchedTime" value="09:00">
+        <div style="font-size:.63rem;color:var(--text3);margin-top:.2rem">⚠️ Toshkent vaqti (UTC+5)</div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:.8rem">
+        <label class="form-label">Xat mavzusi</label>
+        <input class="form-input" id="bSchedSubject" placeholder="Investitsiya taklifi">
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label class="form-label">Xat matni</label>
+        <div style="font-size:.65rem;color:var(--text3);margin-bottom:.3rem">💡 <code>{kompaniya}</code> va <code>{rahbar}</code> avtomatik to'ldiriladi</div>
+        <textarea class="form-input" id="bSchedMessage" rows="5" placeholder="Hurmatli {rahbar},&#10;&#10;{kompaniya} kompaniyasi bo'yicha..."></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-blue" onclick="saveBulkSchedule()">✅ Barchasiga saqlash</button>
+        <button class="btn btn-ghost" onclick="closeBulkScheduleModal()">Bekor</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== EMAIL SCHEDULE MODAL ===== -->
 <div class="modal-overlay" id="scheduleModal" onclick="if(event.target===this)closeScheduleModal()">
   <div class="modal" style="max-width:520px;width:100%">
@@ -1148,6 +1219,13 @@ tbody td:first-child{color:var(--text);font-weight:600;}
           <option value="6">Shanba</option>
           <option value="0">Yakshanba</option>
         </select>
+      </div>
+
+      <!-- Subject -->
+      <div class="form-group" style="margin-bottom:.8rem">
+        <label class="form-label">Yuborish vaqti</label>
+        <input class="form-input" type="time" id="schedTime" value="09:00">
+        <div style="font-size:.63rem;color:var(--text3);margin-top:.2rem">⚠️ Toshkent vaqti bilan (UTC+5). 30 daqiqalik aniqlikda ishlaydi.</div>
       </div>
 
       <!-- Subject -->
@@ -2453,6 +2531,8 @@ function renderInvestorCompanies(){
   const bulkBtn = document.getElementById('bulkSendBtn');
   const checkAll = document.getElementById('checkAll');
   if(bulkBtn) bulkBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  const bulkSchedBtn = document.getElementById('bulkSchedBtn');
+  if(bulkSchedBtn) bulkSchedBtn.style.display = isAdmin ? 'inline-flex' : 'none';
   if(checkAll) checkAll.style.display = isAdmin ? 'inline-block' : 'none';
 }
 
@@ -2754,6 +2834,81 @@ function openEmailModal(id){
   document.getElementById('sendBtn').textContent= co.emailSent ? 'QAYTA YUBORISH 📧' : 'YUBORISH 📧';
   document.getElementById('emailModal').classList.add('open');
 }
+function openBulkScheduleModal(){
+  const ids = getSelectedIds();
+  const all = DB.investorCompanies||[];
+  // email mavjud bo'lganlarni olish
+  const targets = ids.length
+    ? ids.map(id=>all.find(r=>r.id===id)).filter(r=>r&&r.email)
+    : all.filter(r=>r.email);
+
+  if(!targets.length){ toast('⚠️ Email manzili bo\'lgan kompaniya yo\'q','error'); return; }
+
+  document.getElementById('bulkSchedInfo').innerHTML =
+    `<b>${targets.length} ta kompaniya</b> uchun rejalashtiriladi:<br>
+     <span style="font-size:.7rem;color:var(--text3)">${targets.map(r=>r.kompaniya).join(', ')}</span>`;
+
+  // Reset form
+  document.querySelectorAll('input[name="bSchedType"]').forEach(r=>r.checked=r.value==='once');
+  onBSchedTypeChange();
+  document.getElementById('bSchedDate').value    = '';
+  document.getElementById('bSchedTime').value    = '09:00';
+  document.getElementById('bSchedSubject').value = '';
+  document.getElementById('bSchedMessage').value = '';
+
+  document.getElementById('bulkScheduleModal').classList.add('open');
+}
+
+function closeBulkScheduleModal(){
+  document.getElementById('bulkScheduleModal').classList.remove('open');
+}
+
+function onBSchedTypeChange(){
+  const type = document.querySelector('input[name="bSchedType"]:checked')?.value||'once';
+  document.getElementById('bSchedOnceRow').style.display    = type==='once'    ?'block':'none';
+  document.getElementById('bSchedMonthlyRow').style.display = type==='monthly' ?'block':'none';
+  document.getElementById('bSchedWeeklyRow').style.display  = type==='weekly'  ?'block':'none';
+}
+
+function saveBulkSchedule(){
+  const type    = document.querySelector('input[name="bSchedType"]:checked')?.value||'once';
+  const subject = document.getElementById('bSchedSubject').value.trim();
+  const message = document.getElementById('bSchedMessage').value.trim();
+  const time    = document.getElementById('bSchedTime').value||'09:00';
+
+  if(!subject||!message){ toast('⚠️ Mavzu va xat matnini kiriting','error'); return; }
+  if(type==='once'&&!document.getElementById('bSchedDate').value){ toast('⚠️ Sana kiriting','error'); return; }
+
+  const ids = getSelectedIds();
+  const all = DB.investorCompanies||[];
+  const targets = ids.length
+    ? ids.map(id=>all.find(r=>r.id===id)).filter(r=>r&&r.email)
+    : all.filter(r=>r.email);
+
+  const schedule = {
+    type, active: true, subject, message, time,
+    date:    type==='once'    ? document.getElementById('bSchedDate').value : '',
+    day:     type==='monthly' ? parseInt(document.getElementById('bSchedDay').value) : null,
+    weekday: type==='weekly'  ? parseInt(document.getElementById('bSchedWeekday').value) : null,
+  };
+
+  targets.forEach(co=>{
+    co.emailSchedule = {...schedule};
+    if(typeof fbSave==='function') fbSave('investorCompanies', co);
+  });
+
+  renderInvestorCompanies();
+  closeBulkScheduleModal();
+  toast(`✅ ${targets.length} ta kompaniyaga email rejasi saqlandi!`);
+}
+
+function openBulkScheduleModal_all(){
+  // Barchasini tanlash
+  document.querySelectorAll('.ic-check').forEach(c=>c.checked=true);
+  updateSelectedCount();
+  openBulkScheduleModal();
+}
+
 /* ═══════════════════════════════════════
    EMAIL SCHEDULE MODAL
 ═══════════════════════════════════════ */
@@ -2777,6 +2932,7 @@ function openScheduleModal(id){
   document.getElementById('schedDate').value     = s.date    || '';
   document.getElementById('schedDay').value      = s.day     || '1';
   document.getElementById('schedWeekday').value  = s.weekday || '1';
+  document.getElementById('schedTime').value     = s.time    || '09:00';
   document.getElementById('schedSubject').value  = s.subject || '';
   document.getElementById('schedMessage').value  = s.message || '';
   document.getElementById('schedActive').checked = s.active  !== false;
@@ -2818,6 +2974,7 @@ function saveSchedule(){
     active:  document.getElementById('schedActive').checked,
     subject,
     message,
+    time:    document.getElementById('schedTime').value || '09:00',
     date:    type==='once'    ? document.getElementById('schedDate').value : '',
     day:     type==='monthly' ? parseInt(document.getElementById('schedDay').value) : null,
     weekday: type==='weekly'  ? parseInt(document.getElementById('schedWeekday').value) : null,
