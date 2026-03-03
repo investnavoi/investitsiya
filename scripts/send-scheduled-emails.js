@@ -41,6 +41,7 @@ function toISO(s) {
 function isTimeMatch(schedTime, hours, minutes) {
   if (!schedTime) return true;
   let t = String(schedTime).trim();
+  // AM/PM -> 24h
   const ampm = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
   if (ampm) {
     let h = parseInt(ampm[1]), m2 = parseInt(ampm[2]);
@@ -52,7 +53,13 @@ function isTimeMatch(schedTime, hours, minutes) {
   const parts = t.split(":");
   if (parts.length < 2) return true;
   const sh = parseInt(parts[0]), sm = parseInt(parts[1]);
-  return sh === hours && (sm < 30 ? 0 : 30) === (minutes < 30 ? 0 : 30);
+  // Rejalashtirilgan vaqt (daqiqalarda)
+  const schedMins   = sh * 60 + sm;
+  const currentMins = hours * 60 + minutes;
+  // ±30 daqiqa oraliqda bo'lsa yuborsin
+  // Lekin bir kun ichida faqat bir marta yuborilishi uchun lastSent tekshiriladi
+  const diff = Math.abs(currentMins - schedMins);
+  return diff <= 30;
 }
 
 async function main() {
@@ -77,6 +84,11 @@ async function main() {
     const s = c.emailSchedule;
     if (!isTimeMatch(s.time, hours, minutes)) {
       console.log("  [vaqt mos emas] " + c.kompaniya + ": " + s.time + " vs " + hh + ":" + mm);
+      return false;
+    }
+    // Bugun allaqachon yuborilganmi?
+    if (s.lastSent === isoDate) {
+      console.log("  [bugun yuborilgan] " + c.kompaniya);
       return false;
     }
     if (s.type === "once") {
