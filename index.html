@@ -3586,39 +3586,49 @@ function openNotifAsDrawer(idx){
 
 window.addEventListener('load', ()=>{
   if(Notification.permission==='default') Notification.requestPermission();
-  const savedId = localStorage.getItem('_gmailClientId');
-  const wasConnected = localStorage.getItem('_gmailWasConnected');
+  const savedId    = localStorage.getItem('_gmailClientId');
   const savedEmail = localStorage.getItem('_gmailUserEmail');
+  const wasConnected = localStorage.getItem('_gmailWasConnected');
 
-  // Show previously connected email in UI while reconnecting
+  // Show status while reconnecting
   if(wasConnected && savedEmail){
     _gmailUser = savedEmail;
     const statusEl = document.getElementById('gmailStatus');
     if(statusEl) statusEl.textContent = savedEmail + ' (qayta ulanmoqda...)';
   }
 
-  if(savedId){
+  if(savedId && wasConnected){
     const tryConnect=(n=0)=>{
-      if(typeof google!=='undefined'&&google.accounts){
+      if(typeof google!=='undefined' && google.accounts){
         try{
           const client = google.accounts.oauth2.initTokenClient({
             client_id: savedId,
             scope: GMAIL_SCOPES,
-            prompt: '',
+            prompt: 'none',
+            // login_hint — brauzer qaysi akkauntdan token olishni biladi, popup chiqmaydi
+            login_hint: savedEmail || '',
             callback: (resp) => {
               if(resp && !resp.error){
                 onGmailToken(resp);
                 console.log('✅ Gmail avtomatik qayta ulandi');
+              } else {
+                // Silent fail — foydalanuvchi o'zi ulanadi
+                const statusEl = document.getElementById('gmailStatus');
+                if(statusEl) statusEl.textContent = 'Ulanmagan';
+                console.warn('Gmail silent reconnect failed:', resp?.error);
               }
             }
           });
-          client.requestAccessToken({ prompt: '' });
-        } catch(e){ console.warn('Gmail silent reconnect:', e); }
+          // prompt:'none' — hech qanday popup chiqarmaydi
+          client.requestAccessToken({ prompt: 'none', login_hint: savedEmail||'' });
+        } catch(e){ console.warn('Gmail reconnect:', e); }
       }
-      else if(n<15){ setTimeout(()=>tryConnect(n+1), 500); }
+      else if(n<20){ setTimeout(()=>tryConnect(n+1), 500); }
     };
-    setTimeout(()=>tryConnect(), 800);
+    // 1.5 soniya kutamiz — GSI library to'liq yuklansin
+    setTimeout(()=>tryConnect(), 1500);
   }
+
   _unreadCount = _notifications.filter(n=>n.unread).length;
   updateBellBadge();
   renderNotifList();
