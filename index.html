@@ -2539,7 +2539,7 @@ function renderInvestorCompanies(){
   document.getElementById('ic-k1').textContent=co.length;
   document.getElementById('ic-k2').textContent=co.filter(r=>r.holat==='Tayyor').length;
   document.getElementById('ic-k3').textContent=co.filter(r=>r.emailSent).length+'/'+co.filter(r=>r.email).length;
-  document.getElementById('ic-k4').textContent=`$${Math.round(total/1e6)}M`;
+  const ic4=document.getElementById('ic-k4'); if(ic4) ic4.textContent=`$${Math.round(total/1e6)}M`;
   document.getElementById('badge-investorco').textContent=co.length;
 
   const tb=document.getElementById('ic-tbody');
@@ -4219,7 +4219,7 @@ function toggleNotifPanel(){
   if(isOpen){
     _unreadCount = 0;
     updateBellBadge();
-    _notifications.forEach(n=>n.unread=false);
+    if(Array.isArray(_notifications)) _notifications.forEach(n=>n.unread=false);
     localStorage.setItem('_notifs', JSON.stringify(_notifications.slice(-50)));
     renderNotifList();
   }
