@@ -124,6 +124,11 @@ function waitForDB(){
         if(b.textContent.trim().toLowerCase() === savedLang) b.classList.add('active');
       });
     }
+    // Restore admin session
+    if(localStorage.getItem('_adminLoggedIn')==='1'){
+      isAdmin = true;
+      if(typeof applyAdminUI==='function') applyAdminUI(true);
+    }
     loadFromFirestore();
   } else {
     setTimeout(waitForDB, 100);
@@ -1733,12 +1738,11 @@ function doLogin(){
   const p=document.getElementById('passInput').value;
   if(u==='admin'&&p==='shahzod'){
     isAdmin=true;
+    localStorage.setItem('_adminLoggedIn','1');
     closeLogin();
-    document.getElementById('navAvatar').textContent='A';
-    document.getElementById('navUname').textContent='Admin';
-    document.getElementById('adminTabLabel').textContent='Admin Panel';
-    document.getElementById('ijLockOverlay').classList.add('hidden');
+    applyAdminUI(true);
     renderInvestorCompanies();
+    renderAdminLists();
     toast('✅ Admin sifatida kirdingiz!');
     if(pendingAdminTab){
       switchAdminTab(pendingAdminTab.replace('tab-',''));
@@ -1751,13 +1755,18 @@ function doLogin(){
 }
 function logoutAdmin(){
   isAdmin=false;
-  document.getElementById('navAvatar').textContent='B';
-  document.getElementById('navUname').textContent="Bo'lim Xodimi";
-  document.getElementById('adminTabLabel').textContent='Kirish';
-  document.getElementById('ijLockOverlay').classList.remove('hidden');
+  localStorage.removeItem('_adminLoggedIn');
+  applyAdminUI(false);
   renderInvestorCompanies();
   toast('🚪 Chiqildi');
   showPage('overview');
+}
+function applyAdminUI(admin){
+  document.getElementById('navAvatar').textContent = admin ? 'A' : 'B';
+  document.getElementById('navUname').textContent  = admin ? 'Admin' : "Bo'lim Xodimi";
+  document.getElementById('adminTabLabel').textContent = admin ? 'Admin Panel' : 'Kirish';
+  const ijLock = document.getElementById('ijLockOverlay');
+  if(ijLock) ijLock.classList.toggle('hidden', admin);
 }
 
 /* ═══════════════════════════════════════
@@ -2389,14 +2398,12 @@ function renderAdminLists(){
 
 function renderAll(){
   renderOverview();
-  if(currentPage==='investors')renderInvestors();
-  else if(currentPage==='local')renderLocal();
-  else if(currentPage==='zoom')renderZoom();
-  else if(currentPage==='forums')renderForums();
-  else if(currentPage==='investor')renderInvestorCompanies();
-  else if(currentPage==='admin')renderAdminLists();
-  renderInvestors();renderLocal();renderZoom();renderForums();renderInvestorCompanies();
-  if(isAdmin)renderAdminLists();
+  renderInvestors();
+  renderLocal();
+  renderZoom();
+  renderForums();
+  renderInvestorCompanies();
+  if(isAdmin) renderAdminLists();
 }
 
 /* ═══════════════════════════════════════
@@ -2623,25 +2630,15 @@ function removeAdminZoomMedia(idx){
   renderAdminZoomPreview();
 }
 
-function addZoom(){
-  if(!v('zm-ism')||!v('zm-org')||!v('zm-sana')||!v('zm-natija-holat')){toast(t('toast_fill'),'error');return;}
-  DB.zoom.push({
-    id:nextId(DB.zoom),
-    ism:v('zm-ism'), org:v('zm-org'), davlat:v('zm-davlat'),
-    sana:v('zm-sana'), ishtirokchi:v('zm-ishtirokchi')||1,
-    natijaHolat:v('zm-natija-holat'), desc:v('zm-desc'), natija:v('zm-natija'),
-    media:[..._zmAdminMedia]
-  });
-  _zmAdminMedia = [];
-  renderZoom(); renderOverview(); clearZmForm();
-  toast(`"${v('zm-ism')||'Yozuv'}" ${t('toast_saved')}`);
-}
 function addForum(){
   if(!v('fr-nom')||!v('fr-sana')||!v('fr-shahar')||!v('fr-davlat')||!v('fr-holat')){toast(t('toast_fill'),'error');return;}
   const rec={id:nextId(DB.forums),nom:v('fr-nom'),sana:v('fr-sana'),shahar:v('fr-shahar'),davlat:v('fr-davlat'),turi:v('fr-turi'),holat:v('fr-holat'),desc:v('fr-desc'),izoh:v('fr-izoh'),docs:[]};
   DB.forums.push(rec);
   if(typeof fbSave==='function') fbSave('forums', rec);
-  renderForums();renderOverview();clearFrForm();
+  clearFrForm();
+  renderForums();
+  renderAdminLists();
+  renderOverview();
   toast('✅ Forum saqlandi!');
 }
 
@@ -2677,10 +2674,16 @@ function deleteRecord(table, id){
 function clearAllConfirm(table){
   document.getElementById('deleteMsg').textContent=`"${table}" — ${t('delete_all_msg')}`;
   document.getElementById('deleteModal').classList.add('open');
-  document.getElementById('deleteConfirmBtn').onclick=()=>{
+  const confirmBtn = document.getElementById('deleteConfirmBtn');
+  const newBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+  newBtn.onclick=()=>{
     DB[table]=[];
-    ({investors:renderInvestors,local:renderLocal,zoom:renderZoom,forums:renderForums})[table]?.();
-    renderOverview();closeModal('deleteModal');
+    if(typeof fbSaveCollection==='function') fbSaveCollection(table,[]);
+    ({investors:renderInvestors,local:renderLocal,zoom:renderZoom,forums:renderForums,investorCompanies:renderInvestorCompanies})[table]?.();
+    renderOverview();
+    document.getElementById('deleteModal').classList.remove('open');
+    document.getElementById('deleteModal').style.display='';
     toast(t('toast_all_deleted'),'info');
   };
 }
