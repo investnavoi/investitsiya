@@ -3682,18 +3682,21 @@ function onGmailToken(resp){
   }
   _gmailToken = resp.access_token;
   _gmailConnected = true;
+  // Token 1 soat (3600 sek) ishlaydi — muddatni saqlaymiz
+  const expiresAt = Date.now() + (resp.expires_in || 3599) * 1000;
+  localStorage.setItem('_gmailToken', resp.access_token);
+  localStorage.setItem('_gmailTokenExp', String(expiresAt));
+  localStorage.setItem('_gmailWasConnected','1');
+
   const btn = document.getElementById('gmailConnectBtn');
-  btn.textContent = '\u2705 Ulangan';
-  btn.classList.add('connected');
+  if(btn){ btn.textContent = '✅ Ulangan'; btn.classList.add('connected'); }
   fetch('https://www.googleapis.com/oauth2/v3/userinfo',{ headers:{ Authorization:'Bearer '+_gmailToken } })
     .then(r=>r.json()).then(u=>{
       _gmailUser = u.email||'';
       document.getElementById('gmailStatus').textContent = _gmailUser;
-      // Save connection state for auto-reconnect on reload
-      localStorage.setItem('_gmailWasConnected','1');
       localStorage.setItem('_gmailUserEmail', _gmailUser);
     });
-  toast('\u2705 Gmail ulandi!', 'success');
+  toast('✅ Gmail ulandi!', 'success');
   checkGmailReplies(true);
   startPolling();
 }
@@ -4059,6 +4062,27 @@ function openNotifAsDrawer(idx){
 
 window.addEventListener('load', ()=>{
   if(Notification.permission==='default') Notification.requestPermission();
+
+  // Gmail tokenni localStorage dan tiklash (popup yo'q)
+  const savedToken  = localStorage.getItem('_gmailToken');
+  const savedExp    = parseInt(localStorage.getItem('_gmailTokenExp')||'0');
+  const savedEmail2 = localStorage.getItem('_gmailUserEmail');
+  if(savedToken && savedExp > Date.now() + 60000){
+    // Token hali muddatda — qayta ulamasdan tiklash
+    _gmailToken     = savedToken;
+    _gmailConnected = true;
+    _gmailUser      = savedEmail2 || '';
+    const statusEl = document.getElementById('gmailStatus');
+    if(statusEl) statusEl.textContent = _gmailUser || 'Ulangan';
+    const btn = document.getElementById('gmailConnectBtn');
+    if(btn){ btn.textContent = '✅ Ulangan'; btn.classList.add('connected'); }
+    startPolling();
+  } else if(savedEmail2){
+    // Token muddati o'tgan — emailni ko'rsatib, qayta ulash taklifi
+    const statusEl = document.getElementById('gmailStatus');
+    if(statusEl) statusEl.textContent = savedEmail2 + ' (qayta ulang)';
+    localStorage.removeItem('_gmailToken');
+  }
 
   _unreadCount = _notifications.filter(n=>n.unread).length;
   updateBellBadge();
