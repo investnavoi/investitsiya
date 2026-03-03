@@ -760,7 +760,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
         <div class="tc-title">Kompaniyalar ro'yxati</div>
         <div style="display:flex;gap:.6rem;align-items:center">
           <span id="selectedCount" style="font-size:.7rem;color:var(--text3)">0 ta tanlangan</span>
-          <button class="btn btn-blue btn-sm" onclick="sendBulkEmail()" id="bulkSendBtn">
+          <button class="btn btn-blue btn-sm" onclick="sendBulkEmail()" id="bulkSendBtn" style="display:none">
             📧 Tanlanganlarga yuborish
           </button>
         </div>
@@ -1412,6 +1412,7 @@ function doLogin(){
     document.getElementById('navUname').textContent='Admin';
     document.getElementById('adminTabLabel').textContent='Admin Panel';
     document.getElementById('ijLockOverlay').classList.add('hidden');
+    renderInvestorCompanies();
     toast('✅ Admin sifatida kirdingiz!');
     if(pendingAdminTab){
       switchAdminTab(pendingAdminTab.replace('tab-',''));
@@ -1428,6 +1429,7 @@ function logoutAdmin(){
   document.getElementById('navUname').textContent="Bo'lim Xodimi";
   document.getElementById('adminTabLabel').textContent='Kirish';
   document.getElementById('ijLockOverlay').classList.remove('hidden');
+  renderInvestorCompanies();
   toast('🚪 Chiqildi');
   showPage('overview');
 }
@@ -1766,7 +1768,7 @@ function renderInvestorCompanies(){
   }
   tb.innerHTML=co.map((r,i)=>`
     <tr>
-      <td><input type="checkbox" class="ic-check" data-id="${r.id}" onchange="updateSelectedCount()"></td>
+      <td>${isAdmin?`<input type="checkbox" class="ic-check" data-id="${r.id}" onchange="updateSelectedCount()">`:''}</td>
       <td>${i+1}</td>
       <td><b>${r.kompaniya}</b></td>
       <td>${r.rahbar}</td>
@@ -1774,13 +1776,18 @@ function renderInvestorCompanies(){
       <td style="font-size:.7rem;color:#4361EE">${r.email||'<span style="color:var(--text3)">—</span>'}</td>
       <td>${getEmailStatusBadge(r)}</td>
       <td>
-        <div style="display:flex;gap:6px">
+        ${isAdmin?`<div style="display:flex;gap:6px">
           ${r.email?`<button class="btn btn-blue btn-sm" onclick="openEmailModal(${r.id})" title="Xabar yuborish">📧</button>`:''}
           <button class="btn btn-danger btn-sm" onclick="deleteRecord('investorCompanies',${r.id})">🗑</button>
-        </div>
+        </div>`:'<span style="font-size:.65rem;color:var(--text3)">—</span>'}
       </td>
     </tr>`).join('');
   updateSelectedCount();
+  // Show/hide admin-only controls
+  const bulkBtn = document.getElementById('bulkSendBtn');
+  const checkAll = document.getElementById('checkAll');
+  if(bulkBtn) bulkBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  if(checkAll) checkAll.style.display = isAdmin ? 'inline-block' : 'none';
 }
 
 function toggleAllCheckboxes(el){
@@ -1799,6 +1806,7 @@ function getSelectedIds(){
 }
 
 function sendBulkEmail(){
+  if(!isAdmin){toast('⚠️ Email yuborish uchun admin sifatida kiring!','error');openAdminOrLogin();return;}
   const ids = getSelectedIds();
   if(!ids.length){ toast('⚠️ Avval kompaniyalarni tanlang!','error'); return; }
   const targets = ids.map(id=>DB.investorCompanies.find(r=>r.id===id)).filter(r=>r&&r.email);
@@ -1977,6 +1985,7 @@ function closeZoomDetail(){document.getElementById('zoomDetailModal').classList.
    EMAIL MODAL
 ═══════════════════════════════════════ */
 function openEmailModal(id){
+  if(!isAdmin){toast('⚠️ Email yuborish uchun admin sifatida kiring!','error');openAdminOrLogin();return;}
   const co=DB.investorCompanies.find(r=>r.id===id);
   if(!co||!co.email){toast('Email manzil topilmadi','error');return;}
   emailTarget=co;
