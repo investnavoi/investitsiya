@@ -1147,7 +1147,7 @@ input[type="time"]{-webkit-appearance:none;}
 
       <div class="form-group" style="margin-bottom:.8rem">
         <label class="form-label">Yuborish vaqti</label>
-        <input class="form-input" type="time" id="bSchedTime" value="09:00" step="1800" style="font-variant-numeric:tabular-nums">
+        <input class="form-input" type="text" id="bSchedTime" placeholder="HH:MM (masalan: 18:30)" maxlength="5" oninput="timeMask(this)" autocomplete="off">
         <div style="font-size:.63rem;color:var(--text3);margin-top:.2rem">⚠️ Toshkent vaqti (UTC+5)</div>
       </div>
 
@@ -1228,7 +1228,7 @@ input[type="time"]{-webkit-appearance:none;}
       <!-- Subject -->
       <div class="form-group" style="margin-bottom:.8rem">
         <label class="form-label">Yuborish vaqti</label>
-        <input class="form-input" type="time" id="schedTime" value="09:00" step="1800" style="font-variant-numeric:tabular-nums">
+        <input class="form-input" type="text" id="schedTime" placeholder="HH:MM (masalan: 18:30)" maxlength="5" oninput="timeMask(this)" autocomplete="off">
         <div style="font-size:.63rem;color:var(--text3);margin-top:.2rem">⚠️ Toshkent vaqti bilan (UTC+5). 30 daqiqalik aniqlikda ishlaydi.</div>
       </div>
 
@@ -2870,6 +2870,21 @@ function openEmailModal(id){
   document.getElementById('sendBtn').disabled=false;
   document.getElementById('sendBtn').textContent= co.emailSent ? 'QAYTA YUBORISH 📧' : 'YUBORISH 📧';
   document.getElementById('emailModal').classList.add('open');
+}
+
+function timeMask(el){
+  let v = el.value.replace(/\D/g,'');
+  if(v.length>2) v = v.slice(0,2)+':'+v.slice(2);
+  // soat 0-23, daqiqa 0-59
+  if(v.length>=2){
+    let h = parseInt(v.slice(0,2));
+    if(h>23) v = '23'+v.slice(2);
+  }
+  if(v.length===5){
+    let m = parseInt(v.slice(3,5));
+    if(m>59) v = v.slice(0,3)+'59';
+  }
+  el.value = v.slice(0,5);
 }
 
 function getNextSlot(){
