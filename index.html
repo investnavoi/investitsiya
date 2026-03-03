@@ -352,6 +352,13 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 .dc-actions{padding:.7rem 1.3rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:.5rem;}
 .forum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:1.1rem;}
 .forum-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:all .2s;border:1px solid var(--border);}
+.zoom-media-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;}
+.zoom-media-item{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:16/9;background:#0f1629;cursor:pointer;}
+.zoom-media-item img,.zoom-media-item video{width:100%;height:100%;object-fit:cover;display:block;}
+.zoom-media-item:hover img,.zoom-media-item:hover video{opacity:.85;}
+.zoom-media-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2rem;pointer-events:none;}
+.zoom-media-del{position:absolute;top:4px;right:4px;background:rgba(239,35,60,.85);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:.65rem;display:flex;align-items:center;justify-content:center;}
+.zoom-media-empty{font-size:.72rem;color:var(--text3);text-align:center;padding:2rem 0;grid-column:1/-1;}
 .forum-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
 .fc-top{padding:1.1rem 1.3rem;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 .fc-title{font-size:.88rem;font-weight:700;color:var(--text);max-width:190px;line-height:1.3;}
@@ -1062,18 +1069,26 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 </div>
 
 <!-- ===== ZOOM DETAIL MODAL ===== -->
-<div class="modal-overlay" id="zoomDetailModal">
-  <div class="zoom-detail-box">
+<div class="modal-overlay" id="zoomDetailModal" onclick="if(event.target===this)closeZoomDetail()">
+  <div class="zoom-detail-box" style="width:860px">
     <div class="zoom-detail-head">
       <div class="zoom-detail-avatar" id="zdAvatar">??</div>
       <div style="flex:1">
         <div class="zoom-detail-name" id="zdName">—</div>
         <div class="zoom-detail-org" id="zdOrg">—</div>
-        <div class="zoom-detail-meta" id="zdMeta"></div>
+        <div class="zoom-detail-meta">
+          <span id="zdDavlat">—</span>
+          <span>•</span>
+          <span id="zdSana">—</span>
+          <span>•</span>
+          <span>👥 <span id="zdIshtirokchi">1</span> ishtirokchi</span>
+          <span id="zdHolat"></span>
+        </div>
       </div>
       <button class="modal-close-btn" onclick="closeZoomDetail()" style="margin-left:auto;align-self:flex-start">✕</button>
     </div>
     <div class="zoom-detail-body">
+      <!-- Left -->
       <div>
         <div class="zoom-section">
           <div class="zoom-section-title">📋 Uchrashuv haqida</div>
@@ -1084,13 +1099,45 @@ tbody td:first-child{color:var(--text);font-weight:600;}
           <div class="zoom-result-box" id="zdNatija">—</div>
         </div>
       </div>
+      <!-- Right: media -->
       <div>
-        <div class="zoom-section-title" style="margin-bottom:.7rem">🖼 Media</div>
-        <div id="zdMedia" style="font-size:.72rem;color:var(--text3)">📁 Hali media fayl yo'q</div>
+        <div class="zoom-section-title" style="margin-bottom:.7rem">🖼 Media (Rasm / Video)</div>
+        <!-- Upload via file -->
+        <div id="zdMediaBtns" style="display:none;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+          <label class="btn btn-blue btn-sm" style="cursor:pointer;font-size:.68rem">
+            📷 Rasm yuklash
+            <input type="file" accept="image/*" style="display:none" onchange="addZoomMedia(this,'image')">
+          </label>
+          <label class="btn btn-blue btn-sm" style="cursor:pointer;font-size:.68rem">
+            🎬 Video yuklash
+            <input type="file" accept="video/*" style="display:none" onchange="addZoomMedia(this,'video')">
+          </label>
+        </div>
+        <!-- URL input -->
+        <div id="zdUrlRow" style="display:none;gap:.4rem;align-items:center;margin-bottom:.7rem;flex-wrap:wrap">
+          <input class="form-input" id="zdMediaUrl" placeholder="Rasm/Video URL yoki Google Drive havolasi" style="font-size:.68rem;flex:1;min-width:180px">
+          <select class="form-select" id="zdMediaUrlType" style="font-size:.68rem;width:auto">
+            <option value="image">Rasm</option>
+            <option value="video">Video</option>
+          </select>
+          <button class="btn btn-blue btn-sm" onclick="addZoomDetailUrl()" style="font-size:.68rem">➕ Qo'shish</button>
+        </div>
+        <!-- Media grid -->
+        <div id="zdMediaGrid" class="zoom-media-grid">
+          <div class="zoom-media-empty">📁 Hali media fayl yo'q</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- LIGHTBOX -->
+<div id="lightboxOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;align-items:center;justify-content:center" onclick="closeLightbox()">
+  <button onclick="closeLightbox()" style="position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:1.5rem;cursor:pointer;border-radius:50%;width:40px;height:40px">✕</button>
+  <img id="lightboxImg" style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;object-fit:contain">
+  <video id="lightboxVid" controls style="display:none;max-width:90vw;max-height:90vh;border-radius:8px"></video>
+</div>
+
 
 <!-- ===== FORUM DETAIL MODAL ===== -->
 <div class="modal-overlay" id="forumDetailModal" onclick="if(event.target===this)closeForumDetail()">
@@ -1783,14 +1830,8 @@ function addZoom(){
   if(typeof fbSave==='function') fbSave('zoom',rec);
   clearZmForm();renderAll();toast('✅ Uchrashuv saqlandi!');
 }
-function addForum(){
-  if(!v('fr-nom')||!v('fr-sana')||!v('fr-shahar')||!v('fr-davlat')||!v('fr-holat')||!v('fr-desc')){toast('⚠️ Majburiy maydonlarni to\'ldiring!','error');return;}
-  const rec={id:nextId(DB.forums),nom:v('fr-nom'),sana:v('fr-sana'),shahar:v('fr-shahar'),davlat:v('fr-davlat'),turi:v('fr-turi'),holat:v('fr-holat'),desc:v('fr-desc'),izoh:v('fr-izoh')};
-  DB.forums.push(rec);
-  if(typeof fbSave==='function') fbSave('forums',rec);
-  clearForm(['fr-nom','fr-sana','fr-shahar','fr-davlat','fr-turi','fr-holat','fr-desc','fr-izoh']);
-  renderAll();toast('✅ Forum qo\'shildi!');
-}
+
+
 
 /* ═══════════════════════════════════════
    RENDER OVERVIEW
@@ -2361,25 +2402,8 @@ function renderAll(){
 /* ═══════════════════════════════════════
    ZOOM DETAIL MODAL
 ═══════════════════════════════════════ */
-function openZoomDetail(id){
-  const r=DB.zoom.find(x=>x.id===id);
-  if(!r)return;
-  document.getElementById('zdAvatar').textContent=getInitials(r.ism);
-  document.getElementById('zdName').textContent=r.ism||'—';
-  document.getElementById('zdOrg').textContent=r.org||'';
-  document.getElementById('zdMeta').innerHTML=`
-    <span>${r.davlat||'—'}</span><span>•</span>
-    <span>${fmtDate(r.sana)}</span><span>•</span>
-    <span>👥 ${r.ishtirokchi||1} ishtirokchi</span>
-    <span>${natijaHolatBadge(r.natijaHolat)}</span>`;
-  document.getElementById('zdDesc').textContent=r.desc||'—';
-  document.getElementById('zdNatija').textContent=r.natija||'—';
-  document.getElementById('zdMedia').innerHTML=r.media&&r.media.length
-    ?r.media.map(m=>`<img src="${m.url}" alt="" style="max-width:100%;border-radius:8px;margin-bottom:6px">`).join('')
-    :'📁 Hali media fayl yo\'q';
-  document.getElementById('zoomDetailModal').classList.add('open');
-}
 function closeZoomDetail(){document.getElementById('zoomDetailModal').classList.remove('open');}
+
 
 /* ═══════════════════════════════════════
    EMAIL MODAL
@@ -2984,8 +3008,8 @@ function openZoomDetail(id){
   document.getElementById('zdNatija').textContent  = r.natija||'—';
 
   // Show upload buttons only for admin
-  document.getElementById('zdMediaBtns').style.display = adminLoggedIn ? 'flex' : 'none';
-  document.getElementById('zdUrlRow').style.display    = adminLoggedIn ? 'flex' : 'none';
+  document.getElementById('zdMediaBtns').style.display = isAdmin ? 'flex' : 'none';
+  document.getElementById('zdUrlRow').style.display    = isAdmin ? 'flex' : 'none';
 
   renderZoomMedia(r);
 
@@ -3002,13 +3026,13 @@ function renderZoomMedia(r){
     if(m.type === 'image'){
       return `<div class="zoom-media-item" onclick="openLightbox('image','${m.src}')">
         <img src="${m.src}" alt="rasm">
-        ${adminLoggedIn?`<button class="zoom-media-del" onclick="event.stopPropagation();removeZoomMedia(${i})">✕</button>`:''}
+        ${isAdmin?`<button class="zoom-media-del" onclick="event.stopPropagation();removeZoomMedia(${i})">✕</button>`:''}
       </div>`;
     } else {
       return `<div class="zoom-media-item" onclick="openLightbox('video','${m.src}')">
         <video src="${m.src}" muted></video>
         <div class="zoom-media-play">▶️</div>
-        ${adminLoggedIn?`<button class="zoom-media-del" onclick="event.stopPropagation();removeZoomMedia(${i})">✕</button>`:''}
+        ${isAdmin?`<button class="zoom-media-del" onclick="event.stopPropagation();removeZoomMedia(${i})">✕</button>`:''}
       </div>`;
     }
   }).join('');
