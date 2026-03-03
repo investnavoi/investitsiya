@@ -28,15 +28,3 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: node scripts/send-scheduled-emails.js
-```
-
-5. **"Commit new file"** ✅
-
----
-
-## 2-fayl: `scripts/send-scheduled-emails.js`
-
-1. Yana **"Add file"** → **"Create new file"**
-2. Fayl nomi:
-```
-scripts/send-scheduled-emails.js
