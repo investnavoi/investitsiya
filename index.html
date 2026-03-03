@@ -113,6 +113,15 @@ window.fbSaveCollection = async function(colName, records){
 // Wait for DB to be defined then load
 function waitForDB(){
   if(typeof DB !== 'undefined' && typeof renderAll === 'function'){
+    // Restore saved language
+    const savedLang = localStorage.getItem('_lang');
+    if(savedLang && ['uz','ru','en'].includes(savedLang)){
+      if(typeof currentLang !== 'undefined') currentLang = savedLang;
+      document.querySelectorAll('.lang-btn').forEach(b => {
+        b.classList.remove('active');
+        if(b.textContent.trim().toLowerCase() === savedLang) b.classList.add('active');
+      });
+    }
     loadFromFirestore();
   } else {
     setTimeout(waitForDB, 100);
@@ -1377,9 +1386,16 @@ function toggleTheme(){
   tog.classList.toggle('dark',isDark);
 }
 function setLang(l){
-  currentLang=l;
-  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelector(`.lang-btn[onclick="setLang('${l}')"]`).classList.add('active');
+  currentLang = l;
+  // Update active button safely
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.remove('active');
+    if(b.textContent.trim().toLowerCase() === l.toLowerCase()) b.classList.add('active');
+  });
+  // Save preference
+  localStorage.setItem('_lang', l);
+  // Re-render all sections with new language
+  renderAll();
   renderOverview();
 }
 
