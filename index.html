@@ -1069,16 +1069,8 @@ tbody td:first-child{color:var(--text);font-weight:600;}
         <div class="form-grid">
           <div class="form-group span-2"><label class="form-label">Kompaniya Nomi <span class="req">*</span></label><input class="form-input" id="ic-kompaniya" placeholder="Kompaniya LLC"></div>
           <div class="form-group"><label class="form-label">Rahbar <span class="req">*</span></label><input class="form-input" id="ic-rahbar" placeholder="F.I.O."></div>
-          <div class="form-group"><label class="form-label">Lavozim</label><input class="form-input" id="ic-lavozim" placeholder="Direktor"></div>
           <div class="form-group"><label class="form-label">Soha <span class="req">*</span></label><input class="form-input" id="ic-soha" placeholder="Sanoat, IT..."></div>
-          <div class="form-group"><label class="form-label">Talab (USD)</label><input class="form-input" type="number" id="ic-summa" placeholder="5000000"></div>
-          <div class="form-group"><label class="form-label">Holat</label>
-            <select class="form-select" id="ic-holat"><option value="">Tanlang</option><option>Tayyor</option><option>Muzokarada</option><option>Yangi</option></select>
-          </div>
-          <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="ic-email" placeholder="info@company.uz"></div>
-          <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="ic-tel" placeholder="+998 79 XXX XX XX"></div>
-          <div class="form-group"><label class="form-label">Manzil / Hudud</label><input class="form-input" id="ic-manzil" placeholder="Navoiy shahri"></div>
-          <div class="form-group span-3"><label class="form-label">Izoh</label><input class="form-input" id="ic-izoh" placeholder="Qo'shimcha ma'lumot..."></div>
+          <div class="form-group span-2"><label class="form-label">Email</label><input class="form-input" type="email" id="ic-email" placeholder="info@company.uz"></div>
         </div>
         <div class="form-actions">
           <button class="btn btn-blue" onclick="addInvestorCo()">✅ Saqlash</button>
@@ -1094,7 +1086,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
         </div>
         <div class="tscroll">
           <table>
-            <thead><tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Soha</th><th>Talab</th><th>Holat</th><th>Email</th><th>Telefon</th><th>Manzil</th><th>Izoh</th><th>Amal</th></tr></thead>
+            <thead><tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Soha</th><th>Email</th><th>Amal</th></tr></thead>
             <tbody id="admin-ic-list"></tbody>
           </table>
         </div>
@@ -1260,17 +1252,16 @@ tbody td:first-child{color:var(--text);font-weight:600;}
         <!-- Add doc form (hidden by default) -->
         <div id="fdDocForm" style="display:none;background:var(--bg2);border-radius:8px;padding:.8rem;margin-bottom:.8rem;border:1px solid var(--border)">
           <div style="font-size:.7rem;color:var(--text3);margin-bottom:.5rem;font-weight:600">Yangi hujjat qo'shish</div>
-          <input class="form-input" id="fdDocName" placeholder="Hujjat nomi (masalan: Delegatsiya ro'yxati)" style="font-size:.73rem;margin-bottom:.4rem">
-          <input class="form-input" id="fdDocUrl" placeholder="Google Drive yoki boshqa havola" style="font-size:.73rem;margin-bottom:.4rem">
-          <select class="form-select" id="fdDocType" style="font-size:.73rem;margin-bottom:.6rem">
-            <option value="📄">📄 Word / PDF</option>
-            <option value="📊">📊 Excel</option>
-            <option value="🖼">🖼 Rasm</option>
-            <option value="📁">📁 Boshqa</option>
-          </select>
+          <input class="form-input" id="fdDocName" placeholder="Hujjat nomi (ixtiyoriy — avtomatik olinadi)" style="font-size:.73rem;margin-bottom:.4rem">
+          <!-- File upload -->
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;background:var(--card);border:1.5px dashed var(--border);border-radius:8px;padding:.6rem .8rem;margin-bottom:.5rem;transition:border-color .2s" id="fdFileLabel">
+            <span style="font-size:1.1rem">📂</span>
+            <span id="fdFileName" style="font-size:.71rem;color:var(--text3);flex:1">Fayl tanlash (Excel, Word, PDF, Rasm...)</span>
+            <input type="file" id="fdFileInput" accept=".xlsx,.xls,.doc,.docx,.pdf,.png,.jpg,.jpeg,.csv,.txt,.pptx" style="display:none" onchange="onFdFileSelect(this)">
+          </label>
           <div style="display:flex;gap:.4rem">
             <button class="btn btn-blue btn-sm" onclick="saveForumDoc()" style="font-size:.68rem">✅ Saqlash</button>
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fdDocForm').style.display='none'" style="font-size:.68rem">Bekor</button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelFdDoc()" style="font-size:.68rem">Bekor</button>
           </div>
         </div>
         <!-- Document list -->
@@ -2195,38 +2186,81 @@ function renderForumDocs(r){
     list.innerHTML = '<div style="font-size:.72rem;color:var(--text3);text-align:center;padding:1.2rem 0">📁 Hujjat qo\'shilmagan</div>';
     return;
   }
-  list.innerHTML = docs.map((d,i)=>`
+  list.innerHTML = docs.map((d,i)=>{
+    const sizeStr = d.size ? (d.size>1024*1024 ? (d.size/1024/1024).toFixed(1)+' MB' : Math.round(d.size/1024)+' KB') : '';
+    const dlBtn = d.data
+      ? `<a href="${d.data}" download="${d.fileName||d.nom}" class="btn btn-blue btn-sm" style="font-size:.63rem;flex-shrink:0" onclick="event.stopPropagation()">⬇️ Yuklab olish</a>`
+      : (d.url ? `<a href="${d.url}" target="_blank" class="btn btn-blue btn-sm" style="font-size:.63rem;flex-shrink:0" onclick="event.stopPropagation()">🔗 Ochish</a>` : '');
+    return `
     <div style="display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
       <span style="font-size:1.2rem">${d.icon||'📄'}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:.73rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.nom||'Hujjat'}</div>
-        <div style="font-size:.62rem;color:var(--text3)">${d.url?'Havola mavjud':'Havola yo\'q'}</div>
+        <div style="font-size:.62rem;color:var(--text3)">${d.fileName||''} ${sizeStr?'• '+sizeStr:''}</div>
       </div>
-      ${d.url?`<a href="${d.url}" target="_blank" class="btn btn-blue btn-sm" style="font-size:.63rem;flex-shrink:0" onclick="event.stopPropagation()">🔗 Ochish</a>`:''}
+      ${dlBtn}
       ${isAdmin?`<button class="btn btn-danger btn-sm" style="font-size:.63rem;flex-shrink:0" onclick="deleteForumDoc(${i})">🗑</button>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+var _fdSelectedFile = null;
+
+function onFdFileSelect(input){
+  const file = input.files[0];
+  if(!file) return;
+  _fdSelectedFile = file;
+  document.getElementById('fdFileName').textContent = file.name;
+  document.getElementById('fdFileLabel').style.borderColor = '#4361EE';
+  // Auto-fill name if empty
+  const nameEl = document.getElementById('fdDocName');
+  if(!nameEl.value) nameEl.value = file.name.replace(/\.[^/.]+$/,'');
 }
 
 function showAddDocForm(){
+  _fdSelectedFile = null;
   document.getElementById('fdDocForm').style.display = 'block';
   document.getElementById('fdDocName').value = '';
-  document.getElementById('fdDocUrl').value = '';
+  document.getElementById('fdFileName').textContent = 'Fayl tanlash (Excel, Word, PDF, Rasm...)';
+  document.getElementById('fdFileLabel').style.borderColor = 'var(--border)';
+  document.getElementById('fdFileInput').value = '';
+}
+
+function cancelFdDoc(){
+  _fdSelectedFile = null;
+  document.getElementById('fdDocForm').style.display = 'none';
+}
+
+function getFileIcon(name){
+  if(!name) return '📁';
+  const ext = name.split('.').pop().toLowerCase();
+  if(['xlsx','xls','csv'].includes(ext)) return '📊';
+  if(['doc','docx'].includes(ext)) return '📝';
+  if(['pdf'].includes(ext)) return '📄';
+  if(['png','jpg','jpeg','gif','webp'].includes(ext)) return '🖼';
+  if(['pptx','ppt'].includes(ext)) return '📑';
+  return '📁';
 }
 
 function saveForumDoc(){
   const r = DB.forums.find(f=>f.id===_forumDetailId);
   if(!r) return;
-  const nom = document.getElementById('fdDocName').value.trim();
-  const url = document.getElementById('fdDocUrl').value.trim();
-  const icon = document.getElementById('fdDocType').value;
-  if(!nom){ toast('⚠️ Hujjat nomini kiriting','error'); return; }
-  if(!r.docs) r.docs = [];
-  r.docs.push({nom, url, icon});
-  if(typeof fbSave==='function') fbSave('forums', r);
-  renderForumDocs(r);
-  renderForums();
-  document.getElementById('fdDocForm').style.display = 'none';
-  toast('📎 Hujjat qo\'shildi!');
+  if(!_fdSelectedFile){ toast('⚠️ Fayl tanlang','error'); return; }
+  const nom = document.getElementById('fdDocName').value.trim() || _fdSelectedFile.name;
+  const icon = getFileIcon(_fdSelectedFile.name);
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    if(!r.docs) r.docs = [];
+    r.docs.push({nom, icon, data: e.target.result, fileName: _fdSelectedFile.name, size: _fdSelectedFile.size});
+    if(typeof fbSave==='function') fbSave('forums', r);
+    renderForumDocs(r);
+    renderForums();
+    cancelFdDoc();
+    toast('📎 Hujjat qo\'shildi!');
+    _fdSelectedFile = null;
+  };
+  reader.readAsDataURL(_fdSelectedFile);
 }
 
 function deleteForumDoc(idx){
@@ -2500,14 +2534,14 @@ function renderAdminLists(){
     const co = DB.investorCompanies||[];
     aicl.innerHTML = co.length ? co.map((r,i)=>`
       <tr>
-        <td>${i+1}</td><td><b>${r.kompaniya||'—'}</b></td><td>${r.rahbar||'—'}</td>
-        <td>${r.soha||'—'}</td><td class="td-num" style="color:#059669">${fmtMoney(r.summa)}</td>
-        <td>${holatBadge(r.holat)}</td><td style="font-size:.7rem">${r.email||'—'}</td>
-        <td>${r.tel||'—'}</td><td>${r.manzil||'—'}</td>
-        <td style="font-size:.69rem;color:var(--text3)">${r.izoh||'—'}</td>
+        <td>${i+1}</td>
+        <td><b>${r.kompaniya||'—'}</b></td>
+        <td>${r.rahbar||'—'}</td>
+        <td>${r.soha||'—'}</td>
+        <td style="font-size:.7rem">${r.email||'—'}</td>
         <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('investorCompanies',${r.id})">🗑</button></td>
       </tr>`).join('')
-      : '<tr><td colspan="11"><div class="tc-empty"><div class="tc-empty-icon">🏢</div><p>Hali ma\'lumot yo\'q</p></div></td></tr>';
+      : '<tr><td colspan="6"><div class="tc-empty"><div class="tc-empty-icon">🏢</div><p>Hali ma\'lumot yo\'q</p></div></td></tr>';
   }
 }
 
@@ -2523,14 +2557,8 @@ function addInvestorCo(){
     id: nextId(DB.investorCompanies||[]),
     kompaniya: komp,
     rahbar: rahb,
-    lavozim: document.getElementById('ic-lavozim').value.trim(),
     soha: soha,
-    summa: parseFloat(document.getElementById('ic-summa').value)||0,
-    holat: document.getElementById('ic-holat').value,
     email: document.getElementById('ic-email').value.trim(),
-    tel: document.getElementById('ic-tel').value.trim(),
-    manzil: document.getElementById('ic-manzil').value.trim(),
-    izoh: document.getElementById('ic-izoh').value.trim(),
   };
   if(!DB.investorCompanies) DB.investorCompanies = [];
   DB.investorCompanies.push(rec);
@@ -2542,12 +2570,10 @@ function addInvestorCo(){
 }
 
 function clearIcForm(){
-  ['ic-kompaniya','ic-rahbar','ic-lavozim','ic-soha','ic-summa','ic-email','ic-tel','ic-manzil','ic-izoh'].forEach(id=>{
+  ['ic-kompaniya','ic-rahbar','ic-soha','ic-email'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
-  const h = document.getElementById('ic-holat');
-  if(h) h.value = '';
 }
 
 var _icExcelParsed = [];
@@ -2574,24 +2600,17 @@ function handleIcExcelUpload(input){
       return {
         kompaniya: get(['kompaniya','company','tashkilot','nomi']),
         rahbar: get(['rahbar','director','manager','rahbari']),
-        lavozim: get(['lavozim','position','post']),
         soha: get(['soha','sector','industry','tarmoq']),
-        summa: parseFloat(get(['summa','amount','talab','invest'])) || 0,
-        holat: get(['holat','status','holati']),
         email: get(['email','pochta']),
-        tel: get(['tel','telefon','phone']),
-        manzil: get(['manzil','address','joyi','hudud']),
-        izoh: get(['izoh','note','comment']),
       };
     }).filter(r=>r.kompaniya);
 
     if(!_icExcelParsed.length){ toast('⚠️ Ma\'lumot topilmadi','error'); return; }
 
     document.getElementById('icExcelPreviewInfo').textContent = `${_icExcelParsed.length} ta yozuv topildi`;
-    document.getElementById('icExcelPreviewHead').innerHTML = '<tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Soha</th><th>Talab</th><th>Email</th><th>Tel</th></tr>';
+    document.getElementById('icExcelPreviewHead').innerHTML = '<tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Soha</th><th>Email</th></tr>';
     document.getElementById('icExcelPreviewBody').innerHTML = _icExcelParsed.map((r,i)=>`
-      <tr><td>${i+1}</td><td>${r.kompaniya}</td><td>${r.rahbar}</td><td>${r.soha}</td>
-      <td>${r.summa?fmtMoney(r.summa):'—'}</td><td>${r.email||'—'}</td><td>${r.tel||'—'}</td></tr>`).join('');
+      <tr><td>${i+1}</td><td>${r.kompaniya}</td><td>${r.rahbar||'—'}</td><td>${r.soha||'—'}</td><td>${r.email||'—'}</td></tr>`).join('');
     document.getElementById('icExcelPreview').style.display = 'block';
   };
   reader.readAsArrayBuffer(file);
