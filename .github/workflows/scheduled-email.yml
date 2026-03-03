@@ -1,1 +1,42 @@
+name: Rejalashtirilgan Email Yuborish
 
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-emails:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodni yuklab olish
+        uses: actions/checkout@v4
+
+      - name: Node.js o'rnatish
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Kutubxonalarni o'rnatish
+        run: npm install nodemailer firebase-admin
+
+      - name: Email yuborish skriptini ishga tushirish
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: node scripts/send-scheduled-emails.js
+```
+
+5. **"Commit new file"** ✅
+
+---
+
+## 2-fayl: `scripts/send-scheduled-emails.js`
+
+1. Yana **"Add file"** → **"Create new file"**
+2. Fayl nomi:
+```
+scripts/send-scheduled-emails.js
