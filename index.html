@@ -2638,9 +2638,11 @@ function addZoom(){
 }
 function addForum(){
   if(!v('fr-nom')||!v('fr-sana')||!v('fr-shahar')||!v('fr-davlat')||!v('fr-holat')){toast(t('toast_fill'),'error');return;}
-  DB.forums.push({id:nextId(DB.forums),nom:v('fr-nom'),sana:v('fr-sana'),shahar:v('fr-shahar'),davlat:v('fr-davlat'),turi:v('fr-turi'),holat:v('fr-holat'),desc:v('fr-desc'),izoh:v('fr-izoh')});
+  const rec={id:nextId(DB.forums),nom:v('fr-nom'),sana:v('fr-sana'),shahar:v('fr-shahar'),davlat:v('fr-davlat'),turi:v('fr-turi'),holat:v('fr-holat'),desc:v('fr-desc'),izoh:v('fr-izoh'),docs:[]};
+  DB.forums.push(rec);
+  if(typeof fbSave==='function') fbSave('forums', rec);
   renderForums();renderOverview();clearFrForm();
-  toast(`"${v('fr-nom')||'Yozuv'}" ${t('toast_saved')}`);
+  toast('✅ Forum saqlandi!');
 }
 
 /* ============================
