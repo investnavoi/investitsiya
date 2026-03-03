@@ -632,38 +632,38 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 <div class="page" id="page-investors">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:block">
-      <div class="pg-title">Tashrif Buyurgan Xorijiy Investorlar</div>
-      <div class="pg-sub">Navoiy viloyatiga tashrif buyurgan xorijiy investorlar ro'yxati</div>
+      <div class="pg-title" data-i18n="page_investors_title">Tashrif Buyurgan Xorijiy Investorlar</div>
+      <div class="pg-sub" data-i18n="page_investors_sub">Navoiy viloyatiga tashrif buyurgan xorijiy investorlar ro'yxati</div>
     </div>
     <div class="kpi-grid">
-      <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label">Jami Tashrif</div><div class="kpi-val" id="inv-k1">0</div><div class="kpi-trend">2026</div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label">Kelishilgan</div><div class="kpi-val" id="inv-k2">0</div><div class="kpi-trend">Loyihalar</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">⏳</div><div class="kpi-label">Ko'rib Chiqilmoqda</div><div class="kpi-val" id="inv-k3">0</div><div class="kpi-trend">Jarayonda</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">💰</div><div class="kpi-label">Jami Yozuv</div><div class="kpi-val" id="inv-k4">0</div><div class="kpi-trend">Ta yozuv</div></div>
+      <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label" data-i18n="inv_k1_lbl">Jami Tashrif</div><div class="kpi-val" id="inv-k1">0</div><div class="kpi-trend">2026</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label" data-i18n="inv_k2_lbl">Kelishilgan</div><div class="kpi-val" id="inv-k2">0</div><div class="kpi-trend" data-i18n="lbl_projects">Loyihalar</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">⏳</div><div class="kpi-label" data-i18n="inv_k3_lbl">Ko'rib Chiqilmoqda</div><div class="kpi-val" id="inv-k3">0</div><div class="kpi-trend" data-i18n="lbl_inprogress">Jarayonda</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">💰</div><div class="kpi-label" data-i18n="lbl_total_records">Jami Yozuv</div><div class="kpi-val" id="inv-k4">0</div><div class="kpi-trend" data-i18n="lbl_records">Ta yozuv</div></div>
     </div>
     <div class="tcard">
       <div class="tc-head">
-        <div class="tc-title">Xorijiy investorlar jadvali</div>
+        <div class="tc-title" data-i18n="inv_table_title">Xorijiy investorlar jadvali</div>
         <div class="tc-actions">
-          <button class="btn btn-green btn-sm" onclick="exportInvestorsExcel()">📥 Excel</button>
-          <button class="btn btn-blue btn-sm" onclick="openAdminOrLogin('tab-investors')">➕ Yangi qo'shish</button>
+          <button class="btn btn-green btn-sm" onclick="exportInvestorsExcel()"><span data-i18n="btn_excel">📥 Excel</span></button>
+          <button class="btn btn-blue btn-sm" onclick="openAdminOrLogin('tab-investors')"><span data-i18n="btn_add">➕ Yangi qo'shish</span></button>
         </div>
       </div>
       <div class="tscroll">
         <table>
           <thead><tr>
             <th rowspan="2" style="vertical-align:middle">T/r</th>
-            <th rowspan="2" style="vertical-align:middle">Shahar/Tuman</th>
-            <th rowspan="2" style="vertical-align:middle">Sana</th>
-            <th rowspan="2" style="vertical-align:middle">Davlat</th>
-            <th rowspan="2" style="vertical-align:middle">Maqsad</th>
-            <th rowspan="2" style="vertical-align:middle">Kompaniya</th>
-            <th colspan="2" style="text-align:center">Muhokama Loyiha</th>
-            <th rowspan="2" style="vertical-align:middle">Makom</th>
-            <th rowspan="2" style="vertical-align:middle">Hudud</th>
-            <th rowspan="2" style="vertical-align:middle">Izoh</th>
-            <th rowspan="2" style="vertical-align:middle">Amal</th>
-          </tr><tr><th>Nomi</th><th>Qiymati</th></tr></thead>
+            <th rowspan="2" style="vertical-align:middle" data-i18n="col_city">Shahar/Tuman</th>
+            <th rowspan="2" style="vertical-align:middle" data-i18n="col_date">Sana</th>
+            <th rowspan="2" style="vertical-align:middle" data-i18n="col_country">Davlat</th>
+            <th rowspan="2" style="vertical-align:middle" data-i18n="col_purpose">Maqsad</th>
+            <th rowspan="2" style="vertical-align:middle" data-i18n="col_company">Kompaniya</th>
+            <th colspan="2" style="text-align:center" data-i18n="col_project_disc">Muhokama Loyiha</th>
+            <th rowspan="2" style="vertical-align:middle" data-i18n="col_status">Makom</th>
+            <th rowspan="2" style="vertical-align:middle" data-i18n="col_region">Hudud</th>
+            <th rowspan="2" style="vertical-align:middle" data-i18n="col_note">Izoh</th>
+            <th rowspan="2" style="vertical-align:middle" data-i18n="col_actions">Amal</th>
+          </tr><tr><th data-i18n="col_name">Nomi</th><th data-i18n="col_value">Qiymati</th></tr></thead>
           <tbody id="inv-tbody"></tbody>
         </table>
       </div>
@@ -675,23 +675,33 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 <div class="page" id="page-local">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:block">
-      <div class="pg-title">Mahalliy Tadbirkorlar Ro'yxati</div>
-      <div class="pg-sub">Xorijiy investitsiyaga muhtoj mahalliy kompaniyalar</div>
+      <div class="pg-title" data-i18n="page_local_title">Mahalliy Tadbirkorlar Ro'yxati</div>
+      <div class="pg-sub" data-i18n="page_local_sub">Xorijiy investitsiyaga muhtoj mahalliy kompaniyalar</div>
     </div>
     <div class="kpi-grid">
-      <div class="kpi-card c1"><div class="kpi-icon">🏢</div><div class="kpi-label">Jami Ro'yxatda</div><div class="kpi-val" id="loc-k1">0</div><div class="kpi-trend">Faol</div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label">Tayyor</div><div class="kpi-val" id="loc-k2">0</div><div class="kpi-trend">Investorni kutmoqda</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">💬</div><div class="kpi-label">Muzokarada</div><div class="kpi-val" id="loc-k3">0</div><div class="kpi-trend">Jarayonda</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">💵</div><div class="kpi-label">Jami Talab</div><div class="kpi-val" id="loc-k4">$0</div><div class="kpi-trend">Investitsiya</div></div>
+      <div class="kpi-card c1"><div class="kpi-icon">🏢</div><div class="kpi-label" data-i18n="loc_k1_lbl">Jami Ro'yxatda</div><div class="kpi-val" id="loc-k1">0</div><div class="kpi-trend" data-i18n="lbl_active">Faol</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label" data-i18n="lbl_ready">Tayyor</div><div class="kpi-val" id="loc-k2">0</div><div class="kpi-trend" data-i18n="loc_k2_trend">Investorni kutmoqda</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">💬</div><div class="kpi-label" data-i18n="lbl_negotiating">Muzokarada</div><div class="kpi-val" id="loc-k3">0</div><div class="kpi-trend" data-i18n="lbl_inprogress">Jarayonda</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">💵</div><div class="kpi-label" data-i18n="loc_k4_lbl">Jami Talab</div><div class="kpi-val" id="loc-k4">$0</div><div class="kpi-trend" data-i18n="lbl_investment">Investitsiya</div></div>
     </div>
     <div class="tcard">
       <div class="tc-head">
-        <div class="tc-title">Mahalliy tadbirkorlar jadvali</div>
-        <div class="tc-actions"><button class="btn btn-blue btn-sm" onclick="openAdminOrLogin('tab-local')">➕ Yangi qo'shish</button></div>
+        <div class="tc-title" data-i18n="loc_table_title">Mahalliy tadbirkorlar jadvali</div>
+        <div class="tc-actions"><button class="btn btn-blue btn-sm" onclick="openAdminOrLogin('tab-local')"><span data-i18n="btn_add">➕ Yangi qo'shish</span></button></div>
       </div>
       <div class="tscroll">
         <table>
-          <thead><tr><th>T/r</th><th>Kompaniya</th><th>Rahbar</th><th>Soha</th><th>Talab (USD)</th><th>Holat</th><th>Telefon</th><th>Izoh</th><th>Amal</th></tr></thead>
+          <thead><tr>
+            <th>T/r</th>
+            <th data-i18n="col_company">Kompaniya</th>
+            <th data-i18n="col_leader">Rahbar</th>
+            <th data-i18n="col_field">Soha</th>
+            <th data-i18n="col_amount_usd">Talab (USD)</th>
+            <th data-i18n="col_status">Holat</th>
+            <th data-i18n="col_tel">Telefon</th>
+            <th data-i18n="col_note">Izoh</th>
+            <th data-i18n="col_actions">Amal</th>
+          </tr></thead>
           <tbody id="loc-tbody"></tbody>
         </table>
       </div>
@@ -703,19 +713,19 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 <div class="page" id="page-zoom">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:block">
-      <div class="pg-title">Zoom Uchrashuvlar</div>
-      <div class="pg-sub">Xorijiy investorlar bilan o'tkazilgan onlayn uchrashuvlar</div>
+      <div class="pg-title" data-i18n="page_zoom_title">Zoom Uchrashuvlar</div>
+      <div class="pg-sub" data-i18n="page_zoom_sub">Xorijiy investorlar bilan o'tkazilgan onlayn uchrashuvlar</div>
     </div>
     <div class="kpi-grid">
-      <div class="kpi-card c1"><div class="kpi-icon">📹</div><div class="kpi-label">Jami Uchrashuvlar</div><div class="kpi-val" id="zm-k1">0</div><div class="kpi-trend">Umumiy</div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label">Ijobiy Natija</div><div class="kpi-val" id="zm-k2">0</div><div class="kpi-trend">Tasdiqlangan</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">👥</div><div class="kpi-label">Ishtirokchilar</div><div class="kpi-val" id="zm-k3">0</div><div class="kpi-trend">Chet ellik</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">🌐</div><div class="kpi-label">Davlatlar</div><div class="kpi-val" id="zm-k4">0</div><div class="kpi-trend">Qamrab olingan</div></div>
+      <div class="kpi-card c1"><div class="kpi-icon">📹</div><div class="kpi-label" data-i18n="zm_k1_lbl">Jami Uchrashuvlar</div><div class="kpi-val" id="zm-k1">0</div><div class="kpi-trend" data-i18n="lbl_total">Umumiy</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label" data-i18n="lbl_positive">Ijobiy Natija</div><div class="kpi-val" id="zm-k2">0</div><div class="kpi-trend" data-i18n="lbl_confirmed">Tasdiqlangan</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">👥</div><div class="kpi-label" data-i18n="zm_k3_lbl">Ishtirokchilar</div><div class="kpi-val" id="zm-k3">0</div><div class="kpi-trend" data-i18n="lbl_foreign">Chet ellik</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">🌐</div><div class="kpi-label" data-i18n="lbl_countries">Davlatlar</div><div class="kpi-val" id="zm-k4">0</div><div class="kpi-trend" data-i18n="lbl_covered">Qamrab olingan</div></div>
     </div>
     <div class="tcard" style="margin-bottom:1.2rem">
       <div class="tc-head">
-        <div class="tc-title">Uchrashuvlar ro'yxati</div>
-        <div class="tc-actions"><button class="btn btn-blue btn-sm" onclick="openAdminOrLogin('tab-zoom')">➕ Yangi qo'shish</button></div>
+        <div class="tc-title" data-i18n="zm_table_title">Uchrashuvlar ro'yxati</div>
+        <div class="tc-actions"><button class="btn btn-blue btn-sm" onclick="openAdminOrLogin('tab-zoom')"><span data-i18n="btn_add">➕ Yangi qo'shish</span></button></div>
       </div>
     </div>
     <div class="data-grid" id="zoom-cards"></div>
@@ -726,19 +736,19 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 <div class="page" id="page-forums">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:block">
-      <div class="pg-title">Forumlar & Xalqaro Ko'rgazmalar</div>
-      <div class="pg-sub">Rejalashtirilgan xalqaro tadbirlar va ishtirok rejasi</div>
+      <div class="pg-title" data-i18n="page_forums_title">Forumlar & Xalqaro Ko'rgazmalar</div>
+      <div class="pg-sub" data-i18n="page_forums_sub">Rejalashtirilgan xalqaro tadbirlar va ishtirok rejasi</div>
     </div>
     <div class="kpi-grid">
-      <div class="kpi-card c1"><div class="kpi-icon">🗓</div><div class="kpi-label">Jami Tadbirlar</div><div class="kpi-val" id="fr-k1">0</div><div class="kpi-trend">Rejalashtirilgan</div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label">Tasdiqlangan</div><div class="kpi-val" id="fr-k2">0</div><div class="kpi-trend">Ro'yxatdan o'tilgan</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">✈️</div><div class="kpi-label">Xalqaro</div><div class="kpi-val" id="fr-k3">0</div><div class="kpi-trend">Chet elda</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">🇺🇿</div><div class="kpi-label">Mahalliy</div><div class="kpi-val" id="fr-k4">0</div><div class="kpi-trend">O'zbekistonda</div></div>
+      <div class="kpi-card c1"><div class="kpi-icon">🗓</div><div class="kpi-label" data-i18n="fr_k1_lbl">Jami Tadbirlar</div><div class="kpi-val" id="fr-k1">0</div><div class="kpi-trend" data-i18n="lbl_planned">Rejalashtirilgan</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label" data-i18n="lbl_confirmed">Tasdiqlangan</div><div class="kpi-val" id="fr-k2">0</div><div class="kpi-trend" data-i18n="lbl_registered">Ro'yxatdan o'tilgan</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">✈️</div><div class="kpi-label" data-i18n="lbl_international">Xalqaro</div><div class="kpi-val" id="fr-k3">0</div><div class="kpi-trend" data-i18n="lbl_abroad">Chet elda</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">🇺🇿</div><div class="kpi-label" data-i18n="lbl_local">Mahalliy</div><div class="kpi-val" id="fr-k4">0</div><div class="kpi-trend" data-i18n="lbl_inuz">O'zbekistonda</div></div>
     </div>
     <div class="tcard" style="margin-bottom:1.2rem">
       <div class="tc-head">
-        <div class="tc-title">Tadbirlar ro'yxati</div>
-        <div class="tc-actions"><button class="btn btn-blue btn-sm" onclick="openAdminOrLogin('tab-forums')">➕ Yangi qo'shish</button></div>
+        <div class="tc-title" data-i18n="fr_table_title">Tadbirlar ro'yxati</div>
+        <div class="tc-actions"><button class="btn btn-blue btn-sm" onclick="openAdminOrLogin('tab-forums')"><span data-i18n="btn_add">➕ Yangi qo'shish</span></button></div>
       </div>
     </div>
     <div class="forum-grid" id="forum-cards"></div>
@@ -749,30 +759,30 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 <div class="page" id="page-investor">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:block">
-      <div class="pg-title">Investorlar — Kompaniyalar Ro'yxati</div>
-      <div class="pg-sub">Navoiy viloyati investitsiya loyihalari boshqaruvi</div>
+      <div class="pg-title" data-i18n="page_investor_title">Investorlar — Kompaniyalar Ro'yxati</div>
+      <div class="pg-sub" data-i18n="page_investor_sub">Navoiy viloyati investitsiya loyihalari boshqaruvi</div>
     </div>
     <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
-      <div class="kpi-card c1"><div class="kpi-icon">🏢</div><div class="kpi-label">Jami</div><div class="kpi-val" id="ic-k1">0</div><div class="kpi-trend">Kompaniya</div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label">Tayyor</div><div class="kpi-val" id="ic-k2">0</div><div class="kpi-trend">Aktiv</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">📧</div><div class="kpi-label">Email</div><div class="kpi-val" id="ic-k3">0/0</div><div class="kpi-trend">Yuborildi/Mavjud</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">💵</div><div class="kpi-label">Jami Talab</div><div class="kpi-val" id="ic-k4">$0M</div><div class="kpi-trend">Investitsiya</div></div>
+      <div class="kpi-card c1"><div class="kpi-icon">🏢</div><div class="kpi-label" data-i18n="lbl_total">Jami</div><div class="kpi-val" id="ic-k1">0</div><div class="kpi-trend" data-i18n="lbl_company">Kompaniya</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label" data-i18n="lbl_ready">Tayyor</div><div class="kpi-val" id="ic-k2">0</div><div class="kpi-trend" data-i18n="lbl_active">Aktiv</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">📧</div><div class="kpi-label">Email</div><div class="kpi-val" id="ic-k3">0/0</div><div class="kpi-trend" data-i18n="ic_k3_trend">Yuborildi/Mavjud</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">💵</div><div class="kpi-label" data-i18n="ic_k4_lbl">Jami Talab</div><div class="kpi-val" id="ic-k4">$0M</div><div class="kpi-trend" data-i18n="lbl_investment">Investitsiya</div></div>
       <div class="kpi-card" style="background:linear-gradient(135deg,#1E2B4A,#2D3A6B);border:1px solid rgba(67,97,238,.3);cursor:pointer;position:relative;overflow:hidden" onclick="openRepliesModal()">
         <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:#7209B7;opacity:.15"></div>
         <div class="kpi-icon" style="background:linear-gradient(135deg,#7209B7,#4361EE);box-shadow:0 4px 12px rgba(114,9,183,.4)">💬</div>
-        <div class="kpi-label" style="color:rgba(200,215,255,.7)">Javoblar</div>
+        <div class="kpi-label" style="color:rgba(200,215,255,.7)" data-i18n="lbl_replies">Javoblar</div>
         <div class="kpi-val" id="ic-k5" style="color:#a78bfa;font-size:1.8rem">0</div>
-        <div class="kpi-trend" style="color:rgba(180,200,255,.5)">Email javoblari</div>
-        <div id="ic-k5-new" style="display:none;position:absolute;top:.8rem;right:.8rem;background:#EF233C;color:#fff;font-size:.55rem;font-weight:800;padding:2px 7px;border-radius:20px">YANGI</div>
+        <div class="kpi-trend" style="color:rgba(180,200,255,.5)" data-i18n="lbl_email_replies">Email javoblari</div>
+        <div id="ic-k5-new" style="display:none;position:absolute;top:.8rem;right:.8rem;background:#EF233C;color:#fff;font-size:.55rem;font-weight:800;padding:2px 7px;border-radius:20px" data-i18n="lbl_new_badge">YANGI</div>
       </div>
     </div>
     <div class="tcard">
       <div class="tc-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.7rem">
-        <div class="tc-title">Kompaniyalar ro'yxati</div>
+        <div class="tc-title" data-i18n="ic_table_title">Kompaniyalar ro'yxati</div>
         <div style="display:flex;gap:.6rem;align-items:center">
           <span id="selectedCount" style="font-size:.7rem;color:var(--text3)">0 ta tanlangan</span>
           <button class="btn btn-blue btn-sm" onclick="sendBulkEmail()" id="bulkSendBtn" style="display:none">
-            📧 Tanlanganlarga yuborish
+            <span data-i18n="btn_bulk_send">📧 Tanlanganlarga yuborish</span>
           </button>
         </div>
       </div>
@@ -780,7 +790,13 @@ tbody td:first-child{color:var(--text);font-weight:600;}
         <table>
           <thead><tr>
             <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes(this)"></th>
-            <th>T/r</th><th>Kompaniya</th><th>Rahbar</th><th>Soha</th><th>Email</th><th>Email holati</th><th>Amal</th>
+            <th>T/r</th>
+            <th data-i18n="col_company">Kompaniya</th>
+            <th data-i18n="col_leader">Rahbar</th>
+            <th data-i18n="col_field">Soha</th>
+            <th>Email</th>
+            <th data-i18n="col_emailstatus">Email holati</th>
+            <th data-i18n="col_actions">Amal</th>
           </tr></thead>
           <tbody id="ic-tbody"></tbody>
         </table>
@@ -794,10 +810,10 @@ tbody td:first-child{color:var(--text);font-weight:600;}
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head">
       <div>
-        <div class="pg-title">⚙️ Admin Panel</div>
-        <div class="pg-sub">Ma'lumotlarni qo'shish, tahrirlash va o'chirish</div>
+        <div class="pg-title" data-i18n="admin_panel">⚙️ Admin Panel</div>
+        <div class="pg-sub" data-i18n="admin_sub">Ma'lumotlarni qo'shish, tahrirlash va o'chirish</div>
       </div>
-      <button class="btn btn-ghost" onclick="logoutAdmin()">🚪 Chiqish</button>
+      <button class="btn btn-ghost" onclick="logoutAdmin()" data-i18n="btn_logout">🚪 Chiqish</button>
     </div>
     <div class="admin-tabs">
       <div class="atab active" id="atab-investors" onclick="switchAdminTab('investors')">🌍 Investorlar bazasi</div>
@@ -1076,7 +1092,103 @@ tbody td:first-child{color:var(--text);font-weight:600;}
   </div>
 </div>
 
-<!-- ===== EMAIL MODAL ===== -->
+<!-- ===== FORUM DETAIL MODAL ===== -->
+<div class="modal-overlay" id="forumDetailModal" onclick="if(event.target===this)closeForumDetail()">
+  <div class="zoom-detail-box" style="width:860px">
+    <!-- Header -->
+    <div class="zoom-detail-head" style="background:linear-gradient(135deg,#1E2B4A,#2D3A6B)">
+      <div class="zoom-detail-avatar" id="fdIcon" style="background:linear-gradient(135deg,#4361EE,#7209B7);font-size:1.4rem">🗓</div>
+      <div style="flex:1">
+        <div class="zoom-detail-name" id="fdNom" style="color:#fff">—</div>
+        <div class="zoom-detail-org" id="fdMeta" style="color:rgba(180,210,255,.7)">—</div>
+      </div>
+      <div style="display:flex;gap:.5rem;align-self:flex-start;margin-left:auto">
+        <button class="btn btn-blue btn-sm" id="fdEditBtn" onclick="openForumEdit()" style="display:none">✏️ Tahrirlash</button>
+        <button class="modal-close-btn" onclick="closeForumDetail()">✕</button>
+      </div>
+    </div>
+    <!-- Body -->
+    <div class="zoom-detail-body">
+      <!-- Left: info -->
+      <div>
+        <div class="zoom-section">
+          <div class="zoom-section-title">📍 Joyi va Holati</div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.78rem">
+            <div><span style="color:var(--text3)">Manzil:</span> <span id="fdLoc">—</span></div>
+            <div><span style="color:var(--text3)">Turi:</span> <span id="fdTuri">—</span></div>
+            <div><span style="color:var(--text3)">Sana:</span> <span id="fdSana">—</span></div>
+            <div style="margin-top:.3rem"><span id="fdHolat">—</span></div>
+          </div>
+        </div>
+        <div class="zoom-section">
+          <div class="zoom-section-title">📋 Ta'rif</div>
+          <div class="zoom-section-text" id="fdDesc">—</div>
+        </div>
+        <div class="zoom-section" id="fdIzohWrap">
+          <div class="zoom-section-title">📝 Izoh / Delegatsiya</div>
+          <div class="zoom-section-text" id="fdIzoh">—</div>
+        </div>
+      </div>
+      <!-- Right: documents -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem">
+          <div class="zoom-section-title" style="margin:0">📎 Hujjatlar</div>
+          <button class="btn btn-blue btn-sm" id="fdAddDocBtn" onclick="showAddDocForm()" style="display:none;font-size:.65rem">➕ Qo'shish</button>
+        </div>
+        <!-- Add doc form (hidden by default) -->
+        <div id="fdDocForm" style="display:none;background:var(--bg2);border-radius:8px;padding:.8rem;margin-bottom:.8rem;border:1px solid var(--border)">
+          <div style="font-size:.7rem;color:var(--text3);margin-bottom:.5rem;font-weight:600">Yangi hujjat qo'shish</div>
+          <input class="form-input" id="fdDocName" placeholder="Hujjat nomi (masalan: Delegatsiya ro'yxati)" style="font-size:.73rem;margin-bottom:.4rem">
+          <input class="form-input" id="fdDocUrl" placeholder="Google Drive yoki boshqa havola" style="font-size:.73rem;margin-bottom:.4rem">
+          <select class="form-select" id="fdDocType" style="font-size:.73rem;margin-bottom:.6rem">
+            <option value="📄">📄 Word / PDF</option>
+            <option value="📊">📊 Excel</option>
+            <option value="🖼">🖼 Rasm</option>
+            <option value="📁">📁 Boshqa</option>
+          </select>
+          <div style="display:flex;gap:.4rem">
+            <button class="btn btn-blue btn-sm" onclick="saveForumDoc()" style="font-size:.68rem">✅ Saqlash</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fdDocForm').style.display='none'" style="font-size:.68rem">Bekor</button>
+          </div>
+        </div>
+        <!-- Document list -->
+        <div id="fdDocList" style="display:flex;flex-direction:column;gap:.5rem">
+          <div style="font-size:.72rem;color:var(--text3);text-align:center;padding:1rem">📁 Hujjat qo'shilmagan</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FORUM EDIT MODAL ===== -->
+<div class="modal-overlay" id="forumEditModal" onclick="if(event.target===this)closeForumEdit()">
+  <div class="modal" style="max-width:640px;width:100%">
+    <div class="modal-head">
+      <div class="modal-title">✏️ Forumni Tahrirlash</div>
+      <button class="modal-close-btn" onclick="closeForumEdit()">✕</button>
+    </div>
+    <div class="form-grid" style="padding:.5rem 0">
+      <div class="form-group span-2"><label class="form-label">Forum Nomi</label><input class="form-input" id="fed-nom"></div>
+      <div class="form-group"><label class="form-label">Sana</label><input class="form-input" type="date" id="fed-sana"></div>
+      <div class="form-group"><label class="form-label">Shahar</label><input class="form-input" id="fed-shahar"></div>
+      <div class="form-group"><label class="form-label">Davlat</label><input class="form-input" id="fed-davlat"></div>
+      <div class="form-group"><label class="form-label">Turi</label>
+        <select class="form-select" id="fed-turi"><option>Xalqaro forum</option><option>Milliy forum</option><option>Ko'rgazma / Yarmarka</option><option>B2B uchrashuv</option><option>Mintaqaviy tadbir</option><option>Forum</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Holat</label>
+        <select class="form-select" id="fed-holat"><option>✅ Ishtirok tasdiqlangan</option><option>⏳ Delegatsiya tuzilmoqda</option><option>🔧 Tayyorgarlik bosqichida</option><option>❌ Ishtirok yo'q</option></select>
+      </div>
+      <div class="form-group span-2"><label class="form-label">Ta'rif</label><textarea class="form-textarea" id="fed-desc" rows="3"></textarea></div>
+      <div class="form-group span-2"><label class="form-label">Izoh / Delegatsiya</label><input class="form-input" id="fed-izoh"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-blue" onclick="saveForumEdit()">💾 Saqlash</button>
+      <button class="btn btn-ghost" onclick="closeForumEdit()">Bekor qilish</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="email-modal-overlay" id="emailModal">
   <div class="email-modal-box">
     <button class="modal-close-btn" onclick="closeEmailModal()" style="position:absolute;top:1rem;right:1rem">✕</button>
@@ -1211,84 +1323,131 @@ const TRANSLATIONS = {
     nav_local:"Mahalliy Tadbirkorlar", nav_zoom:"Zoom Uchrashuvlar",
     nav_forums:"Forumlar", nav_investorco:"Investorlar bazasi", nav_login:"Kirish",
     nav_admin:"Admin Panel",
-    page_investors_title:"Investorlar Tashriflari", page_investors_sub:"Xorijiy investorlar tashrifi va loyihalar",
-    page_local_title:"Mahalliy Tadbirkorlar", page_local_sub:"Navoiy viloyati tadbirkorlik loyihalari",
+    page_investors_title:"Tashrif Buyurgan Xorijiy Investorlar",
+    page_investors_sub:"Navoiy viloyatiga tashrif buyurgan xorijiy investorlar ro'yxati",
+    page_local_title:"Mahalliy Tadbirkorlar Ro'yxati",
+    page_local_sub:"Xorijiy investitsiyaga muhtoj mahalliy kompaniyalar",
     page_zoom_title:"Zoom Uchrashuvlar", page_zoom_sub:"Xorijiy investorlar bilan o'tkazilgan onlayn uchrashuvlar",
-    page_forums_title:"Forumlar va Ko'rgazmalar", page_forums_sub:"Xalqaro tadbirlar va ishtirok",
-    page_investor_title:"Investorlar Bazasi", page_investor_sub:"Kompaniyalar va email muloqot",
+    page_forums_title:"Forumlar & Xalqaro Ko'rgazmalar", page_forums_sub:"Rejalashtirilgan xalqaro tadbirlar va ishtirok rejasi",
+    page_investor_title:"Investorlar — Kompaniyalar Ro'yxati", page_investor_sub:"Navoiy viloyati investitsiya loyihalari boshqaruvi",
     btn_add:"➕ Yangi qo'shish", btn_excel:"📥 Excel", btn_clearall:"🗑 Barchasini o'chirish",
-    btn_print:"🖨 Chop etish", btn_logout:"Chiqish",
-    col_city:"Shahar", col_date:"Sana", col_country:"Davlat", col_purpose:"Maqsad",
-    col_company:"Kompaniya", col_project:"Loyiha", col_value:"Qiymat", col_status:"Maqom",
+    btn_print:"🖨 Chop etish", btn_logout:"🚪 Chiqish", btn_bulk_send:"📧 Tanlanganlarga yuborish",
+    col_city:"Shahar/Tuman", col_date:"Sana", col_country:"Davlat", col_purpose:"Maqsad",
+    col_company:"Kompaniya", col_project:"Loyiha", col_value:"Qiymati", col_status:"Maqom",
     col_region:"Hudud", col_note:"Izoh", col_actions:"Amal", col_email:"Email",
     col_emailstatus:"Email holati", col_leader:"Rahbar", col_position:"Lavozim",
-    col_field:"Soha", col_amount:"Summa", col_tel:"Telefon",
+    col_field:"Soha", col_amount:"Summa", col_amount_usd:"Talab (USD)", col_tel:"Telefon",
     col_org:"Tashkilot", col_participants:"Ishtirokchi", col_result:"Natija",
-    col_name:"Nom", col_type:"Turi",
-    lbl_total:"Jami", lbl_positive:"Ijobiy natija", lbl_countries:"Davlatlar",
+    col_name:"Nomi", col_type:"Turi", col_project_disc:"Muhokama Loyiha",
+    lbl_total:"Jami", lbl_positive:"Ijobiy Natija", lbl_countries:"Davlatlar",
     lbl_ready:"Tayyor", lbl_new:"Yangi", lbl_negotiating:"Muzokarada",
+    lbl_active:"Faol", lbl_inprogress:"Jarayonda", lbl_confirmed:"Tasdiqlangan",
+    lbl_registered:"Ro'yxatdan o'tilgan", lbl_international:"Xalqaro", lbl_abroad:"Chet elda",
+    lbl_local:"Mahalliy", lbl_inuz:"O'zbekistonda", lbl_planned:"Rejalashtirilgan",
+    lbl_foreign:"Chet ellik", lbl_covered:"Qamrab olingan", lbl_investment:"Investitsiya",
+    lbl_company:"Kompaniya", lbl_projects:"Loyihalar", lbl_records:"Ta yozuv",
+    lbl_total_records:"Jami Yozuv", lbl_replies:"Javoblar", lbl_email_replies:"Email javoblari",
+    lbl_new_badge:"YANGI",
+    inv_k1_lbl:"Jami Tashrif", inv_k2_lbl:"Kelishilgan", inv_k3_lbl:"Ko'rib Chiqilmoqda",
+    inv_table_title:"Xorijiy investorlar jadvali",
+    loc_k1_lbl:"Jami Ro'yxatda", loc_k4_lbl:"Jami Talab", loc_k2_trend:"Investorni kutmoqda",
+    loc_table_title:"Mahalliy tadbirkorlar jadvali",
+    zm_k1_lbl:"Jami Uchrashuvlar", zm_k3_lbl:"Ishtirokchilar", zm_table_title:"Uchrashuvlar ro'yxati",
+    fr_k1_lbl:"Jami Tadbirlar", fr_table_title:"Tadbirlar ro'yxati",
+    ic_k3_trend:"Yuborildi/Mavjud", ic_k4_lbl:"Jami Talab", ic_table_title:"Kompaniyalar ro'yxati",
     no_data:"Ma'lumot topilmadi",
     toast_fill:"Majburiy maydonlarni to'ldiring!", toast_saved:"saqlandi!",
     toast_deleted:"o'chirildi.", toast_all_deleted:"Barcha ma'lumotlar o'chirildi.",
     delete_all_msg:"bo'limidagi BARCHA ma'lumotlarni o'chirishni tasdiqlaysizmi?",
     confirm_delete:"O'chirishni tasdiqlang", confirm_yes:"🗑 Ha, o'chirish", confirm_no:"Bekor qilish",
-    monthly_report:"OYLIK HISOBOT",
+    monthly_report:"OYLIK HISOBOT", admin_panel:"⚙️ Admin Panel",
+    admin_sub:"Ma'lumotlarni qo'shish, tahrirlash va o'chirish",
   },
   ru: {
     nav_overview:"Обзор", nav_investors:"Визиты инвесторов",
     nav_local:"Местные предприниматели", nav_zoom:"Zoom встречи",
     nav_forums:"Форумы", nav_investorco:"База инвесторов", nav_login:"Войти",
     nav_admin:"Админ панель",
-    page_investors_title:"Визиты инвесторов", page_investors_sub:"Иностранные инвесторы и проекты",
-    page_local_title:"Местные предприниматели", page_local_sub:"Предпринимательские проекты Навоийской области",
+    page_investors_title:"Иностранные инвесторы", page_investors_sub:"Список иностранных инвесторов, посетивших Навоийскую область",
+    page_local_title:"Местные предприниматели", page_local_sub:"Местные компании, нуждающиеся в иностранных инвестициях",
     page_zoom_title:"Zoom встречи", page_zoom_sub:"Онлайн встречи с иностранными инвесторами",
-    page_forums_title:"Форумы и выставки", page_forums_sub:"Международные мероприятия и участие",
-    page_investor_title:"База инвесторов", page_investor_sub:"Компании и email-коммуникация",
+    page_forums_title:"Форумы и выставки", page_forums_sub:"Запланированные международные мероприятия",
+    page_investor_title:"База инвесторов", page_investor_sub:"Управление инвестиционными проектами Навоийской области",
     btn_add:"➕ Добавить", btn_excel:"📥 Excel", btn_clearall:"🗑 Очистить всё",
-    btn_print:"🖨 Печать", btn_logout:"Выйти",
-    col_city:"Город", col_date:"Дата", col_country:"Страна", col_purpose:"Цель",
+    btn_print:"🖨 Печать", btn_logout:"🚪 Выйти", btn_bulk_send:"📧 Отправить выбранным",
+    col_city:"Город/Район", col_date:"Дата", col_country:"Страна", col_purpose:"Цель",
     col_company:"Компания", col_project:"Проект", col_value:"Стоимость", col_status:"Статус",
     col_region:"Регион", col_note:"Примечание", col_actions:"Действия", col_email:"Email",
     col_emailstatus:"Email статус", col_leader:"Руководитель", col_position:"Должность",
-    col_field:"Отрасль", col_amount:"Сумма", col_tel:"Телефон",
+    col_field:"Отрасль", col_amount:"Сумма", col_amount_usd:"Запрос (USD)", col_tel:"Телефон",
     col_org:"Организация", col_participants:"Участники", col_result:"Результат",
-    col_name:"Название", col_type:"Тип",
-    lbl_total:"Всего", lbl_positive:"Позитивный результат", lbl_countries:"Страны",
-    lbl_ready:"Готово", lbl_new:"Новый", lbl_negotiating:"На переговорах",
+    col_name:"Название", col_type:"Тип", col_project_disc:"Обсуждаемый проект",
+    lbl_total:"Всего", lbl_positive:"Положительный", lbl_countries:"Страны",
+    lbl_ready:"Готово", lbl_new:"Новый", lbl_negotiating:"Переговоры",
+    lbl_active:"Активных", lbl_inprogress:"В процессе", lbl_confirmed:"Подтверждено",
+    lbl_registered:"Зарегистрировано", lbl_international:"Международные", lbl_abroad:"За рубежом",
+    lbl_local:"Местные", lbl_inuz:"В Узбекистане", lbl_planned:"Запланировано",
+    lbl_foreign:"Иностранных", lbl_covered:"Охвачено", lbl_investment:"Инвестиции",
+    lbl_company:"Компания", lbl_projects:"Проекты", lbl_records:"Записей",
+    lbl_total_records:"Всего записей", lbl_replies:"Ответы", lbl_email_replies:"Email ответы",
+    lbl_new_badge:"НОВЫЙ",
+    inv_k1_lbl:"Всего визитов", inv_k2_lbl:"Согласовано", inv_k3_lbl:"На рассмотрении",
+    inv_table_title:"Таблица иностранных инвесторов",
+    loc_k1_lbl:"Всего в списке", loc_k4_lbl:"Общий запрос", loc_k2_trend:"Ждут инвестора",
+    loc_table_title:"Таблица местных предпринимателей",
+    zm_k1_lbl:"Всего встреч", zm_k3_lbl:"Участники", zm_table_title:"Список встреч",
+    fr_k1_lbl:"Всего мероприятий", fr_table_title:"Список мероприятий",
+    ic_k3_trend:"Отправлено/Доступно", ic_k4_lbl:"Общий запрос", ic_table_title:"Список компаний",
     no_data:"Данных не найдено",
     toast_fill:"Заполните обязательные поля!", toast_saved:"сохранено!",
     toast_deleted:"удалено.", toast_all_deleted:"Все данные удалены.",
     delete_all_msg:"Удалить ВСЕ данные в этом разделе?",
     confirm_delete:"Подтвердите удаление", confirm_yes:"🗑 Да, удалить", confirm_no:"Отмена",
-    monthly_report:"ЕЖЕМЕСЯЧНЫЙ ОТЧЁТ",
+    monthly_report:"ЕЖЕМЕСЯЧНЫЙ ОТЧЁТ", admin_panel:"⚙️ Админ панель",
+    admin_sub:"Добавление, редактирование и удаление данных",
   },
   en: {
     nav_overview:"Overview", nav_investors:"Investor Visits",
     nav_local:"Local Entrepreneurs", nav_zoom:"Zoom Meetings",
     nav_forums:"Forums", nav_investorco:"Investor Database", nav_login:"Login",
     nav_admin:"Admin Panel",
-    page_investors_title:"Investor Visits", page_investors_sub:"Foreign investors and projects",
-    page_local_title:"Local Entrepreneurs", page_local_sub:"Navoiy region entrepreneurship projects",
+    page_investors_title:"Foreign Investor Visits", page_investors_sub:"List of foreign investors who visited Navoiy region",
+    page_local_title:"Local Entrepreneurs", page_local_sub:"Local companies seeking foreign investment",
     page_zoom_title:"Zoom Meetings", page_zoom_sub:"Online meetings with foreign investors",
-    page_forums_title:"Forums & Exhibitions", page_forums_sub:"International events and participation",
-    page_investor_title:"Investor Database", page_investor_sub:"Companies and email communication",
+    page_forums_title:"Forums & Exhibitions", page_forums_sub:"Planned international events and participation",
+    page_investor_title:"Investor Database", page_investor_sub:"Navoiy region investment project management",
     btn_add:"➕ Add New", btn_excel:"📥 Excel", btn_clearall:"🗑 Clear All",
-    btn_print:"🖨 Print", btn_logout:"Logout",
-    col_city:"City", col_date:"Date", col_country:"Country", col_purpose:"Purpose",
+    btn_print:"🖨 Print", btn_logout:"🚪 Logout", btn_bulk_send:"📧 Send to Selected",
+    col_city:"City/District", col_date:"Date", col_country:"Country", col_purpose:"Purpose",
     col_company:"Company", col_project:"Project", col_value:"Value", col_status:"Status",
     col_region:"Region", col_note:"Note", col_actions:"Actions", col_email:"Email",
     col_emailstatus:"Email Status", col_leader:"Director", col_position:"Position",
-    col_field:"Industry", col_amount:"Amount", col_tel:"Phone",
+    col_field:"Industry", col_amount:"Amount", col_amount_usd:"Request (USD)", col_tel:"Phone",
     col_org:"Organization", col_participants:"Participants", col_result:"Result",
-    col_name:"Name", col_type:"Type",
-    lbl_total:"Total", lbl_positive:"Positive outcome", lbl_countries:"Countries",
+    col_name:"Name", col_type:"Type", col_project_disc:"Project Discussion",
+    lbl_total:"Total", lbl_positive:"Positive Outcome", lbl_countries:"Countries",
     lbl_ready:"Ready", lbl_new:"New", lbl_negotiating:"Negotiating",
+    lbl_active:"Active", lbl_inprogress:"In Progress", lbl_confirmed:"Confirmed",
+    lbl_registered:"Registered", lbl_international:"International", lbl_abroad:"Abroad",
+    lbl_local:"Local", lbl_inuz:"In Uzbekistan", lbl_planned:"Planned",
+    lbl_foreign:"Foreign", lbl_covered:"Covered", lbl_investment:"Investment",
+    lbl_company:"Company", lbl_projects:"Projects", lbl_records:"Records",
+    lbl_total_records:"Total Records", lbl_replies:"Replies", lbl_email_replies:"Email replies",
+    lbl_new_badge:"NEW",
+    inv_k1_lbl:"Total Visits", inv_k2_lbl:"Agreed", inv_k3_lbl:"Under Review",
+    inv_table_title:"Foreign investors table",
+    loc_k1_lbl:"Total Listed", loc_k4_lbl:"Total Request", loc_k2_trend:"Awaiting investor",
+    loc_table_title:"Local entrepreneurs table",
+    zm_k1_lbl:"Total Meetings", zm_k3_lbl:"Participants", zm_table_title:"Meetings list",
+    fr_k1_lbl:"Total Events", fr_table_title:"Events list",
+    ic_k3_trend:"Sent/Available", ic_k4_lbl:"Total Request", ic_table_title:"Companies list",
     no_data:"No data found",
     toast_fill:"Please fill in required fields!", toast_saved:"saved!",
     toast_deleted:"deleted.", toast_all_deleted:"All data cleared.",
     delete_all_msg:"Delete ALL data in this section?",
     confirm_delete:"Confirm deletion", confirm_yes:"🗑 Yes, delete", confirm_no:"Cancel",
-    monthly_report:"MONTHLY REPORT",
+    monthly_report:"MONTHLY REPORT", admin_panel:"⚙️ Admin Panel",
+    admin_sub:"Add, edit and delete data",
   }
 };
 
@@ -1822,8 +1981,9 @@ function renderForums(){
   c.innerHTML=fr.map(r=>{
     const d=r.sana?r.sana.split('-'):['','',''];
     const mi=parseInt(d[1])-1;
+    const docCount = (r.docs||[]).length;
     return`
-    <div class="forum-card">
+    <div class="forum-card" onclick="openForumDetail(${r.id})" style="cursor:pointer">
       <div class="fc-top">
         <div class="fc-title">${r.nom||'—'}</div>
         <div style="text-align:right">
@@ -1838,7 +1998,8 @@ function renderForums(){
           <div style="font-size:.67rem;font-weight:600;color:var(--text)">${r.holat||'—'}</div>
           <div style="display:flex;align-items:center;gap:4px">
             <span class="badge bdg-blue">${r.turi||'Forum'}</span>
-            <button class="btn btn-danger btn-sm" onclick="deleteRecord('forums',${r.id})">🗑</button>
+            ${docCount?`<span style="font-size:.6rem;background:rgba(67,97,238,.15);color:#4361EE;padding:2px 6px;border-radius:10px">📎${docCount}</span>`:''}
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteRecord('forums',${r.id})">🗑</button>
           </div>
         </div>
       </div>
@@ -1847,8 +2008,127 @@ function renderForums(){
 }
 
 /* ═══════════════════════════════════════
-   RENDER INVESTOR COMPANIES
+   FORUM DETAIL & EDIT
 ═══════════════════════════════════════ */
+var _forumDetailId = null;
+
+function openForumDetail(id){
+  const r = DB.forums.find(f=>f.id===id);
+  if(!r) return;
+  _forumDetailId = id;
+
+  document.getElementById('fdNom').textContent = r.nom||'—';
+  document.getElementById('fdMeta').textContent = (r.sana||'') + ' • ' + (r.shahar||'') + ', ' + (r.davlat||'');
+  document.getElementById('fdLoc').textContent = (r.shahar||'—') + ', ' + (r.davlat||'—');
+  document.getElementById('fdTuri').textContent = r.turi||'—';
+  document.getElementById('fdSana').textContent = r.sana||'—';
+  document.getElementById('fdHolat').innerHTML = `<span style="font-weight:600">${r.holat||'—'}</span>`;
+  document.getElementById('fdDesc').textContent = r.desc||'—';
+  document.getElementById('fdIzoh').textContent = r.izoh||'—';
+  document.getElementById('fdIzohWrap').style.display = r.izoh ? 'block' : 'none';
+
+  // Show edit/add doc buttons only for admin
+  document.getElementById('fdEditBtn').style.display = isAdmin ? 'inline-flex' : 'none';
+  document.getElementById('fdAddDocBtn').style.display = isAdmin ? 'inline-flex' : 'none';
+  document.getElementById('fdDocForm').style.display = 'none';
+
+  renderForumDocs(r);
+  document.getElementById('forumDetailModal').classList.add('open');
+}
+
+function closeForumDetail(){
+  document.getElementById('forumDetailModal').classList.remove('open');
+  _forumDetailId = null;
+}
+
+function renderForumDocs(r){
+  const docs = r.docs||[];
+  const list = document.getElementById('fdDocList');
+  if(!docs.length){
+    list.innerHTML = '<div style="font-size:.72rem;color:var(--text3);text-align:center;padding:1.2rem 0">📁 Hujjat qo\'shilmagan</div>';
+    return;
+  }
+  list.innerHTML = docs.map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+      <span style="font-size:1.2rem">${d.icon||'📄'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.73rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.nom||'Hujjat'}</div>
+        <div style="font-size:.62rem;color:var(--text3)">${d.url?'Havola mavjud':'Havola yo\'q'}</div>
+      </div>
+      ${d.url?`<a href="${d.url}" target="_blank" class="btn btn-blue btn-sm" style="font-size:.63rem;flex-shrink:0" onclick="event.stopPropagation()">🔗 Ochish</a>`:''}
+      ${isAdmin?`<button class="btn btn-danger btn-sm" style="font-size:.63rem;flex-shrink:0" onclick="deleteForumDoc(${i})">🗑</button>`:''}
+    </div>`).join('');
+}
+
+function showAddDocForm(){
+  document.getElementById('fdDocForm').style.display = 'block';
+  document.getElementById('fdDocName').value = '';
+  document.getElementById('fdDocUrl').value = '';
+}
+
+function saveForumDoc(){
+  const r = DB.forums.find(f=>f.id===_forumDetailId);
+  if(!r) return;
+  const nom = document.getElementById('fdDocName').value.trim();
+  const url = document.getElementById('fdDocUrl').value.trim();
+  const icon = document.getElementById('fdDocType').value;
+  if(!nom){ toast('⚠️ Hujjat nomini kiriting','error'); return; }
+  if(!r.docs) r.docs = [];
+  r.docs.push({nom, url, icon});
+  if(typeof fbSave==='function') fbSave('forums', r);
+  renderForumDocs(r);
+  renderForums();
+  document.getElementById('fdDocForm').style.display = 'none';
+  toast('📎 Hujjat qo\'shildi!');
+}
+
+function deleteForumDoc(idx){
+  const r = DB.forums.find(f=>f.id===_forumDetailId);
+  if(!r||!r.docs) return;
+  r.docs.splice(idx,1);
+  if(typeof fbSave==='function') fbSave('forums', r);
+  renderForumDocs(r);
+  renderForums();
+  toast('🗑 Hujjat o\'chirildi');
+}
+
+function openForumEdit(){
+  const r = DB.forums.find(f=>f.id===_forumDetailId);
+  if(!r) return;
+  document.getElementById('fed-nom').value = r.nom||'';
+  document.getElementById('fed-sana').value = r.sana||'';
+  document.getElementById('fed-shahar').value = r.shahar||'';
+  document.getElementById('fed-davlat').value = r.davlat||'';
+  document.getElementById('fed-turi').value = r.turi||'';
+  document.getElementById('fed-holat').value = r.holat||'';
+  document.getElementById('fed-desc').value = r.desc||'';
+  document.getElementById('fed-izoh').value = r.izoh||'';
+  document.getElementById('forumEditModal').classList.add('open');
+}
+
+function closeForumEdit(){
+  document.getElementById('forumEditModal').classList.remove('open');
+}
+
+function saveForumEdit(){
+  const r = DB.forums.find(f=>f.id===_forumDetailId);
+  if(!r) return;
+  r.nom = document.getElementById('fed-nom').value.trim();
+  r.sana = document.getElementById('fed-sana').value;
+  r.shahar = document.getElementById('fed-shahar').value.trim();
+  r.davlat = document.getElementById('fed-davlat').value.trim();
+  r.turi = document.getElementById('fed-turi').value;
+  r.holat = document.getElementById('fed-holat').value;
+  r.desc = document.getElementById('fed-desc').value.trim();
+  r.izoh = document.getElementById('fed-izoh').value.trim();
+  if(typeof fbSave==='function') fbSave('forums', r);
+  closeForumEdit();
+  openForumDetail(_forumDetailId); // refresh detail view
+  renderForums();
+  toast('✅ Forum yangilandi!');
+}
+
+
 function getEmailStatusBadge(r){
   if(!r.email) return '<span style="font-size:.65rem;color:var(--text3)">— Email yo\'q</span>';
   const notifs = (typeof _notifications !== 'undefined' && _notifications) ? _notifications : [];
