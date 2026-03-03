@@ -365,10 +365,10 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 .zoom-media-del{position:absolute;top:4px;right:4px;background:rgba(239,35,60,.85);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:.65rem;display:flex;align-items:center;justify-content:center;}
 .zoom-media-empty{font-size:.72rem;color:var(--text3);text-align:center;padding:2rem 0;grid-column:1/-1;}
 .forum-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
-.fc-top{padding:1.1rem 1.3rem;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-.fc-title{font-size:.88rem;font-weight:700;color:var(--text);max-width:190px;line-height:1.3;}
-.fc-month{font-size:.59rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:#4361EE;}
-.fc-day{font-family:'Sora',sans-serif;font-size:1.9rem;font-weight:800;color:var(--text);line-height:1;}
+.fc-top{padding:1.1rem 1.3rem;background:linear-gradient(135deg,#1E2B4A,#2D3A6B);border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;border-radius:var(--radius) var(--radius) 0 0;}
+.fc-title{font-size:.88rem;font-weight:700;color:#fff;max-width:190px;line-height:1.3;}
+.fc-month{font-size:.59rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:#7EB3FF;}
+.fc-day{font-family:'Sora',sans-serif;font-size:1.9rem;font-weight:800;color:#fff;line-height:1;}
 .fc-body{padding:1.1rem 1.3rem;}
 .fc-loc{font-size:.68rem;color:var(--text3);display:flex;align-items:center;gap:4px;margin-bottom:.45rem;font-weight:500;}
 .fc-desc{font-size:.71rem;color:var(--text3);line-height:1.65;margin-bottom:.8rem;}
@@ -651,7 +651,7 @@ tbody td:first-child{color:var(--text);font-weight:600;}
       <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label" data-i18n="inv_k1_lbl">Jami Tashrif</div><div class="kpi-val" id="inv-k1">0</div><div class="kpi-trend">2026</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label" data-i18n="inv_k2_lbl">Kelishilgan</div><div class="kpi-val" id="inv-k2">0</div><div class="kpi-trend" data-i18n="lbl_projects">Loyihalar</div></div>
       <div class="kpi-card c3"><div class="kpi-icon">⏳</div><div class="kpi-label" data-i18n="inv_k3_lbl">Ko'rib Chiqilmoqda</div><div class="kpi-val" id="inv-k3">0</div><div class="kpi-trend" data-i18n="lbl_inprogress">Jarayonda</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">💰</div><div class="kpi-label" data-i18n="lbl_total_records">Jami Yozuv</div><div class="kpi-val" id="inv-k4">0</div><div class="kpi-trend" data-i18n="lbl_records">Ta yozuv</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">💵</div><div class="kpi-label" data-i18n="inv_k4_lbl">Umumiy Qiymati</div><div class="kpi-val" id="inv-k4">$0M</div><div class="kpi-trend" data-i18n="inv_k4_trend">Investitsiya</div></div>
     </div>
     <div class="tcard">
       <div class="tc-head">
@@ -1401,6 +1401,7 @@ const TRANSLATIONS = {
     lbl_total_records:"Jami Yozuv", lbl_replies:"Javoblar", lbl_email_replies:"Email javoblari",
     lbl_new_badge:"YANGI",
     inv_k1_lbl:"Jami Tashrif", inv_k2_lbl:"Kelishilgan", inv_k3_lbl:"Ko'rib Chiqilmoqda",
+    inv_k4_lbl:"Umumiy Qiymati", inv_k4_trend:"Investitsiya",
     inv_table_title:"Xorijiy investorlar jadvali",
     loc_k1_lbl:"Jami Ro'yxatda", loc_k4_lbl:"Jami Talab", loc_k2_trend:"Investorni kutmoqda",
     loc_table_title:"Mahalliy tadbirkorlar jadvali",
@@ -1444,6 +1445,7 @@ const TRANSLATIONS = {
     lbl_total_records:"Всего записей", lbl_replies:"Ответы", lbl_email_replies:"Email ответы",
     lbl_new_badge:"НОВЫЙ",
     inv_k1_lbl:"Всего визитов", inv_k2_lbl:"Согласовано", inv_k3_lbl:"На рассмотрении",
+    inv_k4_lbl:"Общая стоимость", inv_k4_trend:"Инвестиции",
     inv_table_title:"Таблица иностранных инвесторов",
     loc_k1_lbl:"Всего в списке", loc_k4_lbl:"Общий запрос", loc_k2_trend:"Ждут инвестора",
     loc_table_title:"Таблица местных предпринимателей",
@@ -1487,6 +1489,7 @@ const TRANSLATIONS = {
     lbl_total_records:"Total Records", lbl_replies:"Replies", lbl_email_replies:"Email replies",
     lbl_new_badge:"NEW",
     inv_k1_lbl:"Total Visits", inv_k2_lbl:"Agreed", inv_k3_lbl:"Under Review",
+    inv_k4_lbl:"Total Value", inv_k4_trend:"Investment",
     inv_table_title:"Foreign investors table",
     loc_k1_lbl:"Total Listed", loc_k4_lbl:"Total Request", loc_k2_trend:"Awaiting investor",
     loc_table_title:"Local entrepreneurs table",
@@ -1891,22 +1894,40 @@ function renderOverview(){
 /* ═══════════════════════════════════════
    RENDER INVESTORS
 ═══════════════════════════════════════ */
-function renderInvestors(){
+var _invPage = 1;
+var INV_PER_PAGE = 15;
+
+function renderInvestors(page){
+  if(page) _invPage = page;
   const inv=DB.investors;
   document.getElementById('inv-k1').textContent=inv.length;
   document.getElementById('inv-k2').textContent=inv.filter(r=>r.makom==='Kelishilgan').length;
   document.getElementById('inv-k3').textContent=inv.filter(r=>r.makom==="Ko'rib chiqilmoqda").length;
-  document.getElementById('inv-k4').textContent=inv.length;
+  const totalVal = inv.reduce((sum,r)=>{
+    if(!r.qiymat) return sum;
+    const num = parseFloat(r.qiymat.replace(/[^0-9.]/g,''))||0;
+    const isB = /B/i.test(r.qiymat);
+    const isM = /M/i.test(r.qiymat);
+    return sum + (isB ? num*1000 : isM ? num : num/1e6);
+  }, 0);
+  document.getElementById('inv-k4').textContent = totalVal>=1000 ? '$'+(totalVal/1000).toFixed(1)+'B' : '$'+Math.round(totalVal)+'M';
   document.getElementById('badge-investors').textContent=inv.length;
 
   const tb=document.getElementById('inv-tbody');
   if(!inv.length){
-    tb.innerHTML='<tr><td colspan="12"><div class="tc-empty"><div class="tc-empty-icon">🌍</div><p>Hali ma\'lumot kiritilmagan</p></div></td></tr>';
+    tb.innerHTML=`<tr><td colspan="12"><div class="tc-empty"><div class="tc-empty-icon">🌍</div><p>Hali ma'lumot kiritilmagan</p></div></td></tr>`;
+    renderInvPager(0,0);
     return;
   }
-  tb.innerHTML=inv.map((r,i)=>`
+
+  const totalPages = Math.ceil(inv.length / INV_PER_PAGE);
+  if(_invPage > totalPages) _invPage = totalPages;
+  const start = (_invPage-1)*INV_PER_PAGE;
+  const pageData = inv.slice(start, start+INV_PER_PAGE);
+
+  tb.innerHTML=pageData.map((r,i)=>`
     <tr>
-      <td>${i+1}</td><td>${r.shahar||'—'}</td><td>${fmtDate(r.sana)}</td>
+      <td>${start+i+1}</td><td>${r.shahar||'—'}</td><td>${fmtDate(r.sana)}</td>
       <td>${r.flag||'🌐'} ${r.davlat||'—'}</td>
       <td>${r.maqsad||'—'}</td>
       <td><b>${r.kompaniya||'—'}</b></td>
@@ -1917,6 +1938,33 @@ function renderInvestors(){
       <td style="font-size:.69rem">${r.izoh||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('investors',${r.id})">🗑</button></td>
     </tr>`).join('');
+
+  renderInvPager(totalPages, inv.length);
+}
+
+function renderInvPager(totalPages, total){
+  let pager = document.getElementById('inv-pager');
+  if(!pager){
+    pager = document.createElement('div');
+    pager.id = 'inv-pager';
+    const tcard = document.querySelector('#page-investors .tcard');
+    if(tcard) tcard.appendChild(pager);
+  }
+  if(totalPages <= 1){ pager.innerHTML=''; return; }
+  const start = (_invPage-1)*INV_PER_PAGE+1;
+  const end = Math.min(_invPage*INV_PER_PAGE, total);
+  let btns = '';
+  for(let p=1;p<=totalPages;p++){
+    btns += `<button onclick="renderInvestors(${p})" style="min-width:32px;height:32px;border-radius:8px;border:1px solid ${p===_invPage?'#4361EE':'var(--border)'};background:${p===_invPage?'#4361EE':'var(--card)'};color:${p===_invPage?'#fff':'var(--text)'};font-size:.72rem;font-weight:600;cursor:pointer;transition:all .15s">${p}</button>`;
+  }
+  pager.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.3rem;border-top:1px solid var(--border);flex-wrap:wrap;gap:.5rem">
+    <span style="font-size:.72rem;color:var(--text3)">${start}–${end} / ${total} ta yozuv</span>
+    <div style="display:flex;gap:.35rem;align-items:center">
+      <button onclick="renderInvestors(${_invPage-1})" ${_invPage<=1?'disabled':''} style="min-width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.8rem;cursor:pointer;opacity:${_invPage<=1?0.3:1}">&#8249;</button>
+      ${btns}
+      <button onclick="renderInvestors(${_invPage+1})" ${_invPage>=totalPages?'disabled':''} style="min-width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.8rem;cursor:pointer;opacity:${_invPage>=totalPages?0.3:1}">&#8250;</button>
+    </div>
+  </div>`;
 }
 
 /* ═══════════════════════════════════════
