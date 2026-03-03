@@ -72,6 +72,7 @@ async function loadFromFirestore(){
     if(loadEl) loadEl.style.display = 'none';
     renderAll();
     renderOverview();
+    if(typeof applyTranslations==='function') applyTranslations();
     console.log('✅ Firebase: ma\'lumotlar yuklandi. Jami:', totalDocs);
   } catch(e){
     console.error('Firebase load error:', e);
@@ -79,6 +80,7 @@ async function loadFromFirestore(){
     if(loadEl) loadEl.style.display = 'none';
     renderAll();
     renderOverview();
+    if(typeof applyTranslations==='function') applyTranslations();
   }
 }
 
@@ -584,13 +586,13 @@ tbody td:first-child{color:var(--text);font-weight:600;}
     </div>
   </div>
   <div class="tn-row2">
-    <div class="tn-tab active" id="tab-overview" onclick="showPage('overview')"><span class="tn-tab-icon">🏠</span><span>Umumiy ma'lumotlar</span></div>
-    <div class="tn-tab" id="tab-investors" onclick="showPage('investors')"><span class="tn-tab-icon">🌍</span><span>Investorlar Tashriflari</span><span class="tn-badge" id="badge-investors">0</span></div>
-    <div class="tn-tab" id="tab-local" onclick="showPage('local')"><span class="tn-tab-icon">🏢</span><span>Mahalliy Tadbirkorlar</span><span class="tn-badge" id="badge-local">0</span></div>
-    <div class="tn-tab" id="tab-zoom" onclick="showPage('zoom')"><span class="tn-tab-icon">💻</span><span>Zoom Uchrashuvlar</span><span class="tn-badge" id="badge-zoom">0</span></div>
-    <div class="tn-tab" id="tab-forums" onclick="showPage('forums')"><span class="tn-tab-icon">🗓</span><span>Forumlar</span><span class="tn-badge" id="badge-forums">0</span></div>
-    <div class="tn-tab" id="tab-investor" onclick="showPage('investor')"><span class="tn-tab-icon">🏢</span><span>Investorlar bazasi</span><span class="tn-badge" id="badge-investorco">0</span></div>
-    <div class="tn-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()"><span class="tn-tab-icon">🔐</span><span id="adminTabLabel">Kirish</span></div>
+    <div class="tn-tab active" id="tab-overview" onclick="showPage('overview')"><span class="tn-tab-icon">🏠</span><span data-i18n="nav_overview">Umumiy ma'lumotlar</span></div>
+    <div class="tn-tab" id="tab-investors" onclick="showPage('investors')"><span class="tn-tab-icon">🌍</span><span data-i18n="nav_investors">Investorlar Tashriflari</span><span class="tn-badge" id="badge-investors">0</span></div>
+    <div class="tn-tab" id="tab-local" onclick="showPage('local')"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_local">Mahalliy Tadbirkorlar</span><span class="tn-badge" id="badge-local">0</span></div>
+    <div class="tn-tab" id="tab-zoom" onclick="showPage('zoom')"><span class="tn-tab-icon">💻</span><span data-i18n="nav_zoom">Zoom Uchrashuvlar</span><span class="tn-badge" id="badge-zoom">0</span></div>
+    <div class="tn-tab" id="tab-forums" onclick="showPage('forums')"><span class="tn-tab-icon">🗓</span><span data-i18n="nav_forums">Forumlar</span><span class="tn-badge" id="badge-forums">0</span></div>
+    <div class="tn-tab" id="tab-investor" onclick="showPage('investor')"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_investorco">Investorlar bazasi</span><span class="tn-badge" id="badge-investorco">0</span></div>
+    <div class="tn-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()"><span class="tn-tab-icon">🔐</span><span id="adminTabLabel" data-i18n="nav_login">Kirish</span></div>
   </div>
 </div>
 
@@ -1203,9 +1205,113 @@ const MONTHS_SHORT = ["YAN","FEV","MAR","APR","MAY","IYN","IYL","AVG","SEN","OKT
 const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
 var _zmAdminMedia = [];
 // Simple translation helper (falls back to uz hardcoded strings)
+const TRANSLATIONS = {
+  uz: {
+    nav_overview:"Umumiy ma'lumotlar", nav_investors:"Investorlar Tashriflari",
+    nav_local:"Mahalliy Tadbirkorlar", nav_zoom:"Zoom Uchrashuvlar",
+    nav_forums:"Forumlar", nav_investorco:"Investorlar bazasi", nav_login:"Kirish",
+    nav_admin:"Admin Panel",
+    page_investors_title:"Investorlar Tashriflari", page_investors_sub:"Xorijiy investorlar tashrifi va loyihalar",
+    page_local_title:"Mahalliy Tadbirkorlar", page_local_sub:"Navoiy viloyati tadbirkorlik loyihalari",
+    page_zoom_title:"Zoom Uchrashuvlar", page_zoom_sub:"Xorijiy investorlar bilan o'tkazilgan onlayn uchrashuvlar",
+    page_forums_title:"Forumlar va Ko'rgazmalar", page_forums_sub:"Xalqaro tadbirlar va ishtirok",
+    page_investor_title:"Investorlar Bazasi", page_investor_sub:"Kompaniyalar va email muloqot",
+    btn_add:"➕ Yangi qo'shish", btn_excel:"📥 Excel", btn_clearall:"🗑 Barchasini o'chirish",
+    btn_print:"🖨 Chop etish", btn_logout:"Chiqish",
+    col_city:"Shahar", col_date:"Sana", col_country:"Davlat", col_purpose:"Maqsad",
+    col_company:"Kompaniya", col_project:"Loyiha", col_value:"Qiymat", col_status:"Maqom",
+    col_region:"Hudud", col_note:"Izoh", col_actions:"Amal", col_email:"Email",
+    col_emailstatus:"Email holati", col_leader:"Rahbar", col_position:"Lavozim",
+    col_field:"Soha", col_amount:"Summa", col_tel:"Telefon",
+    col_org:"Tashkilot", col_participants:"Ishtirokchi", col_result:"Natija",
+    col_name:"Nom", col_type:"Turi",
+    lbl_total:"Jami", lbl_positive:"Ijobiy natija", lbl_countries:"Davlatlar",
+    lbl_ready:"Tayyor", lbl_new:"Yangi", lbl_negotiating:"Muzokarada",
+    no_data:"Ma'lumot topilmadi",
+    toast_fill:"Majburiy maydonlarni to'ldiring!", toast_saved:"saqlandi!",
+    toast_deleted:"o'chirildi.", toast_all_deleted:"Barcha ma'lumotlar o'chirildi.",
+    delete_all_msg:"bo'limidagi BARCHA ma'lumotlarni o'chirishni tasdiqlaysizmi?",
+    confirm_delete:"O'chirishni tasdiqlang", confirm_yes:"🗑 Ha, o'chirish", confirm_no:"Bekor qilish",
+    monthly_report:"OYLIK HISOBOT",
+  },
+  ru: {
+    nav_overview:"Обзор", nav_investors:"Визиты инвесторов",
+    nav_local:"Местные предприниматели", nav_zoom:"Zoom встречи",
+    nav_forums:"Форумы", nav_investorco:"База инвесторов", nav_login:"Войти",
+    nav_admin:"Админ панель",
+    page_investors_title:"Визиты инвесторов", page_investors_sub:"Иностранные инвесторы и проекты",
+    page_local_title:"Местные предприниматели", page_local_sub:"Предпринимательские проекты Навоийской области",
+    page_zoom_title:"Zoom встречи", page_zoom_sub:"Онлайн встречи с иностранными инвесторами",
+    page_forums_title:"Форумы и выставки", page_forums_sub:"Международные мероприятия и участие",
+    page_investor_title:"База инвесторов", page_investor_sub:"Компании и email-коммуникация",
+    btn_add:"➕ Добавить", btn_excel:"📥 Excel", btn_clearall:"🗑 Очистить всё",
+    btn_print:"🖨 Печать", btn_logout:"Выйти",
+    col_city:"Город", col_date:"Дата", col_country:"Страна", col_purpose:"Цель",
+    col_company:"Компания", col_project:"Проект", col_value:"Стоимость", col_status:"Статус",
+    col_region:"Регион", col_note:"Примечание", col_actions:"Действия", col_email:"Email",
+    col_emailstatus:"Email статус", col_leader:"Руководитель", col_position:"Должность",
+    col_field:"Отрасль", col_amount:"Сумма", col_tel:"Телефон",
+    col_org:"Организация", col_participants:"Участники", col_result:"Результат",
+    col_name:"Название", col_type:"Тип",
+    lbl_total:"Всего", lbl_positive:"Позитивный результат", lbl_countries:"Страны",
+    lbl_ready:"Готово", lbl_new:"Новый", lbl_negotiating:"На переговорах",
+    no_data:"Данных не найдено",
+    toast_fill:"Заполните обязательные поля!", toast_saved:"сохранено!",
+    toast_deleted:"удалено.", toast_all_deleted:"Все данные удалены.",
+    delete_all_msg:"Удалить ВСЕ данные в этом разделе?",
+    confirm_delete:"Подтвердите удаление", confirm_yes:"🗑 Да, удалить", confirm_no:"Отмена",
+    monthly_report:"ЕЖЕМЕСЯЧНЫЙ ОТЧЁТ",
+  },
+  en: {
+    nav_overview:"Overview", nav_investors:"Investor Visits",
+    nav_local:"Local Entrepreneurs", nav_zoom:"Zoom Meetings",
+    nav_forums:"Forums", nav_investorco:"Investor Database", nav_login:"Login",
+    nav_admin:"Admin Panel",
+    page_investors_title:"Investor Visits", page_investors_sub:"Foreign investors and projects",
+    page_local_title:"Local Entrepreneurs", page_local_sub:"Navoiy region entrepreneurship projects",
+    page_zoom_title:"Zoom Meetings", page_zoom_sub:"Online meetings with foreign investors",
+    page_forums_title:"Forums & Exhibitions", page_forums_sub:"International events and participation",
+    page_investor_title:"Investor Database", page_investor_sub:"Companies and email communication",
+    btn_add:"➕ Add New", btn_excel:"📥 Excel", btn_clearall:"🗑 Clear All",
+    btn_print:"🖨 Print", btn_logout:"Logout",
+    col_city:"City", col_date:"Date", col_country:"Country", col_purpose:"Purpose",
+    col_company:"Company", col_project:"Project", col_value:"Value", col_status:"Status",
+    col_region:"Region", col_note:"Note", col_actions:"Actions", col_email:"Email",
+    col_emailstatus:"Email Status", col_leader:"Director", col_position:"Position",
+    col_field:"Industry", col_amount:"Amount", col_tel:"Phone",
+    col_org:"Organization", col_participants:"Participants", col_result:"Result",
+    col_name:"Name", col_type:"Type",
+    lbl_total:"Total", lbl_positive:"Positive outcome", lbl_countries:"Countries",
+    lbl_ready:"Ready", lbl_new:"New", lbl_negotiating:"Negotiating",
+    no_data:"No data found",
+    toast_fill:"Please fill in required fields!", toast_saved:"saved!",
+    toast_deleted:"deleted.", toast_all_deleted:"All data cleared.",
+    delete_all_msg:"Delete ALL data in this section?",
+    confirm_delete:"Confirm deletion", confirm_yes:"🗑 Yes, delete", confirm_no:"Cancel",
+    monthly_report:"MONTHLY REPORT",
+  }
+};
+
+function tr(key){ return (TRANSLATIONS[currentLang]||TRANSLATIONS.uz)[key] || key; }
+
 function t(key){
-  const uz={toast_fill:"Majburiy maydonlarni to'ldiring!",toast_saved:"muvaffaqiyatli saqlandi!",toast_deleted:"o'chirildi.",toast_all_deleted:"Barcha ma'lumotlar o'chirildi.",toast_excel:"Excel fayl yuklab olindi!",delete_all_msg:"bo'limidagi BARCHA ma'lumotlarni o'chirishni tasdiqlaysizmi?"};
-  return uz[key]||key;
+  return tr(key);
+}
+
+function applyTranslations(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    const val = tr(key);
+    if(val) el.textContent = val;
+  });
+  // Update print button
+  const printBtn = document.querySelector('.tn-btn.green');
+  if(printBtn) printBtn.innerHTML = `🖨 ${tr('btn_print')}`;
+  // Update admin tab if admin logged in
+  if(isAdmin){
+    const adminLbl = document.getElementById('adminTabLabel');
+    if(adminLbl) adminLbl.textContent = tr('nav_admin');
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -1387,14 +1493,12 @@ function toggleTheme(){
 }
 function setLang(l){
   currentLang = l;
-  // Update active button safely
   document.querySelectorAll('.lang-btn').forEach(b => {
     b.classList.remove('active');
     if(b.textContent.trim().toLowerCase() === l.toLowerCase()) b.classList.add('active');
   });
-  // Save preference
   localStorage.setItem('_lang', l);
-  // Re-render all sections with new language
+  applyTranslations();
   renderAll();
   renderOverview();
 }
