@@ -2871,19 +2871,20 @@ function openEmailModal(id){
   document.getElementById('sendBtn').textContent= co.emailSent ? 'QAYTA YUBORISH 📧' : 'YUBORISH 📧';
   document.getElementById('emailModal').classList.add('open');
 }
+
 function getNextSlot(){
   const now = new Date();
   const h = now.getHours();
   const m = now.getMinutes();
   if(m < 30){
-    // keyingi slot: shu soatning :30
     return `${String(h).padStart(2,'0')}:30`;
   } else {
-    // keyingi slot: keyingi soatning :00
     const nextH = (h + 1) % 24;
     return `${String(nextH).padStart(2,'0')}:00`;
   }
 }
+
+function openBulkScheduleModal(){
   const ids = getSelectedIds();
   const all = DB.investorCompanies||[];
   // email mavjud bo'lganlarni olish
