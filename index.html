@@ -2871,7 +2871,19 @@ function openEmailModal(id){
   document.getElementById('sendBtn').textContent= co.emailSent ? 'QAYTA YUBORISH 📧' : 'YUBORISH 📧';
   document.getElementById('emailModal').classList.add('open');
 }
-function openBulkScheduleModal(){
+function getNextSlot(){
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  if(m < 30){
+    // keyingi slot: shu soatning :30
+    return `${String(h).padStart(2,'0')}:30`;
+  } else {
+    // keyingi slot: keyingi soatning :00
+    const nextH = (h + 1) % 24;
+    return `${String(nextH).padStart(2,'0')}:00`;
+  }
+}
   const ids = getSelectedIds();
   const all = DB.investorCompanies||[];
   // email mavjud bo'lganlarni olish
@@ -2889,7 +2901,7 @@ function openBulkScheduleModal(){
   document.querySelectorAll('input[name="bSchedType"]').forEach(r=>r.checked=r.value==='once');
   onBSchedTypeChange();
   document.getElementById('bSchedDate').value    = '';
-  document.getElementById('bSchedTime').value    = '09:00';
+  document.getElementById('bSchedTime').value    = getNextSlot();
   document.getElementById('bSchedSubject').value = '';
   document.getElementById('bSchedMessage').value = '';
 
@@ -2969,7 +2981,7 @@ function openScheduleModal(id){
   document.getElementById('schedDate').value     = dateToDisplay(s.date || '');
   document.getElementById('schedDay').value      = s.day     || '1';
   document.getElementById('schedWeekday').value  = s.weekday || '1';
-  document.getElementById('schedTime').value     = s.time    || '09:00';
+  document.getElementById('schedTime').value     = s.time    || getNextSlot();
   document.getElementById('schedSubject').value  = s.subject || '';
   document.getElementById('schedMessage').value  = s.message || '';
   document.getElementById('schedActive').checked = s.active  !== false;
