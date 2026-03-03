@@ -3121,64 +3121,17 @@ function removeEmailFile(){
 }
 
 async function sendEmail(){
-  if(!emailTarget)return;
-  const msg=document.getElementById('emailMsg').value.trim();
-  if(!msg){toast('⚠️ Iltimos, xabar yozing!','error');return;}
-  const btn=document.getElementById('sendBtn');
-  btn.disabled=true; btn.textContent='YUBORILMOQDA...';
+  if(!emailTarget) return;
+  const msg = document.getElementById('emailMsg').value.trim();
+  if(!msg){ toast('⚠️ Iltimos, xabar yozing!','error'); return; }
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true; btn.textContent = 'YUBORILMOQDA...';
   try{
-    const fullMsg = msg;
-    const htmlMsg = fullMsg.replace(/\n/g,'<br>');
-
-    // Attachment
-    const sgBody = {
-      personalizations:[{ to:[{ email: emailTarget.email, name: emailTarget.rahbar }] }],
-      from:{ email: window._sgFrom||'', name:'Navoiy Investitsiya' },
-      subject: `Investitsiya bo'yicha xabar — ${emailTarget.kompaniya}`,
-      content:[
-        { type:'text/plain', value: fullMsg },
-        { type:'text/html',  value:`<div style="font-family:sans-serif;line-height:1.7">${htmlMsg}</div>` },
-      ],
-    };
-    if(_emailAttachment){
-      sgBody.attachments = [{
-        content:     _emailAttachment.data.split(',').pop(),
-        filename:    _emailAttachment.filename,
-        type:        _emailAttachment.contentType||'application/octet-stream',
-        disposition: 'attachment',
-      }];
-    }
-
-    // SendGrid API orqali yuborish
-    const res = await fetch('https://api.sendgrid.com/v3/mail/send',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer ' + (window._sgKey||''),
-      },
-      body: JSON.stringify(sgBody),
-    });
-
-    if(res.ok || res.status===202){
-      const rec=DB.investorCompanies.find(r=>r.id===emailTarget.id);
-      if(rec){ rec.emailSent=true; rec.emailSentDate=new Date().toISOString().split('T')[0]; if(typeof fbSave==='function') fbSave('investorCompanies',rec); }
-      renderInvestorCompanies();
-      toast('✅ Xabar muvaffaqiyatli yuborildi!');
-      closeEmailModal();
-    } else {
-      const errText = await res.text();
-      console.error('SendGrid error:', errText);
-      // Fallback: EmailJS
-      await sendViaEmailJS(fullMsg);
-    }
+    await sendViaEmailJS(msg);
   } catch(err){
     console.error(err);
-    // Fallback: EmailJS
-    try{ await sendViaEmailJS(msg); }
-    catch(e2){
-      toast('❌ Xatolik: Email yuborilmadi','error');
-      btn.disabled=false; btn.textContent='YUBORISH 📧';
-    }
+    toast('❌ Xatolik: Email yuborilmadi','error');
+    btn.disabled = false; btn.textContent = 'YUBORISH 📧';
   }
 }
 
