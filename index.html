@@ -118,7 +118,7 @@ function waitForDB(){
     // Restore saved language
     const savedLang = localStorage.getItem('_lang');
     if(savedLang && ['uz','ru','en'].includes(savedLang)){
-      if(typeof currentLang !== 'undefined') currentLang = savedLang;
+      window.currentLang = savedLang;
       document.querySelectorAll('.lang-btn').forEach(b => {
         b.classList.remove('active');
         if(b.textContent.trim().toLowerCase() === savedLang) b.classList.add('active');
@@ -126,7 +126,7 @@ function waitForDB(){
     }
     // Restore admin session
     if(localStorage.getItem('_adminLoggedIn')==='1'){
-      isAdmin = true;
+      window.isAdmin = true;
       if(typeof applyAdminUI==='function') applyAdminUI(true);
     }
     loadFromFirestore();
@@ -1615,10 +1615,10 @@ const DB = {
 /* ═══════════════════════════════════════
    STATE
 ═══════════════════════════════════════ */
-let currentPage = 'overview';
-let currentLang = 'uz';
-let isAdmin = false;
-let isDark = false;
+var currentPage = 'overview';
+var currentLang = 'uz';
+var isAdmin = false;
+var isDark = false;
 let pendingAdminTab = null;
 let deleteTarget = null;
 let emailTarget = null;
@@ -1784,31 +1784,6 @@ function switchAdminTab(id){
 /* ═══════════════════════════════════════
    DELETE
 ═══════════════════════════════════════ */
-function deleteRecord(type,id){
-  deleteTarget={type,id,clearAll:false};
-  document.getElementById('deleteMsg').textContent="Ushbu yozuvni o'chirishni tasdiqlaysizmi?";
-  document.getElementById('deleteModal').classList.add('open');
-}
-function clearAllConfirm(type){
-  deleteTarget={type,id:null,clearAll:true};
-  document.getElementById('deleteMsg').textContent="Bu bo'limdagi BARCHA ma'lumotlarni o'chirasizmi?";
-  document.getElementById('deleteModal').classList.add('open');
-}
-function closeDeleteModal(){document.getElementById('deleteModal').classList.remove('open');deleteTarget=null;}
-function confirmDelete(){
-  if(!deleteTarget)return;
-  if(deleteTarget.clearAll){
-    if(typeof fbSaveCollection==='function') fbSaveCollection(deleteTarget.type,[]);
-    DB[deleteTarget.type]=[];
-    toast('🗑 Barcha ma\'lumotlar o\'chirildi');
-  } else {
-    if(typeof fbDelete==='function') fbDelete(deleteTarget.type, deleteTarget.id);
-    DB[deleteTarget.type]=DB[deleteTarget.type].filter(r=>r.id!==deleteTarget.id);
-    toast('🗑 O\'chirildi');
-  }
-  closeDeleteModal();
-  renderAll();
-}
 
 /* ═══════════════════════════════════════
    FORMS
@@ -2645,6 +2620,14 @@ function addForum(){
 /* ============================
    DELETE
    ============================ */
+function closeDeleteModal(){
+  document.getElementById('deleteModal').classList.remove('open');
+  document.getElementById('deleteModal').style.display='';
+}
+function confirmDelete(){
+  // This is a fallback — actual onclick set dynamically by deleteRecord()
+}
+
 function deleteRecord(table, id){
   const numId = Number(id);
   const rec   = DB[table].find(r => Number(r.id) === numId);
@@ -3063,6 +3046,7 @@ function addZoomDetailUrl(){
   if(!r) return;
   if(!r.media) r.media = [];
   r.media.push({ type, src: convertToDirectUrl(url), name: url });
+  if(typeof fbSave==='function') fbSave('zoom', r);
   document.getElementById('zdMediaUrl').value = '';
   renderZoomMedia(r);
   renderZoom();
@@ -3090,7 +3074,6 @@ function addZoomMedia(input, type){
   const r = DB.zoom.find(z => Number(z.id) === _zdCurrentId);
   if(!r) return;
   if(!r.media) r.media = [];
-
   const files = Array.from(input.files);
   let loaded = 0;
   files.forEach(file => {
@@ -3099,6 +3082,7 @@ function addZoomMedia(input, type){
       r.media.push({ type, src: e.target.result, name: file.name });
       loaded++;
       if(loaded === files.length){
+        if(typeof fbSave==='function') fbSave('zoom', r);
         renderZoomMedia(r);
         renderZoom();
         toast(`✅ ${files.length} ta fayl qo'shildi`, 'success');
@@ -3113,13 +3097,14 @@ function removeZoomMedia(idx){
   const r = DB.zoom.find(z => Number(z.id) === _zdCurrentId);
   if(!r || !r.media) return;
   r.media.splice(idx, 1);
+  if(typeof fbSave==='function') fbSave('zoom', r);
   renderZoomMedia(r);
   renderZoom();
 }
 
 function openLightbox(type, src){
-  const img = document.getElementById('lbImage');
-  const vid = document.getElementById('lbVideo');
+  const img = document.getElementById('lightboxImg');
+  const vid = document.getElementById('lightboxVid');
   if(type === 'image'){
     img.src = src; img.style.display = 'block';
     vid.style.display = 'none'; vid.src = '';
@@ -3127,7 +3112,14 @@ function openLightbox(type, src){
     vid.src = src; vid.style.display = 'block';
     img.style.display = 'none'; img.src = '';
   }
-  document.getElementById('mediaLightbox').classList.add('open');
+  document.getElementById('lightboxOverlay').style.display = 'flex';
+}
+function closeLightbox(){
+  const img = document.getElementById('lightboxImg');
+  const vid = document.getElementById('lightboxVid');
+  img.style.display='none'; img.src='';
+  vid.style.display='none'; vid.src='';
+  document.getElementById('lightboxOverlay').style.display = 'none';
 }
 
 /* ============================
