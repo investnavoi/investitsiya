@@ -2,8 +2,9 @@ name: Rejalashtirilgan Email Yuborish
 
 on:
   schedule:
-    - cron: '0 3 * * *'
-  workflow_dispatch:
+    # Har 30 daqiqada tekshiradi — aniq vaqtni dashboard dan tanlash mumkin
+    - cron: '0,30 * * * *'
+  workflow_dispatch: # Qo'lda ham ishga tushirish mumkin
 
 jobs:
   send-emails:
