@@ -783,7 +783,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="kpi-card c1"><div class="kpi-icon">🏢</div><div class="kpi-label" data-i18n="lbl_total">Jami</div><div class="kpi-val" id="ic-k1">0</div><div class="kpi-trend" data-i18n="lbl_company">Kompaniya</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label" data-i18n="lbl_ready">Tayyor</div><div class="kpi-val" id="ic-k2">0</div><div class="kpi-trend" data-i18n="lbl_active">Aktiv</div></div>
       <div class="kpi-card c3"><div class="kpi-icon">📧</div><div class="kpi-label">Email</div><div class="kpi-val" id="ic-k3">0/0</div><div class="kpi-trend" data-i18n="ic_k3_trend">Yuborildi/Mavjud</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">💵</div><div class="kpi-label" data-i18n="ic_k4_lbl">Jami Talab</div><div class="kpi-val" id="ic-k4">$0M</div><div class="kpi-trend" data-i18n="lbl_investment">Investitsiya</div></div>
+      
       <div class="kpi-card" style="background:linear-gradient(135deg,#1E2B4A,#2D3A6B);border:1px solid rgba(67,97,238,.3);cursor:pointer;position:relative;overflow:hidden" onclick="openRepliesModal()">
         <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:#7209B7;opacity:.15"></div>
         <div class="kpi-icon" style="background:linear-gradient(135deg,#7209B7,#4361EE);box-shadow:0 4px 12px rgba(114,9,183,.4)">💬</div>
@@ -1478,15 +1478,16 @@ input[type="time"]{-webkit-appearance:none;}
     <div class="email-rcpt" id="emailRcpt">—</div>
     <textarea class="email-textarea" id="emailMsg" rows="5" placeholder="Xabaringizni bu yerga yozing..."></textarea>
 
-    <!-- File link area -->
+    <!-- File attach area -->
     <div style="margin-top:.8rem">
-      <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">📎 Fayl havolasi (ixtiyoriy)</div>
-      <div style="display:flex;gap:.5rem;align-items:center">
-        <input class="form-input" id="emailFileLink" placeholder="Google Drive, Dropbox yoki boshqa havola..."
-          style="flex:1;font-size:.75rem">
+      <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">📎 Fayl biriktirish (ixtiyoriy)</div>
+      <div id="emailAttachArea" style="border:2px dashed var(--border);border-radius:10px;padding:.7rem 1rem;cursor:pointer;text-align:center;font-size:.75rem;color:var(--text2)" onclick="document.getElementById('emailFileInput').click()">
+        📂 Fayl tanlash uchun bosing
       </div>
-      <div style="font-size:.62rem;color:var(--text3);margin-top:.3rem">
-        💡 Faylni <a href="https://drive.google.com" target="_blank" style="color:#4361EE">Google Drive</a> ga yuklang → "Ulashish" → havolani bu yerga joylashtiring
+      <input type="file" id="emailFileInput" style="display:none" onchange="onEmailFileSelect(this)">
+      <div id="emailFileInfo" style="display:none;margin-top:.4rem;font-size:.72rem;color:var(--text2);display:flex;align-items:center;gap:.5rem">
+        <span id="emailFileName"></span>
+        <button onclick="clearEmailFile()" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:.8rem">✕</button>
       </div>
     </div>
 
@@ -2640,6 +2641,8 @@ async function executeBulkSend(){
   progress.style.display='block';
 
   emailjs.init('tPxgtKC4xvZkjqpd7');
+  window._sgKey  = 'SG.aiNmC8tRRXqoubmIuHF-Ig.lzv7lZq26zm-In5xcAQ0QtQBH0VXzMaRXXXXE92dYpE';
+  window._sgFrom = 'thelivezoneuz1@gmail.com';
   let sent=0, failed=0;
 
   for(let i=0; i<targets.length; i++){
@@ -3061,7 +3064,10 @@ function disableSchedule(){
   toast('🚫 Rejalashtirilgan email o\'chirildi');
 }
 
+var _emailAttachment = null;
+
 function closeEmailModal(){
+  clearEmailFile();
   document.getElementById('emailModal').classList.remove('open');
   emailTarget=null;
   const linkEl=document.getElementById('emailFileLink');
@@ -3118,31 +3124,108 @@ async function sendEmail(){
   if(!emailTarget)return;
   const msg=document.getElementById('emailMsg').value.trim();
   if(!msg){toast('⚠️ Iltimos, xabar yozing!','error');return;}
-  const fileLink = (document.getElementById('emailFileLink')?.value||'').trim();
   const btn=document.getElementById('sendBtn');
-  btn.disabled=true;btn.textContent='YUBORILMOQDA...';
+  btn.disabled=true; btn.textContent='YUBORILMOQDA...';
   try{
-    emailjs.init('tPxgtKC4xvZkjqpd7');
-    const fullMsg = msg + (fileLink ? `\n\n📎 Biriktirma: ${fileLink}` : '');
-    const result=await emailjs.send('service_1w08xxe','template_c1nxcvg',{
-      to_email:emailTarget.email,
-      to_name:emailTarget.rahbar,
-      company_name:emailTarget.kompaniya,
-      message:fullMsg,
-      reply_to: localStorage.getItem('_myEmail')||'',
-      from_name: 'Navoiy Investitsiya Bo\'limi',
+    const fullMsg = msg;
+    const htmlMsg = fullMsg.replace(/\n/g,'<br>');
+
+    // Attachment
+    const sgBody = {
+      personalizations:[{ to:[{ email: emailTarget.email, name: emailTarget.rahbar }] }],
+      from:{ email: window._sgFrom||'', name:'Navoiy Investitsiya' },
+      subject: `Investitsiya bo'yicha xabar — ${emailTarget.kompaniya}`,
+      content:[
+        { type:'text/plain', value: fullMsg },
+        { type:'text/html',  value:`<div style="font-family:sans-serif;line-height:1.7">${htmlMsg}</div>` },
+      ],
+    };
+    if(_emailAttachment){
+      sgBody.attachments = [{
+        content:     _emailAttachment.data.split(',').pop(),
+        filename:    _emailAttachment.filename,
+        type:        _emailAttachment.contentType||'application/octet-stream',
+        disposition: 'attachment',
+      }];
+    }
+
+    // SendGrid API orqali yuborish
+    const res = await fetch('https://api.sendgrid.com/v3/mail/send',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer ' + (window._sgKey||''),
+      },
+      body: JSON.stringify(sgBody),
     });
-    if(result.status===200){
-      const rec = DB.investorCompanies.find(r=>r.id===emailTarget.id);
+
+    if(res.ok || res.status===202){
+      const rec=DB.investorCompanies.find(r=>r.id===emailTarget.id);
       if(rec){ rec.emailSent=true; rec.emailSentDate=new Date().toISOString().split('T')[0]; if(typeof fbSave==='function') fbSave('investorCompanies',rec); }
       renderInvestorCompanies();
       toast('✅ Xabar muvaffaqiyatli yuborildi!');
       closeEmailModal();
+    } else {
+      const errText = await res.text();
+      console.error('SendGrid error:', errText);
+      // Fallback: EmailJS
+      await sendViaEmailJS(fullMsg);
     }
   } catch(err){
     console.error(err);
-    toast('❌ Xatolik: '+(err.text||'Email yuborilmadi'),'error');
-    btn.disabled=false;btn.textContent='YUBORISH 📧';
+    // Fallback: EmailJS
+    try{ await sendViaEmailJS(msg); }
+    catch(e2){
+      toast('❌ Xatolik: Email yuborilmadi','error');
+      btn.disabled=false; btn.textContent='YUBORISH 📧';
+    }
+  }
+}
+
+var _emailAttachment = null;
+
+function onEmailFileSelect(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 5 * 1024 * 1024){ toast('⚠️ Fayl 5MB dan kichik bo\'lishi kerak','error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    _emailAttachment = { data: e.target.result, filename: file.name, contentType: file.type };
+    const info = document.getElementById('emailFileInfo');
+    document.getElementById('emailFileName').textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+    info.style.display = 'flex';
+    document.getElementById('emailAttachArea').style.borderColor = '#4361EE';
+    document.getElementById('emailAttachArea').style.color = '#4361EE';
+    document.getElementById('emailAttachArea').textContent = '✅ ' + file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearEmailFile(){
+  _emailAttachment = null;
+  document.getElementById('emailFileInput').value = '';
+  document.getElementById('emailFileInfo').style.display = 'none';
+  document.getElementById('emailAttachArea').style.borderColor = '';
+  document.getElementById('emailAttachArea').style.color = '';
+  document.getElementById('emailAttachArea').textContent = '📂 Fayl tanlash uchun bosing';
+}
+
+async function sendViaEmailJS(fullMsg){
+  emailjs.init('tPxgtKC4xvZkjqpd7');
+  const result=await emailjs.send('service_1w08xxe','template_c1nxcvg',{
+    to_email:  emailTarget.email,
+    to_name:   emailTarget.rahbar,
+    company_name: emailTarget.kompaniya,
+    message:   fullMsg,
+    reply_to:  localStorage.getItem('_myEmail')||'',
+    from_name: 'Navoiy Investitsiya Bo\'limi',
+  });
+  if(result.status===200){
+    const rec=DB.investorCompanies.find(r=>r.id===emailTarget.id);
+    if(rec){ rec.emailSent=true; rec.emailSentDate=new Date().toISOString().split('T')[0]; if(typeof fbSave==='function') fbSave('investorCompanies',rec); }
+    renderInvestorCompanies();
+    toast('✅ Xabar yuborildi (EmailJS)!');
+    closeEmailModal();
   }
 }
 
