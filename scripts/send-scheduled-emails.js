@@ -53,13 +53,13 @@ function isTimeMatch(schedTime, hours, minutes) {
   const parts = t.split(":");
   if (parts.length < 2) return true;
   const sh = parseInt(parts[0]), sm = parseInt(parts[1]);
-  // Rejalashtirilgan vaqt (daqiqalarda)
   const schedMins   = sh * 60 + sm;
   const currentMins = hours * 60 + minutes;
-  // ±30 daqiqa oraliqda bo'lsa yuborsin
-  // Lekin bir kun ichida faqat bir marta yuborilishi uchun lastSent tekshiriladi
-  const diff = Math.abs(currentMins - schedMins);
-  return diff <= 30;
+  // YANGI MANTIQ: Rejalashtirilgan vaqt o'tgan bo'lsa → yuborish.
+  // lastSent tekshiruvi main() da bor — bugun qayta yuborilmaydi.
+  // Masalan: sched=09:30, hozir=10:04 → true (vaqti o'tgan, yuborish kerak)
+  // Masalan: sched=15:00, hozir=10:04 → false (hali erta)
+  return currentMins >= schedMins;
 }
 
 async function main() {
