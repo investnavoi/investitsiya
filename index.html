@@ -358,6 +358,29 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 .dc-result b{color:#059669;}
 .dc-actions{padding:.7rem 1.3rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:.5rem;}
 .forum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:1.1rem;}
+/* ═══ INTERNATIONAL FORUMS ═══ */
+.intl-section{margin-bottom:2rem;}
+.intl-region-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.2rem;}
+.intl-region-btn{display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:.82rem;font-weight:600;transition:all .2s;box-shadow:var(--shadow);}
+.intl-region-btn:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.intl-region-btn.active{background:linear-gradient(135deg,#4361EE,#7209B7);color:#fff;border-color:transparent;box-shadow:0 4px 15px rgba(67,97,238,.4);}
+.intl-region-btn .region-flag{font-size:1.3rem;}
+.intl-region-btn .region-count{background:rgba(255,255,255,.2);padding:1px 8px;border-radius:10px;font-size:.65rem;font-weight:700;}
+.intl-region-btn.active .region-count{background:rgba(255,255,255,.3);}
+.intl-forums-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.1rem;}
+.intl-forum-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:all .25s;border:1px solid var(--border);cursor:default;}
+.intl-forum-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px);}
+.intl-forum-img{width:100%;height:160px;object-fit:cover;display:block;background:#1a2332;}
+.intl-forum-body{padding:1rem 1.2rem;}
+.intl-forum-name{font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:.4rem;line-height:1.3;}
+.intl-forum-meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem;}
+.intl-forum-tag{font-size:.62rem;font-weight:600;padding:3px 8px;border-radius:8px;}
+.intl-forum-tag.date-tag{background:rgba(67,97,238,.15);color:#4361EE;}
+.intl-forum-tag.loc-tag{background:rgba(6,214,160,.15);color:#06D6A0;}
+.intl-forum-tag.type-tag{background:rgba(255,183,3,.15);color:#d97706;}
+.intl-forum-desc{font-size:.72rem;color:var(--text3);line-height:1.5;margin-bottom:.6rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.intl-forum-link{font-size:.68rem;font-weight:600;color:#4361EE;text-decoration:none;display:inline-flex;align-items:center;gap:4px;}
+.intl-forum-link:hover{text-decoration:underline;}
 .forum-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:all .2s;border:1px solid var(--border);}
 .zoom-media-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;}
 .zoom-media-item{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:16/9;background:#0f1629;cursor:pointer;}
@@ -763,6 +786,19 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="kpi-card c3"><div class="kpi-icon">✈️</div><div class="kpi-label" data-i18n="lbl_international">Xalqaro</div><div class="kpi-val" id="fr-k3">0</div><div class="kpi-trend" data-i18n="lbl_abroad">Chet elda</div></div>
       <div class="kpi-card c4"><div class="kpi-icon">🇺🇿</div><div class="kpi-label" data-i18n="lbl_local">Mahalliy</div><div class="kpi-val" id="fr-k4">0</div><div class="kpi-trend" data-i18n="lbl_inuz">O'zbekistonda</div></div>
     </div>
+    <!-- XALQARO FORUMLAR 2026 -->
+    <div class="intl-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <div style="font-size:1.05rem;font-weight:700;color:var(--text)">🌍 2026-yil Xalqaro Investitsiya Forumlari</div>
+          <div style="font-size:.72rem;color:var(--text3);margin-top:2px">Mintaqalar bo'yicha rejalashtirilgan yirik tadbirlar</div>
+        </div>
+        <div style="font-size:.68rem;color:var(--text3)" id="intl-total-count"></div>
+      </div>
+      <div class="intl-region-tabs" id="intl-region-tabs"></div>
+      <div class="intl-forums-grid" id="intl-forums-grid"></div>
+    </div>
+
     <div class="tcard" style="margin-bottom:1.2rem">
       <div class="tc-head">
         <div class="tc-title" data-i18n="fr_table_title">Tadbirlar ro'yxati</div>
@@ -780,17 +816,15 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="pg-title" data-i18n="page_investor_title">Investorlar — Kompaniyalar Ro'yxati</div>
       <div class="pg-sub" data-i18n="page_investor_sub">Navoiy viloyati investitsiya loyihalari boshqaruvi</div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
+    <div class="kpi-grid">
       <div class="kpi-card c1"><div class="kpi-icon">🏢</div><div class="kpi-label" data-i18n="lbl_total">Jami</div><div class="kpi-val" id="ic-k1">0</div><div class="kpi-trend" data-i18n="lbl_company">Kompaniya</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">✅</div><div class="kpi-label" data-i18n="lbl_ready">Tayyor</div><div class="kpi-val" id="ic-k2">0</div><div class="kpi-trend" data-i18n="lbl_active">Aktiv</div></div>
       <div class="kpi-card c3"><div class="kpi-icon">📧</div><div class="kpi-label">Email</div><div class="kpi-val" id="ic-k3">0/0</div><div class="kpi-trend" data-i18n="ic_k3_trend">Yuborildi/Mavjud</div></div>
-      
-      <div class="kpi-card" style="background:linear-gradient(135deg,#1E2B4A,#2D3A6B);border:1px solid rgba(67,97,238,.3);cursor:pointer;position:relative;overflow:hidden" onclick="openRepliesModal()">
-        <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:#7209B7;opacity:.15"></div>
-        <div class="kpi-icon" style="background:linear-gradient(135deg,#7209B7,#4361EE);box-shadow:0 4px 12px rgba(114,9,183,.4)">💬</div>
-        <div class="kpi-label" style="color:rgba(200,215,255,.7)" data-i18n="lbl_replies">Javoblar</div>
-        <div class="kpi-val" id="ic-k5" style="color:#a78bfa;font-size:1.8rem">0</div>
-        <div class="kpi-trend" style="color:rgba(180,200,255,.5)" data-i18n="lbl_email_replies">Email javoblari</div>
+      <div class="kpi-card c4" style="cursor:pointer;position:relative" onclick="openRepliesModal()">
+        <div class="kpi-icon">💬</div>
+        <div class="kpi-label" data-i18n="lbl_replies">Javoblar</div>
+        <div class="kpi-val" id="ic-k5">0</div>
+        <div class="kpi-trend" data-i18n="lbl_email_replies">Email javoblari</div>
         <div id="ic-k5-new" style="display:none;position:absolute;top:.8rem;right:.8rem;background:#EF233C;color:#fff;font-size:.55rem;font-weight:800;padding:2px 7px;border-radius:20px" data-i18n="lbl_new_badge">YANGI</div>
       </div>
     </div>
@@ -1952,7 +1986,7 @@ function showPage(id){
   else if(id==='investors')renderInvestors();
   else if(id==='local')renderLocal();
   else if(id==='zoom')renderZoom();
-  else if(id==='forums')renderForums();
+  else if(id==='forums'){renderForums();renderIntlForums();}
   else if(id==='investor')renderInvestorCompanies();
   else if(id==='admin')renderAdminLists();
 }
@@ -2306,11 +2340,18 @@ function renderZoom(){
 ═══════════════════════════════════════ */
 function renderForums(){
   const fr=DB.forums;
-  document.getElementById('fr-k1').textContent=fr.length;
+  // Count international forums
+  let intlTotal=0, intlAbroad=0, intlUz=0;
+  Object.keys(INTL_FORUMS).forEach(r=>{
+    const arr=INTL_FORUMS[r];
+    intlTotal+=arr.length;
+    if(r.includes("O'zbekiston")) intlUz+=arr.length; else intlAbroad+=arr.length;
+  });
+  document.getElementById('fr-k1').textContent=fr.length + intlTotal;
   document.getElementById('fr-k2').textContent=fr.filter(r=>r.holat&&r.holat.includes('tasdiqlangan')).length;
-  document.getElementById('fr-k3').textContent=fr.filter(r=>r.davlat&&r.davlat!=="O'zbekiston").length;
-  document.getElementById('fr-k4').textContent=fr.filter(r=>r.davlat==="O'zbekiston").length;
-  document.getElementById('badge-forums').textContent=fr.length;
+  document.getElementById('fr-k3').textContent=fr.filter(r=>r.davlat&&r.davlat!=="O'zbekiston").length + intlAbroad;
+  document.getElementById('fr-k4').textContent=fr.filter(r=>r.davlat==="O'zbekiston").length + intlUz;
+  document.getElementById('badge-forums').textContent=fr.length + intlTotal;
 
   const c=document.getElementById('forum-cards');
   if(!fr.length){
@@ -2344,6 +2385,94 @@ function renderForums(){
       </div>
     </div>`;
   }).join('');
+}
+
+/* ═══════════════════════════════════════
+   XALQARO FORUMLAR 2026 - STATIC DATA
+═══════════════════════════════════════ */
+const INTL_FORUMS = {
+  "🇺🇿 O'zbekiston": [
+    { nom:"CEVF 2026 — Central Eurasian Venture Forum", sana:"3 Aprel 2026", shahar:"Toshkent", joy:"JW Marriott Hotel", turi:"Vencher / Startap", desc:"Markaziy Yevrosiyo vencher forumi — vencher fondlar, xususiy investorlar va texnologik startaplarni birlashtiruvchi investitsiya platformasi. AI, fintech va deep tech sohasiga e'tibor.", url:"https://ventureforum.asia", img:"https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=300&fit=crop" },
+    { nom:"TIIF 2026 — 5-Toshkent Xalqaro Investitsiya Forumi", sana:"16–19 Iyun 2026", shahar:"Toshkent", joy:"Toshkent Kongresslar Saroyi", turi:"Investitsiya", desc:"Markaziy Osiyoning eng yirik investitsiya platformasi. 2025-yilda 97 mamlakatdan 8000+ ishtirokchi, $30.5 mlrd kelishuvlar. Energetika, sanoat, qishloq xo'jaligi, raqamli iqtisodiyot.", url:"https://tiif.online", img:"https://images.unsplash.com/photo-1587825140708-dfaf18c91086?w=600&h=300&fit=crop" },
+    { nom:"Investopia Global Talks Toshkent", sana:"Iyun 2026", shahar:"Toshkent", joy:"TIIF bilan birga", turi:"Investitsiya", desc:"BAA Investopia platformasi Markaziy Osiyoda birinchi marta. Qayta tiklanadigan energiya, raqamli texnologiyalar, infratuzilma bo'yicha investorlar dialogi.", url:"https://tiif.online", img:"https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&h=300&fit=crop" },
+    { nom:"OGU 2026 — Neft va Gaz O'zbekiston", sana:"12–14 May 2026", shahar:"Toshkent", joy:"CAEx Uzbekistan", turi:"Energetika / Ko'rgazma", desc:"O'zbekiston neft-gaz sanoatining eng yirik xalqaro ko'rgazma va konferensiyasi. Energetika, qazib olish, qayta ishlash texnologiyalari.", url:"https://ogu-expo.com", img:"https://images.unsplash.com/photo-1513828583688-c52646db42da?w=600&h=300&fit=crop" },
+    { nom:"INNOPROM. Central Asia 2026", sana:"Aprel 2026", shahar:"Toshkent", joy:"Uzexpocentre", turi:"Sanoat / Ko'rgazma", desc:"Rossiya INNOPROM ko'rgazmasining Markaziy Osiyo versiyasi. Sanoat modernizatsiyasi, raqamlashtirish, robotika va ishlab chiqarish texnologiyalari.", url:"https://innoprom.com", img:"https://images.unsplash.com/photo-1565043666747-69f6646db940?w=600&h=300&fit=crop" },
+    { nom:"IFN Uzbekistan Forum 2026 — Islom Moliyasi", sana:"2026", shahar:"Toshkent", joy:"Toshkent", turi:"Moliya / Forum", desc:"Islom moliyasi va investitsiya forumi. Sukuk, islomiy banklarni rivojlantirish, Shariatga muvofiq moliyaviy instrumentlar.", url:"https://redmoneyevents.com/event/ifnuzbekistan2026/", img:"https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=300&fit=crop" }
+  ],
+  "🇪🇺 Yevropa": [
+    { nom:"EIB Group Forum 2026", sana:"3–5 Mart 2026", shahar:"Lyuksemburg", joy:"EIB Bosh Ofisi", turi:"Investitsiya / Siyosat", desc:"Yevropa Investitsiya Banki forumi. Yevropa raqobatdorligi va xavfsizligini mustahkamlash, energetika, savdo va global salomatlik bo'yicha muhokamalar.", url:"https://www.eib.org/en/events/eib-group-forum", img:"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=300&fit=crop" },
+    { nom:"Invest Europe — Investors' Forum", sana:"18–19 Mart 2026", shahar:"Jeneva, Shveytsariya", joy:"Hotel President Wilson", turi:"Private Equity", desc:"Yevropaning yetakchi LP va GP yig'ilishi. Xususiy kapital, vencher investitsiyalar, ESG va fond boshqaruvi bo'yicha eng yangi ma'lumotlar.", url:"https://if.investeurope.eu", img:"https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=600&h=300&fit=crop" },
+    { nom:"Sustainable Investment Forum Europe", sana:"1 Aprel 2026", shahar:"Parij, Fransiya", joy:"Pullman Paris Montparnasse", turi:"Barqaror Investitsiya", desc:"UNEP FI hamkorligida barqaror moliya platformasi. Iqlim, tabiiy kapital va mas'uliyatli investitsiya strategiyalari.", url:"https://events.climateaction.org/sustainable-investment-forum-europe/", img:"https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&h=300&fit=crop" },
+    { nom:"World Investment Forum 2026", sana:"9–11 Iyun 2026", shahar:"Jeneva, Shveytsariya", joy:"UN Geneva", turi:"Investitsiya / BMT", desc:"BMT tashkil etgan global investitsiya forumi. Xalqaro investitsiya siyosati, rivojlanayotgan mamlakatlar uchun imkoniyatlar.", url:"https://indico.un.org/event/1021025/", img:"https://images.unsplash.com/photo-1524850011238-e3d235c7d4c9?w=600&h=300&fit=crop" },
+    { nom:"IMpower FundForum", sana:"22–24 Iyun 2026", shahar:"Monako", joy:"Grimaldi Forum", turi:"Fond Boshqaruvi", desc:"Yevropaning eng yirik fond boshqaruvi konferensiyasi. 2000+ ishtirokchi, aktivlar boshqaruvi, ETF va alternativ investitsiyalar.", url:"https://informaconnect.com/impower-fundforum/", img:"https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=600&h=300&fit=crop" },
+    { nom:"Private Equity Europe Forum", sana:"15–16 Sentyabr 2026", shahar:"London, Buyuk Britaniya", joy:"London", turi:"Private Equity", desc:"Yevropaning xususiy kapital liderlari uchun. Soliq siyosati, Buyuk Britaniya bozori, ELTIF/LTAF va exit strategiyalar muhokamasi.", url:"https://www.marketsgroup.org/forums/private-equity-europe-forum", img:"https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=600&h=300&fit=crop" }
+  ],
+  "🇺🇸 Amerika": [
+    { nom:"SelectUSA Investment Summit 2026", sana:"3–6 May 2026", shahar:"Maryland, AQSh", joy:"Gaylord National Resort", turi:"FDI / Investitsiya", desc:"AQShdagi eng yirik xorijiy to'g'ridan-to'g'ri investitsiya tadbiri. 5500+ ishtirokchi, 100+ mamlakatdan, 50+ shtat va hududlar. AQSh bozori imkoniyatlari.", url:"https://www.selectusasummit.us", img:"https://images.unsplash.com/photo-1501466044931-62695aada8e9?w=600&h=300&fit=crop" },
+    { nom:"US SIF Forum 2026 — Barqaror Investitsiya", sana:"2026", shahar:"Arlington, Virginia", joy:"Hilton Arlington", turi:"ESG / Barqaror", desc:"AQSh barqaror investitsiya forumi. ESG tendensiyalari, siyosat yangiliklari va tarmoq imkoniyatlari. Yuzlab professional ishtirokchilar.", url:"https://www.ussif.org/events-and-networking/conference", img:"https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=600&h=300&fit=crop" },
+    { nom:"PDAC 2026 — Mining Convention", sana:"1–4 Mart 2026", shahar:"Toronto, Kanada", joy:"Metro Toronto Convention Centre", turi:"Kon sanoati", desc:"Dunyoning eng nufuzli kon va geologiya konvensiyasi. O'zbekiston kun'i o'tkazildi — kon sanoati investitsiya imkoniyatlari.", url:"https://www.pdac.ca", img:"https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=600&h=300&fit=crop" },
+    { nom:"J.P. Morgan Global Investment Forum", sana:"2026", shahar:"Nyu-York, AQSh", joy:"New York", turi:"Moliya / Investitsiya", desc:"J.P. Morgan global investitsiya forumi. Institutsional investorlar, portfel strategiyalari, makroiqtisodiy tahlillar.", url:"https://www.jpmorgan.com", img:"https://images.unsplash.com/photo-1534430480872-3498386e7856?w=600&h=300&fit=crop" },
+    { nom:"LatAm Investment Summit", sana:"2026", shahar:"Mayami, AQSh", joy:"Miami", turi:"Investitsiya", desc:"Lotin Amerikasi va AQSh investorlari uchun. Rivojlanayotgan bozorlar, xususiy kapital va venchur investitsiyalar.", url:"#", img:"https://images.unsplash.com/photo-1533106497176-45ae19e68ba2?w=600&h=300&fit=crop" }
+  ],
+  "🇷🇺 Rossiya": [
+    { nom:"SPIEF 2026 — Sankt-Peterburg Xalqaro Iqtisodiy Forumi", sana:"3–6 Iyun 2026", shahar:"Sankt-Peterburg", joy:"Expoforum", turi:"Iqtisodiy Forum", desc:"Rossiyaning eng yirik biznes tadbiri, \"Rossiya Davos'i\". 10,000+ ishtirokchi, 120+ mamlakatdan. 2026-da Saudiya Arabistoni mehmon davlat.", url:"https://forumspb.com", img:"https://images.unsplash.com/photo-1556610961-2fecc5927173?w=600&h=300&fit=crop" },
+    { nom:"INNOPROM 2026 — Xalqaro Sanoat Ko'rgazmasi", sana:"Iyul 2026", shahar:"Yekaterinburg", joy:"Yekaterinburg-Expo", turi:"Sanoat / Ko'rgazma", desc:"Rossiyaning asosiy sanoat ko'rgazmasi. Raqamli ishlab chiqarish, robotika, avtomatlashtirish va sanoat texnologiyalari.", url:"https://innoprom.com", img:"https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=600&h=300&fit=crop" },
+    { nom:"Rossiya–BAA Biznes Forumi", sana:"2026", shahar:"Moskva", joy:"Moskva", turi:"Ikki tomonlama", desc:"Rossiya va Birlashgan Arab Amirliklari o'rtasida savdo-iqtisodiy hamkorlik forumi. Investitsiya loyihalari va B2B uchrashuvlar.", url:"https://rc-international.org", img:"https://images.unsplash.com/photo-1513326738677-b964603b136d?w=600&h=300&fit=crop" },
+    { nom:"KazanForum 2026", sana:"2026", shahar:"Qazon", joy:"Qazon Expo", turi:"Xalol Iqtisodiyot", desc:"Rossiya va Islom hamkorlik tashkiloti mamlakatlari o'rtasida iqtisodiy va investitsiya hamkorligi forumi.", url:"https://kazanforum.com", img:"https://images.unsplash.com/photo-1547448415-e9f5b28e570d?w=600&h=300&fit=crop" }
+  ],
+  "🇨🇳 Xitoy": [
+    { nom:"CIIE 2026 — Xitoy Xalqaro Import Expo", sana:"5–10 Noyabr 2026", shahar:"Shanxay", joy:"National Exhibition Center", turi:"Import / Ko'rgazma", desc:"Xitoyning eng yirik xalqaro import ko'rgazmasi. Dunyoning 100+ mamlakatidan ishtirokchilar. Oziq-ovqat, texnologiya, sog'liqni saqlash.", url:"https://www.ciie.org/zbh/en/", img:"https://images.unsplash.com/photo-1547981609-4b6bfe67ca0b?w=600&h=300&fit=crop" },
+    { nom:"Greater China Global Investment Forum", sana:"2026", shahar:"Pekin / Gonkong", joy:"Xitoy", turi:"Institutsional Investitsiya", desc:"Xitoy, Gonkong, Makao va Tayvan pensiya, sug'urta va davlat fondlari qaror qabul qiluvchilari uchun investitsiya forumi.", url:"https://register.institutionalinvestor.com/2026-greater-china-global-investment-forum", img:"https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=600&h=300&fit=crop" },
+    { nom:"CIFIT 2026 — Xitoy Investitsiya va Savdo Yarmarkasi", sana:"Sentyabr 2026", shahar:"Syamen", joy:"Xiamen International Conference Center", turi:"Investitsiya / Savdo", desc:"26-Xitoy xalqaro investitsiya va savdo yarmarkasi. \"Invest in China\" platformasi. Barcha tarmoqlar bo'yicha investitsiya imkoniyatlari.", url:"https://www.chinafair.org.cn", img:"https://images.unsplash.com/photo-1474181628-2a9769538816?w=600&h=300&fit=crop" },
+    { nom:"Canton Fair 2026 (Bahor)", sana:"15 Aprel – 5 May 2026", shahar:"Guanchjou", joy:"Canton Fair Complex", turi:"Savdo / Ko'rgazma", desc:"Dunyoning eng katta savdo yarmarkasi. 60,000+ stend, 200+ mamlakat. Sanoat, elektron, to'qimachilik va iste'mol tovarlari.", url:"https://www.cantonfair.org.cn", img:"https://images.unsplash.com/photo-1532274402911-5a369e4c4bb5?w=600&h=300&fit=crop" },
+    { nom:"Boao Forum for Asia 2026", sana:"Mart 2026", shahar:"Boao, Xaynan", joy:"BFA International Conference Center", turi:"Iqtisodiy Forum", desc:"Osiyo davoslari — Osiyoning eng nufuzli iqtisodiy forumi. Davlat rahbarlari, global korporatsiya CEOlari ishtiroki.", url:"https://www.boaoforum.org", img:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=300&fit=crop" }
+  ]
+};
+
+let _intlActiveRegion = "🇺🇿 O'zbekiston";
+
+function renderIntlForums(){
+  const tabsEl = document.getElementById('intl-region-tabs');
+  const gridEl = document.getElementById('intl-forums-grid');
+  const totalEl = document.getElementById('intl-total-count');
+  if(!tabsEl) return;
+
+  const regions = Object.keys(INTL_FORUMS);
+  let total = 0;
+  regions.forEach(r => total += INTL_FORUMS[r].length);
+  totalEl.textContent = 'Jami: ' + total + ' ta forum';
+
+  tabsEl.innerHTML = regions.map(r => {
+    const count = INTL_FORUMS[r].length;
+    const active = r === _intlActiveRegion ? ' active' : '';
+    return `<button class="intl-region-btn${active}" onclick="setIntlRegion('${r}')">
+      <span class="region-flag">${r.split(' ')[0]}</span>
+      <span>${r.split(' ').slice(1).join(' ')}</span>
+      <span class="region-count">${count}</span>
+    </button>`;
+  }).join('');
+
+  const forums = INTL_FORUMS[_intlActiveRegion] || [];
+  gridEl.innerHTML = forums.map(f => `
+    <div class="intl-forum-card">
+      <img class="intl-forum-img" src="${f.img}" alt="${f.nom}" onerror="this.style.background='linear-gradient(135deg,#1E2B4A,#2D3A6B)';this.style.height='160px';this.alt='📷';">
+      <div class="intl-forum-body">
+        <div class="intl-forum-name">${f.nom}</div>
+        <div class="intl-forum-meta">
+          <span class="intl-forum-tag date-tag">📅 ${f.sana}</span>
+          <span class="intl-forum-tag loc-tag">📍 ${f.shahar}</span>
+          <span class="intl-forum-tag type-tag">${f.turi}</span>
+        </div>
+        <div class="intl-forum-desc">${f.desc}</div>
+        ${f.url && f.url !== '#' ? `<a class="intl-forum-link" href="${f.url}" target="_blank" rel="noopener">🔗 Rasmiy sayt →</a>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function setIntlRegion(r){
+  _intlActiveRegion = r;
+  renderIntlForums();
 }
 
 /* ═══════════════════════════════════════
@@ -2849,6 +2978,7 @@ function renderAll(){
   renderLocal();
   renderZoom();
   renderForums();
+  renderIntlForums();
   renderInvestorCompanies();
   if(isAdmin) renderAdminLists();
 }
