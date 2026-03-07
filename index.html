@@ -972,9 +972,23 @@ input[type="time"]{-webkit-appearance:none;}
             📅 Barchasiga rejalashtirish
           </button>
           <button class="btn btn-sm" onclick="openApolloSearch()" style="background:linear-gradient(135deg,#FFB703,#FB8500);color:#000;border:none;font-weight:700">
-            🚀 Apollo'dan tadbirkor topish
+            🔍 Apollo qidiruv
+          </button>
+          <button class="btn btn-sm" onclick="apolloAutoImport()" id="apoAutoBtn" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none;font-weight:700">
+            ⚡ Avtomatik import (Apollo)
           </button>
         </div>
+      </div>
+      <!-- Apollo auto-import progress -->
+      <div id="apoAutoProgress" style="display:none;padding:.8rem 1rem;background:linear-gradient(135deg,rgba(5,150,105,.08),rgba(6,214,160,.08));border-radius:10px;margin-top:.7rem;border:1px solid rgba(5,150,105,.2)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:.75rem;font-weight:700;color:var(--text)" id="apoAutoTitle">⚡ Apollo avtomatik import</span>
+          <span style="font-size:.65rem;color:var(--text2)" id="apoAutoStatus">Boshlanmoqda...</span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+          <div id="apoAutoBar" style="height:100%;background:linear-gradient(90deg,#059669,#06D6A0);border-radius:3px;width:0%;transition:width .4s ease"></div>
+        </div>
+        <div style="margin-top:6px;font-size:.62rem;color:var(--text3)" id="apoAutoDetail">Sanoatlar: Mining, Energy, Manufacturing...</div>
       </div>
       <div class="tscroll">
         <table>
@@ -2929,62 +2943,170 @@ async function apolloImportSelected(){
   _apoSelected.forEach(function(idx){
     var p = _apoResults[idx];
     if(!p) return;
-    var name = ((p.first_name||'') + ' ' + (p.last_name||'')).trim();
-    var orgName = (p.organization && p.organization.name) || p.organization_name || '';
-    var title = p.title || '';
-    var email = p.email || '';
-    var phone = p.phone_number || p.sanitized_phone || '';
-    var country = p.country || '';
-    var city = p.city || '';
-    var industry = (p.organization && p.organization.industry) || '';
-    var linkedIn = p.linkedin_url || '';
-    var website = (p.organization && p.organization.website_url) || '';
-
-    importList.push({
-      kompaniya: orgName,
-      rahbar: name,
-      lavozim: title,
-      email: email,
-      telefon: phone,
-      davlat: country,
-      shahar: city,
-      soha: industry,
-      linkedin: linkedIn,
-      website: website,
-      holat: 'Yangi',
-      manba: 'Apollo.io',
-      sana: new Date().toISOString().slice(0,10),
-      emailSent: false
-    });
+    importList.push(apolloPersonToRecord(p));
   });
 
   if(!confirm(importList.length + ' ta kontaktni saytga import qilamizmi?')) return;
+  var count = await saveApolloRecords(importList);
+  alert('\u2705 ' + count + ' ta kontakt muvaffaqiyatli import qilindi!');
+  closeApolloSearch();
+  renderInvestorCompanies();
+  renderAll();
+}
 
+function apolloPersonToRecord(p){
+  var name = ((p.first_name||'') + ' ' + (p.last_name||'')).trim();
+  return {
+    kompaniya: (p.organization && p.organization.name) || p.organization_name || '',
+    rahbar: name,
+    lavozim: p.title || '',
+    email: p.email || '',
+    telefon: p.phone_number || p.sanitized_phone || '',
+    davlat: p.country || '',
+    shahar: p.city || '',
+    soha: (p.organization && p.organization.industry) || '',
+    linkedin: p.linkedin_url || '',
+    website: (p.organization && p.organization.website_url) || '',
+    holat: 'Yangi',
+    manba: 'Apollo.io',
+    sana: new Date().toISOString().slice(0,10),
+    emailSent: false
+  };
+}
+
+async function saveApolloRecords(list){
   var successCount = 0;
-  var existEmails = DB.investorCompanies.map(function(r){ return (r.email||'').toLowerCase(); });
+  var existNames = DB.investorCompanies.map(function(r){ return ((r.kompaniya||'')+'|'+(r.rahbar||'')).toLowerCase(); });
 
-  for(var i=0; i<importList.length; i++){
-    var item = importList[i];
-    // Duplikat tekshirish
-    if(item.email && existEmails.includes(item.email.toLowerCase())){
-      continue;
-    }
+  for(var i=0; i<list.length; i++){
+    var item = list[i];
+    var key = ((item.kompaniya||'')+'|'+(item.rahbar||'')).toLowerCase();
+    if(existNames.includes(key)) continue;
     try {
       if(typeof firebase !== 'undefined' && firebase.firestore){
-        await firebase.firestore().collection('investorCompanies').add(item);
+        var docRef = await firebase.firestore().collection('investorCompanies').add(item);
+        item.id = docRef.id;
+      } else {
+        item.id = 'apo_'+Date.now()+'_'+i;
       }
-      DB.investorCompanies.push(Object.assign({id:'apo_'+Date.now()+'_'+i}, item));
-      if(item.email) existEmails.push(item.email.toLowerCase());
+      DB.investorCompanies.push(item);
+      existNames.push(key);
       successCount++;
     } catch(e){
       console.error('Import xato:', e);
     }
   }
+  return successCount;
+}
 
-  alert('\u2705 ' + successCount + ' ta kontakt muvaffaqiyatli import qilindi!\n\u26A0\uFE0F Dublikatlar o\'tkazib yuborildi.');
-  closeApolloSearch();
+/* ═══ APOLLO AUTO-IMPORT ═══ */
+const APOLLO_AUTO_SEARCHES = [
+  {label:'Mining & Metals — Germany, Canada, Australia', titles:['CEO','Founder','Managing Director','Chairman'], locations:['Germany','Canada','Australia'], industries:['mining & metals']},
+  {label:'Oil & Energy — UAE, Saudi Arabia, USA', titles:['CEO','Founder','President','Director'], locations:['United Arab Emirates','Saudi Arabia','United States'], industries:['oil & energy']},
+  {label:'Manufacturing — China, Turkey, South Korea', titles:['CEO','Founder','Managing Director','Owner'], locations:['China','Turkey','South Korea'], industries:['manufacturing']},
+  {label:'Construction — Turkey, Germany, UAE', titles:['CEO','Founder','Director','Owner'], locations:['Turkey','Germany','United Arab Emirates'], industries:['construction']},
+  {label:'Agriculture — India, China, Germany', titles:['CEO','Founder','Managing Director'], locations:['India','China','Germany'], industries:['agriculture']},
+  {label:'Textiles — Turkey, China, India', titles:['CEO','Founder','Owner','Director'], locations:['Turkey','China','India'], industries:['textiles']},
+  {label:'Chemicals — Germany, China, Japan', titles:['CEO','Founder','Managing Director'], locations:['Germany','China','Japan'], industries:['chemicals']},
+  {label:'Renewable Energy — Germany, UAE, UK', titles:['CEO','Founder','Director'], locations:['Germany','United Arab Emirates','United Kingdom'], industries:['renewable energy']},
+  {label:'Food & Beverages — UAE, Turkey, Russia', titles:['CEO','Founder','Owner'], locations:['United Arab Emirates','Turkey','Russia'], industries:['food & beverages']},
+  {label:'Logistics — China, UAE, Singapore', titles:['CEO','Founder','Director'], locations:['China','United Arab Emirates','Singapore'], industries:['logistics']}
+];
+
+let _apoAutoRunning = false;
+
+async function apolloAutoImport(){
+  if(_apoAutoRunning){
+    alert('Import allaqachon ishlayapti, kuting!');
+    return;
+  }
+
+  if(!confirm('Apollo.io dan Navoiyga mos 10 ta sanoat bo\'yicha avtomatik qidiruv va import boshlanadi.\n\nHar bir qidiruvdan 25 tadan kontakt olinadi.\nJami: ~250 ta kontakt.\n\nDavom etsinmi?')) return;
+
+  _apoAutoRunning = true;
+  var btn = document.getElementById('apoAutoBtn');
+  btn.disabled = true;
+  btn.textContent = '\u23F3 Import qilinmoqda...';
+
+  var progressDiv = document.getElementById('apoAutoProgress');
+  var bar = document.getElementById('apoAutoBar');
+  var statusEl = document.getElementById('apoAutoStatus');
+  var detailEl = document.getElementById('apoAutoDetail');
+  var titleEl = document.getElementById('apoAutoTitle');
+  progressDiv.style.display = 'block';
+
+  var totalImported = 0;
+  var totalFound = 0;
+  var totalSearches = APOLLO_AUTO_SEARCHES.length;
+
+  for(var s=0; s<totalSearches; s++){
+    var search = APOLLO_AUTO_SEARCHES[s];
+    var pct = Math.round(((s)/totalSearches)*100);
+    bar.style.width = pct + '%';
+    statusEl.textContent = (s+1) + ' / ' + totalSearches + ' qidiruv';
+    detailEl.textContent = '\u{1F50D} ' + search.label;
+    titleEl.textContent = '\u26A1 ' + search.label;
+
+    try {
+      var body = {
+        page: 1,
+        per_page: 25,
+        person_titles: search.titles,
+        person_locations: search.locations
+      };
+      if(search.industries && search.industries.length) body.organization_industry_tag_ids = search.industries;
+
+      var resp = await fetch('https://api.apollo.io/api/v1/mixed_people/api_search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'x-api-key': APOLLO_KEY
+        },
+        body: JSON.stringify(body)
+      });
+
+      if(!resp.ok){
+        detailEl.textContent = '\u26A0\uFE0F Xato: ' + resp.status + ' — keyingisiga o\'tilmoqda...';
+        await new Promise(function(r){setTimeout(r,1500)});
+        continue;
+      }
+
+      var data = await resp.json();
+      var people = data.people || [];
+      totalFound += people.length;
+
+      if(people.length > 0){
+        var records = people.map(apolloPersonToRecord);
+        var imported = await saveApolloRecords(records);
+        totalImported += imported;
+        detailEl.textContent = '\u2705 ' + people.length + ' topildi, ' + imported + ' ta import qilindi';
+      } else {
+        detailEl.textContent = '\u{1F6AB} Natija topilmadi';
+      }
+    } catch(err){
+      detailEl.textContent = '\u26A0\uFE0F ' + err.message;
+    }
+
+    // Rate limit — Apollo bepul: 50 req/min
+    await new Promise(function(r){setTimeout(r,1500)});
+  }
+
+  bar.style.width = '100%';
+  statusEl.textContent = 'Tugadi!';
+  titleEl.textContent = '\u2705 Import yakunlandi!';
+  detailEl.textContent = 'Jami topildi: ' + totalFound + ' | Import qilindi: ' + totalImported + ' | Dublikatlar o\'tkazib yuborildi';
+
+  btn.disabled = false;
+  btn.textContent = '\u26A1 Avtomatik import (Apollo)';
+  _apoAutoRunning = false;
+
   renderInvestorCompanies();
   renderAll();
+
+  setTimeout(function(){
+    progressDiv.style.display = 'none';
+  }, 8000);
 }
 
 /* ═══════════════════════════════════════
