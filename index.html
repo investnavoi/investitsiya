@@ -2770,6 +2770,7 @@ function setIntlRegion(i){
    APOLLO.IO INTEGRATION
 ═══════════════════════════════════════ */
 const APOLLO_KEY = '_k3r9J1QYdZLU9IopNgcgg';
+const APOLLO_PROXY = 'https://apollo-proxy-navoiy.netlify.app/api/apollo-search';
 let _apoPage = 1;
 let _apoResults = [];
 let _apoSelected = new Set();
@@ -2821,12 +2822,10 @@ async function apolloSearch(page){
   if(industries.length) body.organization_industry_tag_ids = industries;
 
   try {
-    var resp = await fetch('https://api.apollo.io/api/v1/mixed_people/api_search', {
+    var resp = await fetch(APOLLO_PROXY, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'x-api-key': APOLLO_KEY
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
     });
@@ -3056,12 +3055,10 @@ async function apolloAutoImport(){
       };
       if(search.industries && search.industries.length) body.organization_industry_tag_ids = search.industries;
 
-      var resp = await fetch('https://api.apollo.io/api/v1/mixed_people/api_search', {
+      var resp = await fetch(APOLLO_PROXY, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'x-api-key': APOLLO_KEY
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
       });
