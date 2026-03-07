@@ -520,8 +520,134 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 .send-btn{padding:10px 28px;border-radius:12px;font-family:'Inter',sans-serif;font-size:.78rem;font-weight:700;color:#fff;background:linear-gradient(135deg,#2563eb,#3b82f6);border:none;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.35);transition:all .18s;}
 .send-btn:hover:not(:disabled){background:linear-gradient(135deg,#1d4ed8,#2563eb);}
 .send-btn:disabled{background:#9ca3af;cursor:not-allowed;}
-@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.two-col{grid-template-columns:1fr;}.form-grid{grid-template-columns:1fr 1fr;}.form-group.span-3{grid-column:span 2;}.tn-uname,.tn-urole,.tn-date{display:none;}}
-@media(max-width:600px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.form-grid{grid-template-columns:1fr;}.form-group.span-2,.form-group.span-3{grid-column:span 1;}.page{padding:1rem;}.zoom-detail-body{grid-template-columns:1fr;}}
+/* ===== MOBILE RESPONSIVE ===== */
+@media(max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .two-col{grid-template-columns:1fr;}
+  .form-grid{grid-template-columns:1fr 1fr;}
+  .form-group.span-3{grid-column:span 2;}
+  .tn-uname,.tn-urole,.tn-date{display:none;}
+  .tn-btn.green{display:none;}
+  .tn-row1{padding:.8rem 1rem;}
+  .tn-controls{gap:.5rem;}
+  .tn-logo-dept{display:none;}
+  .intl-forums-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));}
+  .data-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));}
+  .zoom-detail-box{width:95vw!important;}
+  .notif-panel{width:320px;right:-60px;}
+  .ij-panel{width:280px;}
+}
+
+@media(max-width:600px){
+  /* — Nav Row 1 — */
+  .tn-row1{padding:.6rem .7rem;gap:.5rem;}
+  .tn-logo-icon{width:36px;height:36px;border-radius:10px;font-size:16px;}
+  .tn-logo-name{font-size:.8rem;}
+  .tn-logo-dept{display:none;}
+  .tn-controls{gap:.4rem;}
+  .tn-avatar{width:30px;height:30px;font-size:11px;}
+  .tn-date,.tn-uname,.tn-urole{display:none!important;}
+  .tn-btn.green{display:none;}
+  .lang-btn{padding:4px 8px;font-size:.6rem;}
+  .theme-toggle{width:42px;height:24px;}
+  .theme-toggle-knob{width:18px;height:18px;font-size:10px;}
+  .theme-toggle.dark .theme-toggle-knob{transform:translateX(18px);}
+  .notif-bell{width:30px;height:30px;font-size:.85rem;}
+  .tn-btn{padding:5px 10px;font-size:.65rem;}
+
+  /* — Nav Row 2 Tabs — */
+  .tn-row2{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .tn-row2::-webkit-scrollbar{display:none;}
+  .tn-tab{flex:none;padding:9px 12px;font-size:.7rem;gap:4px;min-width:auto;}
+  .tn-tab span[data-i18n]{display:none;}
+  .tn-tab .tn-tab-icon{font-size:16px;}
+  .tn-tab .tn-badge{font-size:.5rem;padding:1px 4px;margin-left:2px;}
+  .tn-tab #adminTabLabel{display:none;}
+
+  /* — Page Content — */
+  .page{padding:.8rem!important;}
+
+  /* — KPI Cards — */
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:1rem;}
+  .kpi-card{padding:.8rem;}
+  .kpi-card .kpi-num{font-size:1.4rem;}
+
+  /* — Data Grid / Cards — */
+  .data-grid{grid-template-columns:1fr!important;gap:.8rem;}
+  .two-col{grid-template-columns:1fr!important;gap:.8rem;}
+
+  /* — Forms — */
+  .form-grid{grid-template-columns:1fr!important;}
+  .form-group.span-2,.form-group.span-3{grid-column:span 1!important;}
+
+  /* — Tables — */
+  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;font-size:.7rem;}
+  table th,table td{padding:6px 8px;}
+
+  /* — International Forums — */
+  .intl-section{margin-bottom:1.2rem;}
+  .intl-region-tabs{gap:.3rem;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none;}
+  .intl-region-tabs::-webkit-scrollbar{display:none;}
+  .intl-region-btn{flex-shrink:0;padding:7px 12px;font-size:.72rem;gap:5px;}
+  .intl-region-btn .region-flag{font-size:1rem;}
+  .intl-region-btn .region-count{padding:1px 5px;font-size:.55rem;}
+  .intl-forums-grid{grid-template-columns:1fr!important;gap:.7rem;}
+  .intl-forum-card{border-radius:10px;}
+  .intl-forum-img,.intl-forum-img-fallback{height:130px!important;}
+  .intl-forum-body{padding:.7rem;}
+  .intl-forum-name{font-size:.82rem;}
+  .intl-forum-meta{gap:.3rem;}
+  .intl-forum-tag{font-size:.58rem;padding:2px 6px;}
+  .intl-forum-desc{font-size:.7rem;-webkit-line-clamp:2;}
+
+  /* — Forum Cards (DB) — */
+  .forum-cards{grid-template-columns:1fr!important;gap:.7rem;}
+  .forum-card{border-radius:10px;}
+
+  /* — Modals — */
+  .modal{width:calc(100vw - 1.2rem)!important;max-width:calc(100vw - 1.2rem)!important;padding:1.1rem;border-radius:14px;}
+  .modal-title{font-size:.85rem;}
+  .zoom-detail-box{width:calc(100vw - 1rem)!important;max-height:calc(100vh - 2rem)!important;border-radius:14px;}
+  .zoom-detail-head{padding:1rem;gap:10px;}
+  .zoom-detail-avatar{width:40px;height:40px;font-size:14px;}
+  .zoom-detail-name{font-size:.88rem;}
+  .zoom-detail-body{grid-template-columns:1fr!important;padding:1rem;gap:.8rem;}
+
+  /* — Notification Panel — */
+  .notif-panel{position:fixed!important;top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:70vh;border-radius:16px 16px 0 0;z-index:600;}
+  .notif-list{max-height:50vh;overflow-y:auto;}
+
+  /* — IJ Widget (floating) — */
+  .ij-widget{right:.6rem;bottom:.8rem;}
+  .ij-toggle{padding:.5rem .6rem;min-width:50px;border-radius:10px;}
+  .ij-toggle-icon{font-size:1rem;}
+  .ij-toggle-label{font-size:.48rem;}
+  .ij-toggle-total{font-size:.9rem;}
+  .ij-panel{width:calc(100vw - 1.5rem)!important;position:fixed!important;bottom:70px!important;right:.75rem!important;}
+
+  /* — Buttons — */
+  .btn{padding:5px 10px;font-size:.62rem;}
+
+  /* — Chart containers — */
+  canvas{max-height:200px!important;}
+
+  /* — Section titles — */
+  h2,h3{font-size:1rem!important;}
+
+  /* — Scrollbar hide on mobile — */
+  *::-webkit-scrollbar{width:2px;height:2px;}
+}
+
+@media(max-width:380px){
+  .kpi-grid{grid-template-columns:1fr;gap:.5rem;}
+  .tn-logo-name{font-size:.72rem;}
+  .tn-logo-icon{width:30px;height:30px;font-size:14px;border-radius:8px;}
+  .lang-switcher{display:none;}
+  .tn-tab{padding:8px 10px;}
+  .tn-tab .tn-tab-icon{font-size:14px;}
+  .intl-region-btn{padding:5px 8px;font-size:.65rem;border-radius:8px;}
+}
+
 @media print{.ij-widget,.topnav{display:none!important;}}
 /* ===== ZOOM MEDIA URL ROW ===== */
 .zm-url-row { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; background:var(--bg); border-radius:10px; padding:.6rem .8rem; border:1px solid var(--border); }
@@ -627,13 +753,13 @@ input[type="time"]{-webkit-appearance:none;}
   </div>
   <div style="background:var(--nav-bg2)">
   <div class="tn-row2" style="max-width:1600px;margin:0 auto">
-    <div class="tn-tab active" id="tab-overview" onclick="showPage('overview')"><span class="tn-tab-icon">🏠</span><span data-i18n="nav_overview">Umumiy ma'lumotlar</span></div>
-    <div class="tn-tab" id="tab-investors" onclick="showPage('investors')"><span class="tn-tab-icon">🌍</span><span data-i18n="nav_investors">Investorlar Tashriflari</span><span class="tn-badge" id="badge-investors">0</span></div>
-    <div class="tn-tab" id="tab-local" onclick="showPage('local')"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_local">Mahalliy Tadbirkorlar</span><span class="tn-badge" id="badge-local">0</span></div>
-    <div class="tn-tab" id="tab-zoom" onclick="showPage('zoom')"><span class="tn-tab-icon">💻</span><span data-i18n="nav_zoom">Zoom Uchrashuvlar</span><span class="tn-badge" id="badge-zoom">0</span></div>
-    <div class="tn-tab" id="tab-forums" onclick="showPage('forums')"><span class="tn-tab-icon">🗓</span><span data-i18n="nav_forums">Forumlar</span><span class="tn-badge" id="badge-forums">0</span></div>
-    <div class="tn-tab" id="tab-investor" onclick="showPage('investor')"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_investorco">Investorlar bazasi</span><span class="tn-badge" id="badge-investorco">0</span></div>
-    <div class="tn-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()"><span class="tn-tab-icon">🔐</span><span id="adminTabLabel" data-i18n="nav_login">Kirish</span></div>
+    <div class="tn-tab active" id="tab-overview" onclick="showPage('overview')" title="Umumiy"><span class="tn-tab-icon">🏠</span><span data-i18n="nav_overview">Umumiy ma'lumotlar</span></div>
+    <div class="tn-tab" id="tab-investors" onclick="showPage('investors')" title="Investorlar"><span class="tn-tab-icon">🌍</span><span data-i18n="nav_investors">Investorlar Tashriflari</span><span class="tn-badge" id="badge-investors">0</span></div>
+    <div class="tn-tab" id="tab-local" onclick="showPage('local')" title="Mahalliy"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_local">Mahalliy Tadbirkorlar</span><span class="tn-badge" id="badge-local">0</span></div>
+    <div class="tn-tab" id="tab-zoom" onclick="showPage('zoom')" title="Zoom"><span class="tn-tab-icon">💻</span><span data-i18n="nav_zoom">Zoom Uchrashuvlar</span><span class="tn-badge" id="badge-zoom">0</span></div>
+    <div class="tn-tab" id="tab-forums" onclick="showPage('forums')" title="Forumlar"><span class="tn-tab-icon">🗓</span><span data-i18n="nav_forums">Forumlar</span><span class="tn-badge" id="badge-forums">0</span></div>
+    <div class="tn-tab" id="tab-investor" onclick="showPage('investor')" title="Baza"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_investorco">Investorlar bazasi</span><span class="tn-badge" id="badge-investorco">0</span></div>
+    <div class="tn-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()" title="Admin"><span class="tn-tab-icon">🔐</span><span id="adminTabLabel" data-i18n="nav_login">Kirish</span></div>
   </div>
   </div>
 </div>
