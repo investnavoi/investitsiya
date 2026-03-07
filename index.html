@@ -617,6 +617,11 @@ tbody td:first-child{color:var(--text);font-weight:600;}
   .notif-panel{position:fixed!important;top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:70vh;border-radius:16px 16px 0 0;z-index:600;}
   .notif-list{max-height:50vh;overflow-y:auto;}
 
+  /* — Apollo Modal — */
+  #apolloModal>div{width:100%!important;max-width:100vw!important;border-radius:10px;max-height:95vh!important;}
+  #apolloFilters{grid-template-columns:1fr!important;}
+  #apolloFilters select{height:60px!important;}
+
   /* — IJ Widget (floating) — */
   .ij-widget{right:.6rem;bottom:.8rem;}
   .ij-toggle{padding:.5rem .6rem;min-width:50px;border-radius:10px;}
@@ -966,6 +971,9 @@ input[type="time"]{-webkit-appearance:none;}
           <button class="btn btn-sm" onclick="openBulkScheduleModal()" id="bulkSchedBtn" style="display:none;background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">
             📅 Barchasiga rejalashtirish
           </button>
+          <button class="btn btn-sm" onclick="openApolloSearch()" style="background:linear-gradient(135deg,#FFB703,#FB8500);color:#000;border:none;font-weight:700">
+            🚀 Apollo'dan tadbirkor topish
+          </button>
         </div>
       </div>
       <div class="tscroll">
@@ -982,6 +990,112 @@ input[type="time"]{-webkit-appearance:none;}
           </tr></thead>
           <tbody id="ic-tbody"></tbody>
         </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APOLLO SEARCH MODAL -->
+<div class="modal-overlay" id="apolloModal">
+  <div style="background:var(--card);border-radius:16px;width:960px;max-width:calc(100vw - 1rem);max-height:calc(100vh - 2rem);overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);border:1px solid var(--border)">
+    <div style="padding:1.2rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#FFB703,#FB8500)">
+      <div>
+        <div style="font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;color:#000">🚀 Apollo.io — Tadbirkor Qidiruv</div>
+        <div style="font-size:.7rem;color:rgba(0,0,0,.6)">220M+ kontaktlar bazasidan Navoiyga mos tadbirkorlarni toping</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.8rem">
+        <span id="apolloCredits" style="font-size:.65rem;font-weight:700;background:rgba(0,0,0,.15);padding:4px 10px;border-radius:10px;color:#000">Kreditlar: —</span>
+        <button onclick="closeApolloSearch()" style="width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.15);border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+    </div>
+
+    <div style="padding:1.2rem 1.4rem">
+      <!-- Filtrlar -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem;margin-bottom:1rem" id="apolloFilters">
+        <div>
+          <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">🏭 Soha (Industry)</label>
+          <select id="apo-industry" multiple style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.72rem;height:90px">
+            <option value="mining & metals" selected>Mining & Metals (Kon sanoati)</option>
+            <option value="oil & energy" selected>Oil & Energy (Neft & Energetika)</option>
+            <option value="chemicals">Chemicals (Kimyo)</option>
+            <option value="construction">Construction (Qurilish)</option>
+            <option value="textiles">Textiles (To'qimachilik)</option>
+            <option value="food & beverages">Food & Beverages (Oziq-ovqat)</option>
+            <option value="agriculture">Agriculture (Qishloq xo'jaligi)</option>
+            <option value="manufacturing">Manufacturing (Ishlab chiqarish)</option>
+            <option value="renewable energy">Renewable Energy (Qayta tiklanuvchi)</option>
+            <option value="information technology">Information Technology (IT)</option>
+            <option value="real estate">Real Estate (Ko'chmas mulk)</option>
+            <option value="financial services">Financial Services (Moliya)</option>
+            <option value="logistics">Logistics (Logistika)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">📍 Mamlakat (Location)</label>
+          <select id="apo-location" multiple style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.72rem;height:90px">
+            <option value="Germany" selected>🇩🇪 Germany</option>
+            <option value="United Arab Emirates" selected>🇦🇪 UAE</option>
+            <option value="China" selected>🇨🇳 China</option>
+            <option value="Turkey">🇹🇷 Turkey</option>
+            <option value="South Korea">🇰🇷 South Korea</option>
+            <option value="Japan">🇯🇵 Japan</option>
+            <option value="United States">🇺🇸 USA</option>
+            <option value="United Kingdom">🇬🇧 UK</option>
+            <option value="France">🇫🇷 France</option>
+            <option value="Russia">🇷🇺 Russia</option>
+            <option value="Saudi Arabia">🇸🇦 Saudi Arabia</option>
+            <option value="India">🇮🇳 India</option>
+            <option value="Canada">🇨🇦 Canada</option>
+            <option value="Switzerland">🇨🇭 Switzerland</option>
+            <option value="Singapore">🇸🇬 Singapore</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">👤 Lavozim (Title)</label>
+          <select id="apo-title" multiple style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.72rem;height:90px">
+            <option value="CEO" selected>CEO</option>
+            <option value="Founder" selected>Founder</option>
+            <option value="Managing Director" selected>Managing Director</option>
+            <option value="Chairman">Chairman</option>
+            <option value="President">President</option>
+            <option value="COO">COO</option>
+            <option value="CFO">CFO</option>
+            <option value="CTO">CTO</option>
+            <option value="VP">Vice President</option>
+            <option value="Director">Director</option>
+            <option value="Partner">Partner</option>
+            <option value="Owner">Owner</option>
+            <option value="Investor">Investor</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:.7rem;align-items:center;margin-bottom:1rem">
+        <button class="btn btn-blue" onclick="apolloSearch()" id="apolloSearchBtn">🔍 Qidirish</button>
+        <span id="apolloStatus" style="font-size:.7rem;color:var(--text2)"></span>
+        <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center">
+          <span style="font-size:.65rem;color:var(--text3)">Sahifa:</span>
+          <button class="btn btn-ghost btn-sm" onclick="apolloSearch(Math.max(1,_apoPage-1))">◀</button>
+          <span id="apoPageNum" style="font-size:.72rem;font-weight:700;color:var(--text)">1</span>
+          <button class="btn btn-ghost btn-sm" onclick="apolloSearch(_apoPage+1)">▶</button>
+        </div>
+      </div>
+
+      <!-- Natijalar -->
+      <div id="apolloResults" style="min-height:200px">
+        <div style="text-align:center;padding:3rem;color:var(--text3)">
+          <div style="font-size:2.5rem;margin-bottom:.5rem">🔍</div>
+          <div style="font-size:.82rem">Filtrlarni tanlang va <b>Qidirish</b> tugmasini bosing</div>
+          <div style="font-size:.68rem;margin-top:.3rem">People Search — bepul, kredit sarflamaydi</div>
+        </div>
+      </div>
+
+      <!-- Import tugmasi -->
+      <div id="apolloImportBar" style="display:none;padding:.8rem 0;border-top:1px solid var(--border);margin-top:1rem;gap:.7rem;align-items:center;justify-content:space-between;flex-wrap:wrap">
+        <span id="apoSelectedInfo" style="font-size:.72rem;color:var(--text)"></span>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-green" onclick="apolloImportSelected()">📥 Tanlanganlani saytga import qilish</button>
+          <button class="btn btn-ghost btn-sm" onclick="apolloSelectAll()">☑️ Barchasini tanlash</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2636,6 +2750,241 @@ function renderIntlForums(){
 function setIntlRegion(i){
   _intlActiveIdx = i;
   renderIntlForums();
+}
+
+/* ═══════════════════════════════════════
+   APOLLO.IO INTEGRATION
+═══════════════════════════════════════ */
+const APOLLO_KEY = '_k3r9J1QYdZLU9IopNgcgg';
+let _apoPage = 1;
+let _apoResults = [];
+let _apoSelected = new Set();
+
+function openApolloSearch(){
+  document.getElementById('apolloModal').classList.add('open');
+  _apoResults = [];
+  _apoSelected.clear();
+  document.getElementById('apolloResults').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text3)"><div style="font-size:2.5rem;margin-bottom:.5rem">\u{1F50D}</div><div style="font-size:.82rem">Filtrlarni tanlang va <b>Qidirish</b> tugmasini bosing</div><div style="font-size:.68rem;margin-top:.3rem">People Search \u2014 bepul, kredit sarflamaydi</div></div>';
+  document.getElementById('apolloImportBar').style.display = 'none';
+}
+
+function closeApolloSearch(){
+  document.getElementById('apolloModal').classList.remove('open');
+}
+
+function getSelectedOptions(id){
+  var sel = document.getElementById(id);
+  var vals = [];
+  for(var i=0;i<sel.options.length;i++){
+    if(sel.options[i].selected) vals.push(sel.options[i].value);
+  }
+  return vals;
+}
+
+async function apolloSearch(page){
+  if(page) _apoPage = page; else _apoPage = 1;
+  var industries = getSelectedOptions('apo-industry');
+  var locations = getSelectedOptions('apo-location');
+  var titles = getSelectedOptions('apo-title');
+
+  if(!industries.length && !locations.length && !titles.length){
+    alert('Kamida bitta filtr tanlang!');
+    return;
+  }
+
+  var btn = document.getElementById('apolloSearchBtn');
+  var status = document.getElementById('apolloStatus');
+  btn.disabled = true;
+  btn.textContent = '\u23F3 Qidirilmoqda...';
+  status.textContent = 'Apollo bazasidan ma\'lumot olinmoqda...';
+
+  var body = {
+    page: _apoPage,
+    per_page: 25
+  };
+  if(titles.length) body.person_titles = titles;
+  if(locations.length) body.person_locations = locations;
+  if(industries.length) body.organization_industry_tag_ids = industries;
+
+  try {
+    var resp = await fetch('https://api.apollo.io/api/v1/mixed_people/api_search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'x-api-key': APOLLO_KEY
+      },
+      body: JSON.stringify(body)
+    });
+
+    if(!resp.ok){
+      var errText = await resp.text();
+      throw new Error('Apollo API xato: ' + resp.status + ' - ' + errText);
+    }
+
+    var data = await resp.json();
+    _apoResults = (data.people || []);
+    var totalCount = data.pagination ? data.pagination.total_entries : _apoResults.length;
+    var totalPages = data.pagination ? data.pagination.total_pages : 1;
+
+    status.textContent = totalCount + ' ta natija topildi (sahifa ' + _apoPage + '/' + totalPages + ')';
+    document.getElementById('apoPageNum').textContent = _apoPage;
+
+    renderApolloResults();
+  } catch(err){
+    status.textContent = 'Xato: ' + err.message;
+    document.getElementById('apolloResults').innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C"><div style="font-size:2rem;margin-bottom:.5rem">\u26A0\u{FE0F}</div><div style="font-size:.8rem">'+err.message+'</div><div style="font-size:.68rem;margin-top:.5rem;color:var(--text3)">CORS muammosi bo\'lsa, Apollo Chrome Extension orqali CSV eksport qiling va import tugmasidan foydalaning</div></div>';
+  }
+
+  btn.disabled = false;
+  btn.textContent = '\u{1F50D} Qidirish';
+}
+
+function renderApolloResults(){
+  var container = document.getElementById('apolloResults');
+  if(!_apoResults.length){
+    container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)"><div style="font-size:2rem">\u{1F6AB}</div><div>Natija topilmadi. Filtrlarni o\'zgartiring.</div></div>';
+    document.getElementById('apolloImportBar').style.display = 'none';
+    return;
+  }
+
+  var html = '<table style="width:100%;font-size:.72rem;border-collapse:collapse">';
+  html += '<thead><tr style="background:var(--bg);border-bottom:2px solid var(--border)">';
+  html += '<th style="width:35px;padding:8px"><input type="checkbox" onchange="apolloToggleAll(this)" id="apoCheckAll"></th>';
+  html += '<th style="padding:8px;text-align:left">Ism / Lavozim</th>';
+  html += '<th style="padding:8px;text-align:left">Kompaniya</th>';
+  html += '<th style="padding:8px;text-align:left">Mamlakat</th>';
+  html += '<th style="padding:8px;text-align:left">Soha</th>';
+  html += '<th style="padding:8px;text-align:left">Email</th>';
+  html += '</tr></thead><tbody>';
+
+  _apoResults.forEach(function(p, i){
+    var name = (p.first_name||'') + ' ' + (p.last_name||'');
+    var title = p.title || '';
+    var orgName = (p.organization && p.organization.name) || p.organization_name || '';
+    var city = p.city || '';
+    var country = p.country || '';
+    var loc = [city, country].filter(Boolean).join(', ');
+    var industry = (p.organization && p.organization.industry) || '';
+    var email = p.email || '';
+    var phone = p.phone_number || p.sanitized_phone || '';
+    var avatar = (name.trim().charAt(0) || '?').toUpperCase();
+    var checked = _apoSelected.has(i) ? ' checked' : '';
+    var linkedIn = p.linkedin_url || '';
+
+    html += '<tr style="border-bottom:1px solid var(--border);transition:background .15s" onmouseover="this.style.background=\'rgba(67,97,238,.06)\'" onmouseout="this.style.background=\'transparent\'">';
+    html += '<td style="padding:8px;text-align:center"><input type="checkbox" onchange="apolloToggle('+i+',this)"'+checked+'></td>';
+    html += '<td style="padding:8px"><div style="display:flex;align-items:center;gap:8px">';
+    html += '<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#4361EE,#7209B7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0">'+avatar+'</div>';
+    html += '<div><div style="font-weight:700;color:var(--text)">'+name.trim()+'</div>';
+    html += '<div style="font-size:.62rem;color:var(--text2)">'+title+'</div></div></div></td>';
+    html += '<td style="padding:8px"><div style="font-weight:600;color:var(--text)">'+orgName+'</div></td>';
+    html += '<td style="padding:8px;color:var(--text2)">'+loc+'</td>';
+    html += '<td style="padding:8px"><span style="font-size:.6rem;background:rgba(67,97,238,.1);padding:2px 6px;border-radius:6px;color:#4361EE">'+industry+'</span></td>';
+    html += '<td style="padding:8px">';
+    if(email){
+      html += '<span style="color:#059669;font-size:.65rem">\u{2709}\u{FE0F} '+email+'</span>';
+    } else {
+      html += '<span style="color:var(--text3);font-size:.62rem">Email yo\'q (Enrich kerak)</span>';
+    }
+    html += '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+
+  document.getElementById('apolloImportBar').style.display = 'flex';
+  updateApoSelectedInfo();
+}
+
+function apolloToggle(idx, el){
+  if(el.checked) _apoSelected.add(idx); else _apoSelected.delete(idx);
+  updateApoSelectedInfo();
+}
+
+function apolloToggleAll(el){
+  _apoResults.forEach(function(p,i){
+    if(el.checked) _apoSelected.add(i); else _apoSelected.delete(i);
+  });
+  renderApolloResults();
+}
+
+function apolloSelectAll(){
+  _apoResults.forEach(function(p,i){ _apoSelected.add(i); });
+  renderApolloResults();
+}
+
+function updateApoSelectedInfo(){
+  document.getElementById('apoSelectedInfo').textContent = _apoSelected.size + ' / ' + _apoResults.length + ' ta tanlandi';
+}
+
+async function apolloImportSelected(){
+  if(!_apoSelected.size){
+    alert('Kamida bitta kontakt tanlang!');
+    return;
+  }
+
+  var importList = [];
+  _apoSelected.forEach(function(idx){
+    var p = _apoResults[idx];
+    if(!p) return;
+    var name = ((p.first_name||'') + ' ' + (p.last_name||'')).trim();
+    var orgName = (p.organization && p.organization.name) || p.organization_name || '';
+    var title = p.title || '';
+    var email = p.email || '';
+    var phone = p.phone_number || p.sanitized_phone || '';
+    var country = p.country || '';
+    var city = p.city || '';
+    var industry = (p.organization && p.organization.industry) || '';
+    var linkedIn = p.linkedin_url || '';
+    var website = (p.organization && p.organization.website_url) || '';
+
+    importList.push({
+      kompaniya: orgName,
+      rahbar: name,
+      lavozim: title,
+      email: email,
+      telefon: phone,
+      davlat: country,
+      shahar: city,
+      soha: industry,
+      linkedin: linkedIn,
+      website: website,
+      holat: 'Yangi',
+      manba: 'Apollo.io',
+      sana: new Date().toISOString().slice(0,10),
+      emailSent: false
+    });
+  });
+
+  if(!confirm(importList.length + ' ta kontaktni saytga import qilamizmi?')) return;
+
+  var successCount = 0;
+  var existEmails = DB.investorCompanies.map(function(r){ return (r.email||'').toLowerCase(); });
+
+  for(var i=0; i<importList.length; i++){
+    var item = importList[i];
+    // Duplikat tekshirish
+    if(item.email && existEmails.includes(item.email.toLowerCase())){
+      continue;
+    }
+    try {
+      if(typeof firebase !== 'undefined' && firebase.firestore){
+        await firebase.firestore().collection('investorCompanies').add(item);
+      }
+      DB.investorCompanies.push(Object.assign({id:'apo_'+Date.now()+'_'+i}, item));
+      if(item.email) existEmails.push(item.email.toLowerCase());
+      successCount++;
+    } catch(e){
+      console.error('Import xato:', e);
+    }
+  }
+
+  alert('\u2705 ' + successCount + ' ta kontakt muvaffaqiyatli import qilindi!\n\u26A0\uFE0F Dublikatlar o\'tkazib yuborildi.');
+  closeApolloSearch();
+  renderInvestorCompanies();
+  renderAll();
 }
 
 /* ═══════════════════════════════════════
