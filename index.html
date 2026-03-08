@@ -977,6 +977,9 @@ input[type="time"]{-webkit-appearance:none;}
           <button class="btn btn-sm" onclick="apolloAutoImport()" id="apoAutoBtn" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none;font-weight:700">
             ⚡ Avtomatik import (Apollo)
           </button>
+          <button class="btn btn-sm" onclick="openLeadFinderModal()" style="background:linear-gradient(135deg,#4361EE,#7209B7);color:#fff;border:none;font-weight:700">
+            🧲 Email Finder
+          </button>
         </div>
       </div>
       <!-- Apollo auto-import progress -->
@@ -5600,5 +5603,686 @@ window.addEventListener('load', ()=>{
     </div>
   </div>
 </div>
+<!-- LEAD FINDER MODAL -->
+<div class="modal-overlay" id="leadFinderModal">
+  <div style="background:var(--card);border-radius:18px;width:860px;max-width:calc(100vw - 1rem);max-height:calc(100vh - 2rem);overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);border:1px solid var(--border)">
+    <!-- Header -->
+    <div style="padding:1.2rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#4361EE,#7209B7)">
+      <div>
+        <div style="font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;color:#fff">🧲 Email & Kontakt Finder</div>
+        <div style="font-size:.7rem;color:rgba(255,255,255,.7)">Hunter.io · GetProspect · Skrapp.io · Lusha — bir joydan qidiring</div>
+      </div>
+      <button onclick="closeLeadFinderModal()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);border:none;cursor:pointer;font-size:16px;color:#fff;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+
+    <div style="padding:1.2rem 1.4rem">
+      <!-- Service Tabs -->
+      <div style="display:flex;gap:.5rem;margin-bottom:1.2rem;flex-wrap:wrap">
+        <button class="lf-tab active" id="lftab-hunter" onclick="switchLFTab('hunter')">🎯 Hunter.io</button>
+        <button class="lf-tab" id="lftab-getprospect" onclick="switchLFTab('getprospect')">📋 GetProspect</button>
+        <button class="lf-tab" id="lftab-skrapp" onclick="switchLFTab('skrapp')">🔎 Skrapp.io</button>
+        <button class="lf-tab" id="lftab-lusha" onclick="switchLFTab('lusha')">📞 Lusha</button>
+        <button class="lf-tab" id="lftab-instantly" onclick="switchLFTab('instantly')" style="background:linear-gradient(135deg,#1a56db,#0ea5e9);color:#fff;border:none">⚡ Instantly.ai</button>
+      </div>
+
+      <!-- API Keys Settings -->
+      <div style="background:rgba(67,97,238,.06);border-radius:10px;padding:.8rem 1rem;margin-bottom:1rem;border:1px solid rgba(67,97,238,.15)">
+        <div style="font-size:.68rem;font-weight:700;color:var(--text);margin-bottom:.5rem">🔑 API Kalitlar (bir marta kiriting, saqlanadi)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem" id="lf-apikeys">
+          <div>
+            <label style="font-size:.62rem;color:var(--text3)">Hunter.io API Key</label>
+            <input id="lf-hunter-key" type="password" placeholder="hunter api key..." class="form-input" style="font-size:.68rem;padding:5px 8px" oninput="saveLFKey('hunter',this.value)">
+          </div>
+          <div>
+            <label style="font-size:.62rem;color:var(--text3)">GetProspect API Key</label>
+            <input id="lf-getprospect-key" type="password" placeholder="getprospect api key..." class="form-input" style="font-size:.68rem;padding:5px 8px" oninput="saveLFKey('getprospect',this.value)">
+          </div>
+          <div>
+            <label style="font-size:.62rem;color:var(--text3)">Snov.io API Key (Base64)</label>
+            <input id="lf-skrapp-key" type="password" placeholder="snov api key..." class="form-input" style="font-size:.68rem;padding:5px 8px" oninput="saveLFKey('skrapp',this.value)">
+          </div>
+          <div>
+            <label style="font-size:.62rem;color:var(--text3)">Lusha API Key</label>
+            <input id="lf-lusha-key" type="password" placeholder="lusha api key..." class="form-input" style="font-size:.68rem;padding:5px 8px" oninput="saveLFKey('lusha',this.value)">
+          </div>
+          <div>
+            <label style="font-size:.62rem;color:var(--text3)">⚡ Instantly.ai API Key</label>
+            <input id="lf-instantly-key" type="password" placeholder="instantly api key..." class="form-input" style="font-size:.68rem;padding:5px 8px" oninput="saveLFKey('instantly',this.value)">
+          </div>
+        </div>
+      </div>
+
+      <!-- HUNTER.IO Panel -->
+      <div class="lf-panel" id="lfpanel-hunter">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.8rem">
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">🌐 Kompaniya Domeni</label>
+            <input id="hunter-domain" class="form-input" placeholder="example.com" style="font-size:.75rem">
+          </div>
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">👤 Ism (ixtiyoriy)</label>
+            <input id="hunter-name" class="form-input" placeholder="John Smith" style="font-size:.75rem">
+          </div>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.8rem">
+          <button class="btn btn-blue" onclick="hunterSearch()">🔍 Emaillarni Qidirish</button>
+          <button class="btn btn-ghost btn-sm" onclick="hunterVerify()">✅ Email Tekshirish</button>
+          <span id="hunter-status" style="font-size:.68rem;color:var(--text3)"></span>
+        </div>
+        <div id="hunter-results" style="min-height:150px;background:var(--bg);border-radius:10px;padding:1rem">
+          <div style="text-align:center;color:var(--text3);font-size:.78rem;padding:2rem">🎯 Domen kiriting va qidiring</div>
+        </div>
+      </div>
+
+      <!-- GETPROSPECT Panel -->
+      <div class="lf-panel" id="lfpanel-getprospect" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.7rem;margin-bottom:.8rem">
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">👤 Ism</label>
+            <input id="gp-firstname" class="form-input" placeholder="John" style="font-size:.75rem">
+          </div>
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">👤 Familiya</label>
+            <input id="gp-lastname" class="form-input" placeholder="Smith" style="font-size:.75rem">
+          </div>
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">🌐 Kompaniya domeni</label>
+            <input id="gp-domain" class="form-input" placeholder="company.com" style="font-size:.75rem">
+          </div>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.8rem">
+          <button class="btn btn-blue" onclick="getprospectSearch()">🔍 Email Topish</button>
+          <span id="gp-status" style="font-size:.68rem;color:var(--text3)"></span>
+        </div>
+        <div id="gp-results" style="min-height:150px;background:var(--bg);border-radius:10px;padding:1rem">
+          <div style="text-align:center;color:var(--text3);font-size:.78rem;padding:2rem">📋 Ma'lumot kiriting va qidiring</div>
+        </div>
+      </div>
+
+      <!-- SKRAPP Panel -->
+      <div class="lf-panel" id="lfpanel-skrapp" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.7rem;margin-bottom:.8rem">
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">👤 Ism</label>
+            <input id="sk-firstname" class="form-input" placeholder="John" style="font-size:.75rem">
+          </div>
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">👤 Familiya</label>
+            <input id="sk-lastname" class="form-input" placeholder="Smith" style="font-size:.75rem">
+          </div>
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">🏢 Kompaniya nomi</label>
+            <input id="sk-company" class="form-input" placeholder="Company Inc" style="font-size:.75rem">
+          </div>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.8rem">
+          <button class="btn btn-blue" onclick="skrappSearch()">🔍 Email Topish</button>
+          <span id="sk-status" style="font-size:.68rem;color:var(--text3)"></span>
+        </div>
+        <div id="sk-results" style="min-height:150px;background:var(--bg);border-radius:10px;padding:1rem">
+          <div style="text-align:center;color:var(--text3);font-size:.78rem;padding:2rem">🔎 Ma'lumot kiriting va qidiring</div>
+        </div>
+      </div>
+
+      <!-- LUSHA Panel -->
+      <div class="lf-panel" id="lfpanel-lusha" style="display:none">
+        <div style="background:rgba(255,183,3,.08);border-radius:8px;padding:.6rem .8rem;margin-bottom:.8rem;font-size:.67rem;color:var(--text3);border:1px solid rgba(255,183,3,.2)">
+          ⚠️ Lusha bepul rejada oyiga 5 ta kontakt beradi. Email + <b>telefon raqam</b> ham topadi!
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.8rem">
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">👤 To'liq ism</label>
+            <input id="lu-name" class="form-input" placeholder="John Smith" style="font-size:.75rem">
+          </div>
+          <div>
+            <label style="font-size:.68rem;font-weight:700;color:var(--text);display:block;margin-bottom:4px">🏢 Kompaniya</label>
+            <input id="lu-company" class="form-input" placeholder="Company name" style="font-size:.75rem">
+          </div>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.8rem">
+          <button class="btn btn-blue" onclick="lushaSearch()">🔍 Kontakt Topish</button>
+          <span id="lu-status" style="font-size:.68rem;color:var(--text3)"></span>
+        </div>
+        <div id="lu-results" style="min-height:150px;background:var(--bg);border-radius:10px;padding:1rem">
+          <div style="text-align:center;color:var(--text3);font-size:.78rem;padding:2rem">📞 Ism va kompaniya kiriting</div>
+        </div>
+      </div>
+
+      <!-- INSTANTLY Panel -->
+      <div class="lf-panel" id="lfpanel-instantly" style="display:none">
+        <div style="background:linear-gradient(135deg,rgba(26,86,219,.08),rgba(14,165,233,.08));border-radius:10px;padding:.8rem 1rem;margin-bottom:.8rem;border:1px solid rgba(26,86,219,.2)">
+          <div style="font-size:.72rem;font-weight:700;color:var(--text);margin-bottom:3px">⚡ Instantly.ai — Kontakt Qidiruv & Email</div>
+          <div style="font-size:.63rem;color:var(--text3)">450M+ kontaktlar bazasi · Email kampaniyalar · B2B leads</div>
+        </div>
+
+        <!-- Sub tabs -->
+        <div style="display:flex;gap:.4rem;margin-bottom:.8rem">
+          <button class="inst-stab active" id="instab-search" onclick="switchInstTab('search')" style="font-size:.68rem;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid #1a56db;background:#1a56db;color:#fff;cursor:pointer">🔍 Kontakt Qidirish</button>
+          <button class="inst-stab" id="instab-campaigns" onclick="switchInstTab('campaigns')" style="font-size:.68rem;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg);color:var(--text2);cursor:pointer">📧 Kampaniyalar</button>
+          <button class="inst-stab" id="instab-accounts" onclick="switchInstTab('accounts')" style="font-size:.68rem;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg);color:var(--text2);cursor:pointer">📬 Email Akkauntlar</button>
+        </div>
+
+        <!-- Search Panel -->
+        <div id="inst-panel-search">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:.7rem">
+            <div>
+              <label style="font-size:.65rem;font-weight:700;color:var(--text);display:block;margin-bottom:3px">🏢 Kompaniya nomi</label>
+              <input id="inst-company" class="form-input" placeholder="Siemens AG" style="font-size:.72rem">
+            </div>
+            <div>
+              <label style="font-size:.65rem;font-weight:700;color:var(--text);display:block;margin-bottom:3px">👤 Lavozim</label>
+              <input id="inst-title" class="form-input" placeholder="CEO, Founder..." style="font-size:.72rem">
+            </div>
+            <div>
+              <label style="font-size:.65rem;font-weight:700;color:var(--text);display:block;margin-bottom:3px">🌍 Mamlakat</label>
+              <input id="inst-country" class="form-input" placeholder="Germany, UAE..." style="font-size:.72rem">
+            </div>
+          </div>
+          <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.7rem">
+            <button class="btn btn-blue" onclick="instantlySearch()" style="background:linear-gradient(135deg,#1a56db,#0ea5e9);border:none">🔍 Qidirish</button>
+            <span id="inst-search-status" style="font-size:.68rem;color:var(--text3)"></span>
+          </div>
+          <div id="inst-search-results" style="min-height:120px;background:var(--bg);border-radius:10px;padding:.8rem">
+            <div style="text-align:center;color:var(--text3);font-size:.75rem;padding:1.5rem">⚡ Filtr kiriting va qidiring</div>
+          </div>
+        </div>
+
+        <!-- Campaigns Panel -->
+        <div id="inst-panel-campaigns" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem">
+            <span style="font-size:.72rem;font-weight:700;color:var(--text)">Faol kampaniyalar</span>
+            <button class="btn btn-sm" onclick="loadInstantlyCampaigns()" style="background:linear-gradient(135deg,#1a56db,#0ea5e9);color:#fff;border:none;font-size:.65rem">🔄 Yangilash</button>
+          </div>
+          <div id="inst-campaigns-list" style="min-height:120px;background:var(--bg);border-radius:10px;padding:.8rem">
+            <div style="text-align:center;color:var(--text3);font-size:.75rem;padding:1.5rem">📧 Kampaniyalarni yuklash uchun "Yangilash" bosing</div>
+          </div>
+        </div>
+
+        <!-- Accounts Panel -->
+        <div id="inst-panel-accounts" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem">
+            <span style="font-size:.72rem;font-weight:700;color:var(--text)">Ulangan email akkauntlar</span>
+            <button class="btn btn-sm" onclick="loadInstantlyAccounts()" style="background:linear-gradient(135deg,#1a56db,#0ea5e9);color:#fff;border:none;font-size:.65rem">🔄 Yuklash</button>
+          </div>
+          <div id="inst-accounts-list" style="min-height:120px;background:var(--bg);border-radius:10px;padding:.8rem">
+            <div style="text-align:center;color:var(--text3);font-size:.75rem;padding:1.5rem">📬 Akkauntlarni ko'rish uchun "Yuklash" bosing</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import bar -->
+      <div id="lf-import-bar" style="display:none;margin-top:.8rem;padding:.8rem 0;border-top:1px solid var(--border);display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+        <span id="lf-import-count" style="font-size:.72rem;color:var(--text3)">0 ta tanlangan</span>
+        <button class="btn btn-green" onclick="lfImportSelected()">📥 Dashboardga import qilish</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.lf-tab{font-size:.72rem;font-weight:700;padding:7px 16px;border-radius:20px;border:1px solid var(--border);background:var(--bg);color:var(--text2);cursor:pointer;transition:all .15s;}
+.lf-tab.active{background:linear-gradient(135deg,#4361EE,#7209B7);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(67,97,238,.3);}
+.lf-tab:hover:not(.active){background:var(--bg2);color:var(--text);}
+.lf-result-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;margin-bottom:.5rem;display:flex;align-items:flex-start;gap:.8rem;transition:box-shadow .15s;}
+.lf-result-card:hover{box-shadow:var(--shadow-md);}
+.lf-result-card .lf-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#4361EE,#7209B7);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.lf-result-card .lf-info{flex:1;min-width:0;}
+.lf-result-card .lf-name{font-size:.78rem;font-weight:700;color:var(--text);}
+.lf-result-card .lf-detail{font-size:.65rem;color:var(--text3);margin-top:2px;}
+.lf-result-card .lf-email{font-size:.68rem;color:#4361EE;font-weight:600;margin-top:3px;}
+.lf-result-card .lf-phone{font-size:.68rem;color:#06D6A0;font-weight:600;}
+.lf-confidence{font-size:.58rem;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;}
+.lf-conf-high{background:rgba(6,214,160,.15);color:#059669;}
+.lf-conf-med{background:rgba(255,183,3,.15);color:#B45309;}
+.lf-conf-low{background:rgba(239,35,60,.15);color:#DC2626;}
+</style>
+
+<script>
+/* ═══════════════════════════════════════
+   LEAD FINDER (Hunter/GetProspect/Skrapp/Lusha)
+═══════════════════════════════════════ */
+let _lfSelected = [];
+let _lfActiveTab = 'hunter';
+
+function openLeadFinderModal(){
+  document.getElementById('leadFinderModal').classList.add('open');
+  // Load saved API keys
+  ['hunter','getprospect','skrapp','lusha','instantly'].forEach(s => {
+    const k = localStorage.getItem('lf_key_'+s);
+    if(k) document.getElementById('lf-'+s+'-key').value = k;
+  });
+}
+
+function closeLeadFinderModal(){
+  document.getElementById('leadFinderModal').classList.remove('open');
+}
+
+function saveLFKey(service, val){
+  localStorage.setItem('lf_key_'+service, val);
+}
+
+function getLFKey(service){
+  return localStorage.getItem('lf_key_'+service) || document.getElementById('lf-'+service+'-key').value || '';
+}
+
+function switchLFTab(tab){
+  _lfActiveTab = tab;
+  document.querySelectorAll('.lf-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('lftab-'+tab).classList.add('active');
+  document.querySelectorAll('.lf-panel').forEach(p => p.style.display='none');
+  document.getElementById('lfpanel-'+tab).style.display='block';
+}
+
+// ── HUNTER.IO ──
+async function hunterSearch(){
+  const key = getLFKey('hunter');
+  const domain = document.getElementById('hunter-domain').value.trim();
+  const name = document.getElementById('hunter-name').value.trim();
+  const status = document.getElementById('hunter-status');
+  const results = document.getElementById('hunter-results');
+
+  if(!key){ alert('Hunter.io API kalitini kiriting!'); return; }
+  if(!domain){ alert('Domen kiriting (masalan: siemens.com)'); return; }
+
+  status.textContent = '⏳ Qidirilmoqda...';
+  results.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">⏳ Hunter.io dan ma\'lumot olinmoqda...</div>';
+
+  try {
+    let url;
+    if(name){
+      // Find specific person email
+      const parts = name.split(' ');
+      const first = parts[0], last = parts.slice(1).join(' ');
+      url = `https://api.hunter.io/v2/email-finder?domain=${encodeURIComponent(domain)}&first_name=${encodeURIComponent(first)}&last_name=${encodeURIComponent(last)}&api_key=${key}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if(data.data && data.data.email){
+        const d = data.data;
+        results.innerHTML = renderLFCard({
+          name: (d.first_name||'') + ' ' + (d.last_name||''),
+          title: d.position || '',
+          company: domain,
+          email: d.email,
+          confidence: d.score,
+          source: 'hunter'
+        });
+      } else {
+        results.innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C">❌ Email topilmadi: '+(data.errors?data.errors[0].details:'')+'</div>';
+      }
+    } else {
+      // Domain search - all emails
+      url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${key}&limit=20`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if(data.data && data.data.emails && data.data.emails.length){
+        const org = data.data.organization || domain;
+        status.textContent = data.data.emails.length + ' ta email topildi';
+        results.innerHTML = data.data.emails.map(e => renderLFCard({
+          name: (e.first_name||'') + ' ' + (e.last_name||''),
+          title: e.position || e.type || '',
+          company: org,
+          email: e.value,
+          confidence: e.confidence,
+          source: 'hunter'
+        })).join('');
+      } else {
+        results.innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C">❌ Bu domen uchun email topilmadi</div>';
+      }
+    }
+    status.textContent = '✅ Tayyor';
+  } catch(e){
+    status.textContent = 'Xato: ' + e.message;
+    results.innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C">⚠️ '+e.message+'</div>';
+  }
+}
+
+async function hunterVerify(){
+  const key = getLFKey('hunter');
+  const domain = document.getElementById('hunter-domain').value.trim();
+  if(!key){ alert('Hunter.io API kalitini kiriting!'); return; }
+  if(!domain || !domain.includes('@')){ alert('Tekshirish uchun email manzilini domen maydoniga kiriting'); return; }
+  document.getElementById('hunter-status').textContent = '⏳ Tekshirilmoqda...';
+  try {
+    const resp = await fetch(`https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(domain)}&api_key=${key}`);
+    const data = await resp.json();
+    const r = data.data;
+    document.getElementById('hunter-status').textContent = '';
+    document.getElementById('hunter-results').innerHTML = `
+      <div class="lf-result-card">
+        <div class="lf-avatar">✉️</div>
+        <div class="lf-info">
+          <div class="lf-name">${r.email}</div>
+          <div class="lf-detail">Holat: <b style="color:${r.result==='deliverable'?'#06D6A0':'#EF233C'}">${r.result}</b> | Score: ${r.score}/100</div>
+          <div class="lf-detail">MX: ${r.mx_records?'✅':'❌'} | SMTP: ${r.smtp_server?'✅':'❌'}</div>
+        </div>
+      </div>`;
+  } catch(e){
+    document.getElementById('hunter-status').textContent = 'Xato: ' + e.message;
+  }
+}
+
+// ── GETPROSPECT ──
+async function getprospectSearch(){
+  const key = getLFKey('getprospect');
+  const first = document.getElementById('gp-firstname').value.trim();
+  const last = document.getElementById('gp-lastname').value.trim();
+  const domain = document.getElementById('gp-domain').value.trim();
+  const status = document.getElementById('gp-status');
+  const results = document.getElementById('gp-results');
+
+  if(!key){ alert('GetProspect API kalitini kiriting!'); return; }
+  if(!first || !last || !domain){ alert('Ism, familiya va domenni kiriting!'); return; }
+
+  status.textContent = '⏳ Qidirilmoqda...';
+  results.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">⏳ GetProspect dan ma\'lumot olinmoqda...</div>';
+
+  try {
+    const resp = await fetch(`https://api.getprospect.com/public/v1/email/find?apiKey=${key}&firstName=${encodeURIComponent(first)}&lastName=${encodeURIComponent(last)}&domain=${encodeURIComponent(domain)}`);
+    const data = await resp.json();
+    if(data.email){
+      results.innerHTML = renderLFCard({
+        name: first + ' ' + last,
+        title: data.position || '',
+        company: domain,
+        email: data.email,
+        confidence: data.confidence === 'high' ? 95 : data.confidence === 'medium' ? 65 : 30,
+        source: 'getprospect'
+      });
+      status.textContent = '✅ Topildi!';
+    } else {
+      results.innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C">❌ Email topilmadi (status: '+data.status+')</div>';
+      status.textContent = '';
+    }
+  } catch(e){
+    status.textContent = 'Xato: ' + e.message;
+    results.innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C">⚠️ '+e.message+'</div>';
+  }
+}
+
+// ── SKRAPP.IO ──
+async function skrappSearch(){
+  const key = getLFKey('skrapp');
+  const first = document.getElementById('sk-firstname').value.trim();
+  const last = document.getElementById('sk-lastname').value.trim();
+  const company = document.getElementById('sk-company').value.trim();
+  const status = document.getElementById('sk-status');
+  const results = document.getElementById('sk-results');
+
+  if(!key){ alert('Skrapp.io API kalitini kiriting!'); return; }
+  if(!first || !last || !company){ alert('Ism, familiya va kompaniyani kiriting!'); return; }
+
+  status.textContent = '⏳ Qidirilmoqda...';
+  results.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">⏳ Skrapp.io dan ma\'lumot olinmoqda...</div>';
+
+  try {
+    const resp = await fetch('https://api.skrapp.io/api/v2/find?firstName='+encodeURIComponent(first)+'&lastName='+encodeURIComponent(last)+'&companyName='+encodeURIComponent(company), {
+      headers: { 'X-Access-Key': key, 'Content-Type': 'application/json' }
+    });
+    const data = await resp.json();
+    if(data.email){
+      results.innerHTML = renderLFCard({
+        name: first + ' ' + last,
+        title: data.title || '',
+        company: company,
+        email: data.email,
+        confidence: data.accuracy || 80,
+        source: 'skrapp'
+      });
+      status.textContent = '✅ Topildi!';
+    } else {
+      results.innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C">❌ Email topilmadi</div>';
+      status.textContent = '';
+    }
+  } catch(e){
+    status.textContent = 'Xato: ' + e.message;
+    results.innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C">⚠️ '+e.message+'</div>';
+  }
+}
+
+// ── LUSHA ──
+async function lushaSearch(){
+  const key = getLFKey('lusha');
+  const name = document.getElementById('lu-name').value.trim();
+  const company = document.getElementById('lu-company').value.trim();
+  const status = document.getElementById('lu-status');
+  const results = document.getElementById('lu-results');
+
+  if(!key){ alert('Lusha API kalitini kiriting!'); return; }
+  if(!name){ alert('Ism kiriting!'); return; }
+
+  status.textContent = '⏳ Qidirilmoqda...';
+  results.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">⏳ Lusha dan ma\'lumot olinmoqda...</div>';
+
+  const parts = name.split(' ');
+  const first = parts[0], last = parts.slice(1).join(' ');
+
+  try {
+    const resp = await fetch(`https://api.lusha.com/person?firstName=${encodeURIComponent(first)}&lastName=${encodeURIComponent(last)}&company=${encodeURIComponent(company)}`, {
+      headers: { 'api_key': key }
+    });
+    const data = await resp.json();
+    if(data.emailAddresses || data.phoneNumbers){
+      const email = data.emailAddresses && data.emailAddresses[0] ? data.emailAddresses[0].email : null;
+      const phone = data.phoneNumbers && data.phoneNumbers[0] ? data.phoneNumbers[0].localizedNumber : null;
+      results.innerHTML = renderLFCard({
+        name: name,
+        title: data.jobTitle || '',
+        company: company,
+        email: email,
+        phone: phone,
+        confidence: 90,
+        source: 'lusha'
+      });
+      status.textContent = '✅ Topildi!';
+    } else {
+      results.innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C">❌ Kontakt topilmadi</div>';
+      status.textContent = '';
+    }
+  } catch(e){
+    status.textContent = 'Xato: ' + e.message;
+    results.innerHTML = '<div style="text-align:center;padding:2rem;color:#EF233C">⚠️ '+e.message+'<br><small>CORS muammosi bo\'lsa, Lusha Chrome Extension ishlatish tavsiya qilinadi</small></div>';
+  }
+}
+
+// ── INSTANTLY.AI ──
+function switchInstTab(tab){
+  ['search','campaigns','accounts'].forEach(t => {
+    document.getElementById('inst-panel-'+t).style.display = t===tab ? 'block' : 'none';
+    const btn = document.getElementById('instab-'+t);
+    if(t===tab){
+      btn.style.background='#1a56db'; btn.style.color='#fff'; btn.style.borderColor='#1a56db';
+    } else {
+      btn.style.background='var(--bg)'; btn.style.color='var(--text2)'; btn.style.borderColor='var(--border)';
+    }
+  });
+}
+
+async function instantlySearch(){
+  const key = getLFKey('instantly');
+  if(!key){ alert('Instantly.ai API kalitini kiriting!'); return; }
+
+  const company = document.getElementById('inst-company').value.trim();
+  const title = document.getElementById('inst-title').value.trim();
+  const country = document.getElementById('inst-country').value.trim();
+  const status = document.getElementById('inst-search-status');
+  const results = document.getElementById('inst-search-results');
+
+  if(!company && !title && !country){ alert('Kamida bitta filtr kiriting!'); return; }
+
+  status.textContent = '⏳ Qidirilmoqda...';
+  results.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">⏳ Instantly bazasidan qidirilmoqda...</div>';
+
+  try {
+    const body = { limit: 20 };
+    if(company) body.company_name = company;
+    if(title) body.job_title = title;
+    if(country) body.country = country;
+
+    const resp = await fetch('https://api.instantly.ai/api/v2/lead-finder/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }
+    });
+
+    // Instantly lead finder requires paid plan — show available endpoints
+    if(resp.status === 403 || resp.status === 401){
+      // Try accounts endpoint to verify key works
+      const chk = await fetch('https://api.instantly.ai/api/v2/account/list?limit=5', {
+        headers: { 'Authorization': 'Bearer ' + key }
+      });
+      if(chk.ok){
+        status.textContent = '✅ API ulangan!';
+        results.innerHTML = `<div style="background:rgba(26,86,219,.06);border-radius:10px;padding:1rem;border:1px solid rgba(26,86,219,.15)">
+          <div style="font-size:.75rem;font-weight:700;color:var(--text);margin-bottom:.5rem">✅ Instantly API muvaffaqiyatli ulandi!</div>
+          <div style="font-size:.68rem;color:var(--text3);line-height:1.8">
+            ⚠️ Lead Finder funksiyasi Instantly da <b>pullik plan</b> talab qiladi.<br>
+            Lekin quyidagi funksiyalar <b>bepul</b> ishlaydi:<br>
+            📧 <b>Kampaniyalar</b> ko'rish va boshqarish<br>
+            📬 <b>Email akkauntlar</b> holati<br>
+            📊 <b>Analytics</b> — yuborilgan emaillar statistikasi
+          </div>
+          <div style="display:flex;gap:.5rem;margin-top:.8rem">
+            <button class="btn btn-sm" onclick="switchInstTab('campaigns');loadInstantlyCampaigns()" style="background:linear-gradient(135deg,#1a56db,#0ea5e9);color:#fff;border:none;font-size:.65rem">📧 Kampaniyalarni ko'rish</button>
+            <button class="btn btn-sm" onclick="switchInstTab('accounts');loadInstantlyAccounts()" style="background:var(--bg2);font-size:.65rem">📬 Akkauntlarni ko'rish</button>
+          </div>
+        </div>`;
+      } else {
+        throw new Error('API kalit noto\'g\'ri yoki muddati o\'tgan');
+      }
+    } else if(resp.ok){
+      const data = await resp.json();
+      const leads = data.leads || data.data || [];
+      if(leads.length){
+        status.textContent = leads.length + ' ta kontakt topildi';
+        results.innerHTML = leads.map(l => renderLFCard({
+          name: (l.first_name||'') + ' ' + (l.last_name||''),
+          title: l.job_title || l.title || '',
+          company: l.company_name || l.organization || company,
+          email: l.email || null,
+          confidence: 85,
+          source: 'instantly'
+        })).join('');
+      } else {
+        results.innerHTML = '<div style="text-align:center;padding:1.5rem;color:#EF233C">❌ Natija topilmadi</div>';
+      }
+    }
+  } catch(e){
+    status.textContent = '';
+    results.innerHTML = `<div style="text-align:center;padding:1.5rem;color:#EF233C">⚠️ ${e.message}</div>`;
+  }
+}
+
+async function loadInstantlyCampaigns(){
+  const key = getLFKey('instantly');
+  if(!key){ alert('Instantly.ai API kalitini kiriting!'); return; }
+  const list = document.getElementById('inst-campaigns-list');
+  list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">⏳ Yuklanmoqda...</div>';
+  try {
+    const resp = await fetch('https://api.instantly.ai/api/v2/campaign?limit=20&status=1', {
+      headers: { 'Authorization': 'Bearer ' + key }
+    });
+    const data = await resp.json();
+    const campaigns = data.items || data || [];
+    if(!campaigns.length){
+      list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">📧 Hech qanday kampaniya topilmadi</div>';
+      return;
+    }
+    list.innerHTML = campaigns.map(c => `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.7rem 1rem;margin-bottom:.4rem;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--text)">${c.name||'Nomsiz'}</div>
+          <div style="font-size:.62rem;color:var(--text3);margin-top:2px">
+            📧 Yuborildi: <b>${c.sending_limit||0}</b> · 
+            ✅ Ochildi: <b>${c.open_count||0}</b> · 
+            💬 Javob: <b>${c.reply_count||0}</b>
+          </div>
+        </div>
+        <span style="font-size:.6rem;font-weight:700;padding:3px 10px;border-radius:10px;background:${c.status===1?'rgba(6,214,160,.15)':'rgba(239,35,60,.1)'};color:${c.status===1?'#059669':'#DC2626'}">${c.status===1?'Faol':'Paused'}</span>
+      </div>`).join('');
+  } catch(e){
+    list.innerHTML = `<div style="text-align:center;padding:1.5rem;color:#EF233C">⚠️ ${e.message}</div>`;
+  }
+}
+
+async function loadInstantlyAccounts(){
+  const key = getLFKey('instantly');
+  if(!key){ alert('Instantly.ai API kalitini kiriting!'); return; }
+  const list = document.getElementById('inst-accounts-list');
+  list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">⏳ Yuklanmoqda...</div>';
+  try {
+    const resp = await fetch('https://api.instantly.ai/api/v2/account/list?limit=20', {
+      headers: { 'Authorization': 'Bearer ' + key }
+    });
+    const data = await resp.json();
+    const accounts = data.items || data || [];
+    if(!accounts.length){
+      list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">📬 Hech qanday akkaunt topilmadi</div>';
+      return;
+    }
+    list.innerHTML = accounts.map(a => `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.7rem 1rem;margin-bottom:.4rem;display:flex;align-items:center;gap:.8rem">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1a56db,#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0">📬</div>
+        <div style="flex:1">
+          <div style="font-size:.75rem;font-weight:700;color:var(--text)">${a.email||a.username||'Email'}</div>
+          <div style="font-size:.62rem;color:var(--text3);margin-top:2px">
+            Holat: <b style="color:${a.status===1?'#059669':'#FFB703'}">${a.status===1?'✅ Aktiv':'⚠️ Tekshiruv kerak'}</b>
+            ${a.daily_limit ? ' · Kunlik limit: '+a.daily_limit : ''}
+          </div>
+        </div>
+      </div>`).join('');
+  } catch(e){
+    list.innerHTML = `<div style="text-align:center;padding:1.5rem;color:#EF233C">⚠️ ${e.message}</div>`;
+  }
+}
+
+function renderLFCard(p){
+  const conf = p.confidence || 0;
+  const confClass = conf >= 80 ? 'lf-conf-high' : conf >= 50 ? 'lf-conf-med' : 'lf-conf-low';
+  const confLabel = conf >= 80 ? 'Yuqori' : conf >= 50 ? "O'rta" : 'Past';
+  const initials = (p.name||'?').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
+  return `<div class="lf-result-card">
+    <div class="lf-avatar">${initials}</div>
+    <div class="lf-info">
+      <div class="lf-name">${p.name||'Noma\'lum'} <span class="lf-confidence ${confClass}">${confLabel} ${conf}%</span></div>
+      <div class="lf-detail">${p.title||''} ${p.company ? '· '+p.company : ''}</div>
+      ${p.email ? `<div class="lf-email">📧 ${p.email}</div>` : ''}
+      ${p.phone ? `<div class="lf-phone">📞 ${p.phone}</div>` : ''}
+    </div>
+    <button class="btn btn-green btn-sm" onclick="lfAddToCompany(${JSON.stringify(p).replace(/"/g,'&quot;')})">+ Qo'shish</button>
+  </div>`;
+}
+
+function lfAddToCompany(p){
+  if(!p.email && !p.phone){ alert('Email yoki telefon topilmadi'); return; }
+  // Find or create company record
+  const existing = DB.investorCompanies.find(c =>
+    c.company && p.company && c.company.toLowerCase().includes(p.company.toLowerCase().split(' ')[0])
+  );
+  if(existing){
+    if(p.email && !existing.email) existing.email = p.email;
+    if(p.phone && !existing.phone) existing.phone = p.phone;
+    if(p.name && !existing.leader) existing.leader = p.name;
+    if(typeof fbSave === 'function') fbSave('investorCompanies', existing);
+    renderAll();
+    alert('✅ ' + (existing.company||'Kompaniya') + ' ga qo\'shildi!');
+  } else {
+    // Add as new record
+    const maxId = DB.investorCompanies.reduce((m,c) => Math.max(m, c.id||0), 0);
+    const rec = {
+      id: maxId + 1,
+      company: p.company || p.name || 'Yangi kompaniya',
+      leader: p.name || '',
+      field: '',
+      email: p.email || '',
+      phone: p.phone || '',
+      status: 'new',
+      emailSent: false
+    };
+    DB.investorCompanies.push(rec);
+    if(typeof fbSave === 'function') fbSave('investorCompanies', rec);
+    renderAll();
+    alert('✅ Yangi kompaniya sifatida qo\'shildi!');
+  }
+}
+</script>
 </body>
 </html>
