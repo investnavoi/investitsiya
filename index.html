@@ -6085,6 +6085,17 @@ async function lushaSearch(){
 }
 
 // ── INSTANTLY.AI ──
+const INSTANTLY_PROXY = 'https://apollo-proxy-navoiy.netlify.app/api/instantly-proxy';
+
+async function instFetch(path, method='GET', body={}){
+  const payload = { _path: path, _method: method, ...body };
+  const resp = await fetch(INSTANTLY_PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  return resp.json();
+}
 function switchInstTab(tab){
   ['search','campaigns','accounts'].forEach(t => {
     document.getElementById('inst-panel-'+t).style.display = t===tab ? 'block' : 'none';
@@ -6113,22 +6124,18 @@ async function instantlySearch(){
   results.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">⏳ Instantly bazasidan qidirilmoqda...</div>';
 
   try {
-    const body = { limit: 20 };
-    if(company) body.company_name = company;
-    if(title) body.job_title = title;
-    if(country) body.country = country;
+    const searchBody = { limit: 20 };
+    if(company) searchBody.company_name = company;
+    if(title) searchBody.job_title = title;
+    if(country) searchBody.country = country;
 
-    const resp = await fetch('https://api.instantly.ai/api/v2/lead-finder/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }
-    });
+    const resp = await instFetch('lead-finder/search', 'POST', searchBody);
 
     // Instantly lead finder requires paid plan — show available endpoints
-    if(resp.status === 403 || resp.status === 401){
+    if(resp.status === 403 || resp.status === 401 || resp.error){
       // Try accounts endpoint to verify key works
-      const chk = await fetch('https://api.instantly.ai/api/v2/account/list?limit=5', {
-        headers: { 'Authorization': 'Bearer ' + key }
-      });
+      const chkData = await instFetch('account/list', 'GET', { limit: 5 });
+      const chk = { ok: !chkData.error };
       if(chk.ok){
         status.textContent = '✅ API ulangan!';
         results.innerHTML = `<div style="background:rgba(26,86,219,.06);border-radius:10px;padding:1rem;border:1px solid rgba(26,86,219,.15)">
@@ -6148,9 +6155,8 @@ async function instantlySearch(){
       } else {
         throw new Error('API kalit noto\'g\'ri yoki muddati o\'tgan');
       }
-    } else if(resp.ok){
-      const data = await resp.json();
-      const leads = data.leads || data.data || [];
+    } else if(!resp.error){
+      const leads = resp.leads || resp.data || resp.items || [];
       if(leads.length){
         status.textContent = leads.length + ' ta kontakt topildi';
         results.innerHTML = leads.map(l => renderLFCard({
@@ -6177,10 +6183,7 @@ async function loadInstantlyCampaigns(){
   const list = document.getElementById('inst-campaigns-list');
   list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">⏳ Yuklanmoqda...</div>';
   try {
-    const resp = await fetch('https://api.instantly.ai/api/v2/campaign?limit=20&status=1', {
-      headers: { 'Authorization': 'Bearer ' + key }
-    });
-    const data = await resp.json();
+    const data = await instFetch('campaign', 'GET', { limit: 20, status: 1 });
     const campaigns = data.items || data || [];
     if(!campaigns.length){
       list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">📧 Hech qanday kampaniya topilmadi</div>';
@@ -6209,10 +6212,7 @@ async function loadInstantlyAccounts(){
   const list = document.getElementById('inst-accounts-list');
   list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">⏳ Yuklanmoqda...</div>';
   try {
-    const resp = await fetch('https://api.instantly.ai/api/v2/account/list?limit=20', {
-      headers: { 'Authorization': 'Bearer ' + key }
-    });
-    const data = await resp.json();
+    const data = await instFetch('account/list', 'GET', { limit: 20 });
     const accounts = data.items || data || [];
     if(!accounts.length){
       list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3)">📬 Hech qanday akkaunt topilmadi</div>';
