@@ -974,12 +974,10 @@ input[type="time"]{-webkit-appearance:none;}
           <button class="btn btn-sm" onclick="openApolloSearch()" style="background:linear-gradient(135deg,#FFB703,#FB8500);color:#000;border:none;font-weight:700">
             🔍 Apollo qidiruv
           </button>
-          <button class="btn btn-sm" onclick="apolloAutoImport()" id="apoAutoBtn" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none;font-weight:700">
-            ⚡ Apollo import
+          <button class="btn btn-sm" onclick="document.getElementById('csvFileInput').click()" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none;font-weight:700">
+            📥 CSV Import (Apollo/Snov)
           </button>
-          <button class="btn btn-sm" onclick="snovAutoImport()" id="snovAutoBtn" style="background:linear-gradient(135deg,#4361EE,#7209B7);color:#fff;border:none;font-weight:700">
-            🔮 Snov.io import
-          </button>
+          <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleCSVImport(this)">
         </div>
       </div>
       <!-- Apollo auto-import progress -->
@@ -3107,6 +3105,144 @@ async function apolloAutoImport(){
   setTimeout(function(){
     progressDiv.style.display = 'none';
   }, 8000);
+}
+
+/* ═══════════════════════════════════════
+   CSV IMPORT (Apollo / Snov.io / Skrapp / Hunter)
+═══════════════════════════════════════ */
+async function handleCSVImport(input){
+  var file = input.files[0];
+  if(!file) return;
+  input.value = '';
+
+  var ext = file.name.split('.').pop().toLowerCase();
+  var text = '';
+
+  if(ext === 'csv'){
+    text = await file.text();
+  } else {
+    alert('Faqat CSV fayl qo\'llab-quvvatlanadi.\nApollo/Snov.io dan CSV formatda eksport qiling.');
+    return;
+  }
+
+  var lines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  if(lines.length < 2){
+    alert('CSV fayl bo\'sh yoki noto\'g\'ri formatda!');
+    return;
+  }
+
+  // Parse header
+  var header = parseCSVLine(lines[0]).map(function(h){return h.toLowerCase().trim();});
+  var rows = [];
+  for(var i=1; i<lines.length; i++){
+    var vals = parseCSVLine(lines[i]);
+    if(vals.length < 2) continue;
+    var obj = {};
+    header.forEach(function(h,idx){ obj[h] = (vals[idx]||'').trim(); });
+    rows.push(obj);
+  }
+
+  if(!rows.length){
+    alert('CSV da ma\'lumot topilmadi!');
+    return;
+  }
+
+  // Map columns intelligently
+  var records = rows.map(function(row){
+    return {
+      kompaniya: findCol(row,['company','company name','organization','organization name','kompaniya','company_name']) || '',
+      rahbar: buildName(row) || findCol(row,['name','full name','contact name','rahbar','person','ism']) || '',
+      lavozim: findCol(row,['title','job title','position','lavozim','role','designation']) || '',
+      email: findCol(row,['email','email address','work email','corporate email','business email','email1']) || '',
+      telefon: findCol(row,['phone','phone number','mobile','direct phone','telefon','mobile phone','work phone']) || '',
+      davlat: findCol(row,['country','location','country/region','davlat','person country']) || '',
+      shahar: findCol(row,['city','person city','shahar']) || '',
+      soha: findCol(row,['industry','soha','sector','company industry']) || '',
+      linkedin: findCol(row,['linkedin','linkedin url','linkedin profile','person linkedin url','linkedin_url']) || '',
+      website: findCol(row,['website','company website','domain','website url','company domain']) || '',
+      holat: 'Yangi',
+      manba: detectSource(header),
+      sana: new Date().toISOString().slice(0,10),
+      emailSent: false
+    };
+  }).filter(function(r){ return r.kompaniya || r.rahbar || r.email; });
+
+  if(!records.length){
+    alert('CSV dan kontaktlar o\'qib bo\'lmadi.\nUstun nomlari to\'g\'ri ekanligini tekshiring (company, name, email, title...)');
+    return;
+  }
+
+  // Preview
+  var withEmail = records.filter(function(r){return r.email;}).length;
+  var msg = '📥 CSV Import natijasi:\n\n';
+  msg += '• Jami qatorlar: ' + records.length + '\n';
+  msg += '• Email bor: ' + withEmail + '\n';
+  msg += '• Email yo\'q: ' + (records.length - withEmail) + '\n';
+  msg += '• Manba: ' + records[0].manba + '\n\n';
+  msg += 'Namuna:\n';
+  var sample = records.slice(0,3);
+  sample.forEach(function(r){
+    msg += '  → ' + r.rahbar + ' | ' + r.kompaniya + ' | ' + (r.email||'email yo\'q') + '\n';
+  });
+  msg += '\nImport qilamizmi?';
+
+  if(!confirm(msg)) return;
+
+  var count = await saveApolloRecords(records);
+  alert('\u2705 ' + count + ' ta kontakt muvaffaqiyatli import qilindi!\nDublikatlar o\'tkazib yuborildi.');
+
+  renderInvestorCompanies();
+  renderAll();
+}
+
+function parseCSVLine(line){
+  var result = [];
+  var current = '';
+  var inQuotes = false;
+  for(var i=0; i<line.length; i++){
+    var ch = line[i];
+    if(ch === '"'){
+      inQuotes = !inQuotes;
+    } else if(ch === ',' && !inQuotes){
+      result.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+function findCol(row, names){
+  for(var i=0; i<names.length; i++){
+    var keys = Object.keys(row);
+    for(var j=0; j<keys.length; j++){
+      if(keys[j].toLowerCase().includes(names[i].toLowerCase())){
+        if(row[keys[j]]) return row[keys[j]];
+      }
+    }
+  }
+  return '';
+}
+
+function buildName(row){
+  var fn = findCol(row,['first name','first_name','firstname','ism']);
+  var ln = findCol(row,['last name','last_name','lastname','familiya']);
+  if(fn || ln) return ((fn||'') + ' ' + (ln||'')).trim();
+  return '';
+}
+
+function detectSource(header){
+  var h = header.join(' ').toLowerCase();
+  if(h.includes('apollo') || h.includes('organization')) return 'Apollo.io CSV';
+  if(h.includes('snov')) return 'Snov.io CSV';
+  if(h.includes('skrapp')) return 'Skrapp.io CSV';
+  if(h.includes('hunter')) return 'Hunter.io CSV';
+  if(h.includes('linkedin')) return 'LinkedIn CSV';
+  if(h.includes('instantly')) return 'Instantly CSV';
+  if(h.includes('lusha')) return 'Lusha CSV';
+  return 'CSV Import';
 }
 
 /* ═══════════════════════════════════════
