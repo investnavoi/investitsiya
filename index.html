@@ -1000,6 +1000,7 @@ input[type="time"]{-webkit-appearance:none;}
             <th data-i18n="col_leader">Rahbar</th>
             <th data-i18n="col_field">Soha</th>
             <th>Email</th>
+            <th>LinkedIn</th>
             <th data-i18n="col_emailstatus">Email holati</th>
             <th data-i18n="col_actions">Amal</th>
           </tr></thead>
@@ -1389,7 +1390,7 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
         <div class="tscroll">
           <table>
-            <thead><tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Lavozim</th><th>Soha</th><th>Davlat</th><th>Email</th><th>Manba</th><th>Amal</th></tr></thead>
+            <thead><tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Lavozim</th><th>Soha</th><th>Davlat</th><th>Email</th><th>LinkedIn</th><th>Manba</th><th>Amal</th></tr></thead>
             <tbody id="admin-ic-list"></tbody>
           </table>
         </div>
@@ -3686,7 +3687,7 @@ function renderInvestorCompanies(){
 
   const tb=document.getElementById('ic-tbody');
   if(!co.length){
-    tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
+    tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
     return;
   }
   tb.innerHTML=co.map((r,i)=>`
@@ -3694,15 +3695,16 @@ function renderInvestorCompanies(){
       <td>${isAdmin?`<input type="checkbox" class="ic-check" data-id="${r.id}" onchange="updateSelectedCount()">`:''}</td>
       <td>${i+1}</td>
       <td><b>${r.kompaniya}</b></td>
-      <td>${r.rahbar}</td>
+      <td>${r.rahbar}${r.lavozim?'<div style="font-size:.6rem;color:var(--text3)">'+r.lavozim+'</div>':''}</td>
       <td>${r.soha}</td>
       <td style="font-size:.7rem;color:#4361EE">${r.email||'<span style="color:var(--text3)">—</span>'}</td>
+      <td>${r.linkedin?'<a href="'+(r.linkedin.startsWith('http')?r.linkedin:'https://'+r.linkedin)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:.65rem;color:#0A66C2;text-decoration:none;font-weight:600;padding:3px 8px;background:rgba(10,102,194,.08);border-radius:6px" title="LinkedIn profilni ochish"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>Profil</a>':'<span style="color:var(--text3);font-size:.65rem">—</span>'}</td>
       <td>${getEmailStatusBadge(r)}</td>
       <td>
         ${isAdmin?`<div style="display:flex;gap:6px">
-          ${r.email?`<button class="btn btn-blue btn-sm" onclick="openEmailModal(${r.id})" title="Xabar yuborish">📧</button>`:''}
-          ${r.email?`<button class="btn btn-sm" onclick="openScheduleModal(${r.id})" title="Email rejalashtirish" style="background:${r.emailSchedule?.active?'linear-gradient(135deg,#059669,#06D6A0)':'var(--bg2)'};color:${r.emailSchedule?.active?'#fff':'var(--text2)'};border:1px solid var(--border)">📅${r.emailSchedule?.active?' ✓':''}</button>`:''}
-          <button class="btn btn-danger btn-sm" onclick="deleteRecord('investorCompanies',${r.id})">🗑</button>
+          ${r.email?`<button class="btn btn-blue btn-sm" onclick="openEmailModal('${r.id}')" title="Xabar yuborish">📧</button>`:''}
+          ${r.email?`<button class="btn btn-sm" onclick="openScheduleModal('${r.id}')" title="Email rejalashtirish" style="background:${r.emailSchedule?.active?'linear-gradient(135deg,#059669,#06D6A0)':'var(--bg2)'};color:${r.emailSchedule?.active?'#fff':'var(--text2)'};border:1px solid var(--border)">📅${r.emailSchedule?.active?' ✓':''}</button>`:''}
+          <button class="btn btn-danger btn-sm" onclick="deleteRecord('investorCompanies','${r.id}')">🗑</button>
         </div>`:'<span style="font-size:.65rem;color:var(--text3)">—</span>'}
       </td>
     </tr>`).join('');
@@ -3888,10 +3890,11 @@ function renderAdminLists(){
         <td style="font-size:.65rem">${r.soha||'—'}</td>
         <td style="font-size:.65rem">${r.davlat||'—'}</td>
         <td style="font-size:.65rem">${r.email ? (r.emailStatus==='verified'?'<span style="color:#059669">✅ '+r.email+'</span>':r.email) : '—'}</td>
+        <td>${r.linkedin?'<a href="'+(r.linkedin.startsWith('http')?r.linkedin:'https://'+r.linkedin)+'" target="_blank" rel="noopener" style="color:#0A66C2;font-size:.62rem;text-decoration:none" title="'+r.linkedin+'">🔗 Ochish</a>':'—'}</td>
         <td style="font-size:.6rem;color:var(--text3)">${r.manba||'—'}</td>
         <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('investorCompanies','${r.id}')">🗑</button></td>
       </tr>`).join('')
-      : '<tr><td colspan="9"><div class="tc-empty"><div class="tc-empty-icon">🏢</div><p>Hali ma\'lumot yo\'q</p></div></td></tr>';
+      : '<tr><td colspan="10"><div class="tc-empty"><div class="tc-empty-icon">🏢</div><p>Hali ma\'lumot yo\'q</p></div></td></tr>';
   }
 }
 
@@ -4036,10 +4039,11 @@ function handleIcExcelUpload(input){
     info += ' | Manba: ' + source;
     document.getElementById('icExcelPreviewInfo').innerHTML = '<b>\u{1F4E5} ' + info + '</b>';
 
-    document.getElementById('icExcelPreviewHead').innerHTML = '<tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Lavozim</th><th>Soha</th><th>Davlat</th><th>Email</th><th>Telefon</th></tr>';
+    document.getElementById('icExcelPreviewHead').innerHTML = '<tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Lavozim</th><th>Soha</th><th>Davlat</th><th>Email</th><th>LinkedIn</th></tr>';
     document.getElementById('icExcelPreviewBody').innerHTML = _icExcelParsed.map(function(r,i){
       var emailBadge = r.email ? (r.emailStatus==='verified' ? '<span style="color:#059669;font-size:.65rem">\u2705 '+r.email+'</span>' : '<span style="font-size:.65rem">'+r.email+'</span>') : '<span style="color:var(--text3);font-size:.65rem">\u2014</span>';
-      return '<tr><td>'+(i+1)+'</td><td><b>'+r.kompaniya+'</b></td><td>'+r.rahbar+'</td><td style="font-size:.65rem">'+r.lavozim+'</td><td style="font-size:.65rem">'+r.soha+'</td><td style="font-size:.65rem">'+r.davlat+'</td><td>'+emailBadge+'</td><td style="font-size:.65rem">'+(r.telefon||'\u2014')+'</td></tr>';
+      var liLink = r.linkedin ? '<a href="'+(r.linkedin.startsWith('http')?r.linkedin:'https://'+r.linkedin)+'" target="_blank" rel="noopener" style="color:#0A66C2;font-size:.6rem;text-decoration:none">🔗 Profil</a>' : '\u2014';
+      return '<tr><td>'+(i+1)+'</td><td><b>'+r.kompaniya+'</b></td><td>'+r.rahbar+'</td><td style="font-size:.65rem">'+r.lavozim+'</td><td style="font-size:.65rem">'+r.soha+'</td><td style="font-size:.65rem">'+r.davlat+'</td><td>'+emailBadge+'</td><td>'+liLink+'</td></tr>';
     }).join('');
     document.getElementById('icExcelPreview').style.display = 'block';
   };
