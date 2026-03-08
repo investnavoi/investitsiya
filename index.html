@@ -2773,7 +2773,7 @@ function setIntlRegion(i){
    APOLLO.IO INTEGRATION
 ═══════════════════════════════════════ */
 const APOLLO_KEY = '_k3r9J1QYdZLU9IopNgcgg';
-const APOLLO_PROXY = 'https://apollo-proxy-navoiy.netlify.app/api/apollo-search';
+const APOLLO_PROXY = 'https://apollo-proxy.vercel.app/api/apollo-search';
 let _apoPage = 1;
 let _apoResults = [];
 let _apoSelected = new Set();
@@ -6085,7 +6085,7 @@ async function lushaSearch(){
 }
 
 // ── INSTANTLY.AI ──
-const INSTANTLY_PROXY = 'https://apollo-proxy-navoiy.netlify.app/api/instantly-proxy';
+const INSTANTLY_PROXY = 'https://apollo-proxy.vercel.app/api/instantly-proxy';
 
 async function instFetch(path, method='GET', body={}){
   const payload = { _path: path, _method: method, ...body };
