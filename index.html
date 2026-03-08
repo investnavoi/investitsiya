@@ -975,7 +975,7 @@ input[type="time"]{-webkit-appearance:none;}
             🔍 Apollo qidiruv
           </button>
           <button class="btn btn-sm" onclick="document.getElementById('csvFileInput').click()" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none;font-weight:700">
-            📥 CSV Import (Apollo/Snov)
+            📥 Import (CSV/Excel)
           </button>
           <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleCSVImport(this)">
         </div>
@@ -1335,25 +1335,27 @@ input[type="time"]{-webkit-appearance:none;}
     <!-- ADMIN: INVESTOR COMPANIES FORM -->
     <div id="asec-investorco" class="admin-section" style="display:none">
 
-      <!-- Excel import card -->
+      <!-- Apollo/Excel Import Card -->
       <div class="form-card excel-upload-card" id="icExcelUploadCard">
-        <div class="form-title"><div class="form-title-icon">📥</div> Excel fayldan yuklash</div>
+        <div class="form-title"><div class="form-title-icon">📥</div> Excel / CSV Import (Apollo, Snov, Lusha, Skrapp...)</div>
+        <div style="font-size:.7rem;color:var(--text3);margin-bottom:.8rem">Apollo.io, Snov.io, Lusha, Skrapp, Hunter va boshqa platformalardan eksport qilingan <b>XLSX</b> yoki <b>CSV</b> faylni yuklang. Barcha ustunlar avtomatik aniqlanadi.</div>
         <div id="icExcelDropZone" class="excel-drop-zone"
           ondragover="event.preventDefault();this.classList.add('drag-over')"
           ondragleave="this.classList.remove('drag-over')"
           ondrop="event.preventDefault();this.classList.remove('drag-over');handleIcExcelUpload({files:event.dataTransfer.files})">
           <div class="excel-drop-icon">📊</div>
-          <div class="excel-drop-text">Excel faylni shu yerga tashlang yoki tanlang</div>
+          <div class="excel-drop-text">Excel yoki CSV faylni shu yerga tashlang</div>
+          <div style="font-size:.62rem;color:var(--text3);margin-top:4px">Apollo XLSX, CSV — barcha formatlar qo'llab-quvvatlanadi</div>
           <label class="btn btn-blue btn-sm" style="cursor:pointer;margin-top:.5rem">
             📂 Fayl tanlash
             <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleIcExcelUpload(this)">
           </label>
         </div>
         <div id="icExcelPreview" style="display:none;margin-top:1rem">
-          <div id="icExcelPreviewInfo" style="font-size:.75rem;color:var(--text3);margin-bottom:.5rem"></div>
-          <div class="tscroll" style="max-height:240px"><table><thead id="icExcelPreviewHead"></thead><tbody id="icExcelPreviewBody"></tbody></table></div>
+          <div id="icExcelPreviewInfo" style="font-size:.75rem;color:var(--text2);margin-bottom:.5rem;padding:.5rem .75rem;background:var(--bg2);border-radius:8px"></div>
+          <div class="tscroll" style="max-height:280px"><table><thead id="icExcelPreviewHead"></thead><tbody id="icExcelPreviewBody"></tbody></table></div>
           <div class="form-actions" style="margin-top:.8rem">
-            <button class="btn btn-blue" onclick="importIcExcel()">✅ Barchasini saqlash</button>
+            <button class="btn btn-blue" onclick="importIcExcel()">✅ Barchasini Firebase'ga saqlash</button>
             <button class="btn btn-ghost" onclick="cancelIcExcel()">Bekor qilish</button>
           </div>
         </div>
@@ -1365,8 +1367,13 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-grid">
           <div class="form-group span-2"><label class="form-label">Kompaniya Nomi <span class="req">*</span></label><input class="form-input" id="ic-kompaniya" placeholder="Kompaniya LLC"></div>
           <div class="form-group"><label class="form-label">Rahbar <span class="req">*</span></label><input class="form-input" id="ic-rahbar" placeholder="F.I.O."></div>
-          <div class="form-group"><label class="form-label">Soha <span class="req">*</span></label><input class="form-input" id="ic-soha" placeholder="Sanoat, IT..."></div>
-          <div class="form-group span-2"><label class="form-label">Email</label><input class="form-input" type="email" id="ic-email" placeholder="info@company.uz"></div>
+          <div class="form-group"><label class="form-label">Lavozim</label><input class="form-input" id="ic-lavozim" placeholder="CEO, Director..."></div>
+          <div class="form-group"><label class="form-label">Soha <span class="req">*</span></label><input class="form-input" id="ic-soha" placeholder="Mining, Energy..."></div>
+          <div class="form-group"><label class="form-label">Davlat</label><input class="form-input" id="ic-davlat" placeholder="Germany, USA..."></div>
+          <div class="form-group span-2"><label class="form-label">Email</label><input class="form-input" type="email" id="ic-email" placeholder="info@company.com"></div>
+          <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="ic-telefon" placeholder="+49 123 456 7890"></div>
+          <div class="form-group"><label class="form-label">LinkedIn</label><input class="form-input" id="ic-linkedin" placeholder="linkedin.com/in/..."></div>
+          <div class="form-group"><label class="form-label">Website</label><input class="form-input" id="ic-website" placeholder="www.company.com"></div>
         </div>
         <div class="form-actions">
           <button class="btn btn-blue" onclick="addInvestorCo()">✅ Saqlash</button>
@@ -1382,7 +1389,7 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
         <div class="tscroll">
           <table>
-            <thead><tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Soha</th><th>Email</th><th>Amal</th></tr></thead>
+            <thead><tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Lavozim</th><th>Soha</th><th>Davlat</th><th>Email</th><th>Manba</th><th>Amal</th></tr></thead>
             <tbody id="admin-ic-list"></tbody>
           </table>
         </div>
@@ -3116,73 +3123,103 @@ async function handleCSVImport(input){
   input.value = '';
 
   var ext = file.name.split('.').pop().toLowerCase();
-  var text = '';
-
-  if(ext === 'csv'){
-    text = await file.text();
-  } else {
-    alert('Faqat CSV fayl qo\'llab-quvvatlanadi.\nApollo/Snov.io dan CSV formatda eksport qiling.');
-    return;
-  }
-
-  var lines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
-  if(lines.length < 2){
-    alert('CSV fayl bo\'sh yoki noto\'g\'ri formatda!');
-    return;
-  }
-
-  // Parse header
-  var header = parseCSVLine(lines[0]).map(function(h){return h.toLowerCase().trim();});
   var rows = [];
-  for(var i=1; i<lines.length; i++){
-    var vals = parseCSVLine(lines[i]);
-    if(vals.length < 2) continue;
-    var obj = {};
-    header.forEach(function(h,idx){ obj[h] = (vals[idx]||'').trim(); });
-    rows.push(obj);
-  }
+  var header = [];
 
-  if(!rows.length){
-    alert('CSV da ma\'lumot topilmadi!');
+  try {
+    if(ext === 'csv'){
+      var text = await file.text();
+      var lines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+      if(lines.length < 2){ alert('CSV fayl bo\'sh!'); return; }
+      header = parseCSVLine(lines[0]).map(function(h){return h.trim();});
+      for(var i=1; i<lines.length; i++){
+        var vals = parseCSVLine(lines[i]);
+        if(vals.length < 2) continue;
+        var obj = {};
+        header.forEach(function(h,idx){ obj[h] = (vals[idx]||'').trim(); });
+        rows.push(obj);
+      }
+    } else if(ext === 'xlsx' || ext === 'xls'){
+      var data = await file.arrayBuffer();
+      var wb = XLSX.read(data, {type:'array'});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var jsonRows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      if(!jsonRows.length){ alert('Excel fayl bo\'sh!'); return; }
+      header = Object.keys(jsonRows[0]);
+      rows = jsonRows;
+    } else {
+      alert('Faqat CSV yoki XLSX fayl yuklang!');
+      return;
+    }
+  } catch(e){
+    alert('Fayl o\'qishda xato: ' + e.message);
     return;
   }
 
-  // Map columns intelligently
+  if(!rows.length){ alert('Faylda ma\'lumot topilmadi!'); return; }
+
+  // Map columns — Apollo exact column names + universal
   var records = rows.map(function(row){
-    return {
-      kompaniya: findCol(row,['company','company name','organization','organization name','kompaniya','company_name']) || '',
-      rahbar: buildName(row) || findCol(row,['name','full name','contact name','rahbar','person','ism']) || '',
-      lavozim: findCol(row,['title','job title','position','lavozim','role','designation']) || '',
-      email: findCol(row,['email','email address','work email','corporate email','business email','email1']) || '',
-      telefon: findCol(row,['phone','phone number','mobile','direct phone','telefon','mobile phone','work phone']) || '',
-      davlat: findCol(row,['country','location','country/region','davlat','person country']) || '',
-      shahar: findCol(row,['city','person city','shahar']) || '',
-      soha: findCol(row,['industry','soha','sector','company industry']) || '',
-      linkedin: findCol(row,['linkedin','linkedin url','linkedin profile','person linkedin url','linkedin_url']) || '',
-      website: findCol(row,['website','company website','domain','website url','company domain']) || '',
-      holat: 'Yangi',
-      manba: detectSource(header),
-      sana: new Date().toISOString().slice(0,10),
-      emailSent: false
+    var r = {};
+    // Try each key directly first (for Apollo XLSX exact match)
+    var keys = Object.keys(row);
+    var get = function(exactNames){
+      for(var i=0; i<exactNames.length; i++){
+        for(var j=0; j<keys.length; j++){
+          if(keys[j].toLowerCase().trim() === exactNames[i].toLowerCase()){
+            var v = row[keys[j]];
+            if(v !== undefined && v !== null && String(v).trim()) return String(v).trim();
+          }
+        }
+      }
+      // Fuzzy match
+      for(var i=0; i<exactNames.length; i++){
+        for(var j=0; j<keys.length; j++){
+          if(keys[j].toLowerCase().indexOf(exactNames[i].toLowerCase()) !== -1){
+            var v = row[keys[j]];
+            if(v !== undefined && v !== null && String(v).trim()) return String(v).trim();
+          }
+        }
+      }
+      return '';
     };
+
+    r.kompaniya = get(['company name','company','organization name','organization','kompaniya']);
+    r.rahbar = get(['full name','name','contact name','rahbar']) || ((get(['first name','firstname'])+' '+get(['last name','lastname'])).trim());
+    r.lavozim = get(['job title','title','position','lavozim','role','designation']);
+    r.email = get(['email','email address','work email','business email']);
+    r.telefon = get(['company phone numbers','phone','phone number','mobile','direct phone','telefon']);
+    r.davlat = get(['country','location','davlat']);
+    r.shahar = get(['city','shahar']);
+    r.soha = get(['industry','soha','sector']);
+    r.linkedin = get(['linkedin url','linkedin','linkedin profile']);
+    r.website = get(['company website','website','domain']);
+    r.emailStatus = get(['email status','email_status']);
+    r.xodimlar = get(['employees','employee count']);
+    r.holat = 'Yangi';
+    r.manba = detectSource(header);
+    r.sana = new Date().toISOString().slice(0,10);
+    r.emailSent = false;
+    return r;
   }).filter(function(r){ return r.kompaniya || r.rahbar || r.email; });
 
   if(!records.length){
-    alert('CSV dan kontaktlar o\'qib bo\'lmadi.\nUstun nomlari to\'g\'ri ekanligini tekshiring (company, name, email, title...)');
+    alert('Fayldan kontaktlar o\'qib bo\'lmadi.\nUstun nomlari tekshiring.');
     return;
   }
 
   // Preview
   var withEmail = records.filter(function(r){return r.email;}).length;
-  var msg = '📥 CSV Import natijasi:\n\n';
-  msg += '• Jami qatorlar: ' + records.length + '\n';
-  msg += '• Email bor: ' + withEmail + '\n';
-  msg += '• Email yo\'q: ' + (records.length - withEmail) + '\n';
-  msg += '• Manba: ' + records[0].manba + '\n\n';
+  var verified = records.filter(function(r){return r.emailStatus === 'verified';}).length;
+  var msg = '\u{1F4E5} Import natijasi (' + ext.toUpperCase() + '):\n\n';
+  msg += '\u2022 Jami qatorlar: ' + records.length + '\n';
+  msg += '\u2022 Email bor: ' + withEmail + '\n';
+  if(verified) msg += '\u2022 Verified email: ' + verified + '\n';
+  msg += '\u2022 Email yo\'q: ' + (records.length - withEmail) + '\n';
+  msg += '\u2022 Manba: ' + records[0].manba + '\n\n';
   msg += 'Namuna:\n';
-  var sample = records.slice(0,3);
-  sample.forEach(function(r){
-    msg += '  → ' + r.rahbar + ' | ' + r.kompaniya + ' | ' + (r.email||'email yo\'q') + '\n';
+  records.slice(0,3).forEach(function(r){
+    msg += '  \u2192 ' + r.rahbar + ' | ' + r.kompaniya + ' | ' + r.lavozim + ' | ' + (r.email||'email yo\'q') + '\n';
   });
   msg += '\nImport qilamizmi?';
 
@@ -3234,15 +3271,18 @@ function buildName(row){
 }
 
 function detectSource(header){
-  var h = header.join(' ').toLowerCase();
-  if(h.includes('apollo') || h.includes('organization')) return 'Apollo.io CSV';
-  if(h.includes('snov')) return 'Snov.io CSV';
-  if(h.includes('skrapp')) return 'Skrapp.io CSV';
-  if(h.includes('hunter')) return 'Hunter.io CSV';
-  if(h.includes('linkedin')) return 'LinkedIn CSV';
-  if(h.includes('instantly')) return 'Instantly CSV';
-  if(h.includes('lusha')) return 'Lusha CSV';
-  return 'CSV Import';
+  var h = (Array.isArray(header) ? header.join(' ') : String(header)).toLowerCase();
+  if(h.includes('apollo id') || h.includes('email status')) return 'Apollo.io';
+  if(h.includes('apollo') || h.includes('organization')) return 'Apollo.io';
+  if(h.includes('snov')) return 'Snov.io';
+  if(h.includes('skrapp')) return 'Skrapp.io';
+  if(h.includes('hunter')) return 'Hunter.io';
+  if(h.includes('lusha')) return 'Lusha';
+  if(h.includes('instantly')) return 'Instantly';
+  if(h.includes('linkedin')) return 'LinkedIn';
+  if(h.includes('kaspr')) return 'Kaspr';
+  if(h.includes('rocketreach')) return 'RocketReach';
+  return 'Import';
 }
 
 /* ═══════════════════════════════════════
@@ -3825,11 +3865,14 @@ function renderAdminLists(){
         <td>${i+1}</td>
         <td><b>${r.kompaniya||'—'}</b></td>
         <td>${r.rahbar||'—'}</td>
-        <td>${r.soha||'—'}</td>
-        <td style="font-size:.7rem">${r.email||'—'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('investorCompanies',${r.id})">🗑</button></td>
+        <td style="font-size:.65rem">${r.lavozim||'—'}</td>
+        <td style="font-size:.65rem">${r.soha||'—'}</td>
+        <td style="font-size:.65rem">${r.davlat||'—'}</td>
+        <td style="font-size:.65rem">${r.email ? (r.emailStatus==='verified'?'<span style="color:#059669">✅ '+r.email+'</span>':r.email) : '—'}</td>
+        <td style="font-size:.6rem;color:var(--text3)">${r.manba||'—'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('investorCompanies','${r.id}')">🗑</button></td>
       </tr>`).join('')
-      : '<tr><td colspan="6"><div class="tc-empty"><div class="tc-empty-icon">🏢</div><p>Hali ma\'lumot yo\'q</p></div></td></tr>';
+      : '<tr><td colspan="9"><div class="tc-empty"><div class="tc-empty-icon">🏢</div><p>Hali ma\'lumot yo\'q</p></div></td></tr>';
   }
 }
 
@@ -3845,8 +3888,17 @@ function addInvestorCo(){
     id: nextId(DB.investorCompanies||[]),
     kompaniya: komp,
     rahbar: rahb,
+    lavozim: (document.getElementById('ic-lavozim')||{}).value||'',
     soha: soha,
     email: document.getElementById('ic-email').value.trim(),
+    telefon: (document.getElementById('ic-telefon')||{}).value||'',
+    davlat: (document.getElementById('ic-davlat')||{}).value||'',
+    linkedin: (document.getElementById('ic-linkedin')||{}).value||'',
+    website: (document.getElementById('ic-website')||{}).value||'',
+    manba: 'Qo\'lda kiritildi',
+    holat: 'Yangi',
+    sana: new Date().toISOString().slice(0,10),
+    emailSent: false
   };
   if(!DB.investorCompanies) DB.investorCompanies = [];
   DB.investorCompanies.push(rec);
@@ -3858,7 +3910,7 @@ function addInvestorCo(){
 }
 
 function clearIcForm(){
-  ['ic-kompaniya','ic-rahbar','ic-soha','ic-email'].forEach(id=>{
+  ['ic-kompaniya','ic-rahbar','ic-lavozim','ic-soha','ic-email','ic-telefon','ic-davlat','ic-linkedin','ic-website'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
@@ -3869,51 +3921,128 @@ var _icExcelParsed = [];
 function handleIcExcelUpload(input){
   const file = (input.files||[])[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    const wb = XLSX.read(e.target.result, {type:'array'});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-    if(rows.length < 2){ toast('⚠️ Excel bo\'sh yoki noto\'g\'ri format','error'); return; }
+  const ext = file.name.split('.').pop().toLowerCase();
 
-    const headers = rows[0].map(h=>String(h).toLowerCase().trim());
-    _icExcelParsed = rows.slice(1).filter(r=>r.some(c=>c!=='')).map(row=>{
-      const get = (keys) => {
-        for(const k of keys){
-          const idx = headers.findIndex(h=>h.includes(k));
-          if(idx>=0 && row[idx]!=='') return String(row[idx]).trim();
+  const processRows = function(jsonRows, headerArr){
+    if(!jsonRows.length){ toast('\u26A0\uFE0F Faylda ma\'lumot topilmadi','error'); return; }
+
+    var source = detectSource(headerArr || Object.keys(jsonRows[0]));
+
+    _icExcelParsed = jsonRows.map(function(row){
+      var keys = Object.keys(row);
+      var get = function(exactNames){
+        for(var i=0; i<exactNames.length; i++){
+          // Exact match first
+          for(var j=0; j<keys.length; j++){
+            if(keys[j].toLowerCase().trim() === exactNames[i].toLowerCase()){
+              var v = row[keys[j]];
+              if(v !== undefined && v !== null && String(v).trim()) return String(v).trim();
+            }
+          }
+        }
+        // Fuzzy match
+        for(var i=0; i<exactNames.length; i++){
+          for(var j=0; j<keys.length; j++){
+            if(keys[j].toLowerCase().indexOf(exactNames[i].toLowerCase()) !== -1){
+              var v = row[keys[j]];
+              if(v !== undefined && v !== null && String(v).trim()) return String(v).trim();
+            }
+          }
         }
         return '';
       };
+
+      var fullName = get(['full name','name','contact name','rahbar']);
+      if(!fullName){
+        var fn = get(['first name','firstname']);
+        var ln = get(['last name','lastname']);
+        fullName = ((fn||'') + ' ' + (ln||'')).trim();
+      }
+
       return {
-        kompaniya: get(['kompaniya','company','tashkilot','nomi']),
-        rahbar: get(['rahbar','director','manager','rahbari']),
-        soha: get(['soha','sector','industry','tarmoq']),
-        email: get(['email','pochta']),
+        kompaniya: get(['company name','company','organization name','organization','kompaniya','tashkilot','nomi']),
+        rahbar: fullName,
+        lavozim: get(['job title','title','position','lavozim','role','designation']),
+        soha: get(['industry','soha','sector','tarmoq']),
+        email: get(['email','email address','work email','pochta']),
+        emailStatus: get(['email status','email_status']),
+        telefon: get(['company phone numbers','phone','phone number','mobile','telefon']),
+        davlat: get(['country','location','davlat']),
+        shahar: get(['city','shahar']),
+        linkedin: get(['linkedin url','linkedin']),
+        website: get(['company website','website','domain']),
+        xodimlar: get(['employees','employee count']),
+        manba: source,
+        holat: 'Yangi',
+        sana: new Date().toISOString().slice(0,10),
+        emailSent: false
       };
-    }).filter(r=>r.kompaniya);
+    }).filter(function(r){ return r.kompaniya || r.rahbar || r.email; });
 
-    if(!_icExcelParsed.length){ toast('⚠️ Ma\'lumot topilmadi','error'); return; }
+    if(!_icExcelParsed.length){ toast('\u26A0\uFE0F Kontaktlar topilmadi','error'); return; }
 
-    document.getElementById('icExcelPreviewInfo').textContent = `${_icExcelParsed.length} ta yozuv topildi`;
-    document.getElementById('icExcelPreviewHead').innerHTML = '<tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Soha</th><th>Email</th></tr>';
-    document.getElementById('icExcelPreviewBody').innerHTML = _icExcelParsed.map((r,i)=>`
-      <tr><td>${i+1}</td><td>${r.kompaniya}</td><td>${r.rahbar||'—'}</td><td>${r.soha||'—'}</td><td>${r.email||'—'}</td></tr>`).join('');
+    var withEmail = _icExcelParsed.filter(function(r){return r.email;}).length;
+    var verified = _icExcelParsed.filter(function(r){return r.emailStatus === 'verified';}).length;
+    var info = _icExcelParsed.length + ' ta kontakt topildi | ' + withEmail + ' ta email';
+    if(verified) info += ' | ' + verified + ' ta verified';
+    info += ' | Manba: ' + source;
+    document.getElementById('icExcelPreviewInfo').innerHTML = '<b>\u{1F4E5} ' + info + '</b>';
+
+    document.getElementById('icExcelPreviewHead').innerHTML = '<tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Lavozim</th><th>Soha</th><th>Davlat</th><th>Email</th><th>Telefon</th></tr>';
+    document.getElementById('icExcelPreviewBody').innerHTML = _icExcelParsed.map(function(r,i){
+      var emailBadge = r.email ? (r.emailStatus==='verified' ? '<span style="color:#059669;font-size:.65rem">\u2705 '+r.email+'</span>' : '<span style="font-size:.65rem">'+r.email+'</span>') : '<span style="color:var(--text3);font-size:.65rem">\u2014</span>';
+      return '<tr><td>'+(i+1)+'</td><td><b>'+r.kompaniya+'</b></td><td>'+r.rahbar+'</td><td style="font-size:.65rem">'+r.lavozim+'</td><td style="font-size:.65rem">'+r.soha+'</td><td style="font-size:.65rem">'+r.davlat+'</td><td>'+emailBadge+'</td><td style="font-size:.65rem">'+(r.telefon||'\u2014')+'</td></tr>';
+    }).join('');
     document.getElementById('icExcelPreview').style.display = 'block';
   };
-  reader.readAsArrayBuffer(file);
-  input.value = '';
+
+  if(ext === 'csv'){
+    file.text().then(function(text){
+      var lines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+      if(lines.length < 2){ toast('\u26A0\uFE0F CSV bo\'sh','error'); return; }
+      var header = parseCSVLine(lines[0]);
+      var rows = [];
+      for(var i=1; i<lines.length; i++){
+        var vals = parseCSVLine(lines[i]);
+        if(vals.length < 2) continue;
+        var obj = {};
+        header.forEach(function(h,idx){ obj[h.trim()] = (vals[idx]||'').trim(); });
+        rows.push(obj);
+      }
+      processRows(rows, header);
+    });
+  } else {
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var wb = XLSX.read(e.target.result, {type:'array'});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var jsonRows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      processRows(jsonRows);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  if(input.value !== undefined) input.value = '';
 }
 
 function importIcExcel(){
-  if(!_icExcelParsed.length) return;
+  if(!_icExcelParsed || !_icExcelParsed.length) return;
   if(!DB.investorCompanies) DB.investorCompanies = [];
-  _icExcelParsed.forEach(r=>{
-    const rec = Object.assign({id: nextId(DB.investorCompanies)}, r);
+
+  var existKeys = DB.investorCompanies.map(function(r){ return ((r.kompaniya||'')+'|'+(r.rahbar||'')).toLowerCase(); });
+  var added = 0;
+
+  _icExcelParsed.forEach(function(r){
+    var key = ((r.kompaniya||'')+'|'+(r.rahbar||'')).toLowerCase();
+    if(existKeys.indexOf(key) !== -1) return; // skip duplicates
+
+    var rec = Object.assign({id: nextId(DB.investorCompanies)}, r);
     DB.investorCompanies.push(rec);
+    existKeys.push(key);
     if(typeof fbSave==='function') fbSave('investorCompanies', rec);
+    added++;
   });
-  toast(`✅ ${_icExcelParsed.length} ta kompaniya saqlandi!`);
+
+  toast('\u2705 ' + added + ' ta kompaniya import qilindi!' + (_icExcelParsed.length - added > 0 ? ' (' + (_icExcelParsed.length - added) + ' ta dublikat o\'tkazildi)' : ''));
   _icExcelParsed = [];
   cancelIcExcel();
   renderInvestorCompanies();
@@ -4407,8 +4536,7 @@ function confirmDelete(){
 }
 
 function deleteRecord(table, id){
-  const numId = Number(id);
-  const rec   = DB[table].find(r => Number(r.id) === numId);
+  const rec = DB[table].find(r => String(r.id) === String(id));
   const name  = rec ? (rec.kompaniya||rec.ism||rec.nom||rec.rahbar||'Yozuv') : 'Yozuv';
 
   const modal   = document.getElementById('deleteModal');
@@ -4423,8 +4551,8 @@ function deleteRecord(table, id){
   const newBtn = confirmBtn.cloneNode(true);
   confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
   newBtn.onclick = () => {
-    DB[table] = DB[table].filter(r => Number(r.id) !== numId);
-    if(typeof fbDelete==='function') fbDelete(table, numId);
+    DB[table] = DB[table].filter(r => String(r.id) !== String(id));
+    if(typeof fbDelete==='function') fbDelete(table, id);
     ({investors:renderInvestors, local:renderLocal, zoom:renderZoom, forums:renderForums})[table]?.();
     renderOverview();
     modal.classList.remove('open');
