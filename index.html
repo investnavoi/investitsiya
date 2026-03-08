@@ -3187,14 +3187,33 @@ async function handleCSVImport(input){
     r.kompaniya = get(['company name','company','organization name','organization','kompaniya']);
     r.rahbar = get(['full name','name','contact name','rahbar']) || ((get(['first name','firstname'])+' '+get(['last name','lastname'])).trim());
     r.lavozim = get(['job title','title','position','lavozim','role','designation']);
-    r.email = get(['email','email address','work email','business email']);
+    r.emailStatus = get(['email status','email_status']);
+
+    // Smart email extraction — only values with @ symbol
+    r.email = '';
+    for(var j=0; j<keys.length; j++){
+      var kl = keys[j].toLowerCase().trim();
+      if(kl === 'email' || kl === 'email address' || kl === 'work email' || kl === 'business email'){
+        var v = row[keys[j]];
+        if(v && String(v).indexOf('@') !== -1){ r.email = String(v).trim(); break; }
+      }
+    }
+    if(!r.email){
+      for(var j=0; j<keys.length; j++){
+        var kl = keys[j].toLowerCase();
+        if(kl.indexOf('email') !== -1 && kl.indexOf('status') === -1){
+          var v = row[keys[j]];
+          if(v && String(v).indexOf('@') !== -1){ r.email = String(v).trim(); break; }
+        }
+      }
+    }
+
     r.telefon = get(['company phone numbers','phone','phone number','mobile','direct phone','telefon']);
     r.davlat = get(['country','location','davlat']);
     r.shahar = get(['city','shahar']);
     r.soha = get(['industry','soha','sector']);
     r.linkedin = get(['linkedin url','linkedin','linkedin profile']);
     r.website = get(['company website','website','domain']);
-    r.emailStatus = get(['email status','email_status']);
     r.xodimlar = get(['employees','employee count']);
     r.holat = 'Yangi';
     r.manba = detectSource(header);
@@ -3959,13 +3978,42 @@ function handleIcExcelUpload(input){
         fullName = ((fn||'') + ' ' + (ln||'')).trim();
       }
 
+      // Get email status FIRST, then email with exclusion
+      var emailStatus = get(['email status','email_status']);
+
+      // Special email getter — skip columns with "status" in name
+      var emailVal = '';
+      for(var j=0; j<keys.length; j++){
+        var kl = keys[j].toLowerCase().trim();
+        if(kl === 'email' || kl === 'email address' || kl === 'work email' || kl === 'business email'){
+          var v = row[keys[j]];
+          if(v && String(v).trim() && String(v).indexOf('@') !== -1){
+            emailVal = String(v).trim();
+            break;
+          }
+        }
+      }
+      // Fallback: any column with "email" but NOT "status"
+      if(!emailVal){
+        for(var j=0; j<keys.length; j++){
+          var kl = keys[j].toLowerCase();
+          if(kl.indexOf('email') !== -1 && kl.indexOf('status') === -1){
+            var v = row[keys[j]];
+            if(v && String(v).trim() && String(v).indexOf('@') !== -1){
+              emailVal = String(v).trim();
+              break;
+            }
+          }
+        }
+      }
+
       return {
         kompaniya: get(['company name','company','organization name','organization','kompaniya','tashkilot','nomi']),
         rahbar: fullName,
         lavozim: get(['job title','title','position','lavozim','role','designation']),
         soha: get(['industry','soha','sector','tarmoq']),
-        email: get(['email','email address','work email','pochta']),
-        emailStatus: get(['email status','email_status']),
+        email: emailVal,
+        emailStatus: emailStatus,
         telefon: get(['company phone numbers','phone','phone number','mobile','telefon']),
         davlat: get(['country','location','davlat']),
         shahar: get(['city','shahar']),
