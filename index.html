@@ -683,6 +683,30 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 .excel-import-opts { padding:.6rem 0 .2rem; }
 input[type="time"]::-webkit-datetime-edit-ampm-field{display:none!important}
 input[type="time"]{-webkit-appearance:none;}
+/* ===== AI CHATBOT WIDGET ===== */
+.chat-fab{position:fixed;left:1.2rem;bottom:1.5rem;z-index:350;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;box-shadow:0 4px 20px rgba(66,133,244,.5);transition:all .2s;}
+.chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(66,133,244,.6)}
+.chat-fab .dot{position:absolute;top:2px;right:2px;width:12px;height:12px;background:#EA4335;border-radius:50%;border:2px solid var(--bg);display:none}
+.chat-panel{position:fixed;left:1.2rem;bottom:5rem;z-index:350;width:380px;max-width:calc(100vw - 2rem);height:520px;max-height:calc(100vh - 7rem);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;animation:fadeUp .2s ease}
+.chat-panel.open{display:flex}
+.chat-head{background:linear-gradient(135deg,#4285F4,#34A853);padding:14px 16px;display:flex;align-items:center;gap:10px}
+.chat-head-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px}
+.chat-head-info{flex:1}
+.chat-head-name{font-size:.85rem;font-weight:800;color:#fff}
+.chat-head-status{font-size:.6rem;color:rgba(255,255,255,.8)}
+.chat-head-close{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);border:none;cursor:pointer;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.chat-msg{max-width:85%;padding:10px 14px;border-radius:14px;font-size:.78rem;line-height:1.5;word-wrap:break-word}
+.chat-msg.bot{background:var(--bg2);color:var(--text);border-bottom-left-radius:4px;align-self:flex-start}
+.chat-msg.user{background:linear-gradient(135deg,#4285F4,#34A853);color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+.chat-msg.typing{color:var(--text3);font-style:italic}
+.chat-input-wrap{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--border);background:var(--bg)}
+.chat-input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:22px;background:var(--card);color:var(--text);font-size:.78rem;outline:none;font-family:inherit}
+.chat-input:focus{border-color:#4285F4}
+.chat-send{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);border:none;cursor:pointer;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.chat-send:hover{transform:scale(1.05)}
+.chat-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
+@media(max-width:600px){.chat-panel{left:.5rem;right:.5rem;bottom:4.5rem;width:auto;height:calc(100vh - 6rem)}.chat-fab{left:.8rem;bottom:.8rem;width:48px;height:48px;font-size:20px}}
 </style>
 </head>
 <body>
@@ -6102,5 +6126,189 @@ window.addEventListener('load', ()=>{
     </div>
   </div>
 </div>
+<!-- AI CHATBOT -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()">🤖<span class="dot" id="chatDot"></span></button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <div class="chat-head-avatar">🤖</div>
+    <div class="chat-head-info">
+      <div class="chat-head-name">Navoiy AI Yordamchi</div>
+      <div class="chat-head-status">Gemini AI — investitsiya savollari uchun</div>
+    </div>
+    <button class="chat-head-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs">
+    <div class="chat-msg bot">Assalomu alaykum! 👋 Men Navoiy viloyati investitsiya yordamchisiman. Navoiy haqida, investitsiya imkoniyatlari, foydali qazilmalar, sanoat va boshqa savollaringizga javob beraman. Nima so'raysiz?</div>
+  </div>
+  <div class="chat-input-wrap">
+    <input class="chat-input" id="chatInput" placeholder="Savolingizni yozing..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
+    <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<script>
+/* ═══ GEMINI AI CHATBOT ═══ */
+const GEMINI_KEY = 'AIzaSyAU1bZrmDRllg5XzbtAZYl3U_QSddiGl-U';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=';
+
+const NAVOIY_CONTEXT = `Sen Navoiy viloyati investitsiya bo'limi AI yordamchisisan. Faqat O'zbek tilida javob ber (agar foydalanuvchi boshqa tilda yozsa, o'sha tilda javob ber).
+
+Navoiy viloyati haqida asosiy ma'lumotlar:
+- Joylashuvi: O'zbekiston markaziy qismida, 110,800 km² maydon
+- Aholisi: ~1 million
+- Viloyat markazi: Navoiy shahri
+- Asosiy shaharlar: Navoiy, Zarafshon, Uchquduq, Nurota, Konimex
+- Iqlimi: Qurg'oqchil, cho'l iqlimi, yozda 45°C gacha
+
+Asosiy sanoat va investitsiya imkoniyatlari:
+1. KON SANOATI (eng muhim):
+   - Oltin: Muruntov (dunyodagi eng katta ochiq oltin koni), Zarafshon
+   - Uran: O'zbekiston dunyoda 5-o'rinda uran qazib olishda
+   - Mis, volfram, fosforitlar, marmar, granit
+   - NMMC (Navoiy Kon-Metallurgiya Kombinati) — eng yirik korxona
+
+2. ENERGETIKA:
+   - Quyosh energiyasi potensiali juda yuqori (yiliga 300+ quyoshli kun)
+   - Navoiy issiqlik elektr stansiyasi
+   - Atom energetikasi rejasi (O'zbekiston-Rossiya hamkorligi)
+
+3. SANOAT:
+   - Kimyo sanoati (Navoiyazot)
+   - Sement ishlab chiqarish
+   - Qurilish materiallari
+   - To'qimachilik
+
+4. ERKIN IQTISODIY ZONA:
+   - "Navoiy" erkin iqtisodiy zonasi — soliq imtiyozlari
+   - Navoiy xalqaro aeroporti — logistika markazi
+   - Navoiy-Buxoro transport koridori
+
+5. QISHLOQ XO'JALIGI:
+   - Paxta, bug'doy, sabzavotlar
+   - Chorvachilik
+   - Ipakchilik
+
+6. TURIZM:
+   - Nurota tog'lari — ekoturizm
+   - Sarmishsoy toshyozuvlari (3000+ petrogliflar)
+   - Qizilqum cho'li safari
+   - Orol dengizi regioniga yaqinlik
+
+Investitsiya afzalliklari:
+- Soliq imtiyozlari erkin iqtisodiy zonada
+- Arzon ishchi kuchi
+- Boy foydali qazilma resurslari
+- Strategik joylashuv (Markaziy Osiyo markazi)
+- Rivojlangan transport infratuzilmasi
+- Hukumat tomonidan investorlar himoyasi
+
+Javob berishda:
+- Qisqa va aniq javob ber
+- Raqamlar va faktlar keltir
+- Investorlarga foydali ma'lumot ber
+- Agar bilmasang, "bu haqda aniq ma'lumotim yo'q" de`;
+
+let chatHistory = [];
+
+function toggleChat(){
+  var panel = document.getElementById('chatPanel');
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')){
+    document.getElementById('chatInput').focus();
+    document.getElementById('chatDot').style.display = 'none';
+  }
+}
+
+async function sendChat(){
+  var input = document.getElementById('chatInput');
+  var msg = input.value.trim();
+  if(!msg) return;
+
+  input.value = '';
+  addChatMsg(msg, 'user');
+  
+  var sendBtn = document.getElementById('chatSendBtn');
+  sendBtn.disabled = true;
+  
+  addChatMsg('Yozmoqda...', 'bot typing');
+
+  chatHistory.push({role:'user', parts:[{text:msg}]});
+
+  try {
+    var body = {
+      system_instruction: {parts:[{text: NAVOIY_CONTEXT}]},
+      contents: chatHistory,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024
+      }
+    };
+
+    var resp = await fetch(GEMINI_URL + GEMINI_KEY, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+
+    // Remove typing indicator
+    removeTyping();
+
+    if(!resp.ok){
+      var err = await resp.json().catch(function(){return {};});
+      if(resp.status === 429){
+        addChatMsg('⚠️ Kunlik limit tugadi. Ertaga qayta urinib ko\'ring.', 'bot');
+      } else if(GEMINI_KEY === 'GEMINI_API_KEY_HERE'){
+        addChatMsg('⚠️ Gemini API kalit hali sozlanmagan. Admin API kalitni qo\'shishi kerak.', 'bot');
+      } else {
+        addChatMsg('⚠️ Xato yuz berdi: ' + (err.error?.message || resp.status), 'bot');
+      }
+      return;
+    }
+
+    var data = await resp.json();
+    var reply = '';
+    if(data.candidates && data.candidates[0] && data.candidates[0].content){
+      reply = data.candidates[0].content.parts[0].text;
+    } else {
+      reply = 'Javob olib bo\'lmadi. Qaytadan urinib ko\'ring.';
+    }
+
+    chatHistory.push({role:'model', parts:[{text:reply}]});
+    
+    // Keep history short (last 10 messages)
+    if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+
+    addChatMsg(reply, 'bot');
+
+  } catch(e){
+    removeTyping();
+    addChatMsg('⚠️ Tarmoq xatosi: ' + e.message, 'bot');
+  }
+
+  sendBtn.disabled = false;
+}
+
+function addChatMsg(text, type){
+  var container = document.getElementById('chatMsgs');
+  var div = document.createElement('div');
+  div.className = 'chat-msg ' + type;
+  
+  // Simple markdown: **bold**, \n = <br>
+  var html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
+    .replace(/\n/g,'<br>');
+  div.innerHTML = html;
+  
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping(){
+  var msgs = document.querySelectorAll('.chat-msg.typing');
+  msgs.forEach(function(m){ m.remove(); });
+}
+</script>
+
 </body>
 </html>
