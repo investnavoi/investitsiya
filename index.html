@@ -6149,7 +6149,15 @@ window.addEventListener('load', ()=>{
 <script>
 /* ═══ GEMINI AI CHATBOT ═══ */
 const GEMINI_KEY = 'AIzaSyAU1bZrmDRllg5XzbtAZYl3U_QSddiGl-U';
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=';
+const GEMINI_MODELS = [
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash'
+];
+
+function geminiUrl(model){
+  return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GEMINI_KEY;
+}
 
 const NAVOIY_CONTEXT = `Sen Navoiy viloyati investitsiya bo'limi AI yordamchisisan. Faqat O'zbek tilida javob ber (agar foydalanuvchi boshqa tilda yozsa, o'sha tilda javob ber).
 
@@ -6244,44 +6252,63 @@ async function sendChat(){
       }
     };
 
-    var resp = await fetch(GEMINI_URL + GEMINI_KEY, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body)
-    });
+    var reply = '';
+    var lastError = '';
+    var success = false;
 
-    // Remove typing indicator
+    // Try each model until one works
+    for(var m = 0; m < GEMINI_MODELS.length; m++){
+      try {
+        var resp = await fetch(geminiUrl(GEMINI_MODELS[m]), {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+
+        if(resp.ok){
+          var data = await resp.json();
+          if(data.candidates && data.candidates[0] && data.candidates[0].content){
+            reply = data.candidates[0].content.parts[0].text;
+            success = true;
+            break;
+          }
+        } else {
+          var err = await resp.json().catch(function(){return {};});
+          lastError = (err.error?.message || 'Status ' + resp.status);
+          console.log('Gemini ' + GEMINI_MODELS[m] + ' xato:', lastError);
+          // If 403 or API not enabled, try next model
+          if(resp.status === 403 || resp.status === 429) continue;
+          // Other errors - still try next
+          continue;
+        }
+      } catch(fetchErr){
+        lastError = fetchErr.message;
+        continue;
+      }
+    }
+
     removeTyping();
 
-    if(!resp.ok){
-      var err = await resp.json().catch(function(){return {};});
-      if(resp.status === 429){
-        addChatMsg('⚠️ Kunlik limit tugadi. Ertaga qayta urinib ko\'ring.', 'bot');
-      } else if(GEMINI_KEY === 'GEMINI_API_KEY_HERE'){
-        addChatMsg('⚠️ Gemini API kalit hali sozlanmagan. Admin API kalitni qo\'shishi kerak.', 'bot');
-      } else {
-        addChatMsg('⚠️ Xato yuz berdi: ' + (err.error?.message || resp.status), 'bot');
-      }
-      return;
-    }
-
-    var data = await resp.json();
-    var reply = '';
-    if(data.candidates && data.candidates[0] && data.candidates[0].content){
-      reply = data.candidates[0].content.parts[0].text;
+    if(success){
+      chatHistory.push({role:'model', parts:[{text:reply}]});
+      if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+      addChatMsg(reply, 'bot');
     } else {
-      reply = 'Javob olib bo\'lmadi. Qaytadan urinib ko\'ring.';
+      chatHistory.pop(); // remove failed user msg from history
+      if(lastError.indexOf('API_KEY') !== -1 || lastError.indexOf('API key') !== -1){
+        addChatMsg('⚠️ API kalit noto\'g\'ri yoki Generative Language API yoqilmagan.\n\nTuzatish: aistudio.google.com → Get API Key → yangi kalit yarating.', 'bot');
+      } else if(lastError.indexOf('quota') !== -1 || lastError.indexOf('429') !== -1 || lastError.indexOf('RESOURCE_EXHAUSTED') !== -1){
+        addChatMsg('⚠️ Kunlik limit tugadi. Ertaga qayta urinib ko\'ring.', 'bot');
+      } else if(lastError.indexOf('not found') !== -1 || lastError.indexOf('404') !== -1){
+        addChatMsg('⚠️ Model topilmadi. Xato: ' + lastError, 'bot');
+      } else {
+        addChatMsg('⚠️ Xato: ' + lastError + '\n\nIltimos qaytadan urinib ko\'ring yoki admin bilan bog\'laning.', 'bot');
+      }
     }
-
-    chatHistory.push({role:'model', parts:[{text:reply}]});
-    
-    // Keep history short (last 10 messages)
-    if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-
-    addChatMsg(reply, 'bot');
 
   } catch(e){
     removeTyping();
+    chatHistory.pop();
     addChatMsg('⚠️ Tarmoq xatosi: ' + e.message, 'bot');
   }
 
