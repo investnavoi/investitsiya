@@ -1235,10 +1235,14 @@ input[type="time"]{-webkit-appearance:none;}
         <div style="display:flex;gap:.5rem">
           <button class="btn btn-blue btn-sm" onclick="showAddProductModal()">➕ Mahsulot qo'shish</button>
           <button class="btn btn-sm" onclick="loadSampleProducts()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">🤖 AI bilan to'ldirish</button>
+          <label class="btn btn-sm" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none;cursor:pointer">
+            📥 Excel import
+            <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)">
+          </label>
         </div>
       </div>
       <div class="tscroll"><table>
-        <thead><tr><th>#</th><th>Mahsulot</th><th>Xomashyo</th><th>HS Kod</th><th>Narx</th><th>Amal</th></tr></thead>
+        <thead><tr><th>#</th><th>Mahsulot</th><th>Xomashyo</th><th>HS Kod</th><th>Soha</th><th>Import</th><th>Amal</th></tr></thead>
         <tbody id="products-tbody"></tbody>
       </table></div>
     </div>
@@ -6680,7 +6684,7 @@ function renderProducts(){
     tb.innerHTML = prods.length ? prods.map(function(p,i){
       var rm = rms.find(function(r){return r.id==p.raw_id});
       return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b><div style="font-size:.6rem;color:var(--text3)">'+(p.name_uz||'')+'</div></td><td>'+(rm?rm.name_uz:'—')+'</td><td style="font-size:.7rem">'+(p.hs_code||'—')+'</td><td>'+(p.price||'—')+'</td><td><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
-    }).join('') : '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text3)">Mahsulot qo\'shilmagan</td></tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text3)">Mahsulot qo\'shilmagan</td></tr>';
   }
 
   // Populate selects
@@ -6715,7 +6719,7 @@ function filterProductsByRaw(rawId){
     document.getElementById('pr-prod-count').textContent = prods.length;
     tb.innerHTML = prods.map(function(p,i){
       var rm = rms.find(function(r){return r.id==p.raw_id});
-      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b></td><td>'+(rm?rm.name_uz:'—')+'</td><td style="font-size:.7rem">'+(p.hs_code||'—')+'</td><td>'+(p.price||'—')+'</td><td><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||'—').slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').slice(0,40)+'</td><td><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
     }).join('');
   }
 }
@@ -6754,6 +6758,131 @@ function deleteProduct(id){
   DB.products = (DB.products||[]).filter(function(p){return p.id!=id;});
   renderProducts();
   toast('🗑 Mahsulot o\'chirildi');
+}
+
+function importProductsExcel(input){
+  var file = (input.files||[])[0];
+  if(!file) return;
+  toast('📥 Excel o\'qilmoqda: '+file.name+'...');
+
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var wb = XLSX.read(e.target.result, {type:'array'});
+      // Try sheets: 'асосий ўзгарди', 'асосий', or first sheet
+      var sheetName = wb.SheetNames.find(function(s){return s.indexOf('асосий')!==-1;}) || wb.SheetNames[0];
+      var ws = wb.Sheets[sheetName];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+      var rawMaterials = [];
+      var products = [];
+      var currentRaw = null;
+      var currentRawId = 0;
+      var startRow = 0;
+
+      // Find header row (contains "Хомашё")
+      for(var i=0;i<Math.min(10,rows.length);i++){
+        var rowStr = rows[i].join(' ').toLowerCase();
+        if(rowStr.indexOf('хомаш')!==-1 || rowStr.indexOf('махсулот')!==-1){
+          startRow = i+1;
+          // Check if next row is sub-header
+          if(rows[i+1] && rows[i+1].join(' ').indexOf('Аниқланган')!==-1) startRow = i+2;
+          break;
+        }
+      }
+      if(startRow===0) startRow = 5; // fallback
+
+      for(var r=startRow; r<rows.length; r++){
+        var row = rows[r];
+        if(!row || row.length<6) continue;
+
+        var colB = String(row[1]||'').trim(); // Xomashyo nomi (B = index 1)
+        var colC = String(row[2]||'').trim(); // Olchov
+        var colD = row[3]; // Zahira aniqlangan
+        var colE = row[4]; // Zahira istiqbolli
+        var colF = String(row[5]||'').trim(); // Mahsulot nomi
+        var colG = String(row[6]||'').trim(); // HS kod
+        var colH = String(row[7]||'').trim(); // Ulush
+        var colI = String(row[8]||'').trim(); // Tavsif
+        var colJ = String(row[9]||'').trim(); // Ishlatilish
+        var colK = String(row[10]||'').trim(); // Import hajmi
+        var colL = String(row[11]||'').trim(); // Asosiy soha
+        var colM = String(row[12]||'').trim(); // Haridorlar
+
+        // Yangi xomashyo — B ustunida nom bor
+        if(colB && colB.length>1 && colB!=='None' && isNaN(colB)){
+          currentRawId++;
+          currentRaw = {
+            id: 'rm_'+currentRawId,
+            name_uz: colB,
+            name_en: colB,
+            unit: colC,
+            reserve_confirmed: parseFloat(colD)||0,
+            reserve_prospective: parseFloat(colE)||0,
+            location: 'Navoiy'
+          };
+          // Dublikat tekshirish
+          var exists = rawMaterials.find(function(rm){return rm.name_uz===colB;});
+          if(!exists) rawMaterials.push(currentRaw);
+          else currentRaw = exists;
+        }
+
+        // Mahsulot — F ustunida nom bor
+        if(colF && colF.length>2 && currentRaw){
+          products.push({
+            id: 'pr_'+(products.length+1),
+            raw_id: currentRaw.id,
+            raw_name: currentRaw.name_uz,
+            name_en: colF,
+            name_uz: colF,
+            hs_code: colG.replace(/\s+/g,' '),
+            share: colH,
+            description: colI.slice(0,150),
+            usage: colJ.slice(0,150),
+            import_info: colK.slice(0,150),
+            main_sector: colL.slice(0,150),
+            main_buyers: colM.slice(0,150)
+          });
+        }
+      }
+
+      if(!rawMaterials.length && !products.length){
+        toast('⚠️ Fayldan ma\'lumot o\'qib bo\'lmadi. Ustunlarni tekshiring.','error');
+        return;
+      }
+
+      // Preview
+      var msg = '📥 Excel natijasi:\n\n';
+      msg += '⛏️ Xomashyolar: '+rawMaterials.length+' ta\n';
+      msg += '📦 Mahsulotlar: '+products.length+' ta\n\n';
+      rawMaterials.forEach(function(rm){
+        var cnt = products.filter(function(p){return p.raw_id===rm.id;}).length;
+        msg += '• '+rm.name_uz+': '+cnt+' ta mahsulot\n';
+      });
+      msg += '\nSaqlashni tasdiqlaysizmi?';
+
+      if(!confirm(msg)) return;
+
+      // Save to DB
+      DB.rawMaterials = rawMaterials;
+      DB.products = products;
+
+      // Save to Firebase
+      if(typeof fbSave==='function'){
+        rawMaterials.forEach(function(r){ fbSave('rawMaterials', r); });
+        products.forEach(function(p){ fbSave('products', p); });
+      }
+
+      renderProducts();
+      toast('✅ '+rawMaterials.length+' ta xomashyo, '+products.length+' ta mahsulot import qilindi!');
+
+    } catch(err){
+      toast('⚠️ Excel o\'qishda xato: '+err.message,'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
 }
 
 async function loadSampleProducts(){
