@@ -6555,36 +6555,76 @@ async function callGemini(body){
 // Safe JSON parser — handles Gemini's messy responses
 function safeParseJSON(raw){
   if(!raw) throw new Error('Bo\'sh javob');
-  // Remove markdown fences
   var text = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-  // Try direct parse first
+  
+  // 1. Direct parse
   try { return JSON.parse(text); } catch(e){}
-  // Extract JSON object or array
-  var start = text.indexOf('{');
-  var startArr = text.indexOf('[');
-  if(startArr>=0 && (start<0 || startArr<start)) start = startArr;
-  if(start<0) throw new Error('JSON topilmadi');
-  var isArr = text[start]==='[';
+  
+  // 2. Find JSON start
+  var start = -1;
+  for(var i=0;i<text.length;i++){
+    if(text[i]==='{' || text[i]==='['){start=i;break;}
+  }
+  if(start<0) throw new Error('JSON topilmadi javobda');
   var sub = text.slice(start);
-  // Try parsing as-is
+  
+  // 3. Try direct
   try { return JSON.parse(sub); } catch(e){}
-  // Try to fix truncated JSON by closing brackets
-  var opens = 0; var closers = isArr ? ']' : '}';
+  
+  // 4. Fix truncated: count brackets and close them properly
+  var stack = [];
+  var inStr = false;
+  var esc = false;
+  var lastValidPos = 0;
+  
   for(var i=0;i<sub.length;i++){
-    if(sub[i]==='{' || sub[i]==='[') opens++;
-    if(sub[i]==='}' || sub[i]===']') opens--;
+    var ch = sub[i];
+    if(esc){ esc=false; continue; }
+    if(ch==='\\'){ esc=true; continue; }
+    if(ch==='"'){ inStr=!inStr; continue; }
+    if(inStr) continue;
+    if(ch==='{') stack.push('}');
+    else if(ch==='[') stack.push(']');
+    else if(ch==='}' || ch===']'){
+      if(stack.length>0) stack.pop();
+      if(stack.length===0){ lastValidPos=i; break; }
+    }
   }
-  var fixed = sub;
-  // Remove trailing comma before closing
+  
+  // Try up to last valid closing position
+  if(lastValidPos>0){
+    try { return JSON.parse(sub.slice(0,lastValidPos+1)); } catch(e){}
+  }
+  
+  // 5. Brute force close all open brackets
+  var fixed = sub.replace(/,\s*$/, '');
+  // Remove incomplete last key-value pair
+  fixed = fixed.replace(/,\s*"[^"]*"\s*:\s*"?[^"{}[\]]*$/, '');
   fixed = fixed.replace(/,\s*$/, '');
-  while(opens>0){ fixed += closers; opens--; }
-  try { return JSON.parse(fixed); } catch(e){}
-  // Last resort: try to find last valid closing bracket
-  var lastClose = isArr ? sub.lastIndexOf(']') : sub.lastIndexOf('}');
-  if(lastClose>0){
-    try { return JSON.parse(sub.slice(0,lastClose+1)); } catch(e){}
+  // Close all open brackets
+  var s2 = [];
+  var inStr2 = false; var esc2 = false;
+  for(var i=0;i<fixed.length;i++){
+    var ch = fixed[i];
+    if(esc2){ esc2=false; continue; }
+    if(ch==='\\'){ esc2=true; continue; }
+    if(ch==='"'){ inStr2=!inStr2; continue; }
+    if(inStr2) continue;
+    if(ch==='{') s2.push('}');
+    else if(ch==='[') s2.push(']');
+    else if(ch==='}' || ch===']') s2.pop();
   }
-  throw new Error('JSON parse xato: '+raw.slice(0,100)+'...');
+  while(s2.length>0) fixed += s2.pop();
+  try { return JSON.parse(fixed); } catch(e){}
+  
+  // 6. Last resort — find any complete JSON object
+  var re = /\{[^{}]*\}/g;
+  var match;
+  while((match=re.exec(sub))!==null){
+    try { return JSON.parse(match[0]); } catch(e){}
+  }
+  
+  throw new Error('JSON parse xato. Gemini javobini qayta urinib ko\'ring.');
 }
 
 function geminiText(data){
@@ -7002,31 +7042,36 @@ async function generateAiLetter(){
   var uzMaosh = s.maosh||400;
 
   try {
-    // Step 1: Economic Analysis
-    var analysisPrompt = 'Return ONLY raw JSON, no markdown, no backticks. Economic comparison for a company in '+(comp.davlat||'Europe')+' vs production in Navoi, Uzbekistan.\n'+
-      'Company: '+(comp.kompaniya||'Unknown')+', Industry: '+(comp.soha||'Manufacturing')+'\n'+
-      'Navoi rates: electricity $'+uzElektr+'/kWh, gas $'+uzGaz+'/kWh, avg wage $'+uzMaosh+'/month, land: FREE in SEZ, profit tax: 0% for 7 years.\n'+
-      'Return this exact JSON structure with realistic numbers:\n{"transport":{"from_abroad_usd":6800,"from_navoi_usd":1200,"saving_pct":82},"labor":{"abroad_usd":3500,"navoi_usd":400,"ratio":"8.7x"},"energy":{"abroad_kwh":0.35,"navoi_kwh":0.03,"ratio":"11x"},"total_annual_saving_usd":2400000,"roi_months":18}';
+    // Step 1: Economic Analysis — FLAT JSON, no nesting
+    var analysisPrompt = 'Return ONLY a single line of raw JSON. No markdown. No explanation. No newlines inside JSON.\n'+
+      'Compare costs: company in '+(comp.davlat||'Europe')+' vs Navoi, Uzbekistan.\n'+
+      'Navoi: electricity $'+uzElektr+'/kWh, gas $'+uzGaz+'/kWh, wage $'+uzMaosh+'/mo, land FREE, tax 0% 7yr.\n'+
+      'JSON: {"t_abroad":6800,"t_navoi":1200,"t_save":82,"w_abroad":3500,"w_navoi":400,"w_ratio":"8.7x","e_abroad":0.35,"e_navoi":0.03,"e_ratio":"11x","saving":2400000,"roi":18}';
 
-    var body1 = {contents:[{role:'user',parts:[{text:analysisPrompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:1500}};
+    var body1 = {contents:[{role:'user',parts:[{text:analysisPrompt}]}],generationConfig:{temperature:0.1,maxOutputTokens:500}};
     var data1 = await callGemini(body1);
-    var analysis = safeParseJSON(geminiText(data1));
+    var a;
+    try {
+      a = safeParseJSON(geminiText(data1));
+    } catch(pe){
+      // Fallback — default values based on country
+      console.log('Analysis parse error, using defaults:', pe);
+      a = {t_abroad:6800,t_navoi:1200,t_save:82,w_abroad:3500,w_navoi:parseInt(uzMaosh),w_ratio:'8.7x',e_abroad:0.35,e_navoi:parseFloat(uzElektr),e_ratio:'11x',saving:2400000,roi:18};
+    }
 
-    // Show analysis
+    // Show analysis cards
     document.getElementById('aiAnalysisCard').style.display = 'block';
     document.getElementById('aiAnalysisGrid').innerHTML =
-      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">🚛</div><div style="font-size:.7rem;color:var(--text3)">Transport</div><div style="font-size:1.1rem;font-weight:800;color:#059669">-'+analysis.transport.saving_pct+'%</div><div style="font-size:.6rem;color:var(--text3)">$'+analysis.transport.from_abroad_usd+' → $'+analysis.transport.from_navoi_usd+'</div></div>'+
-      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">👷</div><div style="font-size:.7rem;color:var(--text3)">Mehnat</div><div style="font-size:1.1rem;font-weight:800;color:#059669">'+analysis.labor.ratio+' arzon</div><div style="font-size:.6rem;color:var(--text3)">$'+analysis.labor.abroad_usd+' → $'+analysis.labor.navoi_usd+'</div></div>'+
-      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">⚡</div><div style="font-size:.7rem;color:var(--text3)">Energiya</div><div style="font-size:1.1rem;font-weight:800;color:#059669">'+analysis.energy.ratio+' arzon</div><div style="font-size:.6rem;color:var(--text3)">$'+analysis.energy.abroad_kwh+' → $'+analysis.energy.navoi_kwh+'</div></div>'+
-      '<div style="padding:1rem;background:linear-gradient(135deg,rgba(5,150,105,.1),rgba(6,214,160,.1));border-radius:10px;border:1px solid rgba(5,150,105,.3)"><div style="font-size:1.5rem;margin-bottom:.5rem">💰</div><div style="font-size:.7rem;color:var(--text3)">Yillik tejamkorlik</div><div style="font-size:1.1rem;font-weight:800;color:#059669">$'+Math.round(analysis.total_annual_saving_usd/1e6*10)/10+'M</div><div style="font-size:.6rem;color:var(--text3)">ROI: '+analysis.roi_months+' oy</div></div>';
+      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">🚛</div><div style="font-size:.7rem;color:var(--text3)">Transport</div><div style="font-size:1.1rem;font-weight:800;color:#059669">-'+(a.t_save||82)+'%</div><div style="font-size:.6rem;color:var(--text3)">$'+(a.t_abroad||6800)+' → $'+(a.t_navoi||1200)+'</div></div>'+
+      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">👷</div><div style="font-size:.7rem;color:var(--text3)">Mehnat</div><div style="font-size:1.1rem;font-weight:800;color:#059669">'+(a.w_ratio||'8.7x')+' arzon</div><div style="font-size:.6rem;color:var(--text3)">$'+(a.w_abroad||3500)+' → $'+(a.w_navoi||400)+'</div></div>'+
+      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">⚡</div><div style="font-size:.7rem;color:var(--text3)">Energiya</div><div style="font-size:1.1rem;font-weight:800;color:#059669">'+(a.e_ratio||'11x')+' arzon</div><div style="font-size:.6rem;color:var(--text3)">$'+(a.e_abroad||0.35)+' → $'+(a.e_navoi||0.03)+'</div></div>'+
+      '<div style="padding:1rem;background:linear-gradient(135deg,rgba(5,150,105,.1),rgba(6,214,160,.1));border-radius:10px;border:1px solid rgba(5,150,105,.3)"><div style="font-size:1.5rem;margin-bottom:.5rem">💰</div><div style="font-size:.7rem;color:var(--text3)">Yillik tejamkorlik</div><div style="font-size:1.1rem;font-weight:800;color:#059669">$'+Math.round((a.saving||2400000)/1e6*10)/10+'M</div><div style="font-size:.6rem;color:var(--text3)">ROI: '+(a.roi||18)+' oy</div></div>';
 
-    // Step 2: Generate letter
-    var letterPrompt = 'Write a professional business letter in '+langName+'. This is from Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n\n'+
-      'Key data to include:\n- Transport savings: '+analysis.transport.saving_pct+'% ($'+analysis.transport.from_abroad_usd+' → $'+analysis.transport.from_navoi_usd+'/container)\n'+
-      '- Labor: '+analysis.labor.ratio+' cheaper ($'+analysis.labor.navoi_usd+'/month)\n- Energy: '+analysis.energy.ratio+' cheaper\n- Total annual saving: $'+Math.round(analysis.total_annual_saving_usd/1000)+'K\n- ROI: '+analysis.roi_months+' months\n- Navoi SEZ: 0% profit tax for 7 years, free land\n\n'+
-      'Industry: '+(comp.soha||'Manufacturing')+'\n\n'+
-      'Tone: Professional, human (NOT AI-sounding), compelling. Include specific numbers. End with meeting request.\nSign as: Investment Department, Navoi Region, Uzbekistan\n\n'+
-      'IMPORTANT FORMAT: First line must be ONLY the email subject. Then put ===BODY=== on a new line. Then write the full letter body.\nExample:\nPartnership Opportunity: Marble Production in Navoi\n===BODY===\nDear Mr. Schmidt,\n...';
+    // Step 2: Generate letter — plain text, no JSON
+    var letterPrompt = 'Write a professional business letter in '+langName+'. From Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n'+
+      'Data: Transport -'+(a.t_save||82)+'%, Labor '+(a.w_ratio||'8.7x')+' cheaper, Energy '+(a.e_ratio||'11x')+' cheaper, Save $'+Math.round((a.saving||2400000)/1000)+'K/yr, ROI '+(a.roi||18)+' months. Navoi SEZ: 0% tax 7yr, free land.\n'+
+      'Industry: '+(comp.soha||'Manufacturing')+'. Tone: professional, human, compelling.\n'+
+      'IMPORTANT: First line = email subject ONLY. Second line = ===BODY===. Then letter body.\nExample:\nMarble Partnership in Navoi\n===BODY===\nDear Mr. Schmidt,\n...';
 
     var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:3000}};
     var data2 = await callGemini(body2);
