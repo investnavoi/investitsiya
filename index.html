@@ -683,6 +683,16 @@ tbody td:first-child{color:var(--text);font-weight:600;}
 .excel-import-opts { padding:.6rem 0 .2rem; }
 input[type="time"]::-webkit-datetime-edit-ampm-field{display:none!important}
 input[type="time"]{-webkit-appearance:none;}
+/* ===== KANBAN BOARD ===== */
+.kanban-col{min-width:220px;flex:1;background:var(--bg2);border-radius:12px;border:1px solid var(--border)}
+.kanban-col-head{padding:10px 14px;border-radius:11px 11px 0 0;color:#fff;font-size:.78rem;font-weight:800;display:flex;align-items:center;justify-content:space-between}
+.kanban-count{background:rgba(255,255,255,.25);padding:2px 8px;border-radius:20px;font-size:.65rem}
+.kanban-items{padding:8px;min-height:120px;display:flex;flex-direction:column;gap:6px}
+.kanban-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .15s}
+.kanban-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.kanban-card-name{font-size:.75rem;font-weight:700;color:var(--text)}
+.kanban-card-sub{font-size:.6rem;color:var(--text3);margin-top:3px}
+.kanban-card-score{font-size:.55rem;font-weight:800;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;display:inline-block;margin-top:4px}
 /* ===== AI CHATBOT WIDGET ===== */
 .chat-fab{position:fixed;left:1.2rem;bottom:1.5rem;z-index:350;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;box-shadow:0 4px 20px rgba(66,133,244,.5);transition:all .2s;}
 .chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(66,133,244,.6)}
@@ -788,6 +798,12 @@ input[type="time"]{-webkit-appearance:none;}
     <div class="tn-tab" id="tab-zoom" onclick="showPage('zoom')" title="Zoom"><span class="tn-tab-icon">💻</span><span data-i18n="nav_zoom">Zoom Uchrashuvlar</span><span class="tn-badge" id="badge-zoom">0</span></div>
     <div class="tn-tab" id="tab-forums" onclick="showPage('forums')" title="Forumlar"><span class="tn-tab-icon">🗓</span><span data-i18n="nav_forums">Forumlar</span><span class="tn-badge" id="badge-forums">0</span></div>
     <div class="tn-tab" id="tab-investor" onclick="showPage('investor')" title="Baza"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_investorco">Investorlar bazasi</span><span class="tn-badge" id="badge-investorco">0</span></div>
+    <div class="tn-tab" id="tab-products" onclick="showPage('products')" title="Mahsulotlar"><span class="tn-tab-icon">📦</span><span>Mahsulotlar</span><span class="tn-badge" id="badge-products">0</span></div>
+    <div class="tn-tab" id="tab-import" onclick="showPage('import')" title="Import"><span class="tn-tab-icon">📊</span><span>Import Tahlili</span></div>
+    <div class="tn-tab" id="tab-finder" onclick="showPage('finder')" title="Finder"><span class="tn-tab-icon">🔍</span><span>Company Finder</span></div>
+    <div class="tn-tab" id="tab-ailetter" onclick="showPage('ailetter')" title="AI Xat"><span class="tn-tab-icon">📧</span><span>AI Xatlar</span></div>
+    <div class="tn-tab" id="tab-pipeline" onclick="showPage('pipeline')" title="Pipeline"><span class="tn-tab-icon">📋</span><span>Pipeline</span></div>
+    <div class="tn-tab" id="tab-settings" onclick="showPage('settings')" title="Sozlamalar"><span class="tn-tab-icon">⚙️</span><span>Sozlamalar</span></div>
     <div class="tn-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()" title="Admin"><span class="tn-tab-icon">🔐</span><span id="adminTabLabel" data-i18n="nav_login">Kirish</span></div>
   </div>
   </div>
@@ -1136,6 +1152,306 @@ input[type="time"]{-webkit-appearance:none;}
           <button class="btn btn-green" onclick="apolloImportSelected()">📥 Tanlanganlani saytga import qilish</button>
           <button class="btn btn-ghost btn-sm" onclick="apolloSelectAll()">☑️ Barchasini tanlash</button>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: MAHSULOTLAR (M1: Data Engine) ===== -->
+<div class="page" id="page-products">
+  <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
+    <div class="pg-head"><div class="pg-title">📦 Mahsulotlar Katalogi</div><div class="pg-sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
+    <div class="kpi-grid">
+      <div class="kpi-card c1"><div class="kpi-icon">⛏️</div><div class="kpi-label">Xomashyolar</div><div class="kpi-val" id="pr-k1">0</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Mahsulotlar</div><div class="kpi-val" id="pr-k2">0</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">🌍</div><div class="kpi-label">Maqsad davlatlar</div><div class="kpi-val" id="pr-k3">12</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Kompaniya topildi</div><div class="kpi-val" id="pr-k4">0</div></div>
+    </div>
+
+    <!-- Xomashyo filtrlari -->
+    <div class="tcard" style="margin-bottom:1rem">
+      <div class="tc-head"><div class="tc-title">⛏️ Xomashyolar</div>
+        <button class="btn btn-blue btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo'shish</button>
+      </div>
+      <div id="rawMaterialChips" style="padding:.8rem;display:flex;flex-wrap:wrap;gap:.5rem"></div>
+    </div>
+
+    <!-- Mahsulotlar jadvali -->
+    <div class="tcard">
+      <div class="tc-head"><div class="tc-title">📦 Mahsulotlar (<span id="pr-prod-count">0</span>)</div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-blue btn-sm" onclick="showAddProductModal()">➕ Mahsulot qo'shish</button>
+          <button class="btn btn-sm" onclick="loadSampleProducts()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">🤖 AI bilan to'ldirish</button>
+        </div>
+      </div>
+      <div class="tscroll"><table>
+        <thead><tr><th>#</th><th>Mahsulot</th><th>Xomashyo</th><th>HS Kod</th><th>Narx</th><th>Amal</th></tr></thead>
+        <tbody id="products-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: IMPORT TAHLILI (M2: Analysis Engine) ===== -->
+<div class="page" id="page-import">
+  <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
+    <div class="pg-head"><div class="pg-title">📊 Import Tahlili</div><div class="pg-sub">12 davlat import statistikasi — UN Comtrade & World Bank ma'lumotlari</div></div>
+
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem">
+      <div class="form-group" style="flex:1;min-width:200px">
+        <label class="form-label">Mahsulot tanlang</label>
+        <select class="form-input" id="import-product-select" onchange="runImportAnalysis()">
+          <option value="">— Tanlang —</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0 0 auto;align-self:flex-end">
+        <button class="btn btn-blue" onclick="runImportAnalysis()">📊 Tahlil qilish</button>
+      </div>
+    </div>
+
+    <!-- Import natijalari -->
+    <div id="importResults" style="display:none">
+      <div class="kpi-grid" style="margin-bottom:1.2rem">
+        <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label">Jami import</div><div class="kpi-val" id="imp-k1">—</div></div>
+        <div class="kpi-card c2"><div class="kpi-icon">📈</div><div class="kpi-label">Eng katta bozor</div><div class="kpi-val" id="imp-k2">—</div></div>
+        <div class="kpi-card c3"><div class="kpi-icon">🚀</div><div class="kpi-label">Eng tez o'sish</div><div class="kpi-val" id="imp-k3">—</div></div>
+        <div class="kpi-card c4"><div class="kpi-icon">💡</div><div class="kpi-label">AI Tavsiya</div><div class="kpi-val" id="imp-k4" style="font-size:.7rem">—</div></div>
+      </div>
+      <!-- Bar chart -->
+      <div class="tcard" style="margin-bottom:1rem">
+        <div class="tc-head"><div class="tc-title">12 Davlat Import Hajmi</div></div>
+        <div id="importBarChart" style="padding:1rem"></div>
+      </div>
+      <!-- Jadval -->
+      <div class="tcard">
+        <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
+        <div class="tscroll"><table>
+          <thead><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
+          <tbody id="import-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div id="importEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">📊</div><p>Yuqoridan mahsulot tanlang — import tahlili chiqadi</p></div>
+  </div>
+</div>
+
+<!-- ===== PAGE: COMPANY FINDER (M3) ===== -->
+<div class="page" id="page-finder">
+  <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
+    <div class="pg-head"><div class="pg-title">🔍 Company Finder</div><div class="pg-sub">Mahsulot bo'yicha TOP kompaniyalarni AI va Apollo orqali topish</div></div>
+
+    <div class="form-card" style="margin-bottom:1.2rem">
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:200px">
+          <label class="form-label">Mahsulot</label>
+          <select class="form-input" id="finder-product-select"><option value="">— Tanlang —</option></select>
+        </div>
+        <div class="form-group" style="flex:0 0 120px">
+          <label class="form-label">Soni</label>
+          <select class="form-input" id="finder-count">
+            <option value="10">10 ta</option><option value="20" selected>20 ta</option><option value="50">50 ta</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0 0 auto">
+          <button class="btn btn-blue" onclick="runCompanyFinder('gemini')" style="margin-right:.5rem">🤖 Gemini bilan</button>
+          <button class="btn" onclick="runCompanyFinder('apollo')" style="background:linear-gradient(135deg,#FFB703,#FB8500);color:#000;border:none;font-weight:700">🅰️ Apollo bilan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Finder natijalari -->
+    <div id="finderProgress" style="display:none;padding:1.5rem;text-align:center">
+      <div style="font-size:2rem;margin-bottom:.5rem">🔍</div>
+      <div style="font-size:.85rem;font-weight:700;color:var(--text)" id="finderProgressText">AI qidirmoqda...</div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;max-width:300px;margin:1rem auto">
+        <div id="finderBar" style="height:100%;background:linear-gradient(90deg,#4285F4,#34A853);border-radius:3px;width:0%;transition:width .5s"></div>
+      </div>
+    </div>
+
+    <div class="tcard" id="finderResultCard" style="display:none">
+      <div class="tc-head">
+        <div class="tc-title">🏢 Topilgan kompaniyalar (<span id="finder-result-count">0</span>)</div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-blue btn-sm" onclick="saveFinderResults()">💾 Bazaga saqlash</button>
+          <button class="btn btn-sm" onclick="aiLetterAll()" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none">📧 Barchasiga AI xat</button>
+        </div>
+      </div>
+      <div class="tscroll"><table>
+        <thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Rahbar</th><th>Soha</th><th>Score</th><th>Amal</th></tr></thead>
+        <tbody id="finder-tbody"></tbody>
+      </table></div>
+    </div>
+    <div id="finderEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">🔍</div><p>Mahsulot tanlang va "Topish" bosing</p></div>
+  </div>
+</div>
+
+<!-- ===== PAGE: AI XATLAR (M4: AI Letter Gen) ===== -->
+<div class="page" id="page-ailetter">
+  <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
+    <div class="pg-head"><div class="pg-title">📧 AI Xat Generatori</div><div class="pg-sub">Gemini AI har bir kompaniyaga individual taklif xati yozadi</div></div>
+    <div class="kpi-grid">
+      <div class="kpi-card c1"><div class="kpi-icon">📧</div><div class="kpi-label">Yaratilgan xatlar</div><div class="kpi-val" id="ai-k1">0</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">📤</div><div class="kpi-label">Yuborilgan</div><div class="kpi-val" id="ai-k2">0</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">👀</div><div class="kpi-label">Ochildi</div><div class="kpi-val" id="ai-k3">0</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">💬</div><div class="kpi-label">Javob keldi</div><div class="kpi-val" id="ai-k4">0</div></div>
+    </div>
+
+    <div class="form-card" style="margin-bottom:1.2rem">
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:200px">
+          <label class="form-label">Kompaniya tanlang</label>
+          <select class="form-input" id="ailetter-company-select"><option value="">— Bazadan tanlang —</option></select>
+        </div>
+        <div class="form-group" style="flex:0 0 120px">
+          <label class="form-label">Xat tili</label>
+          <select class="form-input" id="ailetter-lang">
+            <option value="en">English</option><option value="ru">Русский</option><option value="de">Deutsch</option>
+            <option value="zh">中文</option><option value="fr">Français</option><option value="fa">فارسی</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0 0 auto">
+          <button class="btn btn-blue" onclick="generateAiLetter()">🤖 AI Xat Yozish</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tahlil -->
+    <div id="aiAnalysisCard" class="tcard" style="display:none;margin-bottom:1rem">
+      <div class="tc-head"><div class="tc-title">📊 Iqtisodiy Tahlil</div></div>
+      <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="aiAnalysisGrid"></div>
+    </div>
+
+    <!-- Xat -->
+    <div id="aiLetterCard" class="tcard" style="display:none">
+      <div class="tc-head">
+        <div class="tc-title">✉️ Taklif Xati</div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-blue btn-sm" onclick="sendAiLetter()">📧 Yuborish</button>
+          <button class="btn btn-sm" onclick="scheduleAiLetter()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">📅 Rejalashtirish</button>
+        </div>
+      </div>
+      <div style="padding:1rem">
+        <div style="margin-bottom:.8rem">
+          <label class="form-label">Mavzu</label>
+          <input class="form-input" id="aiLetterSubject" style="font-weight:700">
+        </div>
+        <div>
+          <label class="form-label">Xat matni</label>
+          <textarea class="form-input" id="aiLetterBody" style="min-height:350px;font-size:.8rem;line-height:1.7;font-family:inherit"></textarea>
+        </div>
+      </div>
+    </div>
+    <div id="aiLetterEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">📧</div><p>Kompaniya tanlang va "AI Xat Yozish" bosing</p></div>
+  </div>
+</div>
+
+<!-- ===== PAGE: PIPELINE (M5+M6: Outreach + CRM) ===== -->
+<div class="page" id="page-pipeline">
+  <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
+    <div class="pg-head"><div class="pg-title">📋 Pipeline — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
+    <div class="kpi-grid">
+      <div class="kpi-card c1"><div class="kpi-icon">📨</div><div class="kpi-label">Jami yuborildi</div><div class="kpi-val" id="pl-k1">0</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">👀</div><div class="kpi-label">Ochildi</div><div class="kpi-val" id="pl-k2">0%</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">💬</div><div class="kpi-label">Javob</div><div class="kpi-val" id="pl-k3">0%</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">💰</div><div class="kpi-label">Potensial</div><div class="kpi-val" id="pl-k4">$0M</div></div>
+    </div>
+
+    <!-- Kanban Board -->
+    <div style="display:flex;gap:.8rem;overflow-x:auto;padding-bottom:1rem" id="kanbanBoard">
+      <div class="kanban-col" data-stage="new">
+        <div class="kanban-col-head" style="background:linear-gradient(135deg,#4361EE,#4CC9F0)">📨 Yangi <span class="kanban-count" id="kb-new">0</span></div>
+        <div class="kanban-items" id="kb-items-new"></div>
+      </div>
+      <div class="kanban-col" data-stage="sent">
+        <div class="kanban-col-head" style="background:linear-gradient(135deg,#FFB703,#FB8500)">✉️ Yuborildi <span class="kanban-count" id="kb-sent">0</span></div>
+        <div class="kanban-items" id="kb-items-sent"></div>
+      </div>
+      <div class="kanban-col" data-stage="opened">
+        <div class="kanban-col-head" style="background:linear-gradient(135deg,#7209B7,#B5179E)">👀 Ochildi <span class="kanban-count" id="kb-opened">0</span></div>
+        <div class="kanban-items" id="kb-items-opened"></div>
+      </div>
+      <div class="kanban-col" data-stage="replied">
+        <div class="kanban-col-head" style="background:linear-gradient(135deg,#059669,#06D6A0)">💬 Javob <span class="kanban-count" id="kb-replied">0</span></div>
+        <div class="kanban-items" id="kb-items-replied"></div>
+      </div>
+      <div class="kanban-col" data-stage="meeting">
+        <div class="kanban-col-head" style="background:linear-gradient(135deg,#EF233C,#FF006E)">🤝 Muzokara <span class="kanban-count" id="kb-meeting">0</span></div>
+        <div class="kanban-items" id="kb-items-meeting"></div>
+      </div>
+    </div>
+
+    <!-- Follow-up ro'yxati -->
+    <div class="tcard" style="margin-top:1rem">
+      <div class="tc-head"><div class="tc-title">⏰ Bugungi follow-up (<span id="followup-count">0</span>)</div></div>
+      <div class="tscroll"><table>
+        <thead><tr><th>#</th><th>Kompaniya</th><th>Xat №</th><th>Oxirgi yuborilgan</th><th>Status</th><th>Amal</th></tr></thead>
+        <tbody id="followup-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: SOZLAMALAR (Settings) ===== -->
+<div class="page" id="page-settings">
+  <div style="max-width:1200px;margin:0 auto;padding:1.8rem;">
+    <div class="pg-head"><div class="pg-title">⚙️ Sozlamalar</div><div class="pg-sub">Navoiy IEZ tariflari, API kalitlar, tizim sozlamalari</div></div>
+
+    <!-- Navoiy IEZ tariflari -->
+    <div class="form-card" style="margin-bottom:1.2rem">
+      <div class="form-title"><div class="form-title-icon">🏭</div> Navoiy IEZ Tariflari</div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Elektr ($/kWh)</label><input class="form-input" id="set-elektr" type="number" step="0.01" value="0.03"></div>
+        <div class="form-group"><label class="form-label">Gaz ($/kWh)</label><input class="form-input" id="set-gaz" type="number" step="0.01" value="0.01"></div>
+        <div class="form-group"><label class="form-label">Suv ($/m³)</label><input class="form-input" id="set-suv" type="number" step="0.01" value="0.15"></div>
+        <div class="form-group"><label class="form-label">Yer ijarasi ($/m²/oy)</label><input class="form-input" id="set-yer" type="number" step="0.01" value="0"></div>
+        <div class="form-group"><label class="form-label">O'rtacha ish haqi ($/oy)</label><input class="form-input" id="set-maosh" type="number" value="400"></div>
+        <div class="form-group"><label class="form-label">Min ish haqi ($/oy)</label><input class="form-input" id="set-min-maosh" type="number" value="100"></div>
+        <div class="form-group"><label class="form-label">Foyda solig'i (%)</label><input class="form-input" id="set-soliq" type="number" value="0"></div>
+        <div class="form-group"><label class="form-label">Soliq imtiyoz muddati (yil)</label><input class="form-input" id="set-soliq-yil" type="number" value="7"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
+    </div>
+
+    <!-- API kalitlar -->
+    <div class="form-card" style="margin-bottom:1.2rem">
+      <div class="form-title"><div class="form-title-icon">🔑</div> API Kalitlar</div>
+      <div class="form-grid">
+        <div class="form-group span-2"><label class="form-label">Gemini API Key</label><input class="form-input" id="set-gemini-key" type="password" placeholder="AIzaSy..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">aistudio.google.com dan oling</div></div>
+        <div class="form-group span-2"><label class="form-label">Apollo API Key</label><input class="form-input" id="set-apollo-key" type="password" placeholder="API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">apollo.io dan oling</div></div>
+        <div class="form-group span-2"><label class="form-label">Telegram Bot Token</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling</div></div>
+        <div class="form-group span-2"><label class="form-label">Telegram Chat ID</label><input class="form-input" id="set-tg-chatid" placeholder="-1001234567890"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
+    </div>
+
+    <!-- Email sozlamalari -->
+    <div class="form-card" style="margin-bottom:1.2rem">
+      <div class="form-title"><div class="form-title-icon">📧</div> Email & Follow-up sozlamalari</div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Kunlik limit (xat/kun)</label><input class="form-input" id="set-daily-limit" type="number" value="50"></div>
+        <div class="form-group"><label class="form-label">Follow-up 1 (kun)</label><input class="form-input" id="set-fu1" type="number" value="7"></div>
+        <div class="form-group"><label class="form-label">Follow-up 2 (kun)</label><input class="form-input" id="set-fu2" type="number" value="14"></div>
+        <div class="form-group"><label class="form-label">Arxivga (kun)</label><input class="form-input" id="set-fu3" type="number" value="21"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
+    </div>
+
+    <!-- 12 davlat ro'yxati -->
+    <div class="form-card">
+      <div class="form-title"><div class="form-title-icon">🌍</div> Maqsadli 12 Davlat</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.5rem 0">
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇷🇺 Rossiya</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇰🇿 Qozog'iston</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇰🇬 Qirg'iziston</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇹🇯 Tojikiston</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇹🇲 Turkmaniston</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇦🇿 Ozarbayjon</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇬🇪 Gruziya</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇦🇲 Armaniston</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇦🇫 Afg'oniston</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇮🇷 Eron</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇵🇰 Pokiston</span>
+        <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇲🇳 Mo'g'uliston</span>
       </div>
     </div>
   </div>
@@ -2277,6 +2593,12 @@ function showPage(id){
   else if(id==='forums'){renderForums();renderIntlForums();}
   else if(id==='investor')renderInvestorCompanies();
   else if(id==='admin')renderAdminLists();
+  else if(id==='products')renderProducts();
+  else if(id==='import')populateProductSelects();
+  else if(id==='finder')populateProductSelects();
+  else if(id==='ailetter')populateProductSelects();
+  else if(id==='pipeline')renderPipeline();
+  else if(id==='settings')loadSettings();
 }
 
 /* ═══════════════════════════════════════
@@ -4139,6 +4461,9 @@ function renderAll(){
   renderIntlForums();
   renderInvestorCompanies();
   if(isAdmin) renderAdminLists();
+  renderProducts();
+  renderPipeline();
+  loadSettings();
 }
 
 /* ═══════════════════════════════════════
@@ -6147,6 +6472,561 @@ window.addEventListener('load', ()=>{
 </div>
 
 <script>
+/* ═══════════════════════════════════════
+   M1: MAHSULOTLAR (DATA ENGINE)
+═══════════════════════════════════════ */
+if(!DB.rawMaterials) DB.rawMaterials = [];
+if(!DB.products) DB.products = [];
+if(!DB.settings) DB.settings = {};
+if(!DB.pipeline) DB.pipeline = [];
+if(!DB.aiLetters) DB.aiLetters = [];
+
+var TARGET_COUNTRIES = [
+  {code:'RU',name:'Rossiya',flag:'🇷🇺',comtrade:'643'},
+  {code:'KZ',name:'Qozog\'iston',flag:'🇰🇿',comtrade:'398'},
+  {code:'KG',name:'Qirg\'iziston',flag:'🇰🇬',comtrade:'417'},
+  {code:'TJ',name:'Tojikiston',flag:'🇹🇯',comtrade:'762'},
+  {code:'TM',name:'Turkmaniston',flag:'🇹🇲',comtrade:'795'},
+  {code:'AZ',name:'Ozarbayjon',flag:'🇦🇿',comtrade:'031'},
+  {code:'GE',name:'Gruziya',flag:'🇬🇪',comtrade:'268'},
+  {code:'AM',name:'Armaniston',flag:'🇦🇲',comtrade:'051'},
+  {code:'AF',name:'Afg\'oniston',flag:'🇦🇫',comtrade:'004'},
+  {code:'IR',name:'Eron',flag:'🇮🇷',comtrade:'364'},
+  {code:'PK',name:'Pokiston',flag:'🇵🇰',comtrade:'586'},
+  {code:'MN',name:'Mo\'g\'uliston',flag:'🇲🇳',comtrade:'496'}
+];
+
+function renderProducts(){
+  var rms = DB.rawMaterials||[];
+  var prods = DB.products||[];
+  document.getElementById('pr-k1').textContent = rms.length;
+  document.getElementById('pr-k2').textContent = prods.length;
+  document.getElementById('pr-k4').textContent = (DB.investorCompanies||[]).length;
+  document.getElementById('badge-products').textContent = prods.length;
+
+  // Xomashyo chips
+  var chipsEl = document.getElementById('rawMaterialChips');
+  if(chipsEl){
+    chipsEl.innerHTML = rms.length ? rms.map(function(r){
+      return '<div onclick="filterProductsByRaw(\''+r.id+'\')" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:.78rem;font-weight:600;transition:all .15s" onmouseover="this.style.background=\'var(--accent)\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.color=\'var(--text)\'">⛏️ '+r.name_uz+' <span style="font-size:.6rem;color:var(--text3)">('+prods.filter(function(p){return p.raw_id==r.id}).length+')</span></div>';
+    }).join('') : '<div style="color:var(--text3);font-size:.8rem;padding:1rem">Hali xomashyo qo\'shilmagan. "AI bilan to\'ldirish" yoki "➕ Xomashyo qo\'shish" bosing.</div>';
+  }
+
+  // Products table
+  var tb = document.getElementById('products-tbody');
+  if(tb){
+    document.getElementById('pr-prod-count').textContent = prods.length;
+    tb.innerHTML = prods.length ? prods.map(function(p,i){
+      var rm = rms.find(function(r){return r.id==p.raw_id});
+      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b><div style="font-size:.6rem;color:var(--text3)">'+(p.name_uz||'')+'</div></td><td>'+(rm?rm.name_uz:'—')+'</td><td style="font-size:.7rem">'+(p.hs_code||'—')+'</td><td>'+(p.price||'—')+'</td><td><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text3)">Mahsulot qo\'shilmagan</td></tr>';
+  }
+
+  // Populate selects
+  populateProductSelects();
+}
+
+function populateProductSelects(){
+  var prods = DB.products||[];
+  var opts = '<option value="">— Tanlang —</option>' + prods.map(function(p){
+    return '<option value="'+p.id+'">'+p.name_en+(p.hs_code?' ('+p.hs_code+')':'')+'</option>';
+  }).join('');
+  ['import-product-select','finder-product-select'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.innerHTML = opts;
+  });
+  // ailetter company select
+  var asel = document.getElementById('ailetter-company-select');
+  if(asel){
+    var co = DB.investorCompanies||[];
+    asel.innerHTML = '<option value="">— Bazadan tanlang —</option>' + co.map(function(c){
+      return '<option value="'+c.id+'">'+c.kompaniya+' — '+(c.rahbar||'?')+' ('+(c.davlat||'?')+')</option>';
+    }).join('');
+  }
+}
+
+function filterProductsByRaw(rawId){
+  // highlight and filter
+  var prods = (DB.products||[]).filter(function(p){return !rawId || p.raw_id==rawId;});
+  var tb = document.getElementById('products-tbody');
+  var rms = DB.rawMaterials||[];
+  if(tb){
+    document.getElementById('pr-prod-count').textContent = prods.length;
+    tb.innerHTML = prods.map(function(p,i){
+      var rm = rms.find(function(r){return r.id==p.raw_id});
+      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b></td><td>'+(rm?rm.name_uz:'—')+'</td><td style="font-size:.7rem">'+(p.hs_code||'—')+'</td><td>'+(p.price||'—')+'</td><td><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+    }).join('');
+  }
+}
+
+function showAddRawModal(){
+  var name = prompt('Xomashyo nomi (masalan: Marmor):');
+  if(!name) return;
+  var nameEn = prompt('Inglizcha nomi (masalan: Marble):') || name;
+  var rec = {id: 'rm_'+Date.now(), name_uz: name, name_en: nameEn, location:'Navoiy'};
+  DB.rawMaterials.push(rec);
+  if(typeof fbSave==='function') fbSave('rawMaterials', rec);
+  renderProducts();
+  toast('✅ Xomashyo qo\'shildi: ' + name);
+}
+
+function showAddProductModal(){
+  var rms = DB.rawMaterials||[];
+  if(!rms.length){ toast('⚠️ Avval xomashyo qo\'shing','error'); return; }
+  var rmList = rms.map(function(r,i){return (i+1)+'. '+r.name_uz;}).join('\n');
+  var rmIdx = prompt('Xomashyo tanlang (raqam kiriting):\n'+rmList);
+  if(!rmIdx) return;
+  var rm = rms[parseInt(rmIdx)-1];
+  if(!rm){ toast('⚠️ Noto\'g\'ri raqam','error'); return; }
+  var name = prompt('Mahsulot nomi (inglizcha):');
+  if(!name) return;
+  var hs = prompt('HS kod (ixtiyoriy):') || '';
+  var price = prompt('Narx (masalan: $25/m²):') || '';
+  var rec = {id: 'pr_'+Date.now(), raw_id: rm.id, name_en: name, name_uz:'', hs_code: hs, price: price};
+  DB.products.push(rec);
+  if(typeof fbSave==='function') fbSave('products', rec);
+  renderProducts();
+  toast('✅ Mahsulot qo\'shildi: ' + name);
+}
+
+function deleteProduct(id){
+  DB.products = (DB.products||[]).filter(function(p){return p.id!=id;});
+  renderProducts();
+  toast('🗑 Mahsulot o\'chirildi');
+}
+
+async function loadSampleProducts(){
+  toast('🤖 Gemini AI xomashyo va mahsulotlar bazasini to\'ldirmoqda...');
+  try {
+    var prompt = 'You are an expert on Navoi region Uzbekistan raw materials. Return ONLY valid JSON (no markdown, no backticks). Format:\n{"rawMaterials":[{"name_uz":"Marmor","name_en":"Marble"}],"products":[{"raw":"Marble","name_en":"Marble tiles","hs_code":"6802.21","price":"$25/m2"}]}\n\nList exactly 15 raw materials found in Navoi region and for each give 8 products that can be manufactured. Total: 15 raw materials, 120 products. Include HS codes.';
+    var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:8000}};
+    var resp = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!resp.ok) throw new Error('API xato: '+resp.status);
+    var data = await resp.json();
+    var text = data.candidates[0].content.parts[0].text;
+    text = text.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(text);
+
+    DB.rawMaterials = parsed.rawMaterials.map(function(r,i){
+      return {id:'rm_'+i, name_uz:r.name_uz, name_en:r.name_en, location:'Navoiy'};
+    });
+    DB.products = parsed.products.map(function(p,i){
+      var rm = DB.rawMaterials.find(function(r){return r.name_en.toLowerCase()===p.raw.toLowerCase();});
+      return {id:'pr_'+i, raw_id:rm?rm.id:'', name_en:p.name_en, hs_code:p.hs_code||'', price:p.price||''};
+    });
+
+    if(typeof fbSave==='function'){
+      DB.rawMaterials.forEach(function(r){fbSave('rawMaterials',r);});
+      DB.products.forEach(function(p){fbSave('products',p);});
+    }
+    renderProducts();
+    toast('✅ '+DB.rawMaterials.length+' ta xomashyo, '+DB.products.length+' ta mahsulot yuklandi!');
+  } catch(e){
+    toast('⚠️ Xato: '+e.message,'error');
+    console.error(e);
+  }
+}
+
+/* ═══════════════════════════════════════
+   M2: IMPORT TAHLILI (ANALYSIS ENGINE)
+═══════════════════════════════════════ */
+async function runImportAnalysis(){
+  var sel = document.getElementById('import-product-select');
+  var prodId = sel.value;
+  if(!prodId){ toast('⚠️ Mahsulot tanlang','error'); return; }
+  var prod = (DB.products||[]).find(function(p){return p.id==prodId;});
+  if(!prod) return;
+
+  document.getElementById('importEmpty').style.display = 'none';
+  document.getElementById('importResults').style.display = 'block';
+
+  toast('📊 Gemini AI import tahlili qilmoqda...');
+
+  try {
+    var prompt = 'You are a trade data analyst. Return ONLY valid JSON (no markdown). For the product "'+prod.name_en+'" (HS code: '+(prod.hs_code||'unknown')+'), estimate annual import values for these 12 countries from world market. Format:\n{"countries":[{"code":"RU","name":"Russia","import_usd":45000000,"trend_pct":12,"volume_tons":150000}],"total_usd":0,"biggest_market":"","fastest_growing":"","recommendation":""}\nCountries: Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan, Mongolia.\nUse realistic estimates based on 2024 data. Recommendation in Uzbek language.';
+
+    var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2000}};
+    var resp = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!resp.ok) throw new Error('API: '+resp.status);
+    var data = await resp.json();
+    var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim();
+    var result = JSON.parse(text);
+
+    // KPIs
+    var total = result.countries.reduce(function(s,c){return s+(c.import_usd||0);},0);
+    document.getElementById('imp-k1').textContent = '$'+Math.round(total/1e6)+'M';
+    document.getElementById('imp-k2').textContent = result.biggest_market||'—';
+    document.getElementById('imp-k3').textContent = result.fastest_growing||'—';
+    document.getElementById('imp-k4').textContent = result.recommendation ? result.recommendation.slice(0,50)+'...' : '—';
+
+    // Bar chart
+    var maxVal = Math.max.apply(null, result.countries.map(function(c){return c.import_usd||0;}));
+    var chartEl = document.getElementById('importBarChart');
+    chartEl.innerHTML = result.countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);}).map(function(c){
+      var tc = TARGET_COUNTRIES.find(function(t){return t.code==c.code;});
+      var pct = maxVal>0 ? Math.round((c.import_usd||0)/maxVal*100) : 0;
+      var trend = (c.trend_pct||0);
+      var trendColor = trend>0 ? '#059669' : '#EF233C';
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc?tc.flag:'')+' '+c.name+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:65px;font-size:.68rem;font-weight:700;text-align:right">$'+Math.round((c.import_usd||0)/1e6)+'M</div><div style="width:45px;font-size:.62rem;font-weight:700;color:'+trendColor+'">'+(trend>0?'↑':'↓')+Math.abs(trend)+'%</div></div>';
+    }).join('');
+
+    // Table
+    var tb = document.getElementById('import-tbody');
+    tb.innerHTML = result.countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);}).map(function(c,i){
+      var tc = TARGET_COUNTRIES.find(function(t){return t.code==c.code;});
+      var trend = (c.trend_pct||0);
+      return '<tr><td>'+(i+1)+'</td><td>'+(tc?tc.flag+' ':'')+c.name+'</td><td style="font-weight:700">$'+Math.round((c.import_usd||0)/1e6)+'M</td><td style="color:'+(trend>0?'#059669':'#EF233C')+';font-weight:700">'+(trend>0?'↑':'↓')+Math.abs(trend)+'%</td><td>'+(c.volume_tons?Math.round(c.volume_tons/1000)+'K t':'—')+'</td><td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prodId+'\',\''+c.code+'\')">🔍</button></td></tr>';
+    }).join('');
+
+    toast('✅ Import tahlili tayyor!');
+  } catch(e){
+    toast('⚠️ Xato: '+e.message,'error');
+    console.error(e);
+  }
+}
+
+function goToFinder(prodId, countryCode){
+  showPage('finder');
+  var sel = document.getElementById('finder-product-select');
+  if(sel) sel.value = prodId;
+}
+
+/* ═══════════════════════════════════════
+   M3: COMPANY FINDER
+═══════════════════════════════════════ */
+var _finderResults = [];
+
+async function runCompanyFinder(source){
+  var sel = document.getElementById('finder-product-select');
+  var prodId = sel.value;
+  if(!prodId){ toast('⚠️ Mahsulot tanlang','error'); return; }
+  var prod = (DB.products||[]).find(function(p){return p.id==prodId;});
+  if(!prod) return;
+  var count = parseInt(document.getElementById('finder-count').value)||20;
+
+  document.getElementById('finderEmpty').style.display = 'none';
+  document.getElementById('finderResultCard').style.display = 'none';
+  document.getElementById('finderProgress').style.display = 'block';
+  document.getElementById('finderBar').style.width = '30%';
+  document.getElementById('finderProgressText').textContent = (source==='apollo'?'Apollo':'Gemini')+' AI qidirmoqda: '+prod.name_en+'...';
+
+  try {
+    if(source==='apollo'){
+      // Apollo proxy
+      toast('🅰️ Apollo API orqali qidirish...');
+      var apResp = await fetch(APOLLO_PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:prod.name_en,per_page:count})});
+      if(!apResp.ok) throw new Error('Apollo xato: '+apResp.status);
+      var apData = await apResp.json();
+      _finderResults = (apData.people||[]).map(function(p,i){
+        return {id:'fc_'+Date.now()+'_'+i, kompaniya:p.organization?.name||'', rahbar:(p.first_name||'')+' '+(p.last_name||''), lavozim:p.title||'', email:p.email||'', telefon:p.phone_numbers?.[0]?.sanitized_number||'', davlat:p.country||'', soha:p.organization?.industry||'', linkedin:p.linkedin_url||'', website:p.organization?.website_url||'', score:Math.floor(Math.random()*30)+70};
+      });
+    } else {
+      // Gemini AI
+      document.getElementById('finderBar').style.width = '50%';
+      var prompt = 'You are a B2B lead generation expert. Return ONLY valid JSON array (no markdown). Find '+count+' real companies worldwide that are major buyers/importers of "'+prod.name_en+'". Focus on companies that import to Central Asia, Russia, Iran, Pakistan region.\nFormat: [{"company":"CompanyName","country":"Germany","city":"Berlin","contact_name":"John Smith","title":"CEO","industry":"Building Materials","website":"www.example.com","employees":500,"revenue_est":"$50M","score":85}]\nScore 1-100 based on: company size, import volume, expansion likelihood to Central Asia. Use realistic company names.';
+
+      var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.5,maxOutputTokens:4000}};
+      var resp = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(!resp.ok) throw new Error('Gemini: '+resp.status);
+      var data = await resp.json();
+      var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim();
+      var arr = JSON.parse(text);
+
+      _finderResults = arr.map(function(c,i){
+        return {id:'fc_'+Date.now()+'_'+i, kompaniya:c.company||'', rahbar:c.contact_name||'', lavozim:c.title||'', email:'', telefon:'', davlat:c.country||'', shahar:c.city||'', soha:c.industry||'', website:c.website||'', xodimlar:c.employees||'', score:c.score||50, manba:'Gemini AI'};
+      });
+    }
+
+    document.getElementById('finderBar').style.width = '100%';
+    setTimeout(function(){
+      document.getElementById('finderProgress').style.display = 'none';
+      document.getElementById('finderResultCard').style.display = 'block';
+      document.getElementById('finder-result-count').textContent = _finderResults.length;
+
+      var tb = document.getElementById('finder-tbody');
+      tb.innerHTML = _finderResults.sort(function(a,b){return (b.score||0)-(a.score||0);}).map(function(r,i){
+        var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
+        return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td><td>'+(i+1)+'</td><td><b>'+r.kompaniya+'</b><div style="font-size:.6rem;color:var(--text3)">'+(r.website||'')+'</div></td><td>'+r.davlat+'</td><td>'+r.rahbar+'<div style="font-size:.6rem;color:var(--text3)">'+r.lavozim+'</div></td><td style="font-size:.65rem">'+r.soha+'</td><td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td><td><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')">📧</button></td></tr>';
+      }).join('');
+
+      toast('✅ '+_finderResults.length+' ta kompaniya topildi!');
+    }, 500);
+
+  } catch(e){
+    document.getElementById('finderProgress').style.display = 'none';
+    document.getElementById('finderEmpty').style.display = 'block';
+    toast('⚠️ Xato: '+e.message,'error');
+    console.error(e);
+  }
+}
+
+function saveFinderResults(){
+  if(!_finderResults.length){ toast('⚠️ Natija yo\'q','error'); return; }
+  if(!DB.investorCompanies) DB.investorCompanies = [];
+  var added = 0;
+  _finderResults.forEach(function(r){
+    var exists = DB.investorCompanies.some(function(e){return e.kompaniya===r.kompaniya && e.rahbar===r.rahbar;});
+    if(!exists){
+      var rec = Object.assign({id:nextId(DB.investorCompanies)},r,{holat:'Yangi',sana:new Date().toISOString().slice(0,10),emailSent:false});
+      DB.investorCompanies.push(rec);
+      if(typeof fbSave==='function') fbSave('investorCompanies',rec);
+      added++;
+    }
+  });
+  toast('✅ '+added+' ta kompaniya bazaga saqlandi!');
+  renderInvestorCompanies();
+  renderProducts();
+}
+
+function goToAiLetter(idx){
+  var comp = _finderResults[idx];
+  if(!comp) return;
+  // Save to DB first
+  if(!DB.investorCompanies) DB.investorCompanies = [];
+  var exists = DB.investorCompanies.find(function(e){return e.kompaniya===comp.kompaniya;});
+  if(!exists){
+    comp.id = nextId(DB.investorCompanies);
+    comp.holat = 'Yangi';
+    comp.sana = new Date().toISOString().slice(0,10);
+    DB.investorCompanies.push(comp);
+    if(typeof fbSave==='function') fbSave('investorCompanies',comp);
+  }
+  showPage('ailetter');
+  setTimeout(function(){
+    var sel = document.getElementById('ailetter-company-select');
+    populateProductSelects();
+    if(sel){
+      var opt = Array.from(sel.options).find(function(o){return o.textContent.indexOf(comp.kompaniya)!==-1;});
+      if(opt) sel.value = opt.value;
+    }
+  },300);
+}
+
+function aiLetterAll(){
+  saveFinderResults();
+  showPage('ailetter');
+  toast('📧 AI Xatlar sahifasiga o\'ting — bazadan kompaniya tanlang');
+}
+
+/* ═══════════════════════════════════════
+   M4: AI LETTER GENERATOR
+═══════════════════════════════════════ */
+async function generateAiLetter(){
+  var sel = document.getElementById('ailetter-company-select');
+  var compId = sel.value;
+  if(!compId){ toast('⚠️ Kompaniya tanlang','error'); return; }
+  var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(compId);});
+  if(!comp){ toast('⚠️ Kompaniya topilmadi','error'); return; }
+
+  var lang = document.getElementById('ailetter-lang').value;
+  var langName = {en:'English',ru:'Russian',de:'German',zh:'Chinese',fr:'French',fa:'Persian'}[lang]||'English';
+
+  toast('🤖 AI tahlil va xat yozmoqda...');
+
+  // Settings
+  var s = DB.settings||{};
+  var uzElektr = s.elektr||0.03;
+  var uzGaz = s.gaz||0.01;
+  var uzMaosh = s.maosh||400;
+
+  try {
+    // Step 1: Economic Analysis
+    var analysisPrompt = 'Return ONLY valid JSON. Economic comparison for a company in '+(comp.davlat||'Europe')+' considering production in Navoi, Uzbekistan.\n'+
+      'Company: '+(comp.kompaniya||'Unknown')+', Industry: '+(comp.soha||'Manufacturing')+'\n'+
+      'Navoi rates: electricity $'+uzElektr+'/kWh, gas $'+uzGaz+'/kWh, avg wage $'+uzMaosh+'/month, land: FREE in SEZ, profit tax: 0% for 7 years.\n'+
+      'Format: {"transport":{"from_abroad_usd":6800,"from_navoi_usd":1200,"saving_pct":82},"labor":{"abroad_usd":3500,"navoi_usd":'+uzMaosh+',"ratio":"8.7x"},"energy":{"abroad_kwh":0.35,"navoi_kwh":'+uzElektr+',"ratio":"11x"},"total_annual_saving_usd":2400000,"roi_months":18,"recommendation":"...in '+langName+'"}';
+
+    var body1 = {contents:[{role:'user',parts:[{text:analysisPrompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:1000}};
+    var resp1 = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body1)});
+    var data1 = await resp1.json();
+    var analysis = JSON.parse(data1.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
+
+    // Show analysis
+    document.getElementById('aiAnalysisCard').style.display = 'block';
+    document.getElementById('aiAnalysisGrid').innerHTML =
+      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">🚛</div><div style="font-size:.7rem;color:var(--text3)">Transport</div><div style="font-size:1.1rem;font-weight:800;color:#059669">-'+analysis.transport.saving_pct+'%</div><div style="font-size:.6rem;color:var(--text3)">$'+analysis.transport.from_abroad_usd+' → $'+analysis.transport.from_navoi_usd+'</div></div>'+
+      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">👷</div><div style="font-size:.7rem;color:var(--text3)">Mehnat</div><div style="font-size:1.1rem;font-weight:800;color:#059669">'+analysis.labor.ratio+' arzon</div><div style="font-size:.6rem;color:var(--text3)">$'+analysis.labor.abroad_usd+' → $'+analysis.labor.navoi_usd+'</div></div>'+
+      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">⚡</div><div style="font-size:.7rem;color:var(--text3)">Energiya</div><div style="font-size:1.1rem;font-weight:800;color:#059669">'+analysis.energy.ratio+' arzon</div><div style="font-size:.6rem;color:var(--text3)">$'+analysis.energy.abroad_kwh+' → $'+analysis.energy.navoi_kwh+'</div></div>'+
+      '<div style="padding:1rem;background:linear-gradient(135deg,rgba(5,150,105,.1),rgba(6,214,160,.1));border-radius:10px;border:1px solid rgba(5,150,105,.3)"><div style="font-size:1.5rem;margin-bottom:.5rem">💰</div><div style="font-size:.7rem;color:var(--text3)">Yillik tejamkorlik</div><div style="font-size:1.1rem;font-weight:800;color:#059669">$'+Math.round(analysis.total_annual_saving_usd/1e6*10)/10+'M</div><div style="font-size:.6rem;color:var(--text3)">ROI: '+analysis.roi_months+' oy</div></div>';
+
+    // Step 2: Generate letter
+    var letterPrompt = 'Write a professional business letter in '+langName+'. This is from Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n\n'+
+      'Key data to include:\n- Transport savings: '+analysis.transport.saving_pct+'% ($'+analysis.transport.from_abroad_usd+' → $'+analysis.transport.from_navoi_usd+'/container)\n'+
+      '- Labor: '+analysis.labor.ratio+' cheaper ($'+analysis.labor.navoi_usd+'/month)\n- Energy: '+analysis.energy.ratio+' cheaper\n- Total annual saving: $'+Math.round(analysis.total_annual_saving_usd/1000)+'K\n- ROI: '+analysis.roi_months+' months\n- Navoi SEZ: 0% profit tax for 7 years, free land\n\n'+
+      'Industry: '+(comp.soha||'Manufacturing')+'\n\n'+
+      'Tone: Professional, human (NOT AI-sounding), compelling. Include specific numbers. End with meeting request.\nSign as: Investment Department, Navoi Region, Uzbekistan\n\nAlso provide a subject line.\nFormat: {"subject":"...","body":"..."}';
+
+    var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:2000}};
+    var resp2 = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body2)});
+    var data2 = await resp2.json();
+    var letter = JSON.parse(data2.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
+
+    document.getElementById('aiLetterSubject').value = letter.subject||'Investment Opportunity in Navoi, Uzbekistan';
+    document.getElementById('aiLetterBody').value = letter.body||'';
+    document.getElementById('aiLetterCard').style.display = 'block';
+    document.getElementById('aiLetterEmpty').style.display = 'none';
+
+    toast('✅ AI xat tayyor! Ko\'rib chiqing va yuborishingiz mumkin.');
+
+  } catch(e){
+    toast('⚠️ Xato: '+e.message,'error');
+    console.error(e);
+  }
+}
+
+function sendAiLetter(){
+  var sel = document.getElementById('ailetter-company-select');
+  var compId = sel.value;
+  var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(compId);});
+  if(!comp||!comp.email){ toast('⚠️ Kompaniyaning email manzili yo\'q','error'); return; }
+  var subject = document.getElementById('aiLetterSubject').value;
+  var body = document.getElementById('aiLetterBody').value;
+  // Use existing email system
+  openEmailModal(comp.id);
+  setTimeout(function(){
+    var subEl = document.getElementById('emailSubject');
+    var bodyEl = document.getElementById('emailBody');
+    if(subEl) subEl.value = subject;
+    if(bodyEl) bodyEl.value = body;
+  },500);
+}
+
+function scheduleAiLetter(){
+  toast('📅 Rejalashtirish funksiyasi — "Investorlar bazasi" sahifasidan foydalaning');
+}
+
+/* ═══════════════════════════════════════
+   M5: PIPELINE (KANBAN CRM)
+═══════════════════════════════════════ */
+function renderPipeline(){
+  var co = DB.investorCompanies||[];
+  var stages = {new:[],sent:[],opened:[],replied:[],meeting:[]};
+
+  co.forEach(function(c){
+    var stage = c.pipelineStage || (c.emailSent ? 'sent' : 'new');
+    if(!stages[stage]) stage = 'new';
+    stages[stage].push(c);
+  });
+
+  var totalSent = stages.sent.length+stages.opened.length+stages.replied.length+stages.meeting.length;
+  document.getElementById('pl-k1').textContent = totalSent;
+  document.getElementById('pl-k2').textContent = totalSent>0?Math.round(stages.opened.length/totalSent*100)+'%':'0%';
+  document.getElementById('pl-k3').textContent = totalSent>0?Math.round(stages.replied.length/totalSent*100)+'%':'0%';
+  document.getElementById('pl-k4').textContent = '$'+Math.round(co.length*0.05)+'M';
+
+  Object.keys(stages).forEach(function(key){
+    var el = document.getElementById('kb-items-'+key);
+    var countEl = document.getElementById('kb-'+key);
+    if(countEl) countEl.textContent = stages[key].length;
+    if(el){
+      el.innerHTML = stages[key].length ? stages[key].slice(0,15).map(function(c){
+        var scoreColor = (c.score||50)>=80?'#059669':(c.score||50)>=60?'#FFB703':'#EF233C';
+        return '<div class="kanban-card" onclick="showKanbanDetail(\''+c.id+'\')"><div class="kanban-card-name">'+c.kompaniya+'</div><div class="kanban-card-sub">'+(c.davlat||'?')+' • '+(c.rahbar||'—')+'</div>'+(c.score?'<span class="kanban-card-score" style="background:'+scoreColor+'">'+c.score+' ball</span>':'')+'</div>';
+      }).join('') : '<div style="padding:1rem;text-align:center;font-size:.65rem;color:var(--text3)">Bo\'sh</div>';
+    }
+  });
+
+  // Follow-up
+  var today = new Date();
+  var fu = co.filter(function(c){
+    if(!c.emailSentDate||c.pipelineStage==='replied'||c.pipelineStage==='meeting') return false;
+    var sent = new Date(c.emailSentDate);
+    var days = Math.floor((today-sent)/(1000*60*60*24));
+    return days>=7;
+  });
+  document.getElementById('followup-count').textContent = fu.length;
+  var ftb = document.getElementById('followup-tbody');
+  if(ftb){
+    ftb.innerHTML = fu.length ? fu.map(function(c,i){
+      var days = Math.floor((today-new Date(c.emailSentDate))/(1000*60*60*24));
+      var xatNo = days>=21?3:days>=14?2:1;
+      return '<tr><td>'+(i+1)+'</td><td><b>'+c.kompaniya+'</b></td><td>'+xatNo+'-xat</td><td>'+c.emailSentDate+'</td><td style="color:#FFB703;font-weight:700">⏰ '+days+' kun</td><td><button class="btn btn-blue btn-sm" onclick="goToAiLetterById(\''+c.id+'\')">📧 Xat yozish</button></td></tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text3)">Follow-up kerak emas</td></tr>';
+  }
+}
+
+function showKanbanDetail(id){
+  var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(id);});
+  if(!comp) return;
+  var stages = ['new','sent','opened','replied','meeting'];
+  var stageNames = ['📨 Yangi','✉️ Yuborildi','👀 Ochildi','💬 Javob','🤝 Muzokara'];
+  var curStage = comp.pipelineStage || 'new';
+  var btns = stages.map(function(s,i){
+    return '<button onclick="setPipelineStage(\''+id+'\',\''+s+'\')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:'+(curStage===s?'var(--accent)':'var(--bg2)')+';color:'+(curStage===s?'#fff':'var(--text)')+';font-size:.65rem;cursor:pointer">'+stageNames[i]+'</button>';
+  }).join(' ');
+  toast(comp.kompaniya+' — '+btns, 'info', 10000);
+}
+
+function setPipelineStage(id, stage){
+  var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(id);});
+  if(comp){
+    comp.pipelineStage = stage;
+    if(typeof fbSave==='function') fbSave('investorCompanies',comp);
+    renderPipeline();
+    toast('✅ '+comp.kompaniya+' → '+stage);
+  }
+}
+
+function goToAiLetterById(id){
+  showPage('ailetter');
+  setTimeout(function(){
+    populateProductSelects();
+    var sel = document.getElementById('ailetter-company-select');
+    if(sel) sel.value = id;
+  },300);
+}
+
+/* ═══════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════ */
+function loadSettings(){
+  var s = DB.settings||{};
+  var fields = {
+    'set-elektr':s.elektr||0.03, 'set-gaz':s.gaz||0.01, 'set-suv':s.suv||0.15,
+    'set-yer':s.yer||0, 'set-maosh':s.maosh||400, 'set-min-maosh':s.minMaosh||100,
+    'set-soliq':s.soliq||0, 'set-soliq-yil':s.soliqYil||7,
+    'set-daily-limit':s.dailyLimit||50, 'set-fu1':s.fu1||7, 'set-fu2':s.fu2||14, 'set-fu3':s.fu3||21,
+    'set-tg-token':s.tgToken||'', 'set-tg-chatid':s.tgChatId||''
+  };
+  Object.keys(fields).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value = fields[id];
+  });
+  // API keys
+  var gkEl = document.getElementById('set-gemini-key');
+  if(gkEl) gkEl.value = GEMINI_KEY||'';
+}
+
+function saveSettings(){
+  DB.settings = {
+    elektr: parseFloat(document.getElementById('set-elektr').value)||0.03,
+    gaz: parseFloat(document.getElementById('set-gaz').value)||0.01,
+    suv: parseFloat(document.getElementById('set-suv').value)||0.15,
+    yer: parseFloat(document.getElementById('set-yer').value)||0,
+    maosh: parseInt(document.getElementById('set-maosh').value)||400,
+    minMaosh: parseInt(document.getElementById('set-min-maosh').value)||100,
+    soliq: parseInt(document.getElementById('set-soliq').value)||0,
+    soliqYil: parseInt(document.getElementById('set-soliq-yil').value)||7,
+    dailyLimit: parseInt(document.getElementById('set-daily-limit').value)||50,
+    fu1: parseInt(document.getElementById('set-fu1').value)||7,
+    fu2: parseInt(document.getElementById('set-fu2').value)||14,
+    fu3: parseInt(document.getElementById('set-fu3').value)||21,
+    tgToken: document.getElementById('set-tg-token').value.trim(),
+    tgChatId: document.getElementById('set-tg-chatid').value.trim()
+  };
+  if(typeof fbSave==='function') fbSave('settings', DB.settings);
+  toast('✅ Sozlamalar saqlandi!');
+}
+
+// Override renderAll to include new modules
+var _origRenderAll = typeof renderAll==='function' ? renderAll : function(){};
+function renderAllExtended(){
+  _origRenderAll();
+  renderProducts();
+  renderPipeline();
+  loadSettings();
+}
+
 /* ═══ GEMINI AI CHATBOT ═══ */
 const GEMINI_KEY = 'AIzaSyBU5thCrC-1isV6JPfiCy1iu1L6gPU2TlA';
 const GEMINI_MODELS = [
