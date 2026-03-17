@@ -164,13 +164,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .tn-uname{font-size:.8rem;font-weight:600;color:#fff;}
 .tn-urole{font-size:.63rem;color:rgba(180,200,240,.7);}
 .tn-row2-wrap{width:100%;box-sizing:border-box;}
-.tn-row2{display:flex;align-items:stretch;padding:0;background:var(--nav-bg2);overflow-x:auto;width:100%;gap:0;}
+.tn-row2{display:flex;align-items:stretch;padding:0;background:var(--nav-bg2);flex-wrap:wrap;width:100%;gap:0;}
 .tn-row2::-webkit-scrollbar{height:2px;}
 .tn-row2::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);}
-.tn-tab{display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;font-size:.82rem;font-weight:600;color:rgba(180,200,245,.7);cursor:pointer;white-space:nowrap;border-radius:0;transition:all .18s;flex:1;text-align:center;background:rgba(255,255,255,.03);border:none;border-right:1px solid rgba(255,255,255,.07);border-bottom:3px solid transparent;}
+.tn-tab{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 14px;font-size:.76rem;font-weight:600;color:rgba(180,200,245,.7);cursor:pointer;white-space:nowrap;border-radius:0;transition:all .18s;flex:1;text-align:center;background:rgba(255,255,255,.03);border:none;border-right:1px solid rgba(255,255,255,.07);border-bottom:2px solid transparent;min-width:0;}
 .tn-tab:last-child{border-right:none;}
 .tn-tab:hover{color:#fff;background:rgba(255,255,255,.1);}
-.tn-tab.active{color:#fff;background:rgba(67,97,238,.2);border-right:1px solid rgba(67,97,238,.3);border-bottom:3px solid #4361EE;font-weight:700;}
+.tn-tab.active{color:#fff;background:rgba(67,97,238,.2);border-right:1px solid rgba(67,97,238,.3);border-bottom:2px solid #4361EE;font-weight:700;}
 .tn-tab.admin-tab.active{background:rgba(114,9,183,.2);border-right:1px solid rgba(181,23,158,.3);border-bottom-color:#b5179e;}
 .tn-tab-icon{font-size:15px;}
 .tn-badge{font-size:.6rem;font-weight:700;background:#4361EE;color:#fff;padding:2px 8px;border-radius:20px;min-width:20px;text-align:center;}
@@ -556,11 +556,11 @@ tbody td:first-child{color:var(--text);font-weight:600;}
   .tn-btn{padding:5px 10px;font-size:.65rem;}
 
   /* — Nav Row 2 Tabs — */
-  .tn-row2{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .tn-row2{gap:0;flex-wrap:wrap;overflow-x:visible;}
   .tn-row2::-webkit-scrollbar{display:none;}
-  .tn-tab{flex:none;padding:9px 12px;font-size:.7rem;gap:4px;min-width:auto;}
-  .tn-tab span[data-i18n]{display:none;}
-  .tn-tab .tn-tab-icon{font-size:16px;}
+  .tn-tab{flex:1;padding:7px 10px;font-size:.65rem;gap:3px;min-width:0;}
+  .tn-tab span:not(.tn-tab-icon):not(.tn-badge){display:none;}
+  .tn-tab .tn-tab-icon{font-size:15px;}
   .tn-tab .tn-badge{font-size:.5rem;padding:1px 4px;margin-left:2px;}
   .tn-tab #adminTabLabel{display:none;}
 
@@ -648,8 +648,8 @@ tbody td:first-child{color:var(--text);font-weight:600;}
   .tn-logo-name{font-size:.72rem;}
   .tn-logo-icon{width:30px;height:30px;font-size:14px;border-radius:8px;}
   .lang-switcher{display:none;}
-  .tn-tab{padding:8px 10px;}
-  .tn-tab .tn-tab-icon{font-size:14px;}
+  .tn-tab{padding:6px 8px;}
+  .tn-tab .tn-tab-icon{font-size:13px;}
   .intl-region-btn{padding:5px 8px;font-size:.65rem;border-radius:8px;}
 }
 
@@ -791,20 +791,24 @@ input[type="time"]{-webkit-appearance:none;}
     </div>
   </div>
   <div style="background:var(--nav-bg2)">
+  <!-- 1-QATOR: Asosiy bo'limlar -->
   <div class="tn-row2" style="max-width:1600px;margin:0 auto">
-    <div class="tn-tab active" id="tab-overview" onclick="showPage('overview')" title="Umumiy"><span class="tn-tab-icon">🏠</span><span data-i18n="nav_overview">Umumiy ma'lumotlar</span></div>
-    <div class="tn-tab" id="tab-investors" onclick="showPage('investors')" title="Investorlar"><span class="tn-tab-icon">🌍</span><span data-i18n="nav_investors">Investorlar Tashriflari</span><span class="tn-badge" id="badge-investors">0</span></div>
-    <div class="tn-tab" id="tab-local" onclick="showPage('local')" title="Mahalliy"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_local">Mahalliy Tadbirkorlar</span><span class="tn-badge" id="badge-local">0</span></div>
-    <div class="tn-tab" id="tab-zoom" onclick="showPage('zoom')" title="Zoom"><span class="tn-tab-icon">💻</span><span data-i18n="nav_zoom">Zoom Uchrashuvlar</span><span class="tn-badge" id="badge-zoom">0</span></div>
+    <div class="tn-tab active" id="tab-overview" onclick="showPage('overview')" title="Umumiy"><span class="tn-tab-icon">🏠</span><span data-i18n="nav_overview">Umumiy</span></div>
+    <div class="tn-tab" id="tab-investors" onclick="showPage('investors')" title="Investorlar"><span class="tn-tab-icon">🌍</span><span data-i18n="nav_investors">Investorlar</span><span class="tn-badge" id="badge-investors">0</span></div>
+    <div class="tn-tab" id="tab-local" onclick="showPage('local')" title="Mahalliy"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_local">Tadbirkorlar</span><span class="tn-badge" id="badge-local">0</span></div>
+    <div class="tn-tab" id="tab-zoom" onclick="showPage('zoom')" title="Zoom"><span class="tn-tab-icon">💻</span><span data-i18n="nav_zoom">Zoom</span><span class="tn-badge" id="badge-zoom">0</span></div>
     <div class="tn-tab" id="tab-forums" onclick="showPage('forums')" title="Forumlar"><span class="tn-tab-icon">🗓</span><span data-i18n="nav_forums">Forumlar</span><span class="tn-badge" id="badge-forums">0</span></div>
-    <div class="tn-tab" id="tab-investor" onclick="showPage('investor')" title="Baza"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_investorco">Investorlar bazasi</span><span class="tn-badge" id="badge-investorco">0</span></div>
+    <div class="tn-tab" id="tab-investor" onclick="showPage('investor')" title="Baza"><span class="tn-tab-icon">🏢</span><span data-i18n="nav_investorco">Baza</span><span class="tn-badge" id="badge-investorco">0</span></div>
+    <div class="tn-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()" title="Admin"><span class="tn-tab-icon">🔐</span><span id="adminTabLabel" data-i18n="nav_login">Admin</span></div>
+  </div>
+  <!-- 2-QATOR: AI Platform modullari -->
+  <div class="tn-row2" style="max-width:1600px;margin:0 auto;border-top:1px solid rgba(255,255,255,.06)">
     <div class="tn-tab" id="tab-products" onclick="showPage('products')" title="Mahsulotlar"><span class="tn-tab-icon">📦</span><span>Mahsulotlar</span><span class="tn-badge" id="badge-products">0</span></div>
     <div class="tn-tab" id="tab-import" onclick="showPage('import')" title="Import"><span class="tn-tab-icon">📊</span><span>Import Tahlili</span></div>
     <div class="tn-tab" id="tab-finder" onclick="showPage('finder')" title="Finder"><span class="tn-tab-icon">🔍</span><span>Company Finder</span></div>
     <div class="tn-tab" id="tab-ailetter" onclick="showPage('ailetter')" title="AI Xat"><span class="tn-tab-icon">📧</span><span>AI Xatlar</span></div>
     <div class="tn-tab" id="tab-pipeline" onclick="showPage('pipeline')" title="Pipeline"><span class="tn-tab-icon">📋</span><span>Pipeline</span></div>
     <div class="tn-tab" id="tab-settings" onclick="showPage('settings')" title="Sozlamalar"><span class="tn-tab-icon">⚙️</span><span>Sozlamalar</span></div>
-    <div class="tn-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()" title="Admin"><span class="tn-tab-icon">🔐</span><span id="adminTabLabel" data-i18n="nav_login">Kirish</span></div>
   </div>
   </div>
 </div>
@@ -6473,7 +6477,7 @@ window.addEventListener('load', ()=>{
 
 <script>
 /* ═══ GEMINI CONFIG (must be first) ═══ */
-const GEMINI_KEY = 'AIzaSyA8yBwkOF7O0QC6EZGFlZLwHfZEorPmIj8';
+const GEMINI_KEY = 'AIzaSyBU5thCrC-1isV6JPfiCy1iu1L6gPU2TlA';
 const GEMINI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite'];
 function geminiUrl(model){
   return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GEMINI_KEY;
@@ -6490,6 +6494,47 @@ async function callGemini(body){
     } catch(e){ console.log('Gemini '+GEMINI_MODELS[m]+' fetch error:',e); }
   }
   throw new Error('Barcha Gemini modellari ishlamadi. API kalitni tekshiring.');
+}
+
+// Safe JSON parser — handles Gemini's messy responses
+function safeParseJSON(raw){
+  if(!raw) throw new Error('Bo\'sh javob');
+  // Remove markdown fences
+  var text = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+  // Try direct parse first
+  try { return JSON.parse(text); } catch(e){}
+  // Extract JSON object or array
+  var start = text.indexOf('{');
+  var startArr = text.indexOf('[');
+  if(startArr>=0 && (start<0 || startArr<start)) start = startArr;
+  if(start<0) throw new Error('JSON topilmadi');
+  var isArr = text[start]==='[';
+  var sub = text.slice(start);
+  // Try parsing as-is
+  try { return JSON.parse(sub); } catch(e){}
+  // Try to fix truncated JSON by closing brackets
+  var opens = 0; var closers = isArr ? ']' : '}';
+  for(var i=0;i<sub.length;i++){
+    if(sub[i]==='{' || sub[i]==='[') opens++;
+    if(sub[i]==='}' || sub[i]===']') opens--;
+  }
+  var fixed = sub;
+  // Remove trailing comma before closing
+  fixed = fixed.replace(/,\s*$/, '');
+  while(opens>0){ fixed += closers; opens--; }
+  try { return JSON.parse(fixed); } catch(e){}
+  // Last resort: try to find last valid closing bracket
+  var lastClose = isArr ? sub.lastIndexOf(']') : sub.lastIndexOf('}');
+  if(lastClose>0){
+    try { return JSON.parse(sub.slice(0,lastClose+1)); } catch(e){}
+  }
+  throw new Error('JSON parse xato: '+raw.slice(0,100)+'...');
+}
+
+function geminiText(data){
+  if(data && data.candidates && data.candidates[0] && data.candidates[0].content)
+    return data.candidates[0].content.parts[0].text || '';
+  return '';
 }
 
 /* ═══════════════════════════════════════
@@ -6618,12 +6663,10 @@ function deleteProduct(id){
 async function loadSampleProducts(){
   toast('🤖 Gemini AI xomashyo va mahsulotlar bazasini to\'ldirmoqda...');
   try {
-    var prompt = 'You are an expert on Navoi region Uzbekistan raw materials. Return ONLY valid JSON (no markdown, no backticks). Format:\n{"rawMaterials":[{"name_uz":"Marmor","name_en":"Marble"}],"products":[{"raw":"Marble","name_en":"Marble tiles","hs_code":"6802.21","price":"$25/m2"}]}\n\nList exactly 15 raw materials found in Navoi region and for each give 8 products that can be manufactured. Total: 15 raw materials, 120 products. Include HS codes.';
-    var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:8000}};
+    var prompt = 'You are an expert on Navoi region Uzbekistan natural resources. Return ONLY raw JSON, no markdown, no backticks, no explanation.\n\nJSON format:\n{"rawMaterials":[{"name_uz":"Marmor","name_en":"Marble"}],"products":[{"raw":"Marble","name_en":"Marble tiles","hs_code":"6802.21","price":"$25/m2"}]}\n\nList 10 raw materials found in Navoi region. For each give 5 products. Total: 10 raw materials, 50 products. Use real HS codes. Keep product names short (2-3 words max).';
+    var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:4000}};
     var data = await callGemini(body);
-    var text = data.candidates[0].content.parts[0].text;
-    text = text.replace(/```json|```/g,'').trim();
-    var parsed = JSON.parse(text);
+    var parsed = safeParseJSON(geminiText(data));
 
     DB.rawMaterials = parsed.rawMaterials.map(function(r,i){
       return {id:'rm_'+i, name_uz:r.name_uz, name_en:r.name_en, location:'Navoiy'};
@@ -6710,9 +6753,7 @@ async function runImportAnalysis(){
       var prompt = 'You are a trade data analyst. Return ONLY valid JSON (no markdown). For the product "'+prod.name_en+'" (HS code: '+(prod.hs_code||'unknown')+'), estimate annual import values for these 12 countries from world market. Format:\n{"countries":[{"code":"RU","name":"Russia","import_usd":45000000,"trend_pct":12,"volume_tons":150000}],"total_usd":0,"biggest_market":"","fastest_growing":"","recommendation":""}\nCountries: Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan, Mongolia.\nUse realistic estimates based on 2024 data. Recommendation in Uzbek language.';
       var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2000}};
       var data = await callGemini(body);
-      var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim();
-      var result = JSON.parse(text);
-      countries = result.countries.map(function(c){
+      var result = safeParseJSON(geminiText(data));      countries = result.countries.map(function(c){
         var tc = TARGET_COUNTRIES.find(function(t){return t.code===c.code;});
         return {code:c.code, name:c.name, flag:tc?tc.flag:'', import_usd:c.import_usd||0, trend_pct:c.trend_pct||0, volume_tons:c.volume_tons||0};
       });
@@ -6805,8 +6846,7 @@ async function runCompanyFinder(source){
 
       var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.5,maxOutputTokens:4000}};
       var data = await callGemini(body);
-      var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim();
-      var arr = JSON.parse(text);
+      var arr = safeParseJSON(geminiText(data));
 
       _finderResults = arr.map(function(c,i){
         return {id:'fc_'+Date.now()+'_'+i, kompaniya:c.company||'', rahbar:c.contact_name||'', lavozim:c.title||'', email:'', telefon:'', davlat:c.country||'', shahar:c.city||'', soha:c.industry||'', website:c.website||'', xodimlar:c.employees||'', score:c.score||50, manba:'Gemini AI'};
@@ -6907,14 +6947,14 @@ async function generateAiLetter(){
 
   try {
     // Step 1: Economic Analysis
-    var analysisPrompt = 'Return ONLY valid JSON. Economic comparison for a company in '+(comp.davlat||'Europe')+' considering production in Navoi, Uzbekistan.\n'+
+    var analysisPrompt = 'Return ONLY raw JSON, no markdown, no backticks. Economic comparison for a company in '+(comp.davlat||'Europe')+' vs production in Navoi, Uzbekistan.\n'+
       'Company: '+(comp.kompaniya||'Unknown')+', Industry: '+(comp.soha||'Manufacturing')+'\n'+
       'Navoi rates: electricity $'+uzElektr+'/kWh, gas $'+uzGaz+'/kWh, avg wage $'+uzMaosh+'/month, land: FREE in SEZ, profit tax: 0% for 7 years.\n'+
-      'Format: {"transport":{"from_abroad_usd":6800,"from_navoi_usd":1200,"saving_pct":82},"labor":{"abroad_usd":3500,"navoi_usd":'+uzMaosh+',"ratio":"8.7x"},"energy":{"abroad_kwh":0.35,"navoi_kwh":'+uzElektr+',"ratio":"11x"},"total_annual_saving_usd":2400000,"roi_months":18,"recommendation":"...in '+langName+'"}';
+      'Return this exact JSON structure with realistic numbers:\n{"transport":{"from_abroad_usd":6800,"from_navoi_usd":1200,"saving_pct":82},"labor":{"abroad_usd":3500,"navoi_usd":400,"ratio":"8.7x"},"energy":{"abroad_kwh":0.35,"navoi_kwh":0.03,"ratio":"11x"},"total_annual_saving_usd":2400000,"roi_months":18}';
 
-    var body1 = {contents:[{role:'user',parts:[{text:analysisPrompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:1000}};
+    var body1 = {contents:[{role:'user',parts:[{text:analysisPrompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:1500}};
     var data1 = await callGemini(body1);
-    var analysis = JSON.parse(data1.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
+    var analysis = safeParseJSON(geminiText(data1));
 
     // Show analysis
     document.getElementById('aiAnalysisCard').style.display = 'block';
@@ -6929,14 +6969,29 @@ async function generateAiLetter(){
       'Key data to include:\n- Transport savings: '+analysis.transport.saving_pct+'% ($'+analysis.transport.from_abroad_usd+' → $'+analysis.transport.from_navoi_usd+'/container)\n'+
       '- Labor: '+analysis.labor.ratio+' cheaper ($'+analysis.labor.navoi_usd+'/month)\n- Energy: '+analysis.energy.ratio+' cheaper\n- Total annual saving: $'+Math.round(analysis.total_annual_saving_usd/1000)+'K\n- ROI: '+analysis.roi_months+' months\n- Navoi SEZ: 0% profit tax for 7 years, free land\n\n'+
       'Industry: '+(comp.soha||'Manufacturing')+'\n\n'+
-      'Tone: Professional, human (NOT AI-sounding), compelling. Include specific numbers. End with meeting request.\nSign as: Investment Department, Navoi Region, Uzbekistan\n\nAlso provide a subject line.\nFormat: {"subject":"...","body":"..."}';
+      'Tone: Professional, human (NOT AI-sounding), compelling. Include specific numbers. End with meeting request.\nSign as: Investment Department, Navoi Region, Uzbekistan\n\n'+
+      'IMPORTANT FORMAT: First line must be ONLY the email subject. Then put ===BODY=== on a new line. Then write the full letter body.\nExample:\nPartnership Opportunity: Marble Production in Navoi\n===BODY===\nDear Mr. Schmidt,\n...';
 
-    var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:2000}};
+    var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:3000}};
     var data2 = await callGemini(body2);
-    var letter = JSON.parse(data2.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
+    var letterRaw = geminiText(data2);
+    var letterSubject = 'Investment Opportunity in Navoi, Uzbekistan';
+    var letterBody = letterRaw;
+    var sepIdx = letterRaw.indexOf('===BODY===');
+    if(sepIdx > 0){
+      letterSubject = letterRaw.slice(0, sepIdx).trim().replace(/^Subject:\s*/i,'').replace(/\*\*/g,'');
+      letterBody = letterRaw.slice(sepIdx + 10).trim();
+    } else {
+      // Try first line as subject
+      var lines = letterRaw.split('\n');
+      if(lines.length > 3){
+        letterSubject = lines[0].replace(/^Subject:\s*/i,'').replace(/\*\*/g,'').trim();
+        letterBody = lines.slice(1).join('\n').trim();
+      }
+    }
 
-    document.getElementById('aiLetterSubject').value = letter.subject||'Investment Opportunity in Navoi, Uzbekistan';
-    document.getElementById('aiLetterBody').value = letter.body||'';
+    document.getElementById('aiLetterSubject').value = letterSubject;
+    document.getElementById('aiLetterBody').value = letterBody;
     document.getElementById('aiLetterCard').style.display = 'block';
     document.getElementById('aiLetterEmpty').style.display = 'none';
 
