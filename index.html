@@ -4461,9 +4461,9 @@ function renderAll(){
   renderIntlForums();
   renderInvestorCompanies();
   if(isAdmin) renderAdminLists();
-  renderProducts();
-  renderPipeline();
-  loadSettings();
+  if(typeof renderProducts==='function') renderProducts();
+  if(typeof renderPipeline==='function') renderPipeline();
+  if(typeof loadSettings==='function') loadSettings();
 }
 
 /* ═══════════════════════════════════════
@@ -6472,6 +6472,26 @@ window.addEventListener('load', ()=>{
 </div>
 
 <script>
+/* ═══ GEMINI CONFIG (must be first) ═══ */
+const GEMINI_KEY = 'AIzaSyBU5thCrC-1isV6JPfiCy1iu1L6gPU2TlA';
+const GEMINI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite'];
+function geminiUrl(model){
+  return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GEMINI_KEY;
+}
+async function callGemini(body){
+  for(var m=0; m<GEMINI_MODELS.length; m++){
+    try {
+      var resp = await fetch(geminiUrl(GEMINI_MODELS[m]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(resp.ok){
+        var data = await resp.json();
+        if(data.candidates && data.candidates[0]) return data;
+      }
+      console.log('Gemini '+GEMINI_MODELS[m]+': '+resp.status);
+    } catch(e){ console.log('Gemini '+GEMINI_MODELS[m]+' fetch error:',e); }
+  }
+  throw new Error('Barcha Gemini modellari ishlamadi. API kalitni tekshiring.');
+}
+
 /* ═══════════════════════════════════════
    M1: MAHSULOTLAR (DATA ENGINE)
 ═══════════════════════════════════════ */
@@ -6600,9 +6620,7 @@ async function loadSampleProducts(){
   try {
     var prompt = 'You are an expert on Navoi region Uzbekistan raw materials. Return ONLY valid JSON (no markdown, no backticks). Format:\n{"rawMaterials":[{"name_uz":"Marmor","name_en":"Marble"}],"products":[{"raw":"Marble","name_en":"Marble tiles","hs_code":"6802.21","price":"$25/m2"}]}\n\nList exactly 15 raw materials found in Navoi region and for each give 8 products that can be manufactured. Total: 15 raw materials, 120 products. Include HS codes.';
     var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:8000}};
-    var resp = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!resp.ok) throw new Error('API xato: '+resp.status);
-    var data = await resp.json();
+    var data = await callGemini(body);
     var text = data.candidates[0].content.parts[0].text;
     text = text.replace(/```json|```/g,'').trim();
     var parsed = JSON.parse(text);
@@ -6646,9 +6664,7 @@ async function runImportAnalysis(){
     var prompt = 'You are a trade data analyst. Return ONLY valid JSON (no markdown). For the product "'+prod.name_en+'" (HS code: '+(prod.hs_code||'unknown')+'), estimate annual import values for these 12 countries from world market. Format:\n{"countries":[{"code":"RU","name":"Russia","import_usd":45000000,"trend_pct":12,"volume_tons":150000}],"total_usd":0,"biggest_market":"","fastest_growing":"","recommendation":""}\nCountries: Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan, Mongolia.\nUse realistic estimates based on 2024 data. Recommendation in Uzbek language.';
 
     var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2000}};
-    var resp = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!resp.ok) throw new Error('API: '+resp.status);
-    var data = await resp.json();
+    var data = await callGemini(body);
     var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim();
     var result = JSON.parse(text);
 
@@ -6726,9 +6742,7 @@ async function runCompanyFinder(source){
       var prompt = 'You are a B2B lead generation expert. Return ONLY valid JSON array (no markdown). Find '+count+' real companies worldwide that are major buyers/importers of "'+prod.name_en+'". Focus on companies that import to Central Asia, Russia, Iran, Pakistan region.\nFormat: [{"company":"CompanyName","country":"Germany","city":"Berlin","contact_name":"John Smith","title":"CEO","industry":"Building Materials","website":"www.example.com","employees":500,"revenue_est":"$50M","score":85}]\nScore 1-100 based on: company size, import volume, expansion likelihood to Central Asia. Use realistic company names.';
 
       var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.5,maxOutputTokens:4000}};
-      var resp = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      if(!resp.ok) throw new Error('Gemini: '+resp.status);
-      var data = await resp.json();
+      var data = await callGemini(body);
       var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim();
       var arr = JSON.parse(text);
 
@@ -6837,8 +6851,7 @@ async function generateAiLetter(){
       'Format: {"transport":{"from_abroad_usd":6800,"from_navoi_usd":1200,"saving_pct":82},"labor":{"abroad_usd":3500,"navoi_usd":'+uzMaosh+',"ratio":"8.7x"},"energy":{"abroad_kwh":0.35,"navoi_kwh":'+uzElektr+',"ratio":"11x"},"total_annual_saving_usd":2400000,"roi_months":18,"recommendation":"...in '+langName+'"}';
 
     var body1 = {contents:[{role:'user',parts:[{text:analysisPrompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:1000}};
-    var resp1 = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body1)});
-    var data1 = await resp1.json();
+    var data1 = await callGemini(body1);
     var analysis = JSON.parse(data1.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
 
     // Show analysis
@@ -6857,8 +6870,7 @@ async function generateAiLetter(){
       'Tone: Professional, human (NOT AI-sounding), compelling. Include specific numbers. End with meeting request.\nSign as: Investment Department, Navoi Region, Uzbekistan\n\nAlso provide a subject line.\nFormat: {"subject":"...","body":"..."}';
 
     var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:2000}};
-    var resp2 = await fetch(geminiUrl(GEMINI_MODELS[0]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body2)});
-    var data2 = await resp2.json();
+    var data2 = await callGemini(body2);
     var letter = JSON.parse(data2.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim());
 
     document.getElementById('aiLetterSubject').value = letter.subject||'Investment Opportunity in Navoi, Uzbekistan';
@@ -7018,26 +7030,20 @@ function saveSettings(){
   toast('✅ Sozlamalar saqlandi!');
 }
 
-// Override renderAll to include new modules
-var _origRenderAll = typeof renderAll==='function' ? renderAll : function(){};
-function renderAllExtended(){
-  _origRenderAll();
-  renderProducts();
-  renderPipeline();
-  loadSettings();
-}
-
 /* ═══ GEMINI AI CHATBOT ═══ */
-const GEMINI_KEY = 'AIzaSyBU5thCrC-1isV6JPfiCy1iu1L6gPU2TlA';
-const GEMINI_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite'
-];
 
-function geminiUrl(model){
-  return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GEMINI_KEY;
+// Test API key on load
+async function testGeminiKey(){
+  try {
+    var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + GEMINI_KEY);
+    if(r.ok){ console.log('✅ Gemini API key ishlayapti'); return true; }
+    var e = await r.json().catch(function(){return {};});
+    console.error('❌ Gemini API xato:', r.status, e.error?.message||'');
+    if(r.status===403) console.error('👉 API yoqish: https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com');
+    return false;
+  } catch(err){ console.error('Gemini test xato:',err); return false; }
 }
+testGeminiKey();
 
 const NAVOIY_CONTEXT = `Sen Navoiy viloyati investitsiya bo'limi AI yordamchisisan. Faqat O'zbek tilida javob ber (agar foydalanuvchi boshqa tilda yozsa, o'sha tilda javob ber).
 
