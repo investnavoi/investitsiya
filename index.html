@@ -30,7 +30,54 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
 // Collections: investors, local, zoom, forums, investorCompanies
-const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies'];
+const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products'];
+
+// Load API keys from separate doc
+async function loadApiKeys(){
+  try {
+    const snap = await getDocs(collection(db, 'apiKeys'));
+    snap.forEach(d => {
+      const data = d.data();
+      window._apiKeys = data;
+    });
+    if(window._apiKeys){
+      console.log('🔑 API kalitlar Firebase dan yuklandi');
+    }
+  } catch(e){ console.log('API keys load error:', e); }
+}
+
+async function saveApiKey(keyName, keyValue){
+  try {
+    await setDoc(doc(db, 'apiKeys', 'keys'), {[keyName]: keyValue}, {merge: true});
+    if(!window._apiKeys) window._apiKeys = {};
+    window._apiKeys[keyName] = keyValue;
+    console.log('🔑 API kalit saqlandi:', keyName);
+  } catch(e){ console.error('API key save error:', e); }
+}
+
+async function loadAllApiKeys(){
+  try {
+    const snap = await getDocs(collection(db, 'apiKeys'));
+    window._apiKeys = {};
+    snap.forEach(d => {
+      Object.assign(window._apiKeys, d.data());
+    });
+  } catch(e){}
+}
+
+// Settings save/load via Firebase
+async function fbSaveSettings(settings){
+  try {
+    await setDoc(doc(db, 'settings', 'main'), settings);
+  } catch(e){ console.error('Settings save error:', e); }
+}
+
+async function fbLoadSettings(){
+  try {
+    const snap = await getDocs(collection(db, 'settings'));
+    snap.forEach(d => { DB.settings = d.data(); });
+  } catch(e){}
+}
 
 // Load all data from Firestore and replace DB
 async function loadFromFirestore(){
@@ -70,6 +117,8 @@ async function loadFromFirestore(){
     }
 
     if(loadEl) loadEl.style.display = 'none';
+    await loadApiKeys();
+    await fbLoadSettings();
     renderAll();
     renderOverview();
     if(typeof applyTranslations==='function') applyTranslations();
@@ -6477,10 +6526,17 @@ window.addEventListener('load', ()=>{
 
 <script>
 /* ═══ GEMINI CONFIG (must be first) ═══ */
-const GEMINI_KEY = 'AIzaSyBU5thCrC-1isV6JPfiCy1iu1L6gPU2TlA';
+// API kalit Firebase'dan yuklanadi, agar yo'q bo'lsa fallback
+var GEMINI_KEY = (window._apiKeys && window._apiKeys.gemini) || '';
 const GEMINI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite'];
+
+function getGeminiKey(){
+  // Always check Firebase first
+  if(window._apiKeys && window._apiKeys.gemini) return window._apiKeys.gemini;
+  return GEMINI_KEY;
+}
 function geminiUrl(model){
-  return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GEMINI_KEY;
+  return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + getGeminiKey();
 }
 async function callGemini(body){
   for(var m=0; m<GEMINI_MODELS.length; m++){
@@ -7121,9 +7177,12 @@ function loadSettings(){
     var el = document.getElementById(id);
     if(el) el.value = fields[id];
   });
-  // API keys
+  // API keys from Firebase
+  var keys = window._apiKeys||{};
   var gkEl = document.getElementById('set-gemini-key');
-  if(gkEl) gkEl.value = GEMINI_KEY||'';
+  if(gkEl) gkEl.value = keys.gemini||getGeminiKey()||'';
+  var akEl = document.getElementById('set-apollo-key');
+  if(akEl) akEl.value = keys.apollo||'';
 }
 
 function saveSettings(){
@@ -7143,16 +7202,30 @@ function saveSettings(){
     tgToken: document.getElementById('set-tg-token').value.trim(),
     tgChatId: document.getElementById('set-tg-chatid').value.trim()
   };
-  if(typeof fbSave==='function') fbSave('settings', DB.settings);
-  toast('✅ Sozlamalar saqlandi!');
+  // Save settings to Firebase
+  if(typeof fbSaveSettings==='function') fbSaveSettings(DB.settings);
+
+  // Save API keys to Firebase (alohida collection)
+  var geminiVal = (document.getElementById('set-gemini-key')||{}).value||'';
+  var apolloVal = (document.getElementById('set-apollo-key')||{}).value||'';
+  if(geminiVal && typeof saveApiKey==='function'){
+    saveApiKey('gemini', geminiVal.trim());
+    GEMINI_KEY = geminiVal.trim(); // Update runtime key
+  }
+  if(apolloVal && typeof saveApiKey==='function'){
+    saveApiKey('apollo', apolloVal.trim());
+  }
+  toast('✅ Sozlamalar va API kalitlar Firebase ga saqlandi!');
 }
 
 /* ═══ GEMINI AI CHATBOT ═══ */
 
 // Test API key on load
 async function testGeminiKey(){
+  var key = getGeminiKey();
+  if(!key){ console.log('⚠️ Gemini API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.'); return false; }
   try {
-    var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + GEMINI_KEY);
+    var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
     if(r.ok){ console.log('✅ Gemini API key ishlayapti'); return true; }
     var e = await r.json().catch(function(){return {};});
     console.error('❌ Gemini API xato:', r.status, e.error?.message||'');
