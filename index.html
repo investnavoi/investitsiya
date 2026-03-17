@@ -1287,6 +1287,27 @@ input[type="time"]{-webkit-appearance:none;}
           <tbody id="import-tbody"></tbody>
         </table></div>
       </div>
+
+      <!-- WORLD BANK: Iqtisodiy ko'rsatkichlar -->
+      <div class="tcard" style="margin-top:1rem">
+        <div class="tc-head">
+          <div class="tc-title">🏦 12 Davlat Iqtisodiy Ko'rsatkichlari (World Bank)</div>
+          <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
+        </div>
+        <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
+        <div id="wbData" style="display:none">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
+          <div class="tscroll"><table>
+            <thead><tr>
+              <th>#</th><th>Davlat</th><th>YaIM/kishi ($)</th><th>Sanoat (%)</th>
+              <th>O'rt. ish haqi ($)</th><th>Elektr ($/kWh)</th><th>Aholi (mln)</th><th>Navoiyga nisbat</th>
+            </tr></thead>
+            <tbody id="wb-tbody"></tbody>
+          </table></div>
+          <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
+        </div>
+        <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 12 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
+      </div>
     </div>
     <div id="importEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">📊</div><p>Yuqoridan mahsulot tanlang — import tahlili chiqadi</p></div>
   </div>
@@ -6542,7 +6563,10 @@ function getGeminiKey(){
 function geminiUrl(model){
   return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + getGeminiKey();
 }
-async function callGemini(body){
+async function callGemini(body, _retryCount){
+  var retryCount = _retryCount || 0;
+  var maxRetries = 3;
+  
   for(var m=0; m<GEMINI_MODELS.length; m++){
     try {
       var resp = await fetch(geminiUrl(GEMINI_MODELS[m]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -6550,10 +6574,21 @@ async function callGemini(body){
         var data = await resp.json();
         if(data.candidates && data.candidates[0]) return data;
       }
-      console.log('Gemini '+GEMINI_MODELS[m]+': '+resp.status);
+      // 429 = rate limit — kutib qayta urinish
+      if(resp.status === 429 && retryCount < maxRetries){
+        var errData = await resp.json().catch(function(){return {};});
+        var waitMatch = (errData.error?.message||'').match(/retry in (\d+)/i);
+        var waitSec = waitMatch ? parseInt(waitMatch[1])+2 : 15*(retryCount+1);
+        toast('⏳ Gemini limit — '+waitSec+' soniya kutilmoqda... ('+(retryCount+1)+'/'+maxRetries+')','info');
+        await new Promise(function(r){setTimeout(r, waitSec*1000);});
+        return callGemini(body, retryCount+1);
+      }
+      var errMsg = '';
+      try { var ej = await resp.json(); errMsg = ej.error?.message||''; } catch(x){}
+      console.log('Gemini '+GEMINI_MODELS[m]+' xato:', errMsg || resp.status);
     } catch(e){ console.log('Gemini '+GEMINI_MODELS[m]+' fetch error:',e); }
   }
-  throw new Error('Barcha Gemini modellari ishlamadi. API kalitni tekshiring.');
+  throw new Error('Gemini API limit. '+maxRetries+' marta qayta urinildi. Biroz kutib qayta urinib ko\'ring.');
 }
 
 // Safe JSON parser — handles Gemini's messy responses
@@ -7027,6 +7062,151 @@ function renderImportResults(countries, prod, source){
 
   // Source badge
   chartEl.innerHTML += '<div style="text-align:right;margin-top:8px;font-size:.6rem;color:var(--text3)">📊 Manba: '+source+'</div>';
+}
+
+/* ═══ WORLD BANK API (bepul, CORS qo'llab-quvvatlaydi) ═══ */
+var WB_COUNTRIES = [
+  {iso:'RUS',code:'RU',name:'Rossiya',flag:'🇷🇺'},
+  {iso:'KAZ',code:'KZ',name:"Qozog'iston",flag:'🇰🇿'},
+  {iso:'KGZ',code:'KG',name:"Qirg'iziston",flag:'🇰🇬'},
+  {iso:'TJK',code:'TJ',name:'Tojikiston',flag:'🇹🇯'},
+  {iso:'TKM',code:'TM',name:'Turkmaniston',flag:'🇹🇲'},
+  {iso:'AZE',code:'AZ',name:'Ozarbayjon',flag:'🇦🇿'},
+  {iso:'GEO',code:'GE',name:'Gruziya',flag:'🇬🇪'},
+  {iso:'ARM',code:'AM',name:'Armaniston',flag:'🇦🇲'},
+  {iso:'AFG',code:'AF',name:"Afg'oniston",flag:'🇦🇫'},
+  {iso:'IRN',code:'IR',name:'Eron',flag:'🇮🇷'},
+  {iso:'PAK',code:'PK',name:'Pokiston',flag:'🇵🇰'},
+  {iso:'MNG',code:'MN',name:"Mo'g'uliston",flag:'🇲🇳'}
+];
+
+// O'zbekiston IEZ ma'lumotlari (solishtirish uchun)
+var UZB_DATA = {
+  iso:'UZB', code:'UZ', name:"O'zbekiston (Navoiy IEZ)", flag:'🇺🇿',
+  gdp_per_capita: 2255, industry_pct: 28.6, avg_wage: 400, electricity: 0.03, population: 36.0
+};
+
+async function fetchWBIndicator(countryCodes, indicator){
+  try {
+    var url = 'https://api.worldbank.org/v2/country/'+countryCodes+'/indicator/'+indicator+'?format=json&date=2020:2024&per_page=500';
+    var resp = await fetch(url);
+    if(!resp.ok) return {};
+    var data = await resp.json();
+    var result = {};
+    if(data[1]){
+      data[1].forEach(function(r){
+        if(r.value !== null){
+          var iso = r.countryiso3code || r.country?.id;
+          if(!result[iso] || parseInt(r.date) > parseInt(result[iso].year)){
+            result[iso] = {value: r.value, year: r.date};
+          }
+        }
+      });
+    }
+    return result;
+  } catch(e){ console.log('WB fetch error:', indicator, e); return {}; }
+}
+
+async function loadWorldBankData(){
+  document.getElementById('wbEmpty').style.display = 'none';
+  document.getElementById('wbLoading').style.display = 'block';
+  document.getElementById('wbData').style.display = 'none';
+
+  toast('🏦 World Bank API\'dan 12 davlat ma\'lumoti yuklanmoqda...');
+
+  var codes = WB_COUNTRIES.map(function(c){return c.iso;}).join(';') + ';UZB';
+
+  // Parallel fetch — 5 indikator
+  var results = await Promise.all([
+    fetchWBIndicator(codes, 'NY.GDP.PCAP.CD'),        // YaIM per capita
+    fetchWBIndicator(codes, 'NV.IND.TOTL.ZS'),        // Sanoat ulushi (% YaIM)
+    fetchWBIndicator(codes, 'SP.POP.TOTL'),            // Aholi
+    fetchWBIndicator(codes, 'SL.IND.EMPL.ZS'),        // Sanoat bandligi %
+    fetchWBIndicator(codes, 'NE.IMP.GNFS.CD')          // Jami import $
+  ]);
+
+  var gdpData = results[0];
+  var indData = results[1];
+  var popData = results[2];
+  var emplData = results[3];
+  var impData = results[4];
+
+  document.getElementById('wbLoading').style.display = 'none';
+  document.getElementById('wbData').style.display = 'block';
+
+  // O'zbekiston ma'lumotlarini yangilash
+  if(gdpData['UZB']) UZB_DATA.gdp_per_capita = Math.round(gdpData['UZB'].value);
+  if(indData['UZB']) UZB_DATA.industry_pct = Math.round(indData['UZB'].value*10)/10;
+  if(popData['UZB']) UZB_DATA.population = Math.round(popData['UZB'].value/1e6*10)/10;
+
+  // Settings'dan Navoiy IEZ tariflari
+  var s = DB.settings||{};
+  UZB_DATA.avg_wage = s.maosh || 400;
+  UZB_DATA.electricity = s.elektr || 0.03;
+
+  // Build table
+  var rows = WB_COUNTRIES.map(function(c){
+    var gdp = gdpData[c.iso] ? Math.round(gdpData[c.iso].value) : '—';
+    var ind = indData[c.iso] ? Math.round(indData[c.iso].value*10)/10 : '—';
+    var pop = popData[c.iso] ? Math.round(popData[c.iso].value/1e6*10)/10 : '—';
+    var empl = emplData[c.iso] ? Math.round(emplData[c.iso].value*10)/10 : '—';
+    var imp = impData[c.iso] ? Math.round(impData[c.iso].value/1e9*10)/10 : '—';
+
+    // Taxminiy ish haqi (YaIM asosida)
+    var estWage = gdp !== '—' ? Math.round(gdp/12*0.4) : '—';
+    // Taxminiy elektr narxi (mintaqaviy o'rtacha)
+    var estElec = gdp !== '—' ? (gdp > 10000 ? 0.15 : gdp > 5000 ? 0.08 : gdp > 2000 ? 0.05 : 0.03) : '—';
+
+    // Navoiyga nisbat
+    var wageRatio = (estWage !== '—' && estWage > 0) ? Math.round(estWage / UZB_DATA.avg_wage * 10)/10 + 'x' : '—';
+    var elecRatio = (estElec !== '—') ? Math.round(estElec / UZB_DATA.electricity * 10)/10 + 'x' : '—';
+
+    return {iso:c.iso, code:c.code, name:c.name, flag:c.flag, gdp:gdp, ind:ind, pop:pop, empl:empl, imp:imp, estWage:estWage, estElec:estElec, wageRatio:wageRatio, elecRatio:elecRatio};
+  });
+
+  // KPI grid
+  var totalPop = rows.reduce(function(s,r){return s+(typeof r.pop==='number'?r.pop:0);},0);
+  var totalImp = rows.reduce(function(s,r){return s+(typeof r.imp==='number'?r.imp:0);},0);
+  var avgGdp = rows.filter(function(r){return typeof r.gdp==='number';});
+  var avgGdpVal = avgGdp.length ? Math.round(avgGdp.reduce(function(s,r){return s+r.gdp;},0)/avgGdp.length) : 0;
+
+  document.getElementById('wbKpiGrid').innerHTML =
+    '<div style="padding:.8rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">🌍</div><div style="font-size:.6rem;color:var(--text3)">12 davlat aholisi</div><div style="font-size:1rem;font-weight:800;color:var(--text)">'+Math.round(totalPop)+' mln</div></div>'+
+    '<div style="padding:.8rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">💰</div><div style="font-size:.6rem;color:var(--text3)">O\'rtacha YaIM/kishi</div><div style="font-size:1rem;font-weight:800;color:var(--text)">$'+avgGdpVal.toLocaleString()+'</div></div>'+
+    '<div style="padding:.8rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">📦</div><div style="font-size:.6rem;color:var(--text3)">Jami import</div><div style="font-size:1rem;font-weight:800;color:var(--text)">$'+Math.round(totalImp)+'B</div></div>'+
+    '<div style="padding:.8rem;background:linear-gradient(135deg,rgba(5,150,105,.1),rgba(6,214,160,.1));border-radius:10px;text-align:center;border:1px solid rgba(5,150,105,.3)"><div style="font-size:1.3rem">🇺🇿</div><div style="font-size:.6rem;color:var(--text3)">Navoiy IEZ ish haqi</div><div style="font-size:1rem;font-weight:800;color:#059669">$'+UZB_DATA.avg_wage+'/oy</div></div>';
+
+  // Table
+  var tb = document.getElementById('wb-tbody');
+  tb.innerHTML = rows.sort(function(a,b){return (typeof b.gdp==='number'?b.gdp:0)-(typeof a.gdp==='number'?a.gdp:0);}).map(function(r,i){
+    var wageColor = r.wageRatio!=='—' && parseFloat(r.wageRatio)>2 ? '#059669' : 'var(--text)';
+    return '<tr>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td>'+r.flag+' <b>'+r.name+'</b></td>'+
+      '<td style="font-weight:700">$'+(typeof r.gdp==='number'?r.gdp.toLocaleString():r.gdp)+'</td>'+
+      '<td>'+(typeof r.ind==='number'?r.ind+'%':r.ind)+'</td>'+
+      '<td>~$'+(typeof r.estWage==='number'?r.estWage:r.estWage)+'</td>'+
+      '<td>~$'+(typeof r.estElec==='number'?r.estElec:r.estElec)+'</td>'+
+      '<td>'+(typeof r.pop==='number'?r.pop+'M':r.pop)+'</td>'+
+      '<td style="color:'+wageColor+';font-weight:700">'+(r.wageRatio!=='—'?'👷 '+r.wageRatio+' | ⚡ '+r.elecRatio:'—')+'</td>'+
+      '</tr>';
+  }).join('');
+
+  // Add Uzbekistan row
+  tb.innerHTML += '<tr style="background:linear-gradient(135deg,rgba(5,150,105,.05),rgba(6,214,160,.05));font-weight:700">'+
+    '<td>🏆</td><td>🇺🇿 <b>Navoiy IEZ</b></td>'+
+    '<td>$'+UZB_DATA.gdp_per_capita.toLocaleString()+'</td>'+
+    '<td>'+UZB_DATA.industry_pct+'%</td>'+
+    '<td style="color:#059669">$'+UZB_DATA.avg_wage+'</td>'+
+    '<td style="color:#059669">$'+UZB_DATA.electricity+'</td>'+
+    '<td>'+UZB_DATA.population+'M</td>'+
+    '<td style="color:#059669;font-weight:800">✅ ENG ARZON</td></tr>';
+
+  // Save to Firebase
+  DB.worldBankData = {countries: rows, updated: new Date().toISOString(), uzb: UZB_DATA};
+  if(typeof fbSave==='function') fbSave('worldBankData', DB.worldBankData);
+
+  toast('✅ 12 davlat iqtisodiy ma\'lumotlari yuklandi! (World Bank)');
 }
 
 function goToFinder(prodId, countryCode){
