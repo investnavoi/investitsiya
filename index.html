@@ -6648,6 +6648,37 @@ async function loadSampleProducts(){
 /* ═══════════════════════════════════════
    M2: IMPORT TAHLILI (ANALYSIS ENGINE)
 ═══════════════════════════════════════ */
+var COMTRADE_PROXY = 'https://keen-biscochitos-9a137d.netlify.app/api/comtrade';
+var WORLDBANK_URL = 'https://api.worldbank.org/v2/country';
+
+// Country code mapping for Comtrade
+var COUNTRY_COMTRADE = {RU:'643',KZ:'398',KG:'417',TJ:'762',TM:'795',AZ:'031',GE:'268',AM:'051',AF:'004',IR:'364',PK:'586',MN:'496'};
+
+async function fetchComtrade(hsCode, year){
+  try {
+    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023');
+    var resp = await fetch(url);
+    if(!resp.ok) throw new Error('Comtrade proxy: '+resp.status);
+    var data = await resp.json();
+    if(data.countries && data.countries.length>0) return data.countries;
+  } catch(e){ console.log('Comtrade API xato:',e.message); }
+  return null;
+}
+
+async function fetchWorldBank(countryCode, indicator){
+  try {
+    var url = WORLDBANK_URL+'/'+countryCode+'/indicator/'+indicator+'?format=json&date=2022:2024&per_page=5';
+    var resp = await fetch(url);
+    if(!resp.ok) return null;
+    var data = await resp.json();
+    if(data[1] && data[1].length>0){
+      var latest = data[1].find(function(d){return d.value!==null;});
+      return latest ? latest.value : null;
+    }
+  } catch(e){ console.log('WorldBank xato:',e.message); }
+  return null;
+}
+
 async function runImportAnalysis(){
   var sel = document.getElementById('import-product-select');
   var prodId = sel.value;
@@ -6658,47 +6689,78 @@ async function runImportAnalysis(){
   document.getElementById('importEmpty').style.display = 'none';
   document.getElementById('importResults').style.display = 'block';
 
-  toast('📊 Gemini AI import tahlili qilmoqda...');
+  var hsCode = (prod.hs_code||'').replace(/\./g,'').slice(0,4);
+  var source = 'Gemini AI (taxminiy)';
+  var countries = null;
 
-  try {
-    var prompt = 'You are a trade data analyst. Return ONLY valid JSON (no markdown). For the product "'+prod.name_en+'" (HS code: '+(prod.hs_code||'unknown')+'), estimate annual import values for these 12 countries from world market. Format:\n{"countries":[{"code":"RU","name":"Russia","import_usd":45000000,"trend_pct":12,"volume_tons":150000}],"total_usd":0,"biggest_market":"","fastest_growing":"","recommendation":""}\nCountries: Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan, Mongolia.\nUse realistic estimates based on 2024 data. Recommendation in Uzbek language.';
-
-    var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2000}};
-    var data = await callGemini(body);
-    var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim();
-    var result = JSON.parse(text);
-
-    // KPIs
-    var total = result.countries.reduce(function(s,c){return s+(c.import_usd||0);},0);
-    document.getElementById('imp-k1').textContent = '$'+Math.round(total/1e6)+'M';
-    document.getElementById('imp-k2').textContent = result.biggest_market||'—';
-    document.getElementById('imp-k3').textContent = result.fastest_growing||'—';
-    document.getElementById('imp-k4').textContent = result.recommendation ? result.recommendation.slice(0,50)+'...' : '—';
-
-    // Bar chart
-    var maxVal = Math.max.apply(null, result.countries.map(function(c){return c.import_usd||0;}));
-    var chartEl = document.getElementById('importBarChart');
-    chartEl.innerHTML = result.countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);}).map(function(c){
-      var tc = TARGET_COUNTRIES.find(function(t){return t.code==c.code;});
-      var pct = maxVal>0 ? Math.round((c.import_usd||0)/maxVal*100) : 0;
-      var trend = (c.trend_pct||0);
-      var trendColor = trend>0 ? '#059669' : '#EF233C';
-      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc?tc.flag:'')+' '+c.name+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:65px;font-size:.68rem;font-weight:700;text-align:right">$'+Math.round((c.import_usd||0)/1e6)+'M</div><div style="width:45px;font-size:.62rem;font-weight:700;color:'+trendColor+'">'+(trend>0?'↑':'↓')+Math.abs(trend)+'%</div></div>';
-    }).join('');
-
-    // Table
-    var tb = document.getElementById('import-tbody');
-    tb.innerHTML = result.countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);}).map(function(c,i){
-      var tc = TARGET_COUNTRIES.find(function(t){return t.code==c.code;});
-      var trend = (c.trend_pct||0);
-      return '<tr><td>'+(i+1)+'</td><td>'+(tc?tc.flag+' ':'')+c.name+'</td><td style="font-weight:700">$'+Math.round((c.import_usd||0)/1e6)+'M</td><td style="color:'+(trend>0?'#059669':'#EF233C')+';font-weight:700">'+(trend>0?'↑':'↓')+Math.abs(trend)+'%</td><td>'+(c.volume_tons?Math.round(c.volume_tons/1000)+'K t':'—')+'</td><td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prodId+'\',\''+c.code+'\')">🔍</button></td></tr>';
-    }).join('');
-
-    toast('✅ Import tahlili tayyor!');
-  } catch(e){
-    toast('⚠️ Xato: '+e.message,'error');
-    console.error(e);
+  // 1. Try UN Comtrade real API
+  if(hsCode && hsCode.length>=4){
+    toast('📊 UN Comtrade real ma\'lumot olmoqda (HS: '+hsCode+')...');
+    countries = await fetchComtrade(hsCode, '2023');
+    if(countries && countries.length>0){
+      source = 'UN Comtrade (real)';
+      toast('✅ UN Comtrade: '+countries.length+' ta davlat ma\'lumoti olindi!');
+    }
   }
+
+  // 2. Fallback: Gemini AI
+  if(!countries || countries.length===0){
+    toast('📊 Gemini AI import tahlili qilmoqda...');
+    try {
+      var prompt = 'You are a trade data analyst. Return ONLY valid JSON (no markdown). For the product "'+prod.name_en+'" (HS code: '+(prod.hs_code||'unknown')+'), estimate annual import values for these 12 countries from world market. Format:\n{"countries":[{"code":"RU","name":"Russia","import_usd":45000000,"trend_pct":12,"volume_tons":150000}],"total_usd":0,"biggest_market":"","fastest_growing":"","recommendation":""}\nCountries: Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan, Mongolia.\nUse realistic estimates based on 2024 data. Recommendation in Uzbek language.';
+      var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2000}};
+      var data = await callGemini(body);
+      var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim();
+      var result = JSON.parse(text);
+      countries = result.countries.map(function(c){
+        var tc = TARGET_COUNTRIES.find(function(t){return t.code===c.code;});
+        return {code:c.code, name:c.name, flag:tc?tc.flag:'', import_usd:c.import_usd||0, trend_pct:c.trend_pct||0, volume_tons:c.volume_tons||0};
+      });
+      source = 'Gemini AI (taxminiy)';
+    } catch(e){
+      toast('⚠️ Xato: '+e.message,'error');
+      return;
+    }
+  }
+
+  // 3. Render results
+  renderImportResults(countries, prod, source);
+}
+
+function renderImportResults(countries, prod, source){
+  // Sort by import value
+  countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
+
+  var total = countries.reduce(function(s,c){return s+(c.import_usd||0);},0);
+  var biggest = countries[0] || {};
+  var fastest = countries.slice().sort(function(a,b){return (b.trend_pct||0)-(a.trend_pct||0);})[0] || {};
+
+  document.getElementById('imp-k1').textContent = '$'+Math.round(total/1e6)+'M';
+  document.getElementById('imp-k2').textContent = (biggest.flag||'')+' '+(biggest.name||'—');
+  document.getElementById('imp-k3').textContent = (fastest.flag||'')+' '+(fastest.name||'—')+' ↑'+(fastest.trend_pct||0)+'%';
+  document.getElementById('imp-k4').textContent = source;
+
+  // Bar chart
+  var maxVal = Math.max.apply(null, countries.map(function(c){return c.import_usd||0;}));
+  var chartEl = document.getElementById('importBarChart');
+  chartEl.innerHTML = countries.map(function(c){
+    var tc = TARGET_COUNTRIES.find(function(t){return t.code===c.code;});
+    var pct = maxVal>0 ? Math.round((c.import_usd||0)/maxVal*100) : 0;
+    var trend = (c.trend_pct||0);
+    var trendColor = trend>0 ? '#059669' : '#EF233C';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc?tc.flag:c.flag||'')+' '+(c.name||'')+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:65px;font-size:.68rem;font-weight:700;text-align:right">$'+Math.round((c.import_usd||0)/1e6)+'M</div><div style="width:45px;font-size:.62rem;font-weight:700;color:'+trendColor+'">'+(trend>0?'↑':'↓')+Math.abs(trend)+'%</div></div>';
+  }).join('');
+
+  // Table
+  var tb = document.getElementById('import-tbody');
+  tb.innerHTML = countries.map(function(c,i){
+    var tc = TARGET_COUNTRIES.find(function(t){return t.code===c.code;});
+    var trend = (c.trend_pct||0);
+    return '<tr><td>'+(i+1)+'</td><td>'+(tc?tc.flag+' ':c.flag||'')+c.name+'</td><td style="font-weight:700">$'+Math.round((c.import_usd||0)/1e6)+'M</td><td style="color:'+(trend>0?'#059669':'#EF233C')+';font-weight:700">'+(trend>0?'↑':'↓')+Math.abs(trend)+'%</td><td>'+(c.volume_tons?Math.round(c.volume_tons/1000)+'K t':'—')+'</td><td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prod.id+'\',\''+c.code+'\')">🔍</button></td></tr>';
+  }).join('');
+
+  // Source badge
+  chartEl.innerHTML += '<div style="text-align:right;margin-top:8px;font-size:.6rem;color:var(--text3)">📊 Manba: '+source+'</div>';
 }
 
 function goToFinder(prodId, countryCode){
