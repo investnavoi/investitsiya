@@ -1058,6 +1058,7 @@ input[type="time"]{-webkit-appearance:none;}
           </label>
           <button class="btn btn-blue btn-sm" onclick="matchForumsToEntrepreneurs()">🔗 Forum moslashtirish</button>
           <button class="btn btn-sm" onclick="sendTelegramToMatched()" style="background:linear-gradient(135deg,#0088cc,#229ED9);color:#fff;border:none">📨 Telegram xabar</button>
+          <button class="btn btn-sm" onclick="sendTelegramContacts()" style="background:#0088cc;color:#fff;border:none" title="Telefon raqam orqali Telegram profilni topish">📲 Kontaktlar</button>
           <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('entrepreneurs')" style="color:#EF233C">🗑</button>
         </div>
       </div>
@@ -1077,10 +1078,10 @@ input[type="time"]{-webkit-appearance:none;}
 
       <!-- Jadval -->
       <div class="tscroll" style="max-height:500px;overflow-y:auto"><table>
-        <thead><tr><th>☑</th><th>#</th><th>Ism / Kompaniya</th><th>📞 Telefon</th><th>Faoliyat yo'nalishi</th><th>Mos forum</th><th>📨 Holat</th><th>Amal</th></tr></thead>
+        <thead><tr><th>☑</th><th>#</th><th>Ism / Kompaniya</th><th>Tuman</th><th>📞 Telefon</th><th>Faoliyat yo'nalishi</th><th>Qiymati ($M)</th><th>Mos forum</th><th>📨</th><th>Amal</th></tr></thead>
         <tbody id="entr-tbody"></tbody>
       </table></div>
-      <div style="padding:.4rem .8rem;font-size:.55rem;color:var(--text3)">💡 Excel formati: A=Ism/Kompaniya | B=Telefon | C=Faoliyat yo'nalishi | D=Telegram username (ixtiyoriy)</div>
+      <div style="padding:.4rem .8rem;font-size:.55rem;color:var(--text3)">💡 Excel formatlari avtomatik aniqlanadi: <b>Hukumat formati</b> (№, Туман, Компания, Лойиҳа, Қиймати, Телефон) yoki <b>Oddiy</b> (Ism, Telefon, Faoliyat, Telegram)</div>
     </div>
   </div>
 </div>
@@ -7567,18 +7568,20 @@ function renderEntrepreneurs(){
   var tb = document.getElementById('entr-tbody');
   if(!tb) return;
   if(!list.length){
-    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text3)">Tadbirkorlar bazasi bo\'sh. "📥 Excel import" orqali yuklang.</td></tr>';
+    tb.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text3)">Tadbirkorlar bazasi bo\'sh. "📥 Excel import" orqali yuklang.</td></tr>';
     checkForumAlerts();
     return;
   }
   tb.innerHTML = list.map(function(e,i){
-    var stIcon = e.tgSent ? '<span style="color:#059669">✅ Yuborildi</span>' : (e.matchedForum ? '<span style="color:#F59E0B">🟡 Tayyor</span>' : '<span style="color:var(--text3)">⚪ —</span>');
+    var stIcon = e.tgSent ? '<span style="color:#059669">✅</span>' : (e.matchedForum ? '<span style="color:#F59E0B">🟡</span>' : '<span style="color:var(--text3)">⚪</span>');
     return '<tr'+(e.matchedForum?' style="background:rgba(5,150,105,.04)"':'')+'>'+
       '<td><input type="checkbox" class="entr-check" data-id="'+e.id+'" '+(e.matchedForum?'checked':'')+'></td>'+
       '<td>'+(i+1)+'</td>'+
       '<td><b>'+(e.name||'')+'</b>'+(e.telegram?'<div style="font-size:.55rem;color:#0088cc">@'+e.telegram+'</div>':'')+'</td>'+
+      '<td style="font-size:.7rem">'+(e.district||'—')+'</td>'+
       '<td style="font-size:.75rem">'+(e.phone||'—')+'</td>'+
       '<td style="font-size:.7rem">'+(e.sector||'—')+'</td>'+
+      '<td style="font-size:.7rem;font-weight:700;color:#059669">'+(e.projectValue?'$'+e.projectValue+'M':'—')+'</td>'+
       '<td style="font-size:.6rem;color:#4361EE">'+(e.matchedForum||'—')+'</td>'+
       '<td style="font-size:.65rem">'+stIcon+'</td>'+
       '<td><button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')">🗑</button></td></tr>';
@@ -7603,28 +7606,104 @@ function importEntrepreneurs(input){
         var wb = XLSX.read(ev.target.result,{type:'array'});
         rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
       }
-      var startRow = 0;
-      for(var i=0;i<Math.min(5,rows.length);i++){
+
+      // Auto-detect format by scanning first 10 rows for header
+      var headerRow = -1;
+      var format = 'simple'; // simple: Ism,Tel,Faoliyat | uz: №,Tuman,Kompaniya,Loyiha,Qiymati,Tel
+      var colMap = {name:0, phone:1, sector:2, tg:3, district:-1, value:-1};
+
+      for(var i=0; i<Math.min(10, rows.length); i++){
         var s = (rows[i]||[]).join('|').toLowerCase();
-        if(s.indexOf('ism')!==-1||s.indexOf('nom')!==-1||s.indexOf('name')!==-1||s.indexOf('telefon')!==-1||s.indexOf('phone')!==-1||s.indexOf('faoliyat')!==-1){startRow=i+1;break;}
+        // Uzbek gov format: №, Туман, Компания, Лойиҳа, Қиймати, Telefon
+        if(s.indexOf('компания')!==-1 || s.indexOf('лойиҳа')!==-1 || s.indexOf('туман')!==-1){
+          headerRow = i;
+          format = 'uz';
+          // Map columns
+          var hdr = rows[i];
+          for(var c=0; c<hdr.length; c++){
+            var h = String(hdr[c]||'').toLowerCase();
+            if(h.indexOf('компания')!==-1 || h.indexOf('корхона')!==-1 || h.indexOf('ism')!==-1) colMap.name = c;
+            if(h.indexOf('телефон')!==-1 || h.indexOf('telefon')!==-1 || h.indexOf('phone')!==-1 || h.indexOf('тел')!==-1) colMap.phone = c;
+            if(h.indexOf('лойиҳа номи')!==-1 || h.indexOf('фаолият')!==-1 || h.indexOf('йўналиш')!==-1 || h.indexOf('yo\'nalish')!==-1) colMap.sector = c;
+            if(h.indexOf('туман')!==-1 || h.indexOf('шаҳар')!==-1 || h.indexOf('район')!==-1) colMap.district = c;
+            if(h.indexOf('қиймат')!==-1 || h.indexOf('долл')!==-1 || h.indexOf('сумма')!==-1 || h.indexOf('млн')!==-1) colMap.value = c;
+          }
+          break;
+        }
+        // Simple format: Ism, Telefon, Faoliyat
+        if(s.indexOf('ism')!==-1||s.indexOf('nom')!==-1||s.indexOf('name')!==-1||s.indexOf('telefon')!==-1||s.indexOf('faoliyat')!==-1){
+          headerRow = i;
+          format = 'simple';
+          break;
+        }
       }
+
+      var startRow = headerRow + 1;
+      // Skip empty/formula rows after header
+      while(startRow < rows.length){
+        var testRow = rows[startRow];
+        if(!testRow) {startRow++;continue;}
+        // Skip if first cell is empty or has formula
+        var firstCell = String(testRow[0]||'');
+        if(!firstCell || firstCell.startsWith('=') || firstCell.trim().length===0){startRow++;continue;}
+        // Check if it looks like data (first col is number for uz format)
+        if(format==='uz' && !isNaN(parseInt(firstCell))) break;
+        if(format==='simple' && firstCell.length >= 2) break;
+        startRow++;
+      }
+
       if(!DB.entrepreneurs) DB.entrepreneurs=[];
       var added=0;
-      for(var r=startRow;r<rows.length;r++){
-        var row=rows[r];
-        if(!row||!row[0]||String(row[0]).trim().length<2) continue;
-        var nm=String(row[0]||'').trim();
-        var ph=String(row[1]||'').trim();
-        var sec=String(row[2]||'').trim();
-        var tg=String(row[3]||'').trim().replace('@','');
-        if(DB.entrepreneurs.some(function(x){return x.name===nm&&x.phone===ph;})) continue;
-        var rec={id:'ent_'+(Date.now()+r),name:nm,phone:ph,sector:sec,telegram:tg,matchedForum:'',tgSent:false,addedDate:new Date().toISOString().slice(0,10)};
+
+      for(var r=startRow; r<rows.length; r++){
+        var row = rows[r];
+        if(!row) continue;
+
+        var nm='', ph='', sec='', tg='', district='', val='';
+
+        if(format==='uz'){
+          // Uzbek gov format
+          nm = String(row[colMap.name]||'').trim();
+          ph = String(row[colMap.phone]||'').trim();
+          sec = String(row[colMap.sector]||'').trim();
+          if(colMap.district>=0) district = String(row[colMap.district]||'').trim();
+          if(colMap.value>=0) val = String(row[colMap.value]||'').trim();
+          // Skip empty/formula rows
+          if(!nm || nm.startsWith('=') || nm.length < 2) continue;
+          // Clean name: remove "жис.шахс: " prefix
+          nm = nm.replace(/жис\.?\s*шахс\s*[:;]\s*/gi,'').trim();
+          // If sector empty but name has info, use project name
+          if(!sec && colMap.sector>=0) sec = String(row[colMap.sector]||'').trim();
+        } else {
+          // Simple format
+          nm = String(row[0]||'').trim();
+          ph = String(row[1]||'').trim();
+          sec = String(row[2]||'').trim();
+          tg = String(row[3]||'').trim().replace('@','');
+          if(!nm || nm.length < 2) continue;
+        }
+
+        // Skip duplicates
+        if(DB.entrepreneurs.some(function(x){return x.name===nm && (x.phone===ph || (!x.phone&&!ph));})) continue;
+
+        var rec = {
+          id: 'ent_'+(Date.now()+r),
+          name: nm,
+          phone: ph,
+          sector: sec,
+          district: district,
+          projectValue: val,
+          telegram: tg,
+          matchedForum: '',
+          tgSent: false,
+          addedDate: new Date().toISOString().slice(0,10)
+        };
         DB.entrepreneurs.push(rec);
-        if(typeof fbSave==='function') fbSave('entrepreneurs',rec);
+        if(typeof fbSave==='function') fbSave('entrepreneurs', rec);
         added++;
       }
       renderEntrepreneurs();
-      toast('✅ '+added+' ta tadbirkor import qilindi! (Jami: '+DB.entrepreneurs.length+')');
+      toast('✅ '+added+' ta tadbirkor import qilindi! (Format: '+(format==='uz'?'O\'zbekcha hukumat':'Oddiy')+', Jami: '+DB.entrepreneurs.length+')');
     } catch(err){toast('⚠️ '+err.message,'error');console.error(err);}
   };
   if(file.name.toLowerCase().endsWith('.csv')) reader.readAsText(file); else reader.readAsArrayBuffer(file);
@@ -7733,22 +7812,34 @@ async function sendTelegramToMatched(){
   var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&!e.tgSent;});
   if(!list.length){toast('⚠️ Xabar yuborish uchun moslashtirilgan tadbirkor yo\'q yoki allaqachon yuborilgan','error');return;}
   var s=DB.settings||{};
-  var token=s.tgToken||'';
-  var chatId=s.tgChatId||'';
-  if(!token||!chatId){toast('⚠️ ⚙️ Sozlamalar → Telegram Bot Token va Chat ID kiriting','error');return;}
+  var ak=window._apiKeys||{};
+  var token=s.tgToken||ak.tgToken||'';
+  var chatId=s.tgChatId||ak.tgChatId||'';
+  if(!token||!chatId){toast('⚠️ Firebase → apiKeys → keys → tgToken va tgChatId kiriting','error');return;}
   if(!confirm(list.length+' ta tadbirkorga Telegram xabar yuboriladi. Davom etsinmi?')) return;
   var sent=0,fail=0;
   for(var i=0;i<list.length;i++){
     var e=list[i];
     var msg='🏭 Hurmatli '+e.name+'!\n\n'+
+      (e.district?'📍 '+e.district+'\n':'')+
       '📋 Faoliyat: '+e.sector+'\n'+
+      (e.projectValue?'💰 Loyiha qiymati: $'+e.projectValue+'M\n':'')+
       '🗓 Mos forum: '+e.matchedForum+'\n\n'+
       '✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n'+
       '📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
     try {
       var resp=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text:msg})});
-      if(resp.ok){e.tgSent=true;e.tgDate=new Date().toISOString().slice(0,10);if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;}
-      else{fail++;}
+      if(resp.ok){
+        // Send phone contact — Telegram avtomatik profilni ko'rsatadi
+        if(e.phone){
+          var cp=e.phone.replace(/[\s\-\(\)]/g,'');
+          if(!cp.startsWith('+')&&!cp.startsWith('998')) cp='+998'+cp;
+          if(!cp.startsWith('+')) cp='+'+cp;
+          await fetch('https://api.telegram.org/bot'+token+'/sendContact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,phone_number:cp,first_name:e.name})}).catch(function(){});
+        }
+        e.tgSent=true;e.tgDate=new Date().toISOString().slice(0,10);if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;
+      }
+      else{fail++;var err=await resp.json().catch(function(){return{};});console.log('TG error:',err.description);}
     }catch(x){fail++;}
     if(i<list.length-1) await new Promise(function(r){setTimeout(r,1100);});
   }
@@ -7760,22 +7851,63 @@ async function sendTelegramForForum(forumNom, forumSana){
   var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(forumNom.slice(0,15))!==-1&&!e.tgSent;});
   if(!list.length){toast('⚠️ "'+forumNom+'" uchun mos/yuborilmagan tadbirkor yo\'q','info');return;}
   var s=DB.settings||{};
-  var token=s.tgToken||'';
-  var chatId=s.tgChatId||'';
-  if(!token||!chatId){toast('⚠️ ⚙️ Sozlamalar → Telegram Bot Token va Chat ID kiriting','error');return;}
+  var ak=window._apiKeys||{};
+  var token=s.tgToken||ak.tgToken||'';
+  var chatId=s.tgChatId||ak.tgChatId||'';
+  if(!token||!chatId){toast('⚠️ Firebase → apiKeys → keys → tgToken va tgChatId kiriting','error');return;}
   toast('📨 "'+forumNom.slice(0,30)+'" — '+list.length+' ta tadbirkorga xabar...');
   var sent=0;
   for(var i=0;i<list.length;i++){
     var e=list[i];
-    var msg='🔔 FORUM TAKLIFI\n\n👤 '+e.name+'\n🏭 '+e.sector+'\n🗓 '+forumNom+(forumSana?' — '+forumSana:'')+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
+    // 1. Send text message
+    var msg='🔔 FORUM TAKLIFI\n\n👤 '+e.name+(e.district?'\n📍 '+e.district:'')+'\n🏭 '+e.sector+(e.projectValue?'\n💰 $'+e.projectValue+'M':'')+'\n🗓 '+forumNom+(forumSana?' — '+forumSana:'')+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
     try {
       var resp=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text:msg})});
-      if(resp.ok){e.tgSent=true;if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;}
+      if(resp.ok){
+        // 2. Send phone as contact — Telegram shows profile if user exists
+        if(e.phone){
+          var cleanPhone=e.phone.replace(/[\s\-\(\)]/g,'');
+          if(!cleanPhone.startsWith('+')) cleanPhone='+'+cleanPhone;
+          await fetch('https://api.telegram.org/bot'+token+'/sendContact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,phone_number:cleanPhone,first_name:e.name})});
+        }
+        e.tgSent=true;if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;
+      }
     }catch(x){}
     if(i<list.length-1) await new Promise(function(r){setTimeout(r,1100);});
   }
   renderEntrepreneurs();
-  toast('📨 '+sent+' ta xabar yuborildi!');
+  toast('📨 '+sent+' ta xabar + kontakt yuborildi!');
+}
+
+// Telegram: telefon raqam orqali kontakt kartasini guruhga yuborish
+// Agar odam shu telefonda Telegram ishlatsa — profili ko'rinadi
+async function sendTelegramContacts(){
+  var list=(DB.entrepreneurs||[]).filter(function(e){return e.phone;});
+  if(!list.length){toast('⚠️ Telefon raqamli tadbirkor yo\'q','error');return;}
+  var s=DB.settings||{};
+  var ak=window._apiKeys||{};
+  var token=s.tgToken||ak.tgToken||'';
+  var chatId=s.tgChatId||ak.tgChatId||'';
+  if(!token||!chatId){toast('⚠️ Firebase → apiKeys → tgToken va tgChatId kiriting','error');return;}
+  if(!confirm(list.length+' ta tadbirkor kontaktini Telegram guruhga yuborish?\nTelegram profili avtomatik topiladi.')) return;
+
+  toast('📲 Kontaktlar yuborilmoqda...');
+  var found=0, notFound=0;
+  for(var i=0;i<list.length;i++){
+    var e=list[i];
+    var cleanPhone=e.phone.replace(/[\s\-\(\)]/g,'');
+    if(!cleanPhone.startsWith('+')&&!cleanPhone.startsWith('998')) cleanPhone='+998'+cleanPhone;
+    if(!cleanPhone.startsWith('+')) cleanPhone='+'+cleanPhone;
+    try {
+      var resp=await fetch('https://api.telegram.org/bot'+token+'/sendContact',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:chatId, phone_number:cleanPhone, first_name:e.name, last_name:e.sector?('('+e.sector.slice(0,20)+')'):''})
+      });
+      if(resp.ok) found++; else notFound++;
+    }catch(x){notFound++;}
+    if(i<list.length-1) await new Promise(function(r){setTimeout(r,500);});
+  }
+  toast('📲 '+found+' ta kontakt yuborildi! Telegram profili borlar ko\'k rangda ko\'rinadi.');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -8963,7 +9095,7 @@ function loadSettings(){
     'set-yer':s.yer||0, 'set-maosh':s.maosh||400, 'set-min-maosh':s.minMaosh||100,
     'set-soliq':s.soliq||0, 'set-soliq-yil':s.soliqYil||7,
     'set-daily-limit':s.dailyLimit||50, 'set-fu1':s.fu1||7, 'set-fu2':s.fu2||14, 'set-fu3':s.fu3||21,
-    'set-tg-token':s.tgToken||'', 'set-tg-chatid':s.tgChatId||''
+    'set-tg-token':s.tgToken||(window._apiKeys&&window._apiKeys.tgToken)||'', 'set-tg-chatid':s.tgChatId||(window._apiKeys&&window._apiKeys.tgChatId)||''
   };
   Object.keys(fields).forEach(function(id){
     var el = document.getElementById(id);
@@ -9022,6 +9154,11 @@ function saveSettings(){
   if(comtradeVal && typeof saveApiKey==='function'){
     saveApiKey('comtrade', comtradeVal.trim());
   }
+  // Telegram token va chatId ham apiKeys ga saqlash
+  var tgTokenVal = (document.getElementById('set-tg-token')||{}).value||'';
+  var tgChatVal = (document.getElementById('set-tg-chatid')||{}).value||'';
+  if(tgTokenVal && typeof saveApiKey==='function') saveApiKey('tgToken', tgTokenVal.trim());
+  if(tgChatVal && typeof saveApiKey==='function') saveApiKey('tgChatId', tgChatVal.trim());
   var pptxUrl = (document.getElementById('set-pptx-url')||{}).value||'';
   if(pptxUrl){
     PPTX_TEMPLATE_URL = pptxUrl.trim();
