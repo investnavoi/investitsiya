@@ -1661,7 +1661,8 @@ input[type="time"]{-webkit-appearance:none;}
           <label class="form-label">🌍 Davlat tanlang</label>
           <div style="position:relative" id="trade-country-wrap">
             <input class="form-input" id="trade-country-search" type="text" placeholder="🔍 Davlat nomini yozing..." autocomplete="off"
-              style="font-size:.75rem" oninput="filterTradeCountries()" onfocus="showTradeCountries()" onclick="showTradeCountries()">
+              style="font-size:.75rem;color:transparent;caret-color:var(--text);text-shadow:none" oninput="filterTradeCountries()" onfocus="this.style.color='transparent';showTradeCountries()" onclick="this.value='';showTradeCountries()">
+            <div id="trade-country-label" style="position:absolute;top:50%;left:12px;transform:translateY(-50%);font-size:.75rem;color:var(--text);pointer-events:none">🔍 Davlat tanlang...</div>
             <input type="hidden" id="trade-country" value="">
             <div id="trade-country-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:999;margin-top:2px"></div>
           </div>
@@ -7172,6 +7173,9 @@ var TRADE_COUNTRIES = [
 function showTradeCountries(){
   var el = document.getElementById('trade-country-list');
   el.style.display = 'block';
+  var inp = document.getElementById('trade-country-search');
+  inp.style.color = 'transparent';
+  document.getElementById('trade-country-label').textContent = '🔍 yozing...';
   filterTradeCountries();
 }
 
@@ -7195,7 +7199,9 @@ function filterTradeCountries(){
       lastGroup = c.g;
       html += '<div style="padding:4px 12px;font-size:.6rem;font-weight:700;color:var(--text3);background:var(--bg2);position:sticky;top:0">'+c.g+'</div>';
     }
-    html += '<div class="tc-country-item" onclick="selectTradeCountry(\''+c.c+'\',\''+c.n.replace(/'/g,"\\'")+'\')" style="padding:6px 12px;cursor:pointer;font-size:.75rem;transition:background .1s" onmouseenter="this.style.background=\'var(--bg2)\'" onmouseleave="this.style.background=\'transparent\'">'+c.n+'</div>';
+    // Faqat nom ko'rsatish (bayroqsiz)
+    var cleanName = c.n.slice(c.n.indexOf(' ')+1);
+    html += '<div onclick="selectTradeCountry(\''+c.c+'\',\''+cleanName.replace(/'/g,"\\'")+'\')" style="padding:8px 12px;cursor:pointer;font-size:.8rem;transition:background .15s;border-bottom:1px solid var(--border)" onmouseenter="this.style.background=\'rgba(67,97,238,.08)\'" onmouseleave="this.style.background=\'transparent\'">'+cleanName+'</div>';
   });
   el.innerHTML = html;
 }
@@ -7203,6 +7209,8 @@ function filterTradeCountries(){
 function selectTradeCountry(code, name){
   document.getElementById('trade-country').value = code;
   document.getElementById('trade-country-search').value = name;
+  document.getElementById('trade-country-search').style.color = 'var(--text)';
+  document.getElementById('trade-country-label').textContent = '';
   document.getElementById('trade-country-list').style.display = 'none';
   if(typeof onTradeCountryChange === 'function') onTradeCountryChange();
 }
@@ -7212,6 +7220,17 @@ document.addEventListener('click', function(e){
   var wrap = document.getElementById('trade-country-wrap');
   if(wrap && !wrap.contains(e.target)){
     document.getElementById('trade-country-list').style.display = 'none';
+    var inp = document.getElementById('trade-country-search');
+    var label = document.getElementById('trade-country-label');
+    if(inp && inp.value){
+      // Tanlangan davlat bor — nomni ko'rsatish
+      inp.style.color = 'var(--text)';
+      if(label) label.textContent = '';
+    } else {
+      // Tanlanmagan — placeholder
+      if(inp) inp.style.color = 'transparent';
+      if(label) label.textContent = '🔍 Davlat tanlang...';
+    }
   }
 });
 
@@ -7223,10 +7242,16 @@ document.addEventListener('keydown', function(e){
   if(e.key.length === 1 && /[a-zA-Z0-9']/.test(e.key)){
     var searchInput = document.getElementById('trade-country-search');
     if(searchInput){
+      searchInput.value = '';
       searchInput.focus();
-      searchInput.value = e.key;
-      showTradeCountries();
-      filterTradeCountries();
+      searchInput.style.color = 'transparent';
+      document.getElementById('trade-country-label').textContent = '🔍 yozing...';
+      // Harf qo'shiladi focus'dan keyin
+      setTimeout(function(){
+        searchInput.value = e.key;
+        showTradeCountries();
+        filterTradeCountries();
+      }, 10);
       e.preventDefault();
     }
   }
