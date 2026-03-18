@@ -1659,8 +1659,8 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end">
         <div class="form-group" style="flex:1;min-width:200px">
           <label class="form-label">🌍 Davlat tanlang</label>
-          <select class="form-input" id="trade-country" onchange="onTradeCountryChange()">
-            <option value="">— Davlat tanlang —</option>
+          <select class="form-input" id="trade-country" onchange="onTradeCountryChange()" style="font-size:.75rem">
+            <option value="">— Davlat tanlang (196 ta) —</option>
             <optgroup label="🇺🇿 Markaziy Osiyo">
               <option value="860">🇺🇿 O'zbekiston</option><option value="398">🇰🇿 Qozog'iston</option>
               <option value="417">🇰🇬 Qirg'iziston</option><option value="762">🇹🇯 Tojikiston</option><option value="795">🇹🇲 Turkmaniston</option>
@@ -1669,38 +1669,132 @@ input[type="time"]{-webkit-appearance:none;}
               <option value="643">🇷🇺 Rossiya</option><option value="031">🇦🇿 Ozarbayjon</option>
               <option value="268">🇬🇪 Gruziya</option><option value="051">🇦🇲 Armaniston</option>
               <option value="112">🇧🇾 Belorussiya</option><option value="804">🇺🇦 Ukraina</option>
+              <option value="498">🇲🇩 Moldova</option>
             </optgroup>
-            <optgroup label="🌏 Osiyo">
-              <option value="156">🇨🇳 Xitoy</option><option value="364">🇮🇷 Eron</option>
-              <option value="586">🇵🇰 Pokiston</option><option value="004">🇦🇫 Afg'oniston</option>
-              <option value="356">🇮🇳 Hindiston</option><option value="392">🇯🇵 Yaponiya</option>
-              <option value="410">🇰🇷 Janubiy Koreya</option><option value="496">🇲🇳 Mo'g'uliston</option>
-              <option value="764">🇹🇭 Tailand</option><option value="360">🇮🇩 Indoneziya</option>
-              <option value="458">🇲🇾 Malayziya</option><option value="704">🇻🇳 Vyetnam</option>
+            <optgroup label="🌏 Sharqiy Osiyo">
+              <option value="156">🇨🇳 Xitoy</option><option value="392">🇯🇵 Yaponiya</option>
+              <option value="410">🇰🇷 Janubiy Koreya</option><option value="408">🇰🇵 Shimoliy Koreya</option>
+              <option value="496">🇲🇳 Mo'g'uliston</option><option value="158">🇹🇼 Tayvan</option>
+              <option value="344">🇭🇰 Gonkong</option><option value="446">🇲🇴 Makao</option>
+            </optgroup>
+            <optgroup label="🌏 Janubi-Sharqiy Osiyo">
+              <option value="360">🇮🇩 Indoneziya</option><option value="458">🇲🇾 Malayziya</option>
+              <option value="764">🇹🇭 Tailand</option><option value="704">🇻🇳 Vyetnam</option>
+              <option value="608">🇵🇭 Filippin</option><option value="702">🇸🇬 Singapur</option>
+              <option value="104">🇲🇲 Myanma</option><option value="116">🇰🇭 Kambodja</option>
+              <option value="418">🇱🇦 Laos</option><option value="096">🇧🇳 Bruney</option>
+              <option value="626">🇹🇱 Sharqiy Timor</option>
+            </optgroup>
+            <optgroup label="🌏 Janubiy Osiyo">
+              <option value="356">🇮🇳 Hindiston</option><option value="586">🇵🇰 Pokiston</option>
+              <option value="050">🇧🇩 Bangladesh</option><option value="144">🇱🇰 Shri Lanka</option>
+              <option value="524">🇳🇵 Nepal</option><option value="004">🇦🇫 Afg'oniston</option>
+              <option value="064">🇧🇹 Butan</option><option value="462">🇲🇻 Maldiv</option>
             </optgroup>
             <optgroup label="🌍 Yaqin Sharq">
-              <option value="784">🇦🇪 BAA (Dubai)</option><option value="682">🇸🇦 Saudiya Arabistoni</option>
-              <option value="792">🇹🇷 Turkiya</option><option value="368">🇮🇶 Iroq</option>
-              <option value="400">🇯🇴 Iordaniya</option><option value="422">🇱🇧 Livan</option>
+              <option value="792">🇹🇷 Turkiya</option><option value="364">🇮🇷 Eron</option>
+              <option value="368">🇮🇶 Iroq</option><option value="682">🇸🇦 Saudiya Arabistoni</option>
+              <option value="784">🇦🇪 BAA (Dubai)</option><option value="634">🇶🇦 Qatar</option>
+              <option value="414">🇰🇼 Quvayt</option><option value="512">🇴🇲 Ummon</option>
+              <option value="048">🇧🇭 Bahrayn</option><option value="400">🇯🇴 Iordaniya</option>
+              <option value="422">🇱🇧 Livan</option><option value="760">🇸🇾 Suriya</option>
+              <option value="376">🇮🇱 Isroil</option><option value="275">🇵🇸 Falastin</option>
+              <option value="887">🇾🇪 Yaman</option><option value="196">🇨🇾 Kipr</option>
             </optgroup>
-            <optgroup label="🇪🇺 Yevropa">
-              <option value="276">🇩🇪 Germaniya</option><option value="826">🇬🇧 Buyuk Britaniya</option>
-              <option value="250">🇫🇷 Fransiya</option><option value="380">🇮🇹 Italiya</option>
+            <optgroup label="🇪🇺 G'arbiy Yevropa">
+              <option value="276">🇩🇪 Germaniya</option><option value="250">🇫🇷 Fransiya</option>
+              <option value="826">🇬🇧 Buyuk Britaniya</option><option value="380">🇮🇹 Italiya</option>
               <option value="724">🇪🇸 Ispaniya</option><option value="528">🇳🇱 Niderlandiya</option>
+              <option value="056">🇧🇪 Belgiya</option><option value="040">🇦🇹 Avstriya</option>
+              <option value="756">🇨🇭 Shveytsariya</option><option value="372">🇮🇪 Irlandiya</option>
+              <option value="442">🇱🇺 Lyuksemburg</option><option value="492">🇲🇨 Monako</option>
+              <option value="438">🇱🇮 Lixtenshteyn</option>
+            </optgroup>
+            <optgroup label="🇪🇺 Shimoliy Yevropa">
+              <option value="752">🇸🇪 Shvetsiya</option><option value="578">🇳🇴 Norvegiya</option>
+              <option value="208">🇩🇰 Daniya</option><option value="246">🇫🇮 Finlandiya</option>
+              <option value="352">🇮🇸 Islandiya</option><option value="233">🇪🇪 Estoniya</option>
+              <option value="428">🇱🇻 Latviya</option><option value="440">🇱🇹 Litva</option>
+            </optgroup>
+            <optgroup label="🇪🇺 Sharqiy Yevropa">
               <option value="616">🇵🇱 Polsha</option><option value="203">🇨🇿 Chexiya</option>
-              <option value="040">🇦🇹 Avstriya</option><option value="756">🇨🇭 Shveytsariya</option>
+              <option value="348">🇭🇺 Vengriya</option><option value="642">🇷🇴 Ruminiya</option>
+              <option value="100">🇧🇬 Bolgariya</option><option value="703">🇸🇰 Slovakiya</option>
+              <option value="705">🇸🇮 Sloveniya</option><option value="191">🇭🇷 Xorvatiya</option>
+              <option value="688">🇷🇸 Serbiya</option><option value="070">🇧🇦 Bosniya</option>
+              <option value="807">🇲🇰 Shimoliy Makedoniya</option><option value="008">🇦🇱 Albaniya</option>
+              <option value="499">🇲🇪 Chernogoriya</option><option value="900">🇽🇰 Kosovo</option>
             </optgroup>
-            <optgroup label="🌎 Amerika">
+            <optgroup label="🇪🇺 Janubiy Yevropa">
+              <option value="620">🇵🇹 Portugaliya</option><option value="300">🇬🇷 Gretsiya</option>
+              <option value="470">🇲🇹 Malta</option><option value="020">🇦🇩 Andorra</option>
+              <option value="674">🇸🇲 San-Marino</option>
+            </optgroup>
+            <optgroup label="🌎 Shimoliy Amerika">
               <option value="842">🇺🇸 AQSh</option><option value="124">🇨🇦 Kanada</option>
-              <option value="076">🇧🇷 Braziliya</option><option value="484">🇲🇽 Meksika</option>
-              <option value="032">🇦🇷 Argentina</option><option value="152">🇨🇱 Chili</option>
+              <option value="484">🇲🇽 Meksika</option>
             </optgroup>
-            <optgroup label="🌍 Afrika">
-              <option value="818">🇪🇬 Misr</option><option value="710">🇿🇦 Janubiy Afrika</option>
-              <option value="566">🇳🇬 Nigeriya</option><option value="404">🇰🇪 Keniya</option>
+            <optgroup label="🌎 Markaziy Amerika va Karib">
+              <option value="320">🇬🇹 Gvatemala</option><option value="222">🇸🇻 Salvador</option>
+              <option value="340">🇭🇳 Gonduras</option><option value="558">🇳🇮 Nikaragua</option>
+              <option value="188">🇨🇷 Kosta-Rika</option><option value="591">🇵🇦 Panama</option>
+              <option value="084">🇧🇿 Beliz</option><option value="192">🇨🇺 Kuba</option>
+              <option value="214">🇩🇴 Dominikan Resp.</option><option value="332">🇭🇹 Gaiti</option>
+              <option value="388">🇯🇲 Yamayka</option><option value="780">🇹🇹 Trinidad va Tobago</option>
+              <option value="044">🇧🇸 Bagam</option><option value="052">🇧🇧 Barbados</option>
+            </optgroup>
+            <optgroup label="🌎 Janubiy Amerika">
+              <option value="076">🇧🇷 Braziliya</option><option value="032">🇦🇷 Argentina</option>
+              <option value="152">🇨🇱 Chili</option><option value="170">🇨🇴 Kolumbiya</option>
+              <option value="604">🇵🇪 Peru</option><option value="862">🇻🇪 Venesuela</option>
+              <option value="218">🇪🇨 Ekvador</option><option value="068">🇧🇴 Boliviya</option>
+              <option value="600">🇵🇾 Paragvay</option><option value="858">🇺🇾 Urugvay</option>
+              <option value="328">🇬🇾 Gayana</option><option value="740">🇸🇷 Surinam</option>
+            </optgroup>
+            <optgroup label="🌍 Shimoliy Afrika">
+              <option value="818">🇪🇬 Misr</option><option value="504">🇲🇦 Marokash</option>
+              <option value="012">🇩🇿 Jazoir</option><option value="788">🇹🇳 Tunis</option>
+              <option value="434">🇱🇾 Liviya</option><option value="736">🇸🇩 Sudan</option>
+            </optgroup>
+            <optgroup label="🌍 G'arbiy Afrika">
+              <option value="566">🇳🇬 Nigeriya</option><option value="288">🇬🇭 Gana</option>
+              <option value="384">🇨🇮 Kot-d'Ivuar</option><option value="686">🇸🇳 Senegal</option>
+              <option value="466">🇲🇱 Mali</option><option value="854">🇧🇫 Burkina-Faso</option>
+              <option value="324">🇬🇳 Gvineya</option><option value="562">🇳🇪 Niger</option>
+              <option value="768">🇹🇬 Togo</option><option value="204">🇧🇯 Benin</option>
+              <option value="694">🇸🇱 Syerra-Leone</option><option value="430">🇱🇷 Liberiya</option>
+              <option value="270">🇬🇲 Gambiya</option><option value="624">🇬🇼 Gvineya-Bisau</option>
+              <option value="132">🇨🇻 Kabo-Verde</option><option value="478">🇲🇷 Mavritaniya</option>
+            </optgroup>
+            <optgroup label="🌍 Sharqiy Afrika">
+              <option value="404">🇰🇪 Keniya</option><option value="834">🇹🇿 Tanzaniya</option>
+              <option value="231">🇪🇹 Efiopiya</option><option value="800">🇺🇬 Uganda</option>
+              <option value="646">🇷🇼 Ruanda</option><option value="508">🇲🇿 Mozambik</option>
+              <option value="450">🇲🇬 Madagaskar</option><option value="454">🇲🇼 Malavi</option>
+              <option value="706">🇸🇴 Somaliya</option><option value="262">🇩🇯 Jibuti</option>
+              <option value="232">🇪🇷 Eritreya</option><option value="108">🇧🇮 Burundi</option>
+              <option value="174">🇰🇲 Komor orollari</option><option value="480">🇲🇺 Mavrikiy</option>
+              <option value="690">🇸🇨 Seyshel</option>
+            </optgroup>
+            <optgroup label="🌍 Markaziy Afrika">
+              <option value="180">🇨🇩 Kongo DR</option><option value="120">🇨🇲 Kamerun</option>
+              <option value="178">🇨🇬 Kongo Resp.</option><option value="266">🇬🇦 Gabon</option>
+              <option value="148">🇹🇩 Chad</option><option value="140">🇨🇫 Markaziy Afrika Resp.</option>
+              <option value="226">🇬🇶 Ekvatorial Gvineya</option>
+            </optgroup>
+            <optgroup label="🌍 Janubiy Afrika">
+              <option value="710">🇿🇦 Janubiy Afrika Resp.</option><option value="024">🇦🇴 Angola</option>
+              <option value="516">🇳🇦 Namibiya</option><option value="072">🇧🇼 Botsvana</option>
+              <option value="716">🇿🇼 Zimbabve</option><option value="894">🇿🇲 Zambiya</option>
+              <option value="426">🇱🇸 Lesoto</option><option value="748">🇸🇿 Esvotini</option>
             </optgroup>
             <optgroup label="🌏 Okeaniya">
               <option value="036">🇦🇺 Avstraliya</option><option value="554">🇳🇿 Yangi Zelandiya</option>
+              <option value="598">🇵🇬 Papua Yangi Gvineya</option><option value="242">🇫🇯 Fiji</option>
+              <option value="090">🇸🇧 Solomon orollari</option><option value="548">🇻🇺 Vanuatu</option>
+              <option value="882">🇼🇸 Samoa</option><option value="776">🇹🇴 Tonga</option>
+              <option value="583">🇫🇲 Mikroneziya</option><option value="584">🇲🇭 Marshall orollari</option>
+              <option value="585">🇵🇼 Palau</option><option value="296">🇰🇮 Kiribati</option>
             </optgroup>
           </select>
         </div>
@@ -7334,6 +7428,74 @@ async function loadGlobalTradeData(){
   }
 }
 
+// ═══ HS kodlari O'zbekcha tarjima lug'ati ═══
+var HS_UZ = {
+  '01':'Tirik hayvonlar','02':'Go\'sht','03':'Baliq va dengiz mahsulotlari','04':'Sut, tuxum, asal',
+  '05':'Boshqa hayvonot mahsulotlari','06':'Tirik o\'simliklar, gullar','07':'Sabzavotlar','08':'Mevalar',
+  '09':'Choy, qahva, ziravorlar','10':'Don mahsulotlari (bug\'doy, guruch)','11':'Un, kraxmal','12':'Moyli urug\'lar',
+  '13':'Tabiiy smolalar','14':'O\'simlik tolalari','15':'Hayvon va o\'simlik yog\'lari','16':'Go\'sht konservalari',
+  '17':'Shakar va qandolat','18':'Kakao','19':'Non va qandolat mahsulotlari','20':'Sabzavot-meva konservalari',
+  '21':'Turli oziq-ovqat','22':'Ichimliklar, spirt','23':'Ozuqa va chiqindilar','24':'Tamaki',
+  '25':'Tuz, oltingugurt, tosh, gips, ohak','26':'Rudalar','27':'Neft, gaz, ko\'mir',
+  '28':'Noorganik kimyoviy moddalar','29':'Organik kimyoviy moddalar','30':'Dori-darmonlar',
+  '31':'O\'g\'itlar','32':'Bo\'yoq, lak','33':'Atir-upa, kosmetika','34':'Sovun, yuvish vositalari',
+  '35':'Oqsil moddalar, yelimlar','36':'Portlovchi moddalar','37':'Fotomateriallar',
+  '38':'Boshqa kimyoviy mahsulotlar','39':'Plastmassa va mahsulotlari','40':'Kauchuk va rezina',
+  '41':'Xom teri','42':'Charm buyumlar, sumkalar','43':'Mo\'yna','44':'Yog\'och va mahsulotlari',
+  '45':'Probka','46':'To\'quv materiallari','47':'Qog\'oz xamirasi','48':'Qog\'oz va karton',
+  '49':'Bosma mahsulotlar, kitoblar','50':'Ipak','51':'Jun va ip','52':'Paxta',
+  '53':'Boshqa o\'simlik tolalari','54':'Sun\'iy tolalar','55':'Sintetik tolalar',
+  '56':'Paxtali materiallar','57':'Gilamlar','58':'Maxsus to\'qimalar','59':'Texnik matolar',
+  '60':'Trikotaj matolar','61':'Trikotaj kiyimlar','62':'To\'qima kiyimlar',
+  '63':'Boshqa to\'qima buyumlar','64':'Poyabzallar','65':'Bosh kiyimlar',
+  '66':'Soyabonlar','67':'Sun\'iy gullar, patlar','68':'Tosh, gips, tsement mahsulotlari',
+  '69':'Keramika mahsulotlari','70':'Shisha va buyumlar','71':'Oltin, kumush, javohirlar',
+  '72':'Temir va po\'lat','73':'Temir-po\'lat mahsulotlari','74':'Mis va mahsulotlari',
+  '75':'Nikel','76':'Alyuminiy va mahsulotlari','78':'Qo\'rg\'oshin','79':'Rux (sink)',
+  '80':'Qalay','81':'Boshqa metallar','82':'Asbob-uskunalar (pichoq, qaychi)',
+  '83':'Metall buyumlar','84':'Mashina va mexanizmlar','85':'Elektr jihozlar, elektronika',
+  '86':'Temir yo\'l transporti','87':'Avtomobillar','88':'Samolyotlar','89':'Kemalar',
+  '90':'Optik, tibbiy asboblar','91':'Soatlar','92':'Musiqa asboblari',
+  '93':'Qurol va o\'q-dorilar','94':'Mebel, yoritish','95':'O\'yinchoqlar, sport jihozlari',
+  '96':'Turli sanoat mahsulotlari','97':'San\'at asarlari, antikvar',
+  // 4-raqamli tez-tez uchraydigan kodlar
+  '2516':'Granit, bazalt (xom)','2515':'Marmor, travertin (xom)','2517':'Shag\'al, tosh maydalangan',
+  '6802':'Ishlangan tosh (plitka, slab)','6801':'Tosh yo\'l qoplamalari',
+  '6803':'Ishlangan slanets','6810':'Tsement mahsulotlari','6811':'Asbest-tsement',
+  '2523':'Tsement','2522':'Ohak','2521':'Ohaktosh','2520':'Gips',
+  '2709':'Xom neft','2710':'Neft mahsulotlari','2711':'Tabiiy gaz',
+  '7108':'Oltin','7106':'Kumush','7102':'Olmos',
+  '8703':'Yengil avtomobillar','8704':'Yuk avtomobillari','8711':'Mototsikllar',
+  '8517':'Telefonlar, aloqa jihozlari','8471':'Kompyuterlar','8528':'Monitorlar, televizorlar',
+  '5201':'Xom paxta','5205':'Paxta ip','5208':'Paxta mato','5209':'Paxta gazlama',
+  '0713':'Quritilgan dukkaklilar','0806':'Uzum','0808':'Olma, nok','0809':'O\'rik, shaftoli',
+  '1001':'Bug\'doy','1005':'Makkajo\'xori','1006':'Guruch','1003':'Arpa',
+  '3004':'Dori-darmonlar','3808':'Pestitsidlar','3105':'Mineral o\'g\'itlar',
+  '7210':'Po\'lat prokat','7213':'Po\'lat sim','7214':'Po\'lat armatura',
+  '7601':'Alyuminiy (xom)','7604':'Alyuminiy profil','7606':'Alyuminiy list',
+  '8544':'Elektr simlari, kabellar','8501':'Elektr motorlar','8504':'Transformatorlar',
+  '9403':'Mebel','9405':'Yoritish jihozlari','9401':'O\'rindiqlar',
+  '6908':'Keramik plitka','6907':'Keramik qoplamalar',
+  '4407':'Yog\'och taxta','4410':'Yog\'och plita (DSP)','4411':'Yog\'och tolali plita',
+  '3917':'Plastik trubalar','3920':'Plastik plyonka','3923':'Plastik idishlar',
+  '7308':'Metall konstruksiyalar','7304':'Po\'lat trubalar','7306':'Temir trubalar',
+  '0201':'Mol go\'shti (yangi)','0202':'Mol go\'shti (muzlatilgan)','0207':'Parranda go\'shti',
+  '0401':'Sut va qaymoq','0402':'Quruq sut','0405':'Sariyog\'',
+  '1701':'Shakar','1704':'Qandolat (shokoladsiz)','1806':'Shokolad',
+  '2201':'Ichimlik suvi','2202':'Shirin ichimliklar','2204':'Vino',
+  '1101':'Bug\'doy uni','1507':'Soya yog\'i','1512':'Kungaboqar yog\'i',
+  '4801':'Gazeta qog\'ozi','4802':'Yozuv qog\'ozi','4819':'Karton qutilar',
+};
+
+function translateHS(hsCode, engDesc){
+  // Avval aniq HS kodini tekshirish
+  if(HS_UZ[hsCode]) return HS_UZ[hsCode];
+  // 4→2 raqamli tekshirish
+  if(hsCode.length>=4 && HS_UZ[hsCode.slice(0,4)]) return HS_UZ[hsCode.slice(0,4)];
+  if(hsCode.length>=2 && HS_UZ[hsCode.slice(0,2)]) return HS_UZ[hsCode.slice(0,2)] + (engDesc?' ('+engDesc.slice(0,30)+')':'');
+  return engDesc || hsCode;
+}
+
 function renderTradeResults(countryName, flowName, year, hsFilter){
   var data = _tradeData;
 
@@ -7351,7 +7513,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
   document.getElementById('tradeKpis').innerHTML =
     '<div class="kpi-card c1"><div class="kpi-icon">'+(flowName==='Import'?'📥':'📤')+'</div><div class="kpi-label">Jami '+flowName+'</div><div class="kpi-val">$'+(totalValue>=1e9?(totalValue/1e9).toFixed(1)+'B':(totalValue/1e6).toFixed(0)+'M')+'</div></div>'+
     '<div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Mahsulot turlari</div><div class="kpi-val">'+data.length+'</div></div>'+
-    '<div class="kpi-card c3"><div class="kpi-icon">🏆</div><div class="kpi-label">Eng katta</div><div class="kpi-val" style="font-size:.6rem">'+topProduct.description.slice(0,25)+'</div></div>'+
+    '<div class="kpi-card c3"><div class="kpi-icon">🏆</div><div class="kpi-label">Eng katta</div><div class="kpi-val" style="font-size:.6rem">'+translateHS(topProduct.hsCode,topProduct.description).slice(0,25)+'</div></div>'+
     '<div class="kpi-card c4"><div class="kpi-icon">⚖️</div><div class="kpi-label">Jami og\'irlik</div><div class="kpi-val">'+(totalWeight>=1e9?(totalWeight/1e9).toFixed(0)+'Kt':totalWeight>=1e6?(totalWeight/1e6).toFixed(0)+'t':(totalWeight/1e3).toFixed(0)+'kg')+'</div></div>';
 
   // Chart — top 20
@@ -7370,7 +7532,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
       '<div style="width:60px;font-size:.55rem;text-align:right;color:var(--text3);flex-shrink:0">'+r.hsCode+'</div>'+
       '<div style="flex:1;height:22px;background:var(--border);border-radius:3px;overflow:hidden;position:relative">'+
         '<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:3px"></div>'+
-        '<div style="position:absolute;left:4px;top:2px;font-size:.55rem;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.5)">'+r.description.slice(0,40)+'</div>'+
+        '<div style="position:absolute;left:4px;top:2px;font-size:.55rem;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.5)">'+translateHS(r.hsCode,r.description).slice(0,40)+'</div>'+
       '</div>'+
       '<div style="width:70px;font-size:.6rem;font-weight:700;color:var(--text);text-align:right">'+valStr+'</div>'+
     '</div>';
@@ -7398,7 +7560,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
     return '<tr'+(match?' style="background:rgba(5,150,105,.04)"':'')+'>'+
       '<td>'+(i+1)+'</td>'+
       '<td style="font-family:monospace;font-size:.7rem;font-weight:700">'+r.hsCode+'</td>'+
-      '<td style="font-size:.7rem">'+r.description+'</td>'+
+      '<td style="font-size:.7rem">'+translateHS(r.hsCode,r.description)+'</td>'+
       '<td style="font-weight:700;color:'+(flowName==='Import'?'#EF233C':'#059669')+'">'+valStr+'</td>'+
       '<td style="font-size:.65rem;color:var(--text3)">'+wStr+'</td>'+
       '<td>'+matchBadge+'</td>'+
