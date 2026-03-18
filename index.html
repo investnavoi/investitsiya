@@ -1416,7 +1416,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: COMPANY FINDER (M3) ===== -->
 <div class="page" id="page-finder">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">🔍 Company Finder</div><div class="pg-sub">Mahsulot bo'yicha TOP kompaniyalarni AI va Apollo orqali topish</div></div>
+    <div class="pg-head"><div class="pg-title">🔍 Company Finder</div><div class="pg-sub">Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish</div></div>
 
     <div class="form-card" style="margin-bottom:1.2rem">
       <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
@@ -1425,19 +1425,37 @@ input[type="time"]{-webkit-appearance:none;}
           <select class="form-input" id="finder-product-select"><option value="">— Tanlang —</option></select>
         </div>
         <div class="form-group" style="flex:0 0 120px">
-          <label class="form-label">Soni</label>
+          <label class="form-label">Har davlatdan</label>
           <select class="form-input" id="finder-count">
-            <option value="10">10 ta</option><option value="20" selected>20 ta</option><option value="50">50 ta</option>
+            <option value="3">3 ta</option><option value="5" selected>5 ta</option><option value="10">10 ta</option>
           </select>
         </div>
         <div class="form-group" style="flex:0 0 auto">
-          <button class="btn btn-blue" onclick="runCompanyFinder('gemini')" style="margin-right:.5rem">🤖 Gemini bilan</button>
-          <button class="btn" onclick="runCompanyFinder('apollo')" style="background:linear-gradient(135deg,#FFB703,#FB8500);color:#000;border:none;font-weight:700">🅰️ Apollo bilan</button>
+          <button class="btn btn-blue" onclick="runCompanyFinder('gemini')" style="margin-right:.5rem">🤖 Gemini bilan topish</button>
+          <button class="btn" onclick="runCompanyFinder('apollo')" style="background:linear-gradient(135deg,#FFB703,#FB8500);color:#000;border:none;font-weight:700">🅰️ Apollo</button>
+        </div>
+      </div>
+      <!-- Target countries -->
+      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
+        <label class="form-label" style="margin-bottom:.4rem">🌍 Maqsad davlatlar (import qilayotgan kompaniyalar qidiriladi)</label>
+        <div id="finderCountries" style="display:flex;flex-wrap:wrap;gap:.4rem">
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Russia" checked> 🇷🇺 Rossiya</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kazakhstan" checked> 🇰🇿 Qozog'iston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kyrgyzstan" checked> 🇰🇬 Qirg'iziston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Tajikistan" checked> 🇹🇯 Tojikiston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Turkmenistan" checked> 🇹🇲 Turkmaniston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Turkey" checked> 🇹🇷 Turkiya</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Iran" checked> 🇮🇷 Eron</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Afghanistan" checked> 🇦🇫 Afg'oniston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Pakistan"> 🇵🇰 Pokiston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Azerbaijan"> 🇦🇿 Ozarbayjon</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Georgia"> 🇬🇪 Gruziya</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="China"> 🇨🇳 Xitoy</label>
         </div>
       </div>
     </div>
 
-    <!-- Finder natijalari -->
+    <!-- Progress -->
     <div id="finderProgress" style="display:none;padding:1.5rem;text-align:center">
       <div style="font-size:2rem;margin-bottom:.5rem">🔍</div>
       <div style="font-size:.85rem;font-weight:700;color:var(--text)" id="finderProgressText">AI qidirmoqda...</div>
@@ -1446,20 +1464,29 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
     </div>
 
-    <div class="tcard" id="finderResultCard" style="display:none">
-      <div class="tc-head">
-        <div class="tc-title">🏢 Topilgan kompaniyalar (<span id="finder-result-count">0</span>)</div>
-        <div style="display:flex;gap:.5rem">
-          <button class="btn btn-blue btn-sm" onclick="saveFinderResults()">💾 Bazaga saqlash</button>
-          <button class="btn btn-sm" onclick="aiLetterAll()" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none">📧 Barchasiga AI xat</button>
+    <!-- KPI summary -->
+    <div id="finderKpiGrid" style="display:none" class="kpi-grid"></div>
+
+    <!-- Results grouped by country -->
+    <div id="finderResultCard" style="display:none">
+      <div class="tcard" style="margin-bottom:1rem">
+        <div class="tc-head">
+          <div class="tc-title">🏢 Topilgan kompaniyalar (<span id="finder-result-count">0</span>)</div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-blue btn-sm" onclick="saveFinderResults()">💾 Bazaga saqlash</button>
+            <button class="btn btn-sm" onclick="aiLetterAll()" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none">📧 Barchasiga AI xat</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('investorCompanies')" style="color:#EF233C">🗑</button>
+          </div>
         </div>
+        <!-- Country tabs -->
+        <div id="finderCountryTabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto"></div>
+        <div class="tscroll"><table>
+          <thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Shahar</th><th>Rahbar</th><th>Soha</th><th>Import hajmi</th><th>Score</th><th>Amal</th></tr></thead>
+          <tbody id="finder-tbody"></tbody>
+        </table></div>
       </div>
-      <div class="tscroll"><table>
-        <thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Rahbar</th><th>Soha</th><th>Score</th><th>Amal</th></tr></thead>
-        <tbody id="finder-tbody"></tbody>
-      </table></div>
     </div>
-    <div id="finderEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">🔍</div><p>Mahsulot tanlang va "Topish" bosing</p></div>
+    <div id="finderEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">🔍</div><p>Mahsulot tanlang, davlatlarni belgilang va "Topish" bosing</p></div>
   </div>
 </div>
 
@@ -7694,51 +7721,131 @@ async function runCompanyFinder(source){
   if(!prodId){ toast('⚠️ Mahsulot tanlang','error'); return; }
   var prod = (DB.products||[]).find(function(p){return p.id==prodId;});
   if(!prod) return;
-  var count = parseInt(document.getElementById('finder-count').value)||20;
+  var perCountry = parseInt(document.getElementById('finder-count').value)||5;
+
+  // Get selected countries
+  var countries = [];
+  document.querySelectorAll('.fc-country:checked').forEach(function(cb){countries.push(cb.value);});
+  if(!countries.length){ toast('⚠️ Kamida bitta davlat tanlang','error'); return; }
 
   document.getElementById('finderEmpty').style.display = 'none';
   document.getElementById('finderResultCard').style.display = 'none';
+  document.getElementById('finderKpiGrid').style.display = 'none';
   document.getElementById('finderProgress').style.display = 'block';
-  document.getElementById('finderBar').style.width = '30%';
-  document.getElementById('finderProgressText').textContent = (source==='apollo'?'Apollo':'Gemini')+' AI qidirmoqda: '+prod.name_en+'...';
+  document.getElementById('finderBar').style.width = '10%';
+  document.getElementById('finderProgressText').textContent = countries.length+' ta davlatda "'+prod.name_en+'" importyorlari qidirilmoqda...';
+
+  _finderResults = [];
 
   try {
     if(source==='apollo'){
-      // Apollo proxy
-      toast('🅰️ Apollo API orqali qidirish...');
-      var apResp = await fetch(APOLLO_PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:prod.name_en,per_page:count})});
-      if(!apResp.ok) throw new Error('Apollo xato: '+apResp.status);
-      var apData = await apResp.json();
-      _finderResults = (apData.people||[]).map(function(p,i){
-        return {id:'fc_'+Date.now()+'_'+i, kompaniya:p.organization?.name||'', rahbar:(p.first_name||'')+' '+(p.last_name||''), lavozim:p.title||'', email:p.email||'', telefon:p.phone_numbers?.[0]?.sanitized_number||'', davlat:p.country||'', soha:p.organization?.industry||'', linkedin:p.linkedin_url||'', website:p.organization?.website_url||'', score:Math.floor(Math.random()*30)+70};
-      });
+      // Apollo proxy — keyword search with country
+      document.getElementById('finderBar').style.width = '40%';
+      for(var ci=0; ci<countries.length; ci++){
+        document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+countries[ci]+' ('+(ci+1)+'/'+countries.length+')...';
+        try {
+          var apResp = await fetch(APOLLO_PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:prod.name_en+' importer '+countries[ci],per_page:perCountry})});
+          if(apResp.ok){
+            var apData = await apResp.json();
+            (apData.people||[]).forEach(function(p,i){
+              _finderResults.push({id:'fc_'+Date.now()+'_'+_finderResults.length, kompaniya:p.organization?.name||'', rahbar:(p.first_name||'')+' '+(p.last_name||''), lavozim:p.title||'', email:p.email||'', telefon:p.phone_numbers?.[0]?.sanitized_number||'', davlat:countries[ci], shahar:p.city||'', soha:p.organization?.industry||'', linkedin:p.linkedin_url||'', website:p.organization?.website_url||'', import_volume:'', score:Math.floor(Math.random()*30)+70, manba:'Apollo'});
+            });
+          }
+        } catch(e){ console.log('Apollo '+countries[ci]+' error:', e); }
+        document.getElementById('finderBar').style.width = (40+ci/countries.length*50)+'%';
+      }
     } else {
-      // Gemini AI
-      document.getElementById('finderBar').style.width = '50%';
-      var prompt = 'You are a B2B lead generation expert. Return ONLY valid JSON array (no markdown). Find '+count+' real companies worldwide that are major buyers/importers of "'+prod.name_en+'". Focus on companies that import to Central Asia, Russia, Iran, Pakistan region.\nFormat: [{"company":"CompanyName","country":"Germany","city":"Berlin","contact_name":"John Smith","title":"CEO","industry":"Building Materials","website":"www.example.com","employees":500,"revenue_est":"$50M","score":85}]\nScore 1-100 based on: company size, import volume, expansion likelihood to Central Asia. Use realistic company names.';
+      // Gemini AI — country-by-country search for importers
+      var batchSize = Math.min(countries.length, 4); // Process 4 countries at a time
+      for(var bi=0; bi<countries.length; bi+=batchSize){
+        var batch = countries.slice(bi, bi+batchSize);
+        var pct = 20 + (bi/countries.length)*70;
+        document.getElementById('finderBar').style.width = pct+'%';
+        document.getElementById('finderProgressText').textContent = '🤖 '+batch.join(', ')+' — importyorlar qidirilmoqda... ('+(bi+batch.length)+'/'+countries.length+')';
 
-      var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.5,maxOutputTokens:4000}};
-      var data = await callGemini(body);
-      var arr = safeParseJSON(geminiText(data));
+        var prompt = 'You are a B2B trade intelligence expert. Return ONLY valid JSON array.\n'+
+          'Find REAL companies that IMPORT "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') into these countries: '+batch.join(', ')+'.\n'+
+          'For EACH country find '+perCountry+' companies that are BUYERS/IMPORTERS of this product.\n'+
+          'These should be construction companies, distributors, wholesalers, manufacturers who BUY this product from abroad.\n'+
+          'JSON format: [{"company":"Real Company Name","country":"Russia","city":"Moscow",'+
+          '"contact_name":"Ivan Petrov","title":"Purchase Director",'+
+          '"industry":"Construction Materials Distribution",'+
+          '"website":"www.realsite.com","employees":200,'+
+          '"import_volume_usd":"$5M/year","import_share_pct":15,'+
+          '"products_imported":"granite slabs, marble tiles",'+
+          '"score":85,"why":"Major distributor of stone products in Moscow region"}]\n'+
+          'Score 1-100: 90+ = direct importer of this exact product, 70-89 = imports similar products, 50-69 = potential buyer.\n'+
+          'IMPORTANT: Use REALISTIC company names from '+batch.join(', ')+'. Include import volume estimates.';
 
-      _finderResults = arr.map(function(c,i){
-        return {id:'fc_'+Date.now()+'_'+i, kompaniya:c.company||'', rahbar:c.contact_name||'', lavozim:c.title||'', email:'', telefon:'', davlat:c.country||'', shahar:c.city||'', soha:c.industry||'', website:c.website||'', xodimlar:c.employees||'', score:c.score||50, manba:'Gemini AI'};
-      });
+        var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.5,maxOutputTokens:4000}};
+        var data = await callGemini(body);
+        var arr = [];
+        try { arr = safeParseJSON(geminiText(data)); } catch(e){ console.log('Parse error for batch:', e); }
+        if(!Array.isArray(arr)) arr = [];
+
+        arr.forEach(function(c){
+          _finderResults.push({
+            id:'fc_'+Date.now()+'_'+_finderResults.length,
+            kompaniya:c.company||'Unknown',
+            rahbar:c.contact_name||'',
+            lavozim:c.title||'',
+            email:c.email||'',
+            telefon:c.phone||'',
+            davlat:c.country||batch[0],
+            shahar:c.city||'',
+            soha:c.industry||'',
+            website:c.website||'',
+            xodimlar:c.employees||'',
+            import_volume:c.import_volume_usd||'',
+            import_share:c.import_share_pct||'',
+            products_imported:c.products_imported||'',
+            why:c.why||'',
+            score:c.score||60,
+            manba:'Gemini AI'
+          });
+        });
+      }
     }
 
     document.getElementById('finderBar').style.width = '100%';
     setTimeout(function(){
       document.getElementById('finderProgress').style.display = 'none';
+
+      if(!_finderResults.length){
+        document.getElementById('finderEmpty').style.display = 'block';
+        toast('⚠️ Kompaniya topilmadi','error');
+        return;
+      }
+
+      // KPI summary
+      var countryGroups = {};
+      _finderResults.forEach(function(r){
+        if(!countryGroups[r.davlat]) countryGroups[r.davlat] = [];
+        countryGroups[r.davlat].push(r);
+      });
+      var countryNames = Object.keys(countryGroups);
+      var flagMap = {'Russia':'🇷🇺','Kazakhstan':'🇰🇿','Kyrgyzstan':'🇰🇬','Tajikistan':'🇹🇯','Turkmenistan':'🇹🇲','Turkey':'🇹🇷','Iran':'🇮🇷','Afghanistan':'🇦🇫','Pakistan':'🇵🇰','Azerbaijan':'🇦🇿','Georgia':'🇬🇪','China':'🇨🇳','Armenia':'🇦🇲','Mongolia':'🇲🇳'};
+      var highScore = _finderResults.filter(function(r){return r.score>=80;}).length;
+
+      document.getElementById('finderKpiGrid').style.display = 'grid';
+      document.getElementById('finderKpiGrid').innerHTML =
+        '<div class="kpi-card c1"><div class="kpi-icon">🏢</div><div class="kpi-label">Jami kompaniyalar</div><div class="kpi-val">'+_finderResults.length+'</div></div>'+
+        '<div class="kpi-card c2"><div class="kpi-icon">🌍</div><div class="kpi-label">Davlatlar</div><div class="kpi-val">'+countryNames.length+'</div></div>'+
+        '<div class="kpi-card c3"><div class="kpi-icon">⭐</div><div class="kpi-label">Yuqori baholilar (80+)</div><div class="kpi-val">'+highScore+'</div></div>'+
+        '<div class="kpi-card c4"><div class="kpi-icon">📦</div><div class="kpi-label">Mahsulot</div><div class="kpi-val" style="font-size:.7rem">'+prod.name_en.slice(0,20)+'</div></div>';
+
+      // Country tabs
+      var tabsEl = document.getElementById('finderCountryTabs');
+      tabsEl.innerHTML = '<div onclick="filterFinderByCountry(\'\')" style="flex:0 0 auto;padding:8px 14px;border-bottom:2px solid #4361EE;cursor:pointer;font-size:.7rem;font-weight:700;background:rgba(67,97,238,.08)">📋 Hammasi ('+_finderResults.length+')</div>';
+      countryNames.forEach(function(cn){
+        tabsEl.innerHTML += '<div onclick="filterFinderByCountry(\''+cn+'\')" style="flex:0 0 auto;padding:8px 14px;border-bottom:2px solid transparent;cursor:pointer;font-size:.7rem;font-weight:600">'+(flagMap[cn]||'🏳️')+' '+cn+' ('+countryGroups[cn].length+')</div>';
+      });
+
       document.getElementById('finderResultCard').style.display = 'block';
       document.getElementById('finder-result-count').textContent = _finderResults.length;
+      renderFinderTable(_finderResults);
 
-      var tb = document.getElementById('finder-tbody');
-      tb.innerHTML = _finderResults.sort(function(a,b){return (b.score||0)-(a.score||0);}).map(function(r,i){
-        var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
-        return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td><td>'+(i+1)+'</td><td><b>'+r.kompaniya+'</b><div style="font-size:.6rem;color:var(--text3)">'+(r.website||'')+'</div></td><td>'+r.davlat+'</td><td>'+r.rahbar+'<div style="font-size:.6rem;color:var(--text3)">'+r.lavozim+'</div></td><td style="font-size:.65rem">'+r.soha+'</td><td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td><td><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')">📧</button></td></tr>';
-      }).join('');
-
-      toast('✅ '+_finderResults.length+' ta kompaniya topildi!');
+      toast('✅ '+_finderResults.length+' ta kompaniya '+countryNames.length+' ta davlatdan topildi!');
     }, 500);
 
   } catch(e){
@@ -7746,6 +7853,46 @@ async function runCompanyFinder(source){
     document.getElementById('finderEmpty').style.display = 'block';
     toast('⚠️ Xato: '+e.message,'error');
     console.error(e);
+  }
+}
+
+function renderFinderTable(results){
+  var tb = document.getElementById('finder-tbody');
+  tb.innerHTML = results.sort(function(a,b){return (b.score||0)-(a.score||0);}).map(function(r,i){
+    var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
+    var flagMap = {'Russia':'🇷🇺','Kazakhstan':'🇰🇿','Kyrgyzstan':'🇰🇬','Tajikistan':'🇹🇯','Turkmenistan':'🇹🇲','Turkey':'🇹🇷','Iran':'🇮🇷','Afghanistan':'🇦🇫','Pakistan':'🇵🇰','Azerbaijan':'🇦🇿','Georgia':'🇬🇪','China':'🇨🇳'};
+    return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td><b>'+r.kompaniya+'</b><div style="font-size:.55rem;color:var(--text3)">'+(r.website||'')+'</div>'+(r.why?'<div style="font-size:.5rem;color:#4361EE;margin-top:2px">💡 '+r.why+'</div>':'')+'</td>'+
+      '<td>'+(flagMap[r.davlat]||'')+' '+r.davlat+'</td>'+
+      '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
+      '<td>'+r.rahbar+'<div style="font-size:.55rem;color:var(--text3)">'+(r.lavozim||'')+'</div></td>'+
+      '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
+      '<td style="font-size:.65rem;font-weight:700;color:#059669">'+(r.import_volume||'—')+'</td>'+
+      '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
+      '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat">📧</button> <button class="btn btn-sm" onclick="generateProductPPTX(\''+((DB.products||[]).find(function(p){return p.name_en==document.getElementById(\'finder-product-select\').selectedOptions[0]?.text;})||{}).id||'\')" title="PPTX" style="background:#4361EE;color:#fff;border:none">📊</button></td></tr>';
+  }).join('');
+}
+
+function filterFinderByCountry(country){
+  // Update tab styles
+  var tabs = document.getElementById('finderCountryTabs').children;
+  for(var i=0;i<tabs.length;i++){
+    tabs[i].style.borderBottom = '2px solid transparent';
+    tabs[i].style.background = 'transparent';
+  }
+  if(!country){
+    tabs[0].style.borderBottom = '2px solid #4361EE';
+    tabs[0].style.background = 'rgba(67,97,238,.08)';
+    renderFinderTable(_finderResults);
+  } else {
+    for(var i=1;i<tabs.length;i++){
+      if(tabs[i].textContent.indexOf(country)!==-1){
+        tabs[i].style.borderBottom = '2px solid #4361EE';
+        tabs[i].style.background = 'rgba(67,97,238,.08)';
+      }
+    }
+    renderFinderTable(_finderResults.filter(function(r){return r.davlat===country;}));
   }
 }
 
