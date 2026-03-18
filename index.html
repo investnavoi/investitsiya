@@ -8281,7 +8281,7 @@ function renderFinderTable(results){
       '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
       '<td style="font-size:.65rem;font-weight:700;color:#059669">'+(r.import_volume||'—')+'</td>'+
       '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
-      '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat">📧</button> <button class="btn btn-sm" onclick="generateProductPPTX(\''+((DB.products||[]).find(function(p){return p.name_en==document.getElementById(\'finder-product-select\').selectedOptions[0]?.text;})||{}).id||'\')" title="PPTX" style="background:#4361EE;color:#fff;border:none">📊</button></td></tr>';
+      '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat">📧</button></td></tr>';
   }).join('');
 }
 
