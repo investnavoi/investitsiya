@@ -1660,9 +1660,9 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group" style="flex:1;min-width:200px">
           <label class="form-label">🌍 Davlat tanlang</label>
           <div style="position:relative" id="trade-country-wrap">
-            <input class="form-input" id="trade-country-search" type="text" placeholder="🔍 Davlat nomini yozing..." autocomplete="off"
-              style="font-size:.75rem;color:transparent;caret-color:var(--text);text-shadow:none" oninput="filterTradeCountries()" onfocus="this.style.color='transparent';showTradeCountries()" onclick="this.value='';showTradeCountries()">
-            <div id="trade-country-label" style="position:absolute;top:50%;left:12px;transform:translateY(-50%);font-size:.75rem;color:var(--text);pointer-events:none">🔍 Davlat tanlang...</div>
+            <input class="form-input" id="trade-country-search" type="text" placeholder="" autocomplete="off"
+              style="font-size:.75rem;color:transparent;caret-color:var(--text)" oninput="filterTradeCountries()" onfocus="this.style.color='transparent';this.value='';showTradeCountries()" onclick="this.value='';showTradeCountries()">
+            <div id="trade-country-label" style="position:absolute;top:50%;left:12px;transform:translateY(-50%);font-size:.75rem;color:var(--text3);pointer-events:none">🔍 Davlat tanlang...</div>
             <input type="hidden" id="trade-country" value="">
             <div id="trade-country-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:999;margin-top:2px"></div>
           </div>
@@ -3522,7 +3522,7 @@ function setIntlRegion(i){
    APOLLO.IO INTEGRATION
 ═══════════════════════════════════════ */
 const APOLLO_KEY = '_k3r9J1QYdZLU9IopNgcgg';
-const APOLLO_PROXY = 'https://keen-biscochitos-9a137d.netlify.app/api/apollo-search';
+const APOLLO_PROXY = 'https://navoiy-api-proxy.vercel.app/api/apollo-search';
 let _apoPage = 1;
 let _apoResults = [];
 let _apoSelected = new Set();
@@ -4051,7 +4051,7 @@ function detectSource(header){
 /* ═══════════════════════════════════════
    SNOV.IO INTEGRATION
 ═══════════════════════════════════════ */
-const SNOV_PROXY = 'https://keen-biscochitos-9a137d.netlify.app/api/snov-search';
+const SNOV_PROXY = 'https://navoiy-api-proxy.vercel.app/api/snov-search';
 
 // Target company domains for Navoiy-relevant industries
 const SNOV_TARGET_DOMAINS = [
@@ -7173,9 +7173,8 @@ var TRADE_COUNTRIES = [
 function showTradeCountries(){
   var el = document.getElementById('trade-country-list');
   el.style.display = 'block';
-  var inp = document.getElementById('trade-country-search');
-  inp.style.color = 'transparent';
-  document.getElementById('trade-country-label').textContent = '🔍 yozing...';
+  document.getElementById('trade-country-search').style.color = 'transparent';
+  document.getElementById('trade-country-label').textContent = '';
   filterTradeCountries();
 }
 
@@ -7209,8 +7208,9 @@ function filterTradeCountries(){
 function selectTradeCountry(code, name){
   document.getElementById('trade-country').value = code;
   document.getElementById('trade-country-search').value = name;
-  document.getElementById('trade-country-search').style.color = 'var(--text)';
-  document.getElementById('trade-country-label').textContent = '';
+  document.getElementById('trade-country-search').style.color = 'transparent';
+  document.getElementById('trade-country-label').textContent = name;
+  document.getElementById('trade-country-label').style.color = 'var(--text)';
   document.getElementById('trade-country-list').style.display = 'none';
   if(typeof onTradeCountryChange === 'function') onTradeCountryChange();
 }
@@ -7222,15 +7222,14 @@ document.addEventListener('click', function(e){
     document.getElementById('trade-country-list').style.display = 'none';
     var inp = document.getElementById('trade-country-search');
     var label = document.getElementById('trade-country-label');
-    if(inp && inp.value){
-      // Tanlangan davlat bor — nomni ko'rsatish
-      inp.style.color = 'var(--text)';
-      if(label) label.textContent = '';
+    // Agar davlat tanlangan bo'lsa — nomni ko'rsatish
+    if(inp && document.getElementById('trade-country').value){
+      label.style.color = 'var(--text)';
     } else {
-      // Tanlanmagan — placeholder
-      if(inp) inp.style.color = 'transparent';
-      if(label) label.textContent = '🔍 Davlat tanlang...';
+      label.textContent = '🔍 Davlat tanlang...';
+      label.style.color = 'var(--text3)';
     }
+    inp.style.color = 'transparent';
   }
 });
 
@@ -7245,7 +7244,7 @@ document.addEventListener('keydown', function(e){
       searchInput.value = '';
       searchInput.focus();
       searchInput.style.color = 'transparent';
-      document.getElementById('trade-country-label').textContent = '🔍 yozing...';
+      document.getElementById('trade-country-label').textContent = '';
       // Harf qo'shiladi focus'dan keyin
       setTimeout(function(){
         searchInput.value = e.key;
@@ -7310,7 +7309,7 @@ async function loadGlobalTradeData(){
 
   // Get Comtrade subscription key if available
   var comtradeKey = (window._apiKeys && window._apiKeys.comtrade) || '';
-  var BASE = 'https://keen-biscochitos-9a137d.netlify.app';
+  var BASE = 'https://navoiy-api-proxy.vercel.app';
 
   try {
     document.getElementById('tradeBar').style.width = '20%';
@@ -7744,7 +7743,7 @@ function matchTradeWithProducts(){
    MAHALLIY TADBIRKORLAR — Excel import, Forum moslashtirish, Telegram
    ═══════════════════════════════════════════════════════════════ */
 // ═══ TELEGRAM XABAR: MTProto (telefonga) yoki Bot API (guruhga) ═══
-var TG_API_BASE = 'https://keen-biscochitos-9a137d.netlify.app/api';
+var TG_API_BASE = 'https://navoiy-api-proxy.vercel.app/api';
 
 // Telegram status check
 async function checkTgStatus(){
@@ -8257,7 +8256,7 @@ async function sendTelegramForForum(forumNom, forumSana){
 
 /* ═══ PPTX GENERATOR — Template Cloning via JSZip ═══ */
 var PPTX_TEMPLATE_URLS = [
-  'https://keen-biscochitos-9a137d.netlify.app/template.pptx',
+  'https://navoiy-api-proxy.vercel.app/template.pptx',
   'https://investnavoi.github.io/investitsiya/template_english.pptx',
   './template_english.pptx'
 ];
@@ -8665,7 +8664,7 @@ async function loadSampleProducts(){
 /* ═══════════════════════════════════════
    M2: IMPORT TAHLILI (ANALYSIS ENGINE)
 ═══════════════════════════════════════ */
-var COMTRADE_PROXY = 'https://keen-biscochitos-9a137d.netlify.app/api/comtrade';
+var COMTRADE_PROXY = 'https://navoiy-api-proxy.vercel.app/api/comtrade';
 var WORLDBANK_URL = 'https://api.worldbank.org/v2/country';
 
 // Country code mapping for Comtrade
