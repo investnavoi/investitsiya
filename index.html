@@ -31,7 +31,7 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
 // Collections: investors, local, zoom, forums, investorCompanies
-const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products'];
+const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products','tradeData'];
 
 // Load API keys from separate doc
 async function loadApiKeys(){
@@ -1719,7 +1719,38 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="padding:.4rem .8rem;font-size:.55rem;color:var(--text3);text-align:right">📊 Manba: UN Comtrade rasmiy bazasi (comtradeapi.un.org)</div>
     </div>
 
-    <div id="tradeEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">🌐</div><p>Davlat tanlang va "🔍 Qidirish" bosing — shu davlatning barcha import/eksport mahsulotlari chiqadi</p></div>
+    <div id="tradeEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">🌐</div><p>Davlat tanlang va "🔍 Qidirish" bosing — yoki pastdan qo'lda ma'lumot kiriting</p></div>
+
+    <!-- Admin: Qo'lda kiritish / CSV import -->
+    <div class="tcard" style="margin-top:1rem">
+      <div class="tc-head">
+        <div class="tc-title">📝 Ma'lumot kiritish (Admin)</div>
+        <div style="display:flex;gap:.5rem">
+          <label class="btn btn-sm" style="background:#059669;color:#fff;border:none;cursor:pointer">
+            📥 CSV/Excel import
+            <input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importTradeCSV(this)">
+          </label>
+          <button class="btn btn-sm" onclick="loadTradeFromFirebase()" style="background:var(--bg2);border:1px solid var(--border)">🔥 Firebase'dan yuklash</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearTradeFirebase()" style="color:#EF233C">🗑</button>
+        </div>
+      </div>
+      <!-- Qo'lda kiritish forma -->
+      <div style="padding:.8rem">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:.5rem">
+          <div class="form-group" style="flex:0 0 100px"><label class="form-label" style="font-size:.6rem">Davlat kodi</label><input class="form-input" id="tm-country" placeholder="643" style="font-size:.75rem"></div>
+          <div class="form-group" style="flex:0 0 100px"><label class="form-label" style="font-size:.6rem">Davlat nomi</label><input class="form-input" id="tm-country-name" placeholder="Rossiya" style="font-size:.75rem"></div>
+          <div class="form-group" style="flex:0 0 80px"><label class="form-label" style="font-size:.6rem">Yil</label><input class="form-input" id="tm-year" placeholder="2023" value="2023" style="font-size:.75rem"></div>
+          <div class="form-group" style="flex:0 0 80px"><label class="form-label" style="font-size:.6rem">Yo'nalish</label><select class="form-input" id="tm-flow" style="font-size:.75rem"><option value="M">Import</option><option value="X">Eksport</option></select></div>
+          <div class="form-group" style="flex:0 0 90px"><label class="form-label" style="font-size:.6rem">HS Kod</label><input class="form-input" id="tm-hs" placeholder="2516" style="font-size:.75rem"></div>
+          <div class="form-group" style="flex:1;min-width:150px"><label class="form-label" style="font-size:.6rem">Mahsulot nomi</label><input class="form-input" id="tm-name" placeholder="Granit bloklar" style="font-size:.75rem"></div>
+          <div class="form-group" style="flex:0 0 120px"><label class="form-label" style="font-size:.6rem">Qiymati (USD)</label><input class="form-input" id="tm-value" type="number" placeholder="45000000" style="font-size:.75rem"></div>
+          <div class="form-group" style="flex:0 0 100px"><label class="form-label" style="font-size:.6rem">Og'irlik (kg)</label><input class="form-input" id="tm-weight" type="number" placeholder="250000" style="font-size:.75rem"></div>
+          <div class="form-group" style="flex:0 0 auto"><button class="btn btn-blue btn-sm" onclick="addTradeRecord()">➕</button></div>
+        </div>
+        <div style="font-size:.55rem;color:var(--text3)">💡 CSV formatda import: Davlat kodi, Davlat nomi, Yil, Yo'nalish(M/X), HS Kod, Mahsulot nomi, Qiymati(USD), Og'irlik(kg)</div>
+        <div style="font-size:.55rem;color:var(--text3);margin-top:2px">📊 Firebase'dagi saqlangan ma'lumotlar: <span id="trade-fb-count" style="font-weight:700">0</span> ta yozuv</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -4801,6 +4832,7 @@ function renderAll(){
   if(typeof renderProducts==='function') renderProducts();
   if(typeof renderPipeline==='function') renderPipeline();
   if(typeof loadSettings==='function') loadSettings();
+  if(typeof updateTradeFirebaseCount==='function') updateTradeFirebaseCount();
 }
 
 /* ═══════════════════════════════════════
@@ -7106,6 +7138,27 @@ async function loadGlobalTradeData(){
     return;
   }
 
+  // ═══ FIREBASE FIRST: Check if we have manual/CSV data ═══
+  var fbData = (DB.tradeData||[]).filter(function(r){
+    return r.countryCode == countryCode && r.year == year && r.flow == flow;
+  });
+  if(fbData.length > 0){
+    _tradeData = fbData.map(function(r){
+      return {hsCode:r.hsCode, description:r.description, value:r.value||0, weight:r.weight||0, partner:'World', year:r.year, flow:r.flow};
+    }).filter(function(r){
+      var code = r.hsCode;
+      if(hsLevel==='2') return code.length<=2;
+      if(hsLevel==='4') return code.length<=4;
+      if(hsLevel==='6') return code.length<=6;
+      return true;
+    }).sort(function(a,b){return b.value-a.value;});
+
+    _tradeCache[cacheKey] = _tradeData;
+    renderTradeResults(countryName, flowName, year, hsFilter);
+    toast('🔥 Firebase\'dan '+_tradeData.length+' ta yozuv yuklandi ('+countryName+' '+flowName+' '+year+')');
+    return;
+  }
+
   document.getElementById('tradeEmpty').style.display = 'none';
   document.getElementById('tradeTableCard').style.display = 'none';
   document.getElementById('tradeChartCard').style.display = 'none';
@@ -7200,30 +7253,21 @@ async function loadGlobalTradeData(){
 
   } catch(e){
     document.getElementById('tradeLoading').style.display = 'none';
-
-    // Gemini AI fallback
-    toast('🤖 Gemini AI orqali taxminiy ma\'lumot olinmoqda...','info');
-    try {
-      var aiPrompt = 'Return ONLY valid JSON array. List TOP 30 products that '+countryName+' '+flowName.toLowerCase()+'s, with realistic 2023 trade values.\n'+
-        'JSON: [{"hs":"2516","name":"Granite crude/blocks","value_usd":45000000,"weight_kg":250000000},...]'+
-        '\nUse real HS 4-digit codes. Values must be realistic based on actual trade data.';
-      var body = {contents:[{role:'user',parts:[{text:aiPrompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2000}};
-      var data = await callGemini(body);
-      var arr = safeParseJSON(geminiText(data));
-      if(Array.isArray(arr)){
-        _tradeData = arr.map(function(r){
-          return {hsCode:r.hs||'',description:r.name||'',value:r.value_usd||0,weight:r.weight_kg||0,partner:'World',year:year,flow:flow};
-        }).sort(function(a,b){return b.value-a.value;});
-        renderTradeResults(countryName, flowName, year, hsFilter, true);
-      } else throw new Error('AI parse error');
-    } catch(e2){
-      document.getElementById('tradeEmpty').style.display = 'block';
-      toast('❌ Ma\'lumot olishda xato: '+e2.message,'error');
-    }
+    document.getElementById('tradeEmpty').style.display = 'block';
+    document.getElementById('tradeEmpty').innerHTML = '<div class="tc-empty-icon">⚠️</div>'+
+      '<p>UN Comtrade API javob bermadi</p>'+
+      '<div style="font-size:.7rem;color:var(--text3);margin-top:.5rem">'+
+      'Sabablar: API limit yetdi (100/kun) yoki tarmoq xatosi<br><br>'+
+      '<b>Yechimlar:</b><br>'+
+      '1️⃣ Biroz kutib qayta urinib ko\'ring<br>'+
+      '2️⃣ ⚙️ Sozlamalar → UN Comtrade Subscription Key kiriting (500/kun)<br>'+
+      '3️⃣ Pastdagi "📥 CSV/Excel import" orqali qo\'lda yuklang<br>'+
+      '4️⃣ <a href="https://comtradeplus.un.org" target="_blank" style="color:#4361EE">comtradeplus.un.org</a> dan CSV yuklab oling</div>';
+    toast('⚠️ UN Comtrade API: '+e.message+'. CSV import yoki keyinroq urinib ko\'ring.','error');
   }
 }
 
-function renderTradeResults(countryName, flowName, year, hsFilter, isAI){
+function renderTradeResults(countryName, flowName, year, hsFilter){
   var data = _tradeData;
 
   // Apply name filter
@@ -7246,7 +7290,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter, isAI){
   // Chart — top 20
   var top20 = data.slice(0,20);
   document.getElementById('tradeChartCard').style.display = 'block';
-  document.getElementById('tradeChartTitle').textContent = '📊 '+countryName+' — TOP 20 '+flowName+' mahsulotlari ('+year+')'+(isAI?' ⚠️ AI taxminiy':'');
+  document.getElementById('tradeChartTitle').textContent = '📊 '+countryName+' — TOP 20 '+flowName+' mahsulotlari ('+year+')';
 
   // Build bar chart with HTML
   var maxVal = top20[0]?top20[0].value:1;
@@ -7298,7 +7342,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter, isAI){
     return navProducts.some(function(p){return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(p.hs_code.slice(0,4))===0);});
   }).length;
   if(matchCount>0) toast('🔗 '+matchCount+' ta mahsulot Navoiy ishlab chiqarishi bilan mos keldi!');
-  toast('✅ '+data.length+' ta mahsulot yuklandi: '+countryName+' '+flowName+' ('+year+')'+(isAI?' — AI taxminiy':''));
+  toast('✅ '+data.length+' ta mahsulot yuklandi: '+countryName+' '+flowName+' ('+year+')');
 }
 
 function filterTradeTable(){
@@ -7310,7 +7354,101 @@ function filterTradeTable(){
 }
 
 function onTradeCountryChange(){
-  // Auto-load if country selected
+  // Check if Firebase has data for this country
+  var code = document.getElementById('trade-country').value;
+  if(code && DB.tradeData){
+    var fbData = DB.tradeData.filter(function(r){return r.countryCode==code;});
+    if(fbData.length) toast('💡 Firebase\'da '+fbData.length+' ta yozuv bor. "🔍 Qidirish" bosing.','info');
+  }
+}
+
+/* ═══ TRADE DATA: Firebase qo'lda kiritish ═══ */
+function addTradeRecord(){
+  var country = document.getElementById('tm-country').value.trim();
+  var countryName = document.getElementById('tm-country-name').value.trim();
+  var year = document.getElementById('tm-year').value.trim();
+  var flow = document.getElementById('tm-flow').value;
+  var hs = document.getElementById('tm-hs').value.trim();
+  var name = document.getElementById('tm-name').value.trim();
+  var value = parseFloat(document.getElementById('tm-value').value)||0;
+  var weight = parseFloat(document.getElementById('tm-weight').value)||0;
+  if(!country||!hs||!name||!value){toast('⚠️ Davlat, HS kod, nom va qiymat kiriting','error');return;}
+  var rec = {id:'tr_'+Date.now(), countryCode:country, countryName:countryName||country, year:year||'2023', flow:flow, hsCode:hs, description:name, value:value, weight:weight, source:'manual'};
+  if(!DB.tradeData) DB.tradeData = [];
+  DB.tradeData.push(rec);
+  if(typeof fbSave==='function') fbSave('tradeData', rec);
+  document.getElementById('tm-hs').value='';document.getElementById('tm-name').value='';document.getElementById('tm-value').value='';document.getElementById('tm-weight').value='';
+  updateTradeFirebaseCount();
+  toast('✅ '+name+' (HS:'+hs+') — $'+value.toLocaleString());
+}
+
+function importTradeCSV(input){
+  var file = (input.files||[])[0];
+  if(!file) return;
+  toast('📥 '+file.name+' o\'qilmoqda...');
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var rows = [];
+      if(file.name.toLowerCase().endsWith('.csv')){
+        var lines = e.target.result.split('\n');
+        lines.forEach(function(line){var cols=line.split(/[,;\t]/).map(function(c){return c.trim().replace(/^"|"$/g,'');});if(cols.length>=3) rows.push(cols);});
+      } else {
+        var wb = XLSX.read(e.target.result,{type:'array'});
+        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+      }
+      // Detect header
+      var startRow = 0;
+      for(var i=0;i<Math.min(5,rows.length);i++){
+        var s = rows[i].join('|').toLowerCase();
+        if(s.indexOf('hs')!==-1||s.indexOf('code')!==-1||s.indexOf('product')!==-1||s.indexOf('mahsulot')!==-1){startRow=i+1;break;}
+      }
+      // Detect format: full (8 cols) or simple (4 cols)
+      var sample = rows[startRow]||rows[0];
+      var isFull = sample && sample.length >= 7;
+      var country = document.getElementById('tm-country').value.trim()||'860';
+      var countryName = document.getElementById('tm-country-name').value.trim()||"O'zbekiston";
+      var year = document.getElementById('tm-year').value.trim()||'2023';
+      var flow = document.getElementById('tm-flow').value||'M';
+      if(!DB.tradeData) DB.tradeData = [];
+      var added = 0;
+      for(var r=startRow;r<rows.length;r++){
+        var row = rows[r];
+        if(!row||row.length<3) continue;
+        var rec;
+        if(isFull){
+          rec = {id:'tr_'+(Date.now()+r), countryCode:String(row[0]||country).trim(), countryName:String(row[1]||countryName).trim(), year:String(row[2]||year).trim(), flow:String(row[3]||flow).trim().toUpperCase(), hsCode:String(row[4]||'').trim(), description:String(row[5]||'').trim(), value:parseFloat(String(row[6]||'0').replace(/[^0-9.-]/g,''))||0, weight:parseFloat(String(row[7]||'0').replace(/[^0-9.-]/g,''))||0, source:'csv'};
+        } else {
+          rec = {id:'tr_'+(Date.now()+r), countryCode:country, countryName:countryName, year:year, flow:flow, hsCode:String(row[0]||'').trim(), description:String(row[1]||'').trim(), value:parseFloat(String(row[2]||'0').replace(/[^0-9.-]/g,''))||0, weight:parseFloat(String(row[3]||'0').replace(/[^0-9.-]/g,''))||0, source:'csv'};
+        }
+        if(rec.hsCode && rec.value>0){DB.tradeData.push(rec);if(typeof fbSave==='function') fbSave('tradeData',rec);added++;}
+      }
+      updateTradeFirebaseCount();
+      toast('✅ '+added+' ta savdo yozuvi import qilindi!');
+    } catch(err){toast('⚠️ '+err.message,'error');console.error(err);}
+  };
+  if(file.name.toLowerCase().endsWith('.csv')) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+  if(input.value!==undefined) input.value='';
+}
+
+function loadTradeFromFirebase(){
+  toast('🔥 Firebase\'dan savdo ma\'lumotlari yuklanmoqda...');
+  if(!(DB.tradeData||[]).length){toast('⚠️ Firebase\'da savdo ma\'lumoti yo\'q. CSV import yoki qo\'lda kiriting.','info');return;}
+  toast('✅ '+(DB.tradeData||[]).length+' ta yozuv Firebase\'da bor!');
+  updateTradeFirebaseCount();
+}
+
+function clearTradeFirebase(){
+  if(!confirm((DB.tradeData||[]).length+' ta savdo yozuvini o\'chirish?')) return;
+  DB.tradeData=[];
+  if(typeof fbDeleteCollection==='function') fbDeleteCollection('tradeData');
+  updateTradeFirebaseCount();
+  toast('🗑 Savdo ma\'lumotlari tozalandi');
+}
+
+function updateTradeFirebaseCount(){
+  var el=document.getElementById('trade-fb-count');
+  if(el) el.textContent=(DB.tradeData||[]).length;
 }
 
 function exportTradeCSV(){
