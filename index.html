@@ -1659,144 +1659,12 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end">
         <div class="form-group" style="flex:1;min-width:200px">
           <label class="form-label">🌍 Davlat tanlang</label>
-          <select class="form-input" id="trade-country" onchange="onTradeCountryChange()" style="font-size:.75rem">
-            <option value="">— Davlat tanlang (196 ta) —</option>
-            <optgroup label="🇺🇿 Markaziy Osiyo">
-              <option value="860">🇺🇿 O'zbekiston</option><option value="398">🇰🇿 Qozog'iston</option>
-              <option value="417">🇰🇬 Qirg'iziston</option><option value="762">🇹🇯 Tojikiston</option><option value="795">🇹🇲 Turkmaniston</option>
-            </optgroup>
-            <optgroup label="🇷🇺 MDH davlatlari">
-              <option value="643">🇷🇺 Rossiya</option><option value="031">🇦🇿 Ozarbayjon</option>
-              <option value="268">🇬🇪 Gruziya</option><option value="051">🇦🇲 Armaniston</option>
-              <option value="112">🇧🇾 Belorussiya</option><option value="804">🇺🇦 Ukraina</option>
-              <option value="498">🇲🇩 Moldova</option>
-            </optgroup>
-            <optgroup label="🌏 Sharqiy Osiyo">
-              <option value="156">🇨🇳 Xitoy</option><option value="392">🇯🇵 Yaponiya</option>
-              <option value="410">🇰🇷 Janubiy Koreya</option><option value="408">🇰🇵 Shimoliy Koreya</option>
-              <option value="496">🇲🇳 Mo'g'uliston</option><option value="158">🇹🇼 Tayvan</option>
-              <option value="344">🇭🇰 Gonkong</option><option value="446">🇲🇴 Makao</option>
-            </optgroup>
-            <optgroup label="🌏 Janubi-Sharqiy Osiyo">
-              <option value="360">🇮🇩 Indoneziya</option><option value="458">🇲🇾 Malayziya</option>
-              <option value="764">🇹🇭 Tailand</option><option value="704">🇻🇳 Vyetnam</option>
-              <option value="608">🇵🇭 Filippin</option><option value="702">🇸🇬 Singapur</option>
-              <option value="104">🇲🇲 Myanma</option><option value="116">🇰🇭 Kambodja</option>
-              <option value="418">🇱🇦 Laos</option><option value="096">🇧🇳 Bruney</option>
-              <option value="626">🇹🇱 Sharqiy Timor</option>
-            </optgroup>
-            <optgroup label="🌏 Janubiy Osiyo">
-              <option value="356">🇮🇳 Hindiston</option><option value="586">🇵🇰 Pokiston</option>
-              <option value="050">🇧🇩 Bangladesh</option><option value="144">🇱🇰 Shri Lanka</option>
-              <option value="524">🇳🇵 Nepal</option><option value="004">🇦🇫 Afg'oniston</option>
-              <option value="064">🇧🇹 Butan</option><option value="462">🇲🇻 Maldiv</option>
-            </optgroup>
-            <optgroup label="🌍 Yaqin Sharq">
-              <option value="792">🇹🇷 Turkiya</option><option value="364">🇮🇷 Eron</option>
-              <option value="368">🇮🇶 Iroq</option><option value="682">🇸🇦 Saudiya Arabistoni</option>
-              <option value="784">🇦🇪 BAA (Dubai)</option><option value="634">🇶🇦 Qatar</option>
-              <option value="414">🇰🇼 Quvayt</option><option value="512">🇴🇲 Ummon</option>
-              <option value="048">🇧🇭 Bahrayn</option><option value="400">🇯🇴 Iordaniya</option>
-              <option value="422">🇱🇧 Livan</option><option value="760">🇸🇾 Suriya</option>
-              <option value="376">🇮🇱 Isroil</option><option value="275">🇵🇸 Falastin</option>
-              <option value="887">🇾🇪 Yaman</option><option value="196">🇨🇾 Kipr</option>
-            </optgroup>
-            <optgroup label="🇪🇺 G'arbiy Yevropa">
-              <option value="276">🇩🇪 Germaniya</option><option value="250">🇫🇷 Fransiya</option>
-              <option value="826">🇬🇧 Buyuk Britaniya</option><option value="380">🇮🇹 Italiya</option>
-              <option value="724">🇪🇸 Ispaniya</option><option value="528">🇳🇱 Niderlandiya</option>
-              <option value="056">🇧🇪 Belgiya</option><option value="040">🇦🇹 Avstriya</option>
-              <option value="756">🇨🇭 Shveytsariya</option><option value="372">🇮🇪 Irlandiya</option>
-              <option value="442">🇱🇺 Lyuksemburg</option><option value="492">🇲🇨 Monako</option>
-              <option value="438">🇱🇮 Lixtenshteyn</option>
-            </optgroup>
-            <optgroup label="🇪🇺 Shimoliy Yevropa">
-              <option value="752">🇸🇪 Shvetsiya</option><option value="578">🇳🇴 Norvegiya</option>
-              <option value="208">🇩🇰 Daniya</option><option value="246">🇫🇮 Finlandiya</option>
-              <option value="352">🇮🇸 Islandiya</option><option value="233">🇪🇪 Estoniya</option>
-              <option value="428">🇱🇻 Latviya</option><option value="440">🇱🇹 Litva</option>
-            </optgroup>
-            <optgroup label="🇪🇺 Sharqiy Yevropa">
-              <option value="616">🇵🇱 Polsha</option><option value="203">🇨🇿 Chexiya</option>
-              <option value="348">🇭🇺 Vengriya</option><option value="642">🇷🇴 Ruminiya</option>
-              <option value="100">🇧🇬 Bolgariya</option><option value="703">🇸🇰 Slovakiya</option>
-              <option value="705">🇸🇮 Sloveniya</option><option value="191">🇭🇷 Xorvatiya</option>
-              <option value="688">🇷🇸 Serbiya</option><option value="070">🇧🇦 Bosniya</option>
-              <option value="807">🇲🇰 Shimoliy Makedoniya</option><option value="008">🇦🇱 Albaniya</option>
-              <option value="499">🇲🇪 Chernogoriya</option><option value="900">🇽🇰 Kosovo</option>
-            </optgroup>
-            <optgroup label="🇪🇺 Janubiy Yevropa">
-              <option value="620">🇵🇹 Portugaliya</option><option value="300">🇬🇷 Gretsiya</option>
-              <option value="470">🇲🇹 Malta</option><option value="020">🇦🇩 Andorra</option>
-              <option value="674">🇸🇲 San-Marino</option>
-            </optgroup>
-            <optgroup label="🌎 Shimoliy Amerika">
-              <option value="842">🇺🇸 AQSh</option><option value="124">🇨🇦 Kanada</option>
-              <option value="484">🇲🇽 Meksika</option>
-            </optgroup>
-            <optgroup label="🌎 Markaziy Amerika va Karib">
-              <option value="320">🇬🇹 Gvatemala</option><option value="222">🇸🇻 Salvador</option>
-              <option value="340">🇭🇳 Gonduras</option><option value="558">🇳🇮 Nikaragua</option>
-              <option value="188">🇨🇷 Kosta-Rika</option><option value="591">🇵🇦 Panama</option>
-              <option value="084">🇧🇿 Beliz</option><option value="192">🇨🇺 Kuba</option>
-              <option value="214">🇩🇴 Dominikan Resp.</option><option value="332">🇭🇹 Gaiti</option>
-              <option value="388">🇯🇲 Yamayka</option><option value="780">🇹🇹 Trinidad va Tobago</option>
-              <option value="044">🇧🇸 Bagam</option><option value="052">🇧🇧 Barbados</option>
-            </optgroup>
-            <optgroup label="🌎 Janubiy Amerika">
-              <option value="076">🇧🇷 Braziliya</option><option value="032">🇦🇷 Argentina</option>
-              <option value="152">🇨🇱 Chili</option><option value="170">🇨🇴 Kolumbiya</option>
-              <option value="604">🇵🇪 Peru</option><option value="862">🇻🇪 Venesuela</option>
-              <option value="218">🇪🇨 Ekvador</option><option value="068">🇧🇴 Boliviya</option>
-              <option value="600">🇵🇾 Paragvay</option><option value="858">🇺🇾 Urugvay</option>
-              <option value="328">🇬🇾 Gayana</option><option value="740">🇸🇷 Surinam</option>
-            </optgroup>
-            <optgroup label="🌍 Shimoliy Afrika">
-              <option value="818">🇪🇬 Misr</option><option value="504">🇲🇦 Marokash</option>
-              <option value="012">🇩🇿 Jazoir</option><option value="788">🇹🇳 Tunis</option>
-              <option value="434">🇱🇾 Liviya</option><option value="736">🇸🇩 Sudan</option>
-            </optgroup>
-            <optgroup label="🌍 G'arbiy Afrika">
-              <option value="566">🇳🇬 Nigeriya</option><option value="288">🇬🇭 Gana</option>
-              <option value="384">🇨🇮 Kot-d'Ivuar</option><option value="686">🇸🇳 Senegal</option>
-              <option value="466">🇲🇱 Mali</option><option value="854">🇧🇫 Burkina-Faso</option>
-              <option value="324">🇬🇳 Gvineya</option><option value="562">🇳🇪 Niger</option>
-              <option value="768">🇹🇬 Togo</option><option value="204">🇧🇯 Benin</option>
-              <option value="694">🇸🇱 Syerra-Leone</option><option value="430">🇱🇷 Liberiya</option>
-              <option value="270">🇬🇲 Gambiya</option><option value="624">🇬🇼 Gvineya-Bisau</option>
-              <option value="132">🇨🇻 Kabo-Verde</option><option value="478">🇲🇷 Mavritaniya</option>
-            </optgroup>
-            <optgroup label="🌍 Sharqiy Afrika">
-              <option value="404">🇰🇪 Keniya</option><option value="834">🇹🇿 Tanzaniya</option>
-              <option value="231">🇪🇹 Efiopiya</option><option value="800">🇺🇬 Uganda</option>
-              <option value="646">🇷🇼 Ruanda</option><option value="508">🇲🇿 Mozambik</option>
-              <option value="450">🇲🇬 Madagaskar</option><option value="454">🇲🇼 Malavi</option>
-              <option value="706">🇸🇴 Somaliya</option><option value="262">🇩🇯 Jibuti</option>
-              <option value="232">🇪🇷 Eritreya</option><option value="108">🇧🇮 Burundi</option>
-              <option value="174">🇰🇲 Komor orollari</option><option value="480">🇲🇺 Mavrikiy</option>
-              <option value="690">🇸🇨 Seyshel</option>
-            </optgroup>
-            <optgroup label="🌍 Markaziy Afrika">
-              <option value="180">🇨🇩 Kongo DR</option><option value="120">🇨🇲 Kamerun</option>
-              <option value="178">🇨🇬 Kongo Resp.</option><option value="266">🇬🇦 Gabon</option>
-              <option value="148">🇹🇩 Chad</option><option value="140">🇨🇫 Markaziy Afrika Resp.</option>
-              <option value="226">🇬🇶 Ekvatorial Gvineya</option>
-            </optgroup>
-            <optgroup label="🌍 Janubiy Afrika">
-              <option value="710">🇿🇦 Janubiy Afrika Resp.</option><option value="024">🇦🇴 Angola</option>
-              <option value="516">🇳🇦 Namibiya</option><option value="072">🇧🇼 Botsvana</option>
-              <option value="716">🇿🇼 Zimbabve</option><option value="894">🇿🇲 Zambiya</option>
-              <option value="426">🇱🇸 Lesoto</option><option value="748">🇸🇿 Esvotini</option>
-            </optgroup>
-            <optgroup label="🌏 Okeaniya">
-              <option value="036">🇦🇺 Avstraliya</option><option value="554">🇳🇿 Yangi Zelandiya</option>
-              <option value="598">🇵🇬 Papua Yangi Gvineya</option><option value="242">🇫🇯 Fiji</option>
-              <option value="090">🇸🇧 Solomon orollari</option><option value="548">🇻🇺 Vanuatu</option>
-              <option value="882">🇼🇸 Samoa</option><option value="776">🇹🇴 Tonga</option>
-              <option value="583">🇫🇲 Mikroneziya</option><option value="584">🇲🇭 Marshall orollari</option>
-              <option value="585">🇵🇼 Palau</option><option value="296">🇰🇮 Kiribati</option>
-            </optgroup>
-          </select>
+          <div style="position:relative" id="trade-country-wrap">
+            <input class="form-input" id="trade-country-search" type="text" placeholder="🔍 Davlat nomini yozing..." autocomplete="off"
+              style="font-size:.75rem" oninput="filterTradeCountries()" onfocus="showTradeCountries()" onclick="showTradeCountries()">
+            <input type="hidden" id="trade-country" value="">
+            <div id="trade-country-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:999;margin-top:2px"></div>
+          </div>
         </div>
         <div class="form-group" style="flex:0 0 110px">
           <label class="form-label">📅 Yil</label>
@@ -7278,6 +7146,75 @@ function showAddProductModal(){
    GLOBAL TRADE DATA — UN Comtrade API
    196 davlatning BARCHA import/export mahsulotlari
    ═══════════════════════════════════════════════════════════════ */
+// ═══ DAVLATLAR RO'YXATI — Qidiruvli dropdown ═══
+var TRADE_COUNTRIES = [
+  {c:'860',n:'🇺🇿 O\'zbekiston',g:'Markaziy Osiyo'},{c:'398',n:'🇰🇿 Qozog\'iston',g:'Markaziy Osiyo'},{c:'417',n:'🇰🇬 Qirg\'iziston',g:'Markaziy Osiyo'},{c:'762',n:'🇹🇯 Tojikiston',g:'Markaziy Osiyo'},{c:'795',n:'🇹🇲 Turkmaniston',g:'Markaziy Osiyo'},
+  {c:'643',n:'🇷🇺 Rossiya',g:'MDH'},{c:'031',n:'🇦🇿 Ozarbayjon',g:'MDH'},{c:'268',n:'🇬🇪 Gruziya',g:'MDH'},{c:'051',n:'🇦🇲 Armaniston',g:'MDH'},{c:'112',n:'🇧🇾 Belorussiya',g:'MDH'},{c:'804',n:'🇺🇦 Ukraina',g:'MDH'},{c:'498',n:'🇲🇩 Moldova',g:'MDH'},
+  {c:'156',n:'🇨🇳 Xitoy',g:'Sharqiy Osiyo'},{c:'392',n:'🇯🇵 Yaponiya',g:'Sharqiy Osiyo'},{c:'410',n:'🇰🇷 Janubiy Koreya',g:'Sharqiy Osiyo'},{c:'408',n:'🇰🇵 Shimoliy Koreya',g:'Sharqiy Osiyo'},{c:'496',n:'🇲🇳 Mo\'g\'uliston',g:'Sharqiy Osiyo'},{c:'158',n:'🇹🇼 Tayvan',g:'Sharqiy Osiyo'},{c:'344',n:'🇭🇰 Gonkong',g:'Sharqiy Osiyo'},
+  {c:'360',n:'🇮🇩 Indoneziya',g:'J-Sh Osiyo'},{c:'458',n:'🇲🇾 Malayziya',g:'J-Sh Osiyo'},{c:'764',n:'🇹🇭 Tailand',g:'J-Sh Osiyo'},{c:'704',n:'🇻🇳 Vyetnam',g:'J-Sh Osiyo'},{c:'608',n:'🇵🇭 Filippin',g:'J-Sh Osiyo'},{c:'702',n:'🇸🇬 Singapur',g:'J-Sh Osiyo'},{c:'104',n:'🇲🇲 Myanma',g:'J-Sh Osiyo'},{c:'116',n:'🇰🇭 Kambodja',g:'J-Sh Osiyo'},{c:'418',n:'🇱🇦 Laos',g:'J-Sh Osiyo'},
+  {c:'356',n:'🇮🇳 Hindiston',g:'Janubiy Osiyo'},{c:'586',n:'🇵🇰 Pokiston',g:'Janubiy Osiyo'},{c:'050',n:'🇧🇩 Bangladesh',g:'Janubiy Osiyo'},{c:'144',n:'🇱🇰 Shri Lanka',g:'Janubiy Osiyo'},{c:'524',n:'🇳🇵 Nepal',g:'Janubiy Osiyo'},{c:'004',n:'🇦🇫 Afg\'oniston',g:'Janubiy Osiyo'},{c:'064',n:'🇧🇹 Butan',g:'Janubiy Osiyo'},{c:'462',n:'🇲🇻 Maldiv',g:'Janubiy Osiyo'},
+  {c:'792',n:'🇹🇷 Turkiya',g:'Yaqin Sharq'},{c:'364',n:'🇮🇷 Eron',g:'Yaqin Sharq'},{c:'368',n:'🇮🇶 Iroq',g:'Yaqin Sharq'},{c:'682',n:'🇸🇦 Saudiya Arabistoni',g:'Yaqin Sharq'},{c:'784',n:'🇦🇪 BAA (Dubai)',g:'Yaqin Sharq'},{c:'634',n:'🇶🇦 Qatar',g:'Yaqin Sharq'},{c:'414',n:'🇰🇼 Quvayt',g:'Yaqin Sharq'},{c:'512',n:'🇴🇲 Ummon',g:'Yaqin Sharq'},{c:'048',n:'🇧🇭 Bahrayn',g:'Yaqin Sharq'},{c:'400',n:'🇯🇴 Iordaniya',g:'Yaqin Sharq'},{c:'422',n:'🇱🇧 Livan',g:'Yaqin Sharq'},{c:'760',n:'🇸🇾 Suriya',g:'Yaqin Sharq'},{c:'376',n:'🇮🇱 Isroil',g:'Yaqin Sharq'},{c:'887',n:'🇾🇪 Yaman',g:'Yaqin Sharq'},{c:'196',n:'🇨🇾 Kipr',g:'Yaqin Sharq'},
+  {c:'276',n:'🇩🇪 Germaniya',g:'G\'arbiy Yevropa'},{c:'250',n:'🇫🇷 Fransiya',g:'G\'arbiy Yevropa'},{c:'826',n:'🇬🇧 Buyuk Britaniya',g:'G\'arbiy Yevropa'},{c:'380',n:'🇮🇹 Italiya',g:'G\'arbiy Yevropa'},{c:'724',n:'🇪🇸 Ispaniya',g:'G\'arbiy Yevropa'},{c:'528',n:'🇳🇱 Niderlandiya',g:'G\'arbiy Yevropa'},{c:'056',n:'🇧🇪 Belgiya',g:'G\'arbiy Yevropa'},{c:'040',n:'🇦🇹 Avstriya',g:'G\'arbiy Yevropa'},{c:'756',n:'🇨🇭 Shveytsariya',g:'G\'arbiy Yevropa'},{c:'372',n:'🇮🇪 Irlandiya',g:'G\'arbiy Yevropa'},
+  {c:'752',n:'🇸🇪 Shvetsiya',g:'Shimoliy Yevropa'},{c:'578',n:'🇳🇴 Norvegiya',g:'Shimoliy Yevropa'},{c:'208',n:'🇩🇰 Daniya',g:'Shimoliy Yevropa'},{c:'246',n:'🇫🇮 Finlandiya',g:'Shimoliy Yevropa'},{c:'352',n:'🇮🇸 Islandiya',g:'Shimoliy Yevropa'},{c:'233',n:'🇪🇪 Estoniya',g:'Shimoliy Yevropa'},{c:'428',n:'🇱🇻 Latviya',g:'Shimoliy Yevropa'},{c:'440',n:'🇱🇹 Litva',g:'Shimoliy Yevropa'},
+  {c:'616',n:'🇵🇱 Polsha',g:'Sharqiy Yevropa'},{c:'203',n:'🇨🇿 Chexiya',g:'Sharqiy Yevropa'},{c:'348',n:'🇭🇺 Vengriya',g:'Sharqiy Yevropa'},{c:'642',n:'🇷🇴 Ruminiya',g:'Sharqiy Yevropa'},{c:'100',n:'🇧🇬 Bolgariya',g:'Sharqiy Yevropa'},{c:'703',n:'🇸🇰 Slovakiya',g:'Sharqiy Yevropa'},{c:'705',n:'🇸🇮 Sloveniya',g:'Sharqiy Yevropa'},{c:'191',n:'🇭🇷 Xorvatiya',g:'Sharqiy Yevropa'},{c:'688',n:'🇷🇸 Serbiya',g:'Sharqiy Yevropa'},{c:'070',n:'🇧🇦 Bosniya',g:'Sharqiy Yevropa'},{c:'807',n:'🇲🇰 Shimoliy Makedoniya',g:'Sharqiy Yevropa'},{c:'008',n:'🇦🇱 Albaniya',g:'Sharqiy Yevropa'},{c:'499',n:'🇲🇪 Chernogoriya',g:'Sharqiy Yevropa'},
+  {c:'620',n:'🇵🇹 Portugaliya',g:'Janubiy Yevropa'},{c:'300',n:'🇬🇷 Gretsiya',g:'Janubiy Yevropa'},
+  {c:'842',n:'🇺🇸 AQSh',g:'Shimoliy Amerika'},{c:'124',n:'🇨🇦 Kanada',g:'Shimoliy Amerika'},{c:'484',n:'🇲🇽 Meksika',g:'Shimoliy Amerika'},
+  {c:'192',n:'🇨🇺 Kuba',g:'Karib'},{c:'214',n:'🇩🇴 Dominikan Resp.',g:'Karib'},{c:'332',n:'🇭🇹 Gaiti',g:'Karib'},{c:'388',n:'🇯🇲 Yamayka',g:'Karib'},{c:'320',n:'🇬🇹 Gvatemala',g:'M. Amerika'},{c:'188',n:'🇨🇷 Kosta-Rika',g:'M. Amerika'},{c:'591',n:'🇵🇦 Panama',g:'M. Amerika'},
+  {c:'076',n:'🇧🇷 Braziliya',g:'J. Amerika'},{c:'032',n:'🇦🇷 Argentina',g:'J. Amerika'},{c:'152',n:'🇨🇱 Chili',g:'J. Amerika'},{c:'170',n:'🇨🇴 Kolumbiya',g:'J. Amerika'},{c:'604',n:'🇵🇪 Peru',g:'J. Amerika'},{c:'862',n:'🇻🇪 Venesuela',g:'J. Amerika'},{c:'218',n:'🇪🇨 Ekvador',g:'J. Amerika'},{c:'068',n:'🇧🇴 Boliviya',g:'J. Amerika'},{c:'600',n:'🇵🇾 Paragvay',g:'J. Amerika'},{c:'858',n:'🇺🇾 Urugvay',g:'J. Amerika'},
+  {c:'818',n:'🇪🇬 Misr',g:'Sh. Afrika'},{c:'504',n:'🇲🇦 Marokash',g:'Sh. Afrika'},{c:'012',n:'🇩🇿 Jazoir',g:'Sh. Afrika'},{c:'788',n:'🇹🇳 Tunis',g:'Sh. Afrika'},{c:'434',n:'🇱🇾 Liviya',g:'Sh. Afrika'},{c:'736',n:'🇸🇩 Sudan',g:'Sh. Afrika'},
+  {c:'566',n:'🇳🇬 Nigeriya',g:'G\'arbiy Afrika'},{c:'288',n:'🇬🇭 Gana',g:'G\'arbiy Afrika'},{c:'384',n:'🇨🇮 Kot-d\'Ivuar',g:'G\'arbiy Afrika'},{c:'686',n:'🇸🇳 Senegal',g:'G\'arbiy Afrika'},{c:'466',n:'🇲🇱 Mali',g:'G\'arbiy Afrika'},
+  {c:'404',n:'🇰🇪 Keniya',g:'Sharqiy Afrika'},{c:'834',n:'🇹🇿 Tanzaniya',g:'Sharqiy Afrika'},{c:'231',n:'🇪🇹 Efiopiya',g:'Sharqiy Afrika'},{c:'800',n:'🇺🇬 Uganda',g:'Sharqiy Afrika'},{c:'646',n:'🇷🇼 Ruanda',g:'Sharqiy Afrika'},{c:'508',n:'🇲🇿 Mozambik',g:'Sharqiy Afrika'},
+  {c:'180',n:'🇨🇩 Kongo DR',g:'M. Afrika'},{c:'120',n:'🇨🇲 Kamerun',g:'M. Afrika'},{c:'178',n:'🇨🇬 Kongo Resp.',g:'M. Afrika'},
+  {c:'710',n:'🇿🇦 Janubiy Afrika Resp.',g:'J. Afrika'},{c:'024',n:'🇦🇴 Angola',g:'J. Afrika'},{c:'516',n:'🇳🇦 Namibiya',g:'J. Afrika'},{c:'072',n:'🇧🇼 Botsvana',g:'J. Afrika'},{c:'716',n:'🇿🇼 Zimbabve',g:'J. Afrika'},{c:'894',n:'🇿🇲 Zambiya',g:'J. Afrika'},
+  {c:'036',n:'🇦🇺 Avstraliya',g:'Okeaniya'},{c:'554',n:'🇳🇿 Yangi Zelandiya',g:'Okeaniya'},{c:'598',n:'🇵🇬 Papua Yangi Gvineya',g:'Okeaniya'},{c:'242',n:'🇫🇯 Fiji',g:'Okeaniya'}
+];
+
+function showTradeCountries(){
+  var el = document.getElementById('trade-country-list');
+  el.style.display = 'block';
+  filterTradeCountries();
+}
+
+function filterTradeCountries(){
+  var q = (document.getElementById('trade-country-search').value||'').toLowerCase().trim();
+  var el = document.getElementById('trade-country-list');
+  var filtered = q.length > 0 ? TRADE_COUNTRIES.filter(function(c){
+    var name = c.n.slice(c.n.indexOf(' ')+1).toLowerCase();
+    return name.indexOf(q) !== -1 || c.g.toLowerCase().indexOf(q) !== -1 || c.c.indexOf(q) !== -1;
+  }) : TRADE_COUNTRIES;
+
+  if(!filtered.length){
+    el.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text3);font-size:.75rem">Topilmadi</div>';
+    return;
+  }
+
+  var lastGroup = '';
+  var html = '';
+  filtered.forEach(function(c){
+    if(c.g !== lastGroup){
+      lastGroup = c.g;
+      html += '<div style="padding:4px 12px;font-size:.6rem;font-weight:700;color:var(--text3);background:var(--bg2);position:sticky;top:0">'+c.g+'</div>';
+    }
+    html += '<div class="tc-country-item" onclick="selectTradeCountry(\''+c.c+'\',\''+c.n.replace(/'/g,"\\'")+'\')" style="padding:6px 12px;cursor:pointer;font-size:.75rem;transition:background .1s" onmouseenter="this.style.background=\'var(--bg2)\'" onmouseleave="this.style.background=\'transparent\'">'+c.n+'</div>';
+  });
+  el.innerHTML = html;
+}
+
+function selectTradeCountry(code, name){
+  document.getElementById('trade-country').value = code;
+  document.getElementById('trade-country-search').value = name;
+  document.getElementById('trade-country-list').style.display = 'none';
+  if(typeof onTradeCountryChange === 'function') onTradeCountryChange();
+}
+
+// Click tashqarida yopish
+document.addEventListener('click', function(e){
+  var wrap = document.getElementById('trade-country-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    document.getElementById('trade-country-list').style.display = 'none';
+  }
+});
+
 var _tradeData = [];
 var _tradeCache = {};
 var _tradeSource = '';
@@ -7289,7 +7226,7 @@ async function loadGlobalTradeData(){
   var flow = document.getElementById('trade-flow').value;
   var hsLevel = document.getElementById('trade-hs-level').value;
   var hsFilter = (document.getElementById('trade-hs-filter').value||'').trim();
-  var countryName = document.getElementById('trade-country').selectedOptions[0].text;
+  var countryName = document.getElementById('trade-country-search').value;
   var flowName = flow==='M'?'Import':'Export';
 
   // Check cache
@@ -7615,7 +7552,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
 
 function filterTradeTable(){
   if(!_tradeData.length) return;
-  var countryName = document.getElementById('trade-country').selectedOptions[0]?.text||'';
+  var countryName = document.getElementById('trade-country-search').value;
   var flow = document.getElementById('trade-flow').value;
   var year = document.getElementById('trade-year').value;
   renderTradeResults(countryName, flow==='M'?'Import':'Export', year, '');
@@ -7721,7 +7658,7 @@ function updateTradeFirebaseCount(){
 
 function exportTradeCSV(){
   if(!_tradeData.length){toast('⚠️ Ma\'lumot yo\'q','error');return;}
-  var countryName = document.getElementById('trade-country').selectedOptions[0]?.text||'Country';
+  var countryName = document.getElementById('trade-country-search').value||'Country';
   var year = document.getElementById('trade-year').value;
   var flow = document.getElementById('trade-flow').value==='M'?'Import':'Export';
 
