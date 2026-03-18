@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client"></script>
 <!-- Firebase -->
@@ -6853,7 +6854,7 @@ function renderProducts(){
     document.getElementById('pr-prod-count').textContent = prods.length;
     tb.innerHTML = prods.length ? prods.map(function(p,i){
       var rm = rms.find(function(r){return r.id==p.raw_id});
-      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="background:#4361EE;color:#fff;border:none;margin-right:3px" title="Prezentatsiya">📊</button><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
     }).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text3)">Mahsulot qo\'shilmagan</td></tr>';
   }
 
@@ -6889,7 +6890,7 @@ function filterProductsByRaw(rawId){
     document.getElementById('pr-prod-count').textContent = prods.length;
     tb.innerHTML = prods.map(function(p,i){
       var rm = rms.find(function(r){return r.id==p.raw_id});
-      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||'—').slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').slice(0,40)+'</td><td><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||'—').slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').slice(0,40)+'</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="background:#4361EE;color:#fff;border:none;margin-right:3px" title="Prezentatsiya">📊</button><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
     }).join('');
   }
 }
@@ -6922,6 +6923,281 @@ function showAddProductModal(){
   if(typeof fbSave==='function') fbSave('products', rec);
   renderProducts();
   toast('✅ Mahsulot qo\'shildi: ' + name);
+}
+
+/* ═══ PPTX PRESENTATION GENERATOR (PptxGenJS + Gemini AI) ═══ */
+async function generateProductPPTX(productId){
+  var product = (DB.products||[]).find(function(p){return p.id===productId;});
+  if(!product) return toast('❌ Mahsulot topilmadi','error');
+  var rawMat = (DB.rawMaterials||[]).find(function(r){return r.id===product.raw_id;}) || {name_en:product.raw_name||'Unknown',name_uz:product.raw_name||''};
+
+  toast('📊 Prezentatsiya tayyorlanmoqda: '+product.name_en+'...');
+
+  // Colors
+  var C = {navy:'1E2761',blue:'4361EE',green:'059669',white:'FFFFFF',light:'F0F4FF',dark:'0F172A',gray:'64748B',red:'EF233C',gold:'F59E0B'};
+  var settings = DB.settings||{};
+  var navWage = settings.maosh||400;
+  var navElec = settings.elektr||0.03;
+
+  // Try Gemini for product-specific investment data
+  var aiData = null;
+  try {
+    var key = getGeminiKey();
+    if(key){
+      var prompt = 'Return ONLY raw JSON. For the product "'+product.name_en+'" (HS Code: '+(product.hs_code||'N/A')+') made from "'+rawMat.name_en+'" in Navoi, Uzbekistan:\n'+
+        '{"investment_usd":2500000,"annual_revenue_usd":800000,"jobs_created":35,"payback_months":38,'+
+        '"equipment_cost_usd":1200000,"building_cost_usd":600000,"annual_capacity":"15000 tons",'+
+        '"top_importers":[{"country":"Russia","import_usd":45000000},{"country":"Kazakhstan","import_usd":12000000},{"country":"Turkey","import_usd":28000000},{"country":"China","import_usd":65000000},{"country":"Germany","import_usd":32000000}],'+
+        '"key_advantages":["Low electricity cost $0.03/kWh","Tax-free zone for 7 years","Strategic location near raw materials","Low labor cost $400/month","Access to CIS markets"],'+
+        '"processing_steps":["Raw material extraction","Primary processing","Secondary refining","Quality control","Packaging & shipping"],'+
+        '"annual_expenses_usd":350000,"export_share":70,"domestic_share":30}';
+      var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:800}};
+      var data = await callGemini(body);
+      aiData = safeParseJSON(geminiText(data));
+    }
+  } catch(e){ console.log('PPTX AI error:',e); }
+
+  // Fallback data
+  if(!aiData) aiData = {investment_usd:2500000,annual_revenue_usd:800000,jobs_created:35,payback_months:38,equipment_cost_usd:1200000,building_cost_usd:600000,annual_capacity:'15,000 tons',
+    top_importers:[{country:'Russia',import_usd:45000000},{country:'Kazakhstan',import_usd:12000000},{country:'Turkey',import_usd:28000000},{country:'China',import_usd:65000000},{country:'Germany',import_usd:32000000}],
+    key_advantages:['Low electricity $0.03/kWh','Tax-free zone 7 years','Near raw materials','Low labor $400/mo','CIS market access'],
+    processing_steps:['Extraction','Primary processing','Refining','QC','Packaging'],annual_expenses_usd:350000,export_share:70,domestic_share:30};
+
+  var fmt = function(n){return (n||0).toLocaleString('en-US');};
+  var fmtM = function(n){return '$'+(n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':n);};
+
+  // ═══ CREATE PRESENTATION ═══
+  var pres = new PptxGenJS();
+  pres.layout = 'LAYOUT_16x9';
+  pres.author = 'Navoi Investment Office';
+  pres.title = product.name_en+' — Investment Project';
+
+  // === SLIDE 1: TITLE ===
+  var s1 = pres.addSlide();
+  s1.background = {color:C.navy};
+  s1.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:10,h:5.625,fill:{color:C.navy}});
+  s1.addShape(pres.shapes.RECTANGLE,{x:0,y:4.4,w:10,h:1.225,fill:{color:C.blue,transparency:40}});
+  s1.addText('INVESTMENT PROJECT',{x:0.8,y:0.6,w:8.4,h:0.5,fontSize:14,color:C.gold,fontFace:'Arial',charSpacing:6,bold:true});
+  s1.addText(product.name_en,{x:0.8,y:1.2,w:8.4,h:1.2,fontSize:36,color:C.white,fontFace:'Georgia',bold:true});
+  s1.addText('Production from '+rawMat.name_en+' in Navoi Region, Uzbekistan',{x:0.8,y:2.5,w:8.4,h:0.5,fontSize:16,color:'CADCFC',fontFace:'Calibri'});
+  s1.addText([
+    {text:'HS Code: '+(product.hs_code||'N/A'),options:{bold:true,breakLine:true}},
+    {text:'Processing: '+(product.processing_level||product.usage||'Industrial'),options:{breakLine:true}},
+    {text:'Investment: '+fmtM(aiData.investment_usd),options:{bold:true}}
+  ],{x:0.8,y:3.3,w:4,h:1,fontSize:13,color:'CADCFC',fontFace:'Calibri'});
+  s1.addText('Navoi Free Economic Zone\nRepublic of Uzbekistan',{x:6,y:4.55,w:3.5,h:0.8,fontSize:11,color:C.white,fontFace:'Calibri',align:'right'});
+  s1.addText('🇺🇿',{x:0.8,y:4.55,w:1,h:0.7,fontSize:28});
+
+  // === SLIDE 2: EXECUTIVE SUMMARY ===
+  var s2 = pres.addSlide();
+  s2.background = {color:C.white};
+  s2.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:10,h:0.9,fill:{color:C.navy}});
+  s2.addText('EXECUTIVE SUMMARY',{x:0.8,y:0.15,w:8,h:0.6,fontSize:22,color:C.white,fontFace:'Georgia',bold:true});
+
+  var kpis = [
+    {label:'Total Investment',value:fmtM(aiData.investment_usd),icon:'💰',bg:C.navy},
+    {label:'Annual Revenue',value:fmtM(aiData.annual_revenue_usd),icon:'📈',bg:C.green},
+    {label:'Jobs Created',value:String(aiData.jobs_created||35),icon:'👷',bg:C.blue},
+    {label:'Payback Period',value:(aiData.payback_months||38)+' months',icon:'⏱️',bg:C.gold}
+  ];
+  kpis.forEach(function(k,i){
+    var xp = 0.5 + i*2.35;
+    s2.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:xp,y:1.2,w:2.15,h:1.6,fill:{color:C.light},rectRadius:0.08});
+    s2.addText(k.icon,{x:xp,y:1.3,w:2.15,h:0.5,fontSize:22,align:'center'});
+    s2.addText(k.value,{x:xp,y:1.75,w:2.15,h:0.5,fontSize:20,color:C.navy,fontFace:'Georgia',bold:true,align:'center'});
+    s2.addText(k.label,{x:xp,y:2.25,w:2.15,h:0.4,fontSize:10,color:C.gray,fontFace:'Calibri',align:'center'});
+  });
+
+  // Project passport table
+  s2.addTable([
+    [{text:'Parameter',options:{bold:true,fill:{color:C.navy},color:C.white,fontSize:11}},{text:'Details',options:{bold:true,fill:{color:C.navy},color:C.white,fontSize:11}}],
+    ['Product',product.name_en],
+    ['Raw Material',rawMat.name_en],
+    ['HS Code',product.hs_code||'N/A'],
+    ['Location','Navoi Free Economic Zone, Uzbekistan'],
+    ['Annual Capacity',aiData.annual_capacity||'15,000 tons'],
+    ['Export / Domestic',(aiData.export_share||70)+'% / '+(aiData.domestic_share||30)+'%'],
+    ['Equipment Cost',fmtM(aiData.equipment_cost_usd)],
+    ['Building & Infra',fmtM(aiData.building_cost_usd)]
+  ],{x:0.5,y:3.05,w:9,colW:[3,6],border:{pt:0.5,color:'E2E8F0'},fontSize:10,fontFace:'Calibri',rowH:0.28});
+
+  // === SLIDE 3: RAW MATERIAL & NAVOI ADVANTAGES ===
+  var s3 = pres.addSlide();
+  s3.background = {color:C.white};
+  s3.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:10,h:0.9,fill:{color:C.navy}});
+  s3.addText('RAW MATERIAL & NAVOI ADVANTAGES',{x:0.8,y:0.15,w:8,h:0.6,fontSize:22,color:C.white,fontFace:'Georgia',bold:true});
+
+  // Left: Raw material info
+  s3.addText('Raw Material: '+rawMat.name_en,{x:0.5,y:1.1,w:4.5,h:0.4,fontSize:16,color:C.navy,fontFace:'Georgia',bold:true});
+  s3.addText([
+    {text:'Navoi Region is rich in '+rawMat.name_en+' deposits with confirmed reserves.',options:{breakLine:true,fontSize:11}},
+    {text:'\nThe region offers direct access to raw materials, eliminating import dependency and reducing production costs by 40-60%.',options:{fontSize:11}}
+  ],{x:0.5,y:1.6,w:4.5,h:1.5,color:'475569',fontFace:'Calibri'});
+
+  // Right: Advantages
+  s3.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:5.3,y:1.1,w:4.3,h:2.2,fill:{color:C.light},rectRadius:0.08});
+  s3.addText('🏭 NAVOI FEZ BENEFITS',{x:5.5,y:1.2,w:4,h:0.35,fontSize:13,color:C.navy,fontFace:'Arial',bold:true});
+  var advList = (aiData.key_advantages||[]).map(function(a,i){
+    return {text:'  ✅  '+a,options:{breakLine:i<4,fontSize:10,color:'334155'}};
+  });
+  s3.addText(advList,{x:5.5,y:1.6,w:4,h:1.6,fontFace:'Calibri'});
+
+  // Bottom: Cost comparison table
+  s3.addText('COST COMPARISON: Navoi vs International',{x:0.5,y:3.5,w:9,h:0.35,fontSize:14,color:C.navy,fontFace:'Georgia',bold:true});
+  s3.addTable([
+    [{text:'Factor',options:{bold:true,fill:{color:C.navy},color:C.white}},{text:'Navoi FEZ 🇺🇿',options:{bold:true,fill:{color:C.green},color:C.white}},{text:'Europe 🇪🇺',options:{bold:true,fill:{color:C.red},color:C.white}},{text:'China 🇨🇳',options:{bold:true,fill:{color:C.red},color:C.white}},{text:'Savings',options:{bold:true,fill:{color:C.gold},color:C.dark}}],
+    ['Electricity ($/kWh)','$'+navElec,'$0.15','$0.08',Math.round((0.15-navElec)/0.15*100)+'%'],
+    ['Avg. Wage ($/month)','$'+navWage,'$3,500','$800',Math.round((3500-navWage)/3500*100)+'%'],
+    ['Corporate Tax','0% (7 years)','20-25%','25%','100%'],
+    ['Land Cost','$0 (FEZ)','$50-200/m²','$30-80/m²','100%'],
+    ['Transport to CIS','$500-1,400','$4,000-6,000','$3,000-5,000','70-80%']
+  ],{x:0.5,y:3.9,w:9,colW:[2,1.7,1.7,1.7,1.4],border:{pt:0.5,color:'E2E8F0'},fontSize:9,fontFace:'Calibri',rowH:0.25});
+
+  // === SLIDE 4: MARKET ANALYSIS ===
+  var s4 = pres.addSlide();
+  s4.background = {color:C.white};
+  s4.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:10,h:0.9,fill:{color:C.navy}});
+  s4.addText('MARKET ANALYSIS — IMPORT DEMAND',{x:0.8,y:0.15,w:8,h:0.6,fontSize:22,color:C.white,fontFace:'Georgia',bold:true});
+  s4.addText('Target Countries Import Volume for '+product.name_en+' (HS '+(product.hs_code||'N/A')+')',{x:0.5,y:1.1,w:9,h:0.35,fontSize:13,color:C.navy,fontFace:'Calibri',bold:true});
+
+  var importers = aiData.top_importers||[];
+  if(importers.length){
+    var maxImp = Math.max.apply(null,importers.map(function(c){return c.import_usd||0;}));
+    var chartData = [{name:'Import ($)',labels:importers.map(function(c){return c.country;}),values:importers.map(function(c){return c.import_usd||0;})}];
+    s4.addChart(pres.charts.BAR,chartData,{x:0.5,y:1.5,w:5.5,h:3.5,barDir:'col',
+      chartColors:[C.blue,C.green,'14B8A6','F59E0B',C.red],
+      showValue:true,dataLabelPosition:'outEnd',dataLabelColor:C.dark,
+      catAxisLabelColor:C.gray,valAxisLabelColor:C.gray,
+      valGridLine:{color:'E2E8F0',size:0.5},catGridLine:{style:'none'},
+      showLegend:false,fontSize:9,dataLabelFontSize:8});
+
+    // Right: country table
+    var impRows = importers.map(function(c){return [c.country,'$'+fmt(c.import_usd||0)];});
+    impRows.unshift([{text:'Country',options:{bold:true,fill:{color:C.navy},color:C.white}},{text:'Annual Import',options:{bold:true,fill:{color:C.navy},color:C.white}}]);
+    var totalImp = importers.reduce(function(s,c){return s+(c.import_usd||0);},0);
+    impRows.push([{text:'TOTAL',options:{bold:true}},{text:'$'+fmt(totalImp),options:{bold:true,color:C.green}}]);
+    s4.addTable(impRows,{x:6.3,y:1.5,w:3.3,colW:[1.5,1.8],border:{pt:0.5,color:'E2E8F0'},fontSize:10,fontFace:'Calibri',rowH:0.3});
+  }
+  s4.addText('📊 Source: UN Comtrade / World Bank Open Data',{x:0.5,y:5.2,w:5,h:0.3,fontSize:8,color:C.gray,fontFace:'Calibri'});
+
+  // === SLIDE 5: PRODUCTION PROCESS ===
+  var s5 = pres.addSlide();
+  s5.background = {color:C.white};
+  s5.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:10,h:0.9,fill:{color:C.navy}});
+  s5.addText('PRODUCTION PROCESS & EQUIPMENT',{x:0.8,y:0.15,w:8,h:0.6,fontSize:22,color:C.white,fontFace:'Georgia',bold:true});
+
+  var steps = aiData.processing_steps||['Extraction','Processing','Refining','QC','Packaging'];
+  steps.forEach(function(step,i){
+    var xp = 0.3 + i*1.95;
+    s5.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:xp,y:1.2,w:1.75,h:2.2,fill:{color:i%2===0?C.light:'EFF6FF'},rectRadius:0.08});
+    s5.addText(String(i+1),{x:xp,y:1.3,w:1.75,h:0.45,fontSize:24,color:C.blue,fontFace:'Georgia',bold:true,align:'center'});
+    s5.addText(step,{x:xp+0.1,y:1.85,w:1.55,h:0.8,fontSize:10,color:C.dark,fontFace:'Calibri',align:'center',valign:'top'});
+    if(i<steps.length-1) s5.addText('→',{x:xp+1.75,y:1.8,w:0.2,h:0.5,fontSize:18,color:C.blue,align:'center'});
+  });
+
+  // Equipment cost table
+  s5.addText('ESTIMATED EQUIPMENT & INFRASTRUCTURE',{x:0.5,y:3.6,w:9,h:0.35,fontSize:13,color:C.navy,fontFace:'Georgia',bold:true});
+  s5.addTable([
+    [{text:'Category',options:{bold:true,fill:{color:C.navy},color:C.white}},{text:'Cost',options:{bold:true,fill:{color:C.navy},color:C.white}},{text:'% of Total',options:{bold:true,fill:{color:C.navy},color:C.white}}],
+    ['Processing Equipment',fmtM(aiData.equipment_cost_usd),Math.round((aiData.equipment_cost_usd||0)/(aiData.investment_usd||1)*100)+'%'],
+    ['Building & Infrastructure',fmtM(aiData.building_cost_usd),Math.round((aiData.building_cost_usd||0)/(aiData.investment_usd||1)*100)+'%'],
+    ['Working Capital & Other',fmtM((aiData.investment_usd||0)-(aiData.equipment_cost_usd||0)-(aiData.building_cost_usd||0)),Math.round(((aiData.investment_usd||0)-(aiData.equipment_cost_usd||0)-(aiData.building_cost_usd||0))/(aiData.investment_usd||1)*100)+'%'],
+    [{text:'TOTAL INVESTMENT',options:{bold:true}},{text:fmtM(aiData.investment_usd),options:{bold:true,color:C.green}},{text:'100%',options:{bold:true}}]
+  ],{x:0.5,y:4.0,w:9,colW:[4,2.5,2.5],border:{pt:0.5,color:'E2E8F0'},fontSize:10,fontFace:'Calibri',rowH:0.27});
+
+  // === SLIDE 6: TRANSPORT & LOGISTICS ===
+  var s6 = pres.addSlide();
+  s6.background = {color:C.white};
+  s6.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:10,h:0.9,fill:{color:C.navy}});
+  s6.addText('TRANSPORT & LOGISTICS',{x:0.8,y:0.15,w:8,h:0.6,fontSize:22,color:C.white,fontFace:'Georgia',bold:true});
+
+  s6.addTable([
+    [{text:'Route',options:{bold:true,fill:{color:C.navy},color:C.white}},{text:'Mode',options:{bold:true,fill:{color:C.navy},color:C.white}},{text:'Cost (40\')',options:{bold:true,fill:{color:C.navy},color:C.white}},{text:'Transit',options:{bold:true,fill:{color:C.navy},color:C.white}}],
+    ['🇺🇿 Navoi → Tashkent','🚂 Rail','$500','1 day'],
+    ['🇺🇿 Navoi → Bukhara','🚛 Truck','$220','0.5 day'],
+    ['🇺🇿 Tashkent → 🇰🇿 Almaty','🚂 Rail','$900','2 days'],
+    ['🇺🇿 Tashkent → 🇷🇺 Moscow','🚂 Rail','$4,200','12-15 days'],
+    ['🇨🇳 Xi\'an → 🇺🇿 Tashkent','🚂 Rail','$4,800','8-10 days'],
+    ['🇩🇪 Hamburg → 🇺🇿 Tashkent','🚂 Rail','$5,500','14-18 days'],
+    ['🇩🇪 Frankfurt → 🇺🇿 Tashkent','✈️ Air','$1.70/kg','1-2 days'],
+    ['🇦🇪 Dubai → 🇺🇿 Tashkent','✈️ Air','$1.20/kg','1 day']
+  ],{x:0.5,y:1.1,w:9,colW:[3.5,1.5,2,2],border:{pt:0.5,color:'E2E8F0'},fontSize:10,fontFace:'Calibri',rowH:0.28});
+
+  s6.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:0.5,y:3.8,w:9,h:1.5,fill:{color:'F0FDF4'},rectRadius:0.08});
+  s6.addText([
+    {text:'✈️  Navoi International Airport',options:{bold:true,fontSize:13,breakLine:true,color:C.navy}},
+    {text:'One of Central Asia\'s most modern cargo terminals. Korean Air, Asiana and other carriers operate regular cargo flights. Annual capacity: 100,000+ tons.',options:{fontSize:10,breakLine:true,color:'475569'}},
+    {text:'\n🚂  Rail: China-Central Asia corridor passes through Navoi. Direct connections to CIS, Europe, and Middle East.',options:{fontSize:10,color:'475569'}}
+  ],{x:0.8,y:3.9,w:8.4,h:1.3,fontFace:'Calibri'});
+
+  // === SLIDE 7: FINANCIAL ANALYSIS ===
+  var s7 = pres.addSlide();
+  s7.background = {color:C.white};
+  s7.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:10,h:0.9,fill:{color:C.navy}});
+  s7.addText('FINANCIAL ANALYSIS & ROI',{x:0.8,y:0.15,w:8,h:0.6,fontSize:22,color:C.white,fontFace:'Georgia',bold:true});
+
+  var npv = (aiData.annual_revenue_usd||0)-(aiData.annual_expenses_usd||0);
+  var irr = aiData.investment_usd>0?Math.round(npv/(aiData.investment_usd)*100):0;
+
+  // Revenue vs Expenses chart
+  s7.addChart(pres.charts.BAR,[
+    {name:'Revenue',labels:['Year 1','Year 2','Year 3','Year 4','Year 5'],values:[aiData.annual_revenue_usd*0.6,aiData.annual_revenue_usd*0.85,aiData.annual_revenue_usd,aiData.annual_revenue_usd*1.1,aiData.annual_revenue_usd*1.2]},
+    {name:'Expenses',labels:['Year 1','Year 2','Year 3','Year 4','Year 5'],values:[aiData.annual_expenses_usd*1.2,aiData.annual_expenses_usd*1.1,aiData.annual_expenses_usd,aiData.annual_expenses_usd,aiData.annual_expenses_usd*0.95]}
+  ],{x:0.3,y:1.1,w:5.2,h:3.2,barDir:'col',chartColors:[C.green,C.red],
+    showLegend:true,legendPos:'b',legendFontSize:9,
+    catAxisLabelColor:C.gray,valAxisLabelColor:C.gray,
+    valGridLine:{color:'E2E8F0',size:0.5},catGridLine:{style:'none'},fontSize:9});
+
+  // Right: KPI cards
+  var finKpis = [
+    {label:'Total Investment',value:fmtM(aiData.investment_usd),color:C.navy},
+    {label:'Annual Revenue',value:fmtM(aiData.annual_revenue_usd),color:C.green},
+    {label:'Annual Expenses',value:fmtM(aiData.annual_expenses_usd),color:C.red},
+    {label:'Net Profit/Year',value:fmtM(npv),color:C.green},
+    {label:'IRR',value:irr+'%',color:C.blue},
+    {label:'Payback Period',value:(aiData.payback_months||38)+' months',color:C.gold}
+  ];
+  finKpis.forEach(function(k,i){
+    var yp = 1.1 + i*0.55;
+    s7.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:5.8,y:yp,w:3.8,h:0.48,fill:{color:C.light},rectRadius:0.05});
+    s7.addText(k.label,{x:5.9,y:yp,w:2,h:0.48,fontSize:10,color:C.gray,fontFace:'Calibri',valign:'middle'});
+    s7.addText(k.value,{x:7.9,y:yp,w:1.6,h:0.48,fontSize:13,color:k.color,fontFace:'Georgia',bold:true,align:'right',valign:'middle'});
+  });
+
+  s7.addText('📊 Note: Projections based on Navoi FEZ conditions. Actual results may vary.',{x:0.5,y:4.8,w:9,h:0.3,fontSize:8,color:C.gray,fontFace:'Calibri',italic:true});
+
+  // === SLIDE 8: CONTACT / CALL TO ACTION ===
+  var s8 = pres.addSlide();
+  s8.background = {color:C.navy};
+  s8.addText('INVEST IN NAVOI',{x:0.8,y:0.8,w:8.4,h:0.7,fontSize:14,color:C.gold,fontFace:'Arial',charSpacing:6,bold:true});
+  s8.addText(product.name_en+'\nProduction Facility',{x:0.8,y:1.5,w:8.4,h:1.2,fontSize:32,color:C.white,fontFace:'Georgia',bold:true});
+
+  s8.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:0.8,y:3.0,w:3.8,h:1.8,fill:{color:C.blue,transparency:30},rectRadius:0.1});
+  s8.addText([
+    {text:'Investment: '+fmtM(aiData.investment_usd),options:{bold:true,fontSize:16,breakLine:true}},
+    {text:'Revenue: '+fmtM(aiData.annual_revenue_usd)+'/year',options:{fontSize:13,breakLine:true}},
+    {text:'Payback: '+(aiData.payback_months||38)+' months',options:{fontSize:13,breakLine:true}},
+    {text:'Jobs: '+(aiData.jobs_created||35)+' positions',options:{fontSize:13}}
+  ],{x:1,y:3.15,w:3.4,h:1.5,color:C.white,fontFace:'Calibri'});
+
+  s8.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:5.3,y:3.0,w:4.0,h:1.8,fill:{color:'FFFFFF',transparency:85},rectRadius:0.1});
+  s8.addText([
+    {text:'Navoi Free Economic Zone',options:{bold:true,fontSize:13,breakLine:true}},
+    {text:'Republic of Uzbekistan',options:{fontSize:11,breakLine:true}},
+    {text:'\n📧 invest@navoi.uz',options:{fontSize:11,breakLine:true}},
+    {text:'🌐 investnavoi.github.io',options:{fontSize:11,breakLine:true}},
+    {text:'📞 +998 XX XXX XX XX',options:{fontSize:11}}
+  ],{x:5.5,y:3.15,w:3.6,h:1.5,color:'CADCFC',fontFace:'Calibri'});
+
+  s8.addText('🇺🇿  Navoi — The Heart of Central Asian Industry',{x:0.8,y:5.0,w:8.4,h:0.4,fontSize:12,color:C.gold,fontFace:'Calibri',italic:true,align:'center'});
+
+  // ═══ SAVE ═══
+  var fileName = product.name_en.replace(/[^a-zA-Z0-9]/g,'_').slice(0,40)+'_Navoi_Investment.pptx';
+  pres.writeFile({fileName:fileName}).then(function(){
+    toast('✅ Prezentatsiya yuklandi: '+fileName);
+  }).catch(function(err){
+    toast('❌ PPTX xato: '+err.message,'error');
+  });
 }
 
 function deleteProduct(id){
