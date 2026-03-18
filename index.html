@@ -1653,7 +1653,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: GLOBAL TRADE DATA ===== -->
 <div class="page" id="page-trade">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">🌐 Xalqaro Savdo Ma'lumotlari</div><div class="pg-sub">196 davlatning barcha import/eksport mahsulotlari — UN Comtrade rasmiy ma'lumotlari</div></div>
+    <div class="pg-head"><div class="pg-title">🌐 Xalqaro Savdo Ma'lumotlari</div><div class="pg-sub">196 davlatning barcha import/eksport mahsulotlari — UN Comtrade · WTO · WITS (World Bank)</div></div>
 
     <div class="form-card" style="margin-bottom:1rem">
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end">
@@ -7280,6 +7280,7 @@ function showAddProductModal(){
    ═══════════════════════════════════════════════════════════════ */
 var _tradeData = [];
 var _tradeCache = {};
+var _tradeSource = '';
 
 async function loadGlobalTradeData(){
   var countryCode = document.getElementById('trade-country').value;
@@ -7354,23 +7355,50 @@ async function loadGlobalTradeData(){
     
     // Try proxy first
     var resp = null;
+    var dataSource = '';
     try {
       resp = await fetch(proxyUrl);
-      if(!resp.ok) resp = null;
+      if(!resp.ok) resp = null; else dataSource = 'UN Comtrade (proxy)';
     } catch(e){ resp = null; }
 
-    document.getElementById('tradeBar').style.width = '50%';
+    document.getElementById('tradeBar').style.width = '40%';
     
-    // Fallback to direct API
+    // Fallback to direct Comtrade API
     if(!resp){
       try {
         var headers = {'Accept':'application/json'};
         if(comtradeKey) headers['Ocp-Apim-Subscription-Key'] = comtradeKey;
         resp = await fetch(directUrl, {headers:headers});
+        if(resp.ok) dataSource = 'UN Comtrade'; else resp = null;
+      } catch(e){ resp = null; }
+    }
+
+    document.getElementById('tradeBar').style.width = '55%';
+
+    // Fallback 2: WTO Timeseries API
+    if(!resp){
+      document.getElementById('tradeLoadingText').textContent = '🌐 WTO API orqali yuklanmoqda...';
+      try {
+        var wtoKey = (window._apiKeys&&window._apiKeys.wtoKey) || '699f3b04d9b4406a80244064333cc8ae';
+        var wtoUrl = 'https://keen-biscochitos-9a137d.netlify.app/api/wto-trade?reporter='+countryCode+'&year='+year+'&flow='+flow+'&key='+wtoKey;
+        resp = await fetch(wtoUrl);
+        if(resp.ok) dataSource = 'WTO'; else resp = null;
       } catch(e){ resp = null; }
     }
 
     document.getElementById('tradeBar').style.width = '70%';
+
+    // Fallback 3: WITS (World Bank) API
+    if(!resp){
+      document.getElementById('tradeLoadingText').textContent = '🌐 WITS (World Bank) orqali yuklanmoqda...';
+      try {
+        var witsUrl = 'https://keen-biscochitos-9a137d.netlify.app/api/wits-trade?reporter='+countryCode+'&year='+year+'&flow='+flow;
+        resp = await fetch(witsUrl);
+        if(resp.ok) dataSource = 'WITS (World Bank)'; else resp = null;
+      } catch(e){ resp = null; }
+    }
+
+    document.getElementById('tradeBar').style.width = '80%';
 
     if(!resp || !resp.ok) throw new Error('API javob bermadi: '+(resp?resp.status:'null'));
     var json = await resp.json();
@@ -7420,6 +7448,7 @@ async function loadGlobalTradeData(){
       if(!_tradeData.length) throw new Error('Bu davlat uchun '+year+'-yil '+flowName+' ma\'lumoti topilmadi');
     }
 
+    _tradeSource = dataSource;
     renderTradeResults(countryName, flowName, year, hsFilter);
 
   } catch(e){
@@ -7529,7 +7558,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
   // Chart — top 20
   var top20 = data.slice(0,20);
   document.getElementById('tradeChartCard').style.display = 'block';
-  document.getElementById('tradeChartTitle').textContent = '📊 '+countryName+' — TOP 20 '+flowName+' mahsulotlari ('+year+')';
+  document.getElementById('tradeChartTitle').textContent = '📊 '+countryName+' — TOP 20 '+flowName+' mahsulotlari ('+year+')' + (_tradeSource?' | '+_tradeSource:'');
 
   // Build bar chart with HTML
   var maxVal = top20[0]?top20[0].value:1;
@@ -7581,7 +7610,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
     return navProducts.some(function(p){return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(p.hs_code.slice(0,4))===0);});
   }).length;
   if(matchCount>0) toast('🔗 '+matchCount+' ta mahsulot Navoiy ishlab chiqarishi bilan mos keldi!');
-  toast('✅ '+data.length+' ta mahsulot yuklandi: '+countryName+' '+flowName+' ('+year+')');
+  toast('✅ '+data.length+' ta mahsulot yuklandi: '+countryName+' '+flowName+' ('+year+') — '+dataSource);
 }
 
 function filterTradeTable(){
