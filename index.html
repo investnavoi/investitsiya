@@ -31,7 +31,7 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
 // Collections: investors, local, zoom, forums, investorCompanies
-const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products','tradeData'];
+const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products','tradeData','entrepreneurs'];
 
 // Load API keys from separate doc
 async function loadApiKeys(){
@@ -1046,6 +1046,42 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
     </div>
     <div class="forum-grid" id="forum-cards"></div>
+
+    <!-- MAHALLIY TADBIRKORLAR BAZASI -->
+    <div class="tcard" style="margin-top:1.5rem">
+      <div class="tc-head">
+        <div class="tc-title">🏭 Mahalliy Tadbirkorlar (<span id="entr-count">0</span>)</div>
+        <div style="display:flex;gap:.5rem">
+          <label class="btn btn-sm" style="background:#059669;color:#fff;border:none;cursor:pointer">
+            📥 Excel import
+            <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEntrepreneurs(this)">
+          </label>
+          <button class="btn btn-blue btn-sm" onclick="matchForumsToEntrepreneurs()">🔗 Forum moslashtirish</button>
+          <button class="btn btn-sm" onclick="sendTelegramToMatched()" style="background:linear-gradient(135deg,#0088cc,#229ED9);color:#fff;border:none">📨 Telegram xabar</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('entrepreneurs')" style="color:#EF233C">🗑</button>
+        </div>
+      </div>
+
+      <!-- Drag & drop -->
+      <div id="entrDropZone" style="margin:8px;padding:.8rem;border:2px dashed var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s"
+        ondragover="event.preventDefault();this.style.borderColor='#059669';this.style.background='rgba(5,150,105,.05)'"
+        ondragleave="this.style.borderColor='var(--border)';this.style.background='transparent'"
+        ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='transparent';importEntrepreneurs({files:event.dataTransfer.files})"
+        onclick="this.querySelector('input')&&this.querySelector('input').click()">
+        <span style="font-size:.75rem;color:var(--text3)">📊 Excel faylni shu yerga tashlang (Ism, Telefon, Faoliyat yo'nalishi)</span>
+        <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEntrepreneurs(this)">
+      </div>
+
+      <!-- Yaqinlashib kelayotgan forumlar uchun bildirishnoma -->
+      <div id="forumAlerts" style="display:none;padding:.5rem .8rem"></div>
+
+      <!-- Jadval -->
+      <div class="tscroll" style="max-height:500px;overflow-y:auto"><table>
+        <thead><tr><th>☑</th><th>#</th><th>Ism / Kompaniya</th><th>📞 Telefon</th><th>Faoliyat yo'nalishi</th><th>Mos forum</th><th>📨 Holat</th><th>Amal</th></tr></thead>
+        <tbody id="entr-tbody"></tbody>
+      </table></div>
+      <div style="padding:.4rem .8rem;font-size:.55rem;color:var(--text3)">💡 Excel formati: A=Ism/Kompaniya | B=Telefon | C=Faoliyat yo'nalishi | D=Telegram username (ixtiyoriy)</div>
+    </div>
   </div>
 </div>
 
@@ -4833,6 +4869,7 @@ function renderAll(){
   if(typeof renderPipeline==='function') renderPipeline();
   if(typeof loadSettings==='function') loadSettings();
   if(typeof updateTradeFirebaseCount==='function') updateTradeFirebaseCount();
+  if(typeof renderEntrepreneurs==='function') renderEntrepreneurs();
 }
 
 /* ═══════════════════════════════════════
@@ -5333,7 +5370,8 @@ function deleteRecord(table, id){
 function clearAllConfirm(table){
   var nameMap = {
     investors:'Investorlar', local:'Tadbirkorlar', zoom:'Zoom', forums:'Forumlar',
-    investorCompanies:'Investorlar bazasi', rawMaterials:'Xomashyolar', products:'Mahsulotlar'
+    investorCompanies:'Investorlar bazasi', rawMaterials:'Xomashyolar', products:'Mahsulotlar',
+    entrepreneurs:'Mahalliy tadbirkorlar'
   };
   var count = (DB[table]||[]).length;
   document.getElementById('deleteMsg').textContent = (nameMap[table]||table)+' — '+count+' ta yozuvni o\'chirish tasdiqlaysizmi?';
@@ -5344,14 +5382,13 @@ function clearAllConfirm(table){
   confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
   newBtn.onclick=()=>{
     DB[table]=[];
-    // Firebase'dan ham o'chirish
     if(typeof fbDeleteCollection==='function') fbDeleteCollection(table);
-    // Render
     var renderMap = {
       investors:renderInvestors, local:renderLocal, zoom:renderZoom, forums:renderForums,
       investorCompanies:renderInvestorCompanies,
       rawMaterials:typeof renderProducts==='function'?renderProducts:null,
-      products:typeof renderProducts==='function'?renderProducts:null
+      products:typeof renderProducts==='function'?renderProducts:null,
+      entrepreneurs:typeof renderEntrepreneurs==='function'?renderEntrepreneurs:null
     };
     if(renderMap[table]) renderMap[table]();
     renderOverview();
@@ -7502,6 +7539,243 @@ function matchTradeWithProducts(){
   msg += '\n\n🎯 Bu davlat Navoiy mahsulotlari uchun potensial bozor!';
   alert(msg);
   toast('🔗 '+matches.length+' ta mos mahsulot topildi!');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAHALLIY TADBIRKORLAR — Excel import, Forum moslashtirish, Telegram
+   ═══════════════════════════════════════════════════════════════ */
+var SECTOR_KEYWORDS = {
+  'qurilish':['qurilish','building','construction','cement','beton','plitka','granit','marmor','tosh','kafel','gips','kirpich','temir','armatura','qum','ohak','bino','uy'],
+  'oziq-ovqat':['oziq','ovqat','food','non','go\'sht','sut','meva','sabzavot','don','un','yog\'','shakar','ichimlik','konserva','agrar','agro'],
+  'to\'qimachilik':['to\'qimachilik','textile','mato','ip','gazlama','tikuv','kiyim','libos','charm','teri','paxta','ipak'],
+  'kimyo':['kimyo','chemical','plastik','polietilen','rezina','shisha','boya','dori','farmatsevtika','polimer'],
+  'energetika':['energetika','energy','solar','quyosh','shamol','gaz','neft','elektr','generator','kabel'],
+  'elektronika':['elektronika','electronic','kompyuter','telefon','texnologiya','IT','dastur','software'],
+  'qishloq':['qishloq','fermer','chorva','paranda','baliq','issiqxona','o\'g\'it','dehqon','bog\'dorchilik'],
+  'transport':['transport','logistika','yuk','tashish','avto','poyezd','samolyot','havo','temir yo\'l'],
+  'turizm':['turizm','tourism','mehmonxona','hotel','restoran','sayohat','kafe','dam olish'],
+  'konchilik':['konchilik','mining','kon','oltin','mis','uran','fosfat','maden','mineral','rudnik','qazib'],
+  'mebel':['mebel','furniture','yog\'och','wood','faner','eshik','deraza','karavot','shkaf','stol'],
+  'metallurgiya':['metall','po\'lat','steel','alyuminiy','quyish','prokat','sim','truba','quvur'],
+  'sanoat':['sanoat','industrial','ishlab chiqarish','zavod','fabrika','sex','korxona']
+};
+
+function renderEntrepreneurs(){
+  var list = DB.entrepreneurs||[];
+  var el = document.getElementById('entr-count');
+  if(el) el.textContent = list.length;
+  var tb = document.getElementById('entr-tbody');
+  if(!tb) return;
+  if(!list.length){
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text3)">Tadbirkorlar bazasi bo\'sh. "📥 Excel import" orqali yuklang.</td></tr>';
+    checkForumAlerts();
+    return;
+  }
+  tb.innerHTML = list.map(function(e,i){
+    var stIcon = e.tgSent ? '<span style="color:#059669">✅ Yuborildi</span>' : (e.matchedForum ? '<span style="color:#F59E0B">🟡 Tayyor</span>' : '<span style="color:var(--text3)">⚪ —</span>');
+    return '<tr'+(e.matchedForum?' style="background:rgba(5,150,105,.04)"':'')+'>'+
+      '<td><input type="checkbox" class="entr-check" data-id="'+e.id+'" '+(e.matchedForum?'checked':'')+'></td>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td><b>'+(e.name||'')+'</b>'+(e.telegram?'<div style="font-size:.55rem;color:#0088cc">@'+e.telegram+'</div>':'')+'</td>'+
+      '<td style="font-size:.75rem">'+(e.phone||'—')+'</td>'+
+      '<td style="font-size:.7rem">'+(e.sector||'—')+'</td>'+
+      '<td style="font-size:.6rem;color:#4361EE">'+(e.matchedForum||'—')+'</td>'+
+      '<td style="font-size:.65rem">'+stIcon+'</td>'+
+      '<td><button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')">🗑</button></td></tr>';
+  }).join('');
+  checkForumAlerts();
+}
+
+function importEntrepreneurs(input){
+  var file = (input.files||[])[0];
+  if(!file) return;
+  toast('📥 '+file.name+' o\'qilmoqda...');
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try {
+      var rows = [];
+      if(file.name.toLowerCase().endsWith('.csv')){
+        ev.target.result.split('\n').forEach(function(line){
+          var cols = line.split(/[,;\t]/).map(function(c){return c.trim().replace(/^"|"$/g,'');});
+          if(cols.length>=2 && cols[0]) rows.push(cols);
+        });
+      } else {
+        var wb = XLSX.read(ev.target.result,{type:'array'});
+        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+      }
+      var startRow = 0;
+      for(var i=0;i<Math.min(5,rows.length);i++){
+        var s = (rows[i]||[]).join('|').toLowerCase();
+        if(s.indexOf('ism')!==-1||s.indexOf('nom')!==-1||s.indexOf('name')!==-1||s.indexOf('telefon')!==-1||s.indexOf('phone')!==-1||s.indexOf('faoliyat')!==-1){startRow=i+1;break;}
+      }
+      if(!DB.entrepreneurs) DB.entrepreneurs=[];
+      var added=0;
+      for(var r=startRow;r<rows.length;r++){
+        var row=rows[r];
+        if(!row||!row[0]||String(row[0]).trim().length<2) continue;
+        var nm=String(row[0]||'').trim();
+        var ph=String(row[1]||'').trim();
+        var sec=String(row[2]||'').trim();
+        var tg=String(row[3]||'').trim().replace('@','');
+        if(DB.entrepreneurs.some(function(x){return x.name===nm&&x.phone===ph;})) continue;
+        var rec={id:'ent_'+(Date.now()+r),name:nm,phone:ph,sector:sec,telegram:tg,matchedForum:'',tgSent:false,addedDate:new Date().toISOString().slice(0,10)};
+        DB.entrepreneurs.push(rec);
+        if(typeof fbSave==='function') fbSave('entrepreneurs',rec);
+        added++;
+      }
+      renderEntrepreneurs();
+      toast('✅ '+added+' ta tadbirkor import qilindi! (Jami: '+DB.entrepreneurs.length+')');
+    } catch(err){toast('⚠️ '+err.message,'error');console.error(err);}
+  };
+  if(file.name.toLowerCase().endsWith('.csv')) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+  if(input.value!==undefined) input.value='';
+}
+
+function deleteEntrepreneur(id){
+  DB.entrepreneurs=(DB.entrepreneurs||[]).filter(function(e){return e.id!==id;});
+  if(typeof fbDelete==='function') fbDelete('entrepreneurs',id);
+  renderEntrepreneurs();
+}
+
+function matchForumsToEntrepreneurs(){
+  var forums=DB.forums||[];
+  var entrList=DB.entrepreneurs||[];
+  if(!entrList.length){toast('⚠️ Avval tadbirkorlar ro\'yxatini import qiling','error');return;}
+
+  // Collect all forums: local + international
+  var allForums=[];
+  forums.forEach(function(f){allForums.push({nom:f.nom||'',sana:f.sana||'',desc:f.desc||'',turi:f.turi||''});});
+  // Add INTL_FORUMS
+  if(typeof INTL_FORUMS!=='undefined'&&typeof INTL_REGIONS!=='undefined'){
+    INTL_REGIONS.forEach(function(reg){
+      (INTL_FORUMS[reg.key]||[]).forEach(function(f){allForums.push({nom:f.name||f.nom||'',sana:f.date||f.sana||'',desc:(f.focus||'')+(f.tags?f.tags.join(' '):''),turi:'intl'});});
+    });
+  }
+  if(!allForums.length){toast('⚠️ Forumlar bazasi bo\'sh','error');return;}
+
+  var now=new Date();
+  // Filter upcoming (next 90 days)
+  var upcoming=allForums.filter(function(f){
+    if(!f.sana) return true;
+    var d=new Date(f.sana);
+    var diff=(d-now)/(86400000);
+    return diff>-7&&diff<90;
+  });
+  if(!upcoming.length) upcoming=allForums;
+
+  var matched=0;
+  entrList.forEach(function(ent){
+    ent.matchedForum='';
+    var entSec=(ent.sector||'').toLowerCase();
+    if(!entSec) return;
+    var bestForum=null,bestScore=0;
+    upcoming.forEach(function(forum){
+      var fText=(forum.nom+' '+forum.desc).toLowerCase();
+      var score=0;
+      for(var sk in SECTOR_KEYWORDS){
+        var kws=SECTOR_KEYWORDS[sk];
+        var entHas=kws.some(function(kw){return entSec.indexOf(kw)!==-1;});
+        if(entHas&&kws.some(function(kw){return fText.indexOf(kw)!==-1;})) score+=10;
+      }
+      entSec.split(/[\s,;\/]+/).forEach(function(w){if(w.length>3&&fText.indexOf(w)!==-1) score+=5;});
+      if(score>bestScore){bestScore=score;bestForum=forum;}
+    });
+    if(bestForum&&bestScore>=5){
+      ent.matchedForum=bestForum.nom.slice(0,40)+(bestForum.sana?' ('+bestForum.sana+')':'');
+      if(typeof fbSave==='function') fbSave('entrepreneurs',ent);
+      matched++;
+    }
+  });
+  renderEntrepreneurs();
+  toast('🔗 '+matched+' ta tadbirkor forumga moslashtirildi! ('+(entrList.length-matched)+' ta mos kelmadi)');
+}
+
+function checkForumAlerts(){
+  var forums=DB.forums||[];
+  var entrList=DB.entrepreneurs||[];
+  var el=document.getElementById('forumAlerts');
+  if(!el) return;
+
+  // Include intl forums
+  var allForums=[];
+  forums.forEach(function(f){allForums.push({nom:f.nom||'',sana:f.sana||''});});
+  if(typeof INTL_FORUMS!=='undefined'&&typeof INTL_REGIONS!=='undefined'){
+    INTL_REGIONS.forEach(function(reg){
+      (INTL_FORUMS[reg.key]||[]).forEach(function(f){allForums.push({nom:f.name||f.nom||'',sana:f.date||f.sana||''});});
+    });
+  }
+
+  var now=new Date();
+  var alerts=[];
+  allForums.forEach(function(f){
+    if(!f.sana) return;
+    var d=new Date(f.sana);
+    var days=Math.ceil((d-now)/86400000);
+    if(days>0&&days<=30){
+      var mc=entrList.filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(f.nom.slice(0,20))!==-1;}).length;
+      alerts.push({nom:f.nom,sana:f.sana,days:days,matches:mc,urgency:days<=7?'🔴':days<=14?'🟡':'🟢'});
+    }
+  });
+  if(!alerts.length){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML='<div style="font-size:.75rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔔 Yaqinlashib kelayotgan forumlar:</div>'+
+    alerts.sort(function(a,b){return a.days-b.days;}).map(function(a){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg2);border-radius:8px;margin-bottom:4px;font-size:.7rem">'+
+        '<span>'+a.urgency+'</span>'+
+        '<span style="flex:1"><b>'+a.nom.slice(0,35)+'</b> — '+a.sana+'</span>'+
+        '<span style="color:#4361EE;font-weight:700">'+a.days+' kun</span>'+
+        '<span style="color:#059669">'+a.matches+' tadbirkor</span>'+
+        '<button class="btn btn-sm" onclick="sendTelegramForForum(\''+a.nom.replace(/'/g,'')+'\',\''+a.sana+'\')" style="background:#0088cc;color:#fff;border:none;font-size:.55rem;padding:2px 8px">📨</button></div>';
+    }).join('');
+}
+
+async function sendTelegramToMatched(){
+  var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&!e.tgSent;});
+  if(!list.length){toast('⚠️ Xabar yuborish uchun moslashtirilgan tadbirkor yo\'q yoki allaqachon yuborilgan','error');return;}
+  var s=DB.settings||{};
+  var token=s.tgToken||'';
+  var chatId=s.tgChatId||'';
+  if(!token||!chatId){toast('⚠️ ⚙️ Sozlamalar → Telegram Bot Token va Chat ID kiriting','error');return;}
+  if(!confirm(list.length+' ta tadbirkorga Telegram xabar yuboriladi. Davom etsinmi?')) return;
+  var sent=0,fail=0;
+  for(var i=0;i<list.length;i++){
+    var e=list[i];
+    var msg='🏭 Hurmatli '+e.name+'!\n\n'+
+      '📋 Faoliyat: '+e.sector+'\n'+
+      '🗓 Mos forum: '+e.matchedForum+'\n\n'+
+      '✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n'+
+      '📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
+    try {
+      var resp=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text:msg})});
+      if(resp.ok){e.tgSent=true;e.tgDate=new Date().toISOString().slice(0,10);if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;}
+      else{fail++;}
+    }catch(x){fail++;}
+    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1100);});
+  }
+  renderEntrepreneurs();
+  toast('📨 '+sent+' ta yuborildi'+(fail?' | '+fail+' ta xato':'')+'!');
+}
+
+async function sendTelegramForForum(forumNom, forumSana){
+  var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(forumNom.slice(0,15))!==-1&&!e.tgSent;});
+  if(!list.length){toast('⚠️ "'+forumNom+'" uchun mos/yuborilmagan tadbirkor yo\'q','info');return;}
+  var s=DB.settings||{};
+  var token=s.tgToken||'';
+  var chatId=s.tgChatId||'';
+  if(!token||!chatId){toast('⚠️ ⚙️ Sozlamalar → Telegram Bot Token va Chat ID kiriting','error');return;}
+  toast('📨 "'+forumNom.slice(0,30)+'" — '+list.length+' ta tadbirkorga xabar...');
+  var sent=0;
+  for(var i=0;i<list.length;i++){
+    var e=list[i];
+    var msg='🔔 FORUM TAKLIFI\n\n👤 '+e.name+'\n🏭 '+e.sector+'\n🗓 '+forumNom+(forumSana?' — '+forumSana:'')+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
+    try {
+      var resp=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text:msg})});
+      if(resp.ok){e.tgSent=true;if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;}
+    }catch(x){}
+    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1100);});
+  }
+  renderEntrepreneurs();
+  toast('📨 '+sent+' ta xabar yuborildi!');
 }
 
 /* ═══════════════════════════════════════════════════════════════
