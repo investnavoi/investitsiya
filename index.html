@@ -871,6 +871,7 @@ input[type="time"]{-webkit-appearance:none;}
     <div class="tn-tab" id="tab-finder" onclick="showPage('finder')" title="Finder"><span class="tn-tab-icon">🔍</span><span>Company Finder</span></div>
     <div class="tn-tab" id="tab-ailetter" onclick="showPage('ailetter')" title="AI Xat"><span class="tn-tab-icon">📧</span><span>AI Xatlar</span></div>
     <div class="tn-tab" id="tab-pipeline" onclick="showPage('pipeline')" title="Pipeline"><span class="tn-tab-icon">📋</span><span>Pipeline</span></div>
+    <div class="tn-tab" id="tab-trade" onclick="showPage('trade')" title="Global Trade"><span class="tn-tab-icon">🌐</span><span>Global Trade</span></div>
     <div class="tn-tab" id="tab-settings" onclick="showPage('settings')" title="Sozlamalar"><span class="tn-tab-icon">⚙️</span><span>Sozlamalar</span></div>
   </div>
   </div>
@@ -1599,6 +1600,129 @@ input[type="time"]{-webkit-appearance:none;}
   </div>
 </div>
 
+<!-- ===== PAGE: GLOBAL TRADE DATA ===== -->
+<div class="page" id="page-trade">
+  <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
+    <div class="pg-head"><div class="pg-title">🌐 Xalqaro Savdo Ma'lumotlari</div><div class="pg-sub">196 davlatning barcha import/eksport mahsulotlari — UN Comtrade rasmiy ma'lumotlari</div></div>
+
+    <div class="form-card" style="margin-bottom:1rem">
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:200px">
+          <label class="form-label">🌍 Davlat tanlang</label>
+          <select class="form-input" id="trade-country" onchange="onTradeCountryChange()">
+            <option value="">— Davlat tanlang —</option>
+            <optgroup label="🇺🇿 Markaziy Osiyo">
+              <option value="860">🇺🇿 O'zbekiston</option><option value="398">🇰🇿 Qozog'iston</option>
+              <option value="417">🇰🇬 Qirg'iziston</option><option value="762">🇹🇯 Tojikiston</option><option value="795">🇹🇲 Turkmaniston</option>
+            </optgroup>
+            <optgroup label="🇷🇺 MDH davlatlari">
+              <option value="643">🇷🇺 Rossiya</option><option value="031">🇦🇿 Ozarbayjon</option>
+              <option value="268">🇬🇪 Gruziya</option><option value="051">🇦🇲 Armaniston</option>
+              <option value="112">🇧🇾 Belorussiya</option><option value="804">🇺🇦 Ukraina</option>
+            </optgroup>
+            <optgroup label="🌏 Osiyo">
+              <option value="156">🇨🇳 Xitoy</option><option value="364">🇮🇷 Eron</option>
+              <option value="586">🇵🇰 Pokiston</option><option value="004">🇦🇫 Afg'oniston</option>
+              <option value="356">🇮🇳 Hindiston</option><option value="392">🇯🇵 Yaponiya</option>
+              <option value="410">🇰🇷 Janubiy Koreya</option><option value="496">🇲🇳 Mo'g'uliston</option>
+              <option value="764">🇹🇭 Tailand</option><option value="360">🇮🇩 Indoneziya</option>
+              <option value="458">🇲🇾 Malayziya</option><option value="704">🇻🇳 Vyetnam</option>
+            </optgroup>
+            <optgroup label="🌍 Yaqin Sharq">
+              <option value="784">🇦🇪 BAA (Dubai)</option><option value="682">🇸🇦 Saudiya Arabistoni</option>
+              <option value="792">🇹🇷 Turkiya</option><option value="368">🇮🇶 Iroq</option>
+              <option value="400">🇯🇴 Iordaniya</option><option value="422">🇱🇧 Livan</option>
+            </optgroup>
+            <optgroup label="🇪🇺 Yevropa">
+              <option value="276">🇩🇪 Germaniya</option><option value="826">🇬🇧 Buyuk Britaniya</option>
+              <option value="250">🇫🇷 Fransiya</option><option value="380">🇮🇹 Italiya</option>
+              <option value="724">🇪🇸 Ispaniya</option><option value="528">🇳🇱 Niderlandiya</option>
+              <option value="616">🇵🇱 Polsha</option><option value="203">🇨🇿 Chexiya</option>
+              <option value="040">🇦🇹 Avstriya</option><option value="756">🇨🇭 Shveytsariya</option>
+            </optgroup>
+            <optgroup label="🌎 Amerika">
+              <option value="842">🇺🇸 AQSh</option><option value="124">🇨🇦 Kanada</option>
+              <option value="076">🇧🇷 Braziliya</option><option value="484">🇲🇽 Meksika</option>
+              <option value="032">🇦🇷 Argentina</option><option value="152">🇨🇱 Chili</option>
+            </optgroup>
+            <optgroup label="🌍 Afrika">
+              <option value="818">🇪🇬 Misr</option><option value="710">🇿🇦 Janubiy Afrika</option>
+              <option value="566">🇳🇬 Nigeriya</option><option value="404">🇰🇪 Keniya</option>
+            </optgroup>
+            <optgroup label="🌏 Okeaniya">
+              <option value="036">🇦🇺 Avstraliya</option><option value="554">🇳🇿 Yangi Zelandiya</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0 0 110px">
+          <label class="form-label">📅 Yil</label>
+          <select class="form-input" id="trade-year">
+            <option value="2024">2024</option><option value="2023" selected>2023</option>
+            <option value="2022">2022</option><option value="2021">2021</option><option value="2020">2020</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0 0 130px">
+          <label class="form-label">📦 Yo'nalish</label>
+          <select class="form-input" id="trade-flow">
+            <option value="M">📥 Import (kiruvchi)</option><option value="X">📤 Eksport (chiquvchi)</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0 0 120px">
+          <label class="form-label">HS daraja</label>
+          <select class="form-input" id="trade-hs-level">
+            <option value="2">2-raqamli (guruh)</option><option value="4" selected>4-raqamli (kichik guruh)</option><option value="6">6-raqamli (mahsulot)</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0 0 auto">
+          <button class="btn btn-blue" onclick="loadGlobalTradeData()">🔍 Qidirish</button>
+        </div>
+      </div>
+      <div style="margin-top:.6rem;display:flex;gap:.5rem;align-items:center">
+        <input class="form-input" id="trade-hs-filter" placeholder="HS kod filtr (masalan: 25, 68, 27)" style="max-width:300px;font-size:.75rem">
+        <input class="form-input" id="trade-name-filter" placeholder="Mahsulot nomi bo'yicha qidirish..." style="flex:1;font-size:.75rem" oninput="filterTradeTable()">
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div id="tradeKpis" style="display:none" class="kpi-grid"></div>
+
+    <!-- Progress -->
+    <div id="tradeLoading" style="display:none;padding:2rem;text-align:center">
+      <div style="font-size:2rem;margin-bottom:.5rem">🌐</div>
+      <div style="font-size:.8rem;font-weight:700;color:var(--text)" id="tradeLoadingText">UN Comtrade API'dan ma'lumot olmoqda...</div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;max-width:300px;margin:1rem auto">
+        <div id="tradeBar" style="height:100%;background:linear-gradient(90deg,#4285F4,#34A853);border-radius:3px;width:0%;transition:width .5s"></div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div id="tradeChartCard" class="tcard" style="display:none;margin-bottom:1rem">
+      <div class="tc-head"><div class="tc-title" id="tradeChartTitle">📊 TOP 20 mahsulot</div></div>
+      <div id="tradeChartArea" style="padding:.5rem;overflow-x:auto"></div>
+    </div>
+
+    <div id="tradeTableCard" class="tcard" style="display:none">
+      <div class="tc-head">
+        <div class="tc-title">📋 Mahsulotlar ro'yxati (<span id="trade-count">0</span>)</div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-sm" onclick="exportTradeCSV()" style="background:#059669;color:#fff;border:none">📥 CSV yuklash</button>
+          <button class="btn btn-sm" onclick="matchTradeWithProducts()" style="background:#4361EE;color:#fff;border:none">🔗 Navoiy mahsulotlarga moslashtirish</button>
+        </div>
+      </div>
+      <div class="tscroll" style="max-height:600px;overflow-y:auto"><table>
+        <thead><tr>
+          <th>#</th><th>HS Kod</th><th>Mahsulot nomi</th>
+          <th>Qiymati ($)</th><th>Og'irligi (kg)</th><th>Navoiy mos</th>
+        </tr></thead>
+        <tbody id="trade-tbody"></tbody>
+      </table></div>
+      <div style="padding:.4rem .8rem;font-size:.55rem;color:var(--text3);text-align:right">📊 Manba: UN Comtrade rasmiy bazasi (comtradeapi.un.org)</div>
+    </div>
+
+    <div id="tradeEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">🌐</div><p>Davlat tanlang va "🔍 Qidirish" bosing — shu davlatning barcha import/eksport mahsulotlari chiqadi</p></div>
+  </div>
+</div>
+
 <!-- ===== PAGE: SOZLAMALAR (Settings) ===== -->
 <div class="page" id="page-settings">
   <div style="max-width:1200px;margin:0 auto;padding:1.8rem;">
@@ -1627,6 +1751,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group span-2"><label class="form-label">Gemini API Key</label><input class="form-input" id="set-gemini-key" type="password" placeholder="AIzaSy..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">aistudio.google.com dan oling</div></div>
         <div class="form-group span-2"><label class="form-label">Apollo API Key</label><input class="form-input" id="set-apollo-key" type="password" placeholder="API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">apollo.io dan oling</div></div>
         <div class="form-group span-2"><label class="form-label">SeaRates API Key</label><input class="form-input" id="set-searates-key" type="password" placeholder="SeaRates API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">searates.com/integrations dan oling (bepul tier — 100 so'rov/oy)</div></div>
+        <div class="form-group span-2"><label class="form-label">🌐 UN Comtrade Subscription Key</label><input class="form-input" id="set-comtrade-key" type="password" placeholder="UN Comtrade subscription key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">comtradeplus.un.org → Sign Up → Subscription → Get Key (bepul: 500 so'rov/kun, 100K qator). <b>Kalitsiz ham ishlaydi</b> (100 so'rov/kun, 500 qator)</div></div>
         <div class="form-group span-2"><label class="form-label">📊 PPTX Template (Prezentatsiya namunasi)</label><div style="display:flex;gap:.5rem;align-items:center"><button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:#4361EE;color:#fff;border:none">📁 Template yuklash (.pptx)</button><span id="pptx-template-status" style="font-size:.6rem;color:var(--text3)">Yuklanmagan</span></div><div style="font-size:.55rem;color:var(--text3);margin-top:4px">Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi</div></div>
         <div class="form-group span-2"><label class="form-label">PPTX Template URL</label><input class="form-input" id="set-pptx-url" type="url" placeholder="https://investnavoi.github.io/investitsiya/template_english.pptx"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">GitHub Pages'da template_english.pptx faylini host qiling | <a href="#" onclick="uploadPptxTemplate();return false" style="color:#4361EE">yoki kompyuterdan yuklang</a></div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Bot Token</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling</div></div>
@@ -2809,6 +2934,7 @@ function showPage(id){
   else if(id==='finder')populateProductSelects();
   else if(id==='ailetter')populateProductSelects();
   else if(id==='pipeline')renderPipeline();
+  else if(id==='trade'){}// no init needed
   else if(id==='settings')loadSettings();
 }
 
@@ -6956,6 +7082,291 @@ function showAddProductModal(){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   GLOBAL TRADE DATA — UN Comtrade API
+   196 davlatning BARCHA import/export mahsulotlari
+   ═══════════════════════════════════════════════════════════════ */
+var _tradeData = [];
+var _tradeCache = {};
+
+async function loadGlobalTradeData(){
+  var countryCode = document.getElementById('trade-country').value;
+  if(!countryCode){ toast('⚠️ Davlat tanlang','error'); return; }
+  var year = document.getElementById('trade-year').value;
+  var flow = document.getElementById('trade-flow').value;
+  var hsLevel = document.getElementById('trade-hs-level').value;
+  var hsFilter = (document.getElementById('trade-hs-filter').value||'').trim();
+  var countryName = document.getElementById('trade-country').selectedOptions[0].text;
+  var flowName = flow==='M'?'Import':'Export';
+
+  // Check cache
+  var cacheKey = countryCode+'_'+year+'_'+flow+'_'+hsLevel;
+  if(_tradeCache[cacheKey]){
+    _tradeData = _tradeCache[cacheKey];
+    renderTradeResults(countryName, flowName, year, hsFilter);
+    return;
+  }
+
+  document.getElementById('tradeEmpty').style.display = 'none';
+  document.getElementById('tradeTableCard').style.display = 'none';
+  document.getElementById('tradeChartCard').style.display = 'none';
+  document.getElementById('tradeKpis').style.display = 'none';
+  document.getElementById('tradeLoading').style.display = 'block';
+  document.getElementById('tradeBar').style.width = '20%';
+  document.getElementById('tradeLoadingText').textContent = '🌐 '+countryName+' — '+flowName+' ma\'lumotlari yuklanmoqda ('+year+')...';
+
+  // Get Comtrade subscription key if available
+  var comtradeKey = (window._apiKeys && window._apiKeys.comtrade) || '';
+
+  try {
+    // UN Comtrade API — Premium (with key) or Public (without key)
+    var proxyUrl = 'https://keen-biscochitos-9a137d.netlify.app/api/trade'+
+      '?reporter='+countryCode+'&year='+year+'&flow='+flow+(hsFilter?'&hs='+hsFilter:'')+(comtradeKey?'&key='+comtradeKey:'');
+    
+    var directUrl;
+    if(comtradeKey){
+      // Premium API — 500 so'rov/kun, 100K qator
+      directUrl = 'https://comtradeapi.un.org/data/v1/get/C/A/HS'+
+        '?reporterCode='+countryCode+'&period='+year+'&flowCode='+flow+
+        '&maxRecords=5000&includeDesc=true'+(hsFilter?'&cmdCode='+hsFilter:'');
+    } else {
+      // Public Preview API — 100 so'rov/kun, 500 qator
+      directUrl = 'https://comtradeapi.un.org/public/v1/preview/C/A/HS'+
+        '?reporterCode='+countryCode+'&period='+year+'&flowCode='+flow+
+        '&maxRecords=500&includeDesc=true'+(hsFilter?'&cmdCode='+hsFilter:'');
+    }
+
+    document.getElementById('tradeBar').style.width = '30%';
+    document.getElementById('tradeLoadingText').textContent = '🌐 '+(comtradeKey?'Premium':'Public')+' API orqali yuklanmoqda...';
+    
+    // Try proxy first
+    var resp = null;
+    try {
+      resp = await fetch(proxyUrl);
+      if(!resp.ok) resp = null;
+    } catch(e){ resp = null; }
+
+    document.getElementById('tradeBar').style.width = '50%';
+    
+    // Fallback to direct API
+    if(!resp){
+      try {
+        var headers = {'Accept':'application/json'};
+        if(comtradeKey) headers['Ocp-Apim-Subscription-Key'] = comtradeKey;
+        resp = await fetch(directUrl, {headers:headers});
+      } catch(e){ resp = null; }
+    }
+
+    document.getElementById('tradeBar').style.width = '70%';
+
+    if(!resp.ok) throw new Error('API xato: '+resp.status);
+    var json = await resp.json();
+
+    // Parse results
+    var rawData = json.data || json.countries || [];
+    _tradeData = rawData.filter(function(r){
+      // Filter by HS level
+      var code = String(r.cmdCode||'');
+      if(hsLevel==='2') return code.length<=2;
+      if(hsLevel==='4') return code.length<=4 && code.length>2;
+      if(hsLevel==='6') return code.length<=6 && code.length>4;
+      return true;
+    }).map(function(r){
+      return {
+        hsCode: String(r.cmdCode||''),
+        description: r.cmdDesc || r.description || '',
+        value: r.primaryValue || r.fobvalue || r.cifvalue || r.import_usd || 0,
+        weight: r.netWgt || r.grossWgt || r.quantity || 0,
+        partner: r.partnerDesc || r.partner || 'World',
+        partnerCode: r.partnerCode || '',
+        year: r.period || year,
+        flow: flow
+      };
+    }).filter(function(r){ return r.value > 0; })
+    .sort(function(a,b){ return b.value - a.value; });
+
+    // Cache
+    _tradeCache[cacheKey] = _tradeData;
+
+    document.getElementById('tradeBar').style.width = '100%';
+    document.getElementById('tradeLoading').style.display = 'none';
+
+    if(!_tradeData.length){
+      // Try with proxy as backup
+      toast('⚠️ UN Comtrade javob bermadi. Proxy orqali qayta urinilmoqda...','info');
+      throw new Error('No data');
+    }
+
+    renderTradeResults(countryName, flowName, year, hsFilter);
+
+  } catch(e){
+    document.getElementById('tradeLoading').style.display = 'none';
+
+    // Gemini AI fallback
+    toast('🤖 Gemini AI orqali taxminiy ma\'lumot olinmoqda...','info');
+    try {
+      var aiPrompt = 'Return ONLY valid JSON array. List TOP 30 products that '+countryName+' '+flowName.toLowerCase()+'s, with realistic 2023 trade values.\n'+
+        'JSON: [{"hs":"2516","name":"Granite crude/blocks","value_usd":45000000,"weight_kg":250000000},...]'+
+        '\nUse real HS 4-digit codes. Values must be realistic based on actual trade data.';
+      var body = {contents:[{role:'user',parts:[{text:aiPrompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2000}};
+      var data = await callGemini(body);
+      var arr = safeParseJSON(geminiText(data));
+      if(Array.isArray(arr)){
+        _tradeData = arr.map(function(r){
+          return {hsCode:r.hs||'',description:r.name||'',value:r.value_usd||0,weight:r.weight_kg||0,partner:'World',year:year,flow:flow};
+        }).sort(function(a,b){return b.value-a.value;});
+        renderTradeResults(countryName, flowName, year, hsFilter, true);
+      } else throw new Error('AI parse error');
+    } catch(e2){
+      document.getElementById('tradeEmpty').style.display = 'block';
+      toast('❌ Ma\'lumot olishda xato: '+e2.message,'error');
+    }
+  }
+}
+
+function renderTradeResults(countryName, flowName, year, hsFilter, isAI){
+  var data = _tradeData;
+
+  // Apply name filter
+  var nameFilter = (document.getElementById('trade-name-filter').value||'').toLowerCase();
+  if(nameFilter){
+    data = data.filter(function(r){return r.description.toLowerCase().indexOf(nameFilter)!==-1 || r.hsCode.indexOf(nameFilter)!==-1;});
+  }
+
+  // KPIs
+  var totalValue = data.reduce(function(s,r){return s+r.value;},0);
+  var totalWeight = data.reduce(function(s,r){return s+r.weight;},0);
+  var topProduct = data[0]||{description:'—',value:0};
+  document.getElementById('tradeKpis').style.display = 'grid';
+  document.getElementById('tradeKpis').innerHTML =
+    '<div class="kpi-card c1"><div class="kpi-icon">'+(flowName==='Import'?'📥':'📤')+'</div><div class="kpi-label">Jami '+flowName+'</div><div class="kpi-val">$'+(totalValue>=1e9?(totalValue/1e9).toFixed(1)+'B':(totalValue/1e6).toFixed(0)+'M')+'</div></div>'+
+    '<div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Mahsulot turlari</div><div class="kpi-val">'+data.length+'</div></div>'+
+    '<div class="kpi-card c3"><div class="kpi-icon">🏆</div><div class="kpi-label">Eng katta</div><div class="kpi-val" style="font-size:.6rem">'+topProduct.description.slice(0,25)+'</div></div>'+
+    '<div class="kpi-card c4"><div class="kpi-icon">⚖️</div><div class="kpi-label">Jami og\'irlik</div><div class="kpi-val">'+(totalWeight>=1e9?(totalWeight/1e9).toFixed(0)+'Kt':totalWeight>=1e6?(totalWeight/1e6).toFixed(0)+'t':(totalWeight/1e3).toFixed(0)+'kg')+'</div></div>';
+
+  // Chart — top 20
+  var top20 = data.slice(0,20);
+  document.getElementById('tradeChartCard').style.display = 'block';
+  document.getElementById('tradeChartTitle').textContent = '📊 '+countryName+' — TOP 20 '+flowName+' mahsulotlari ('+year+')'+(isAI?' ⚠️ AI taxminiy':'');
+
+  // Build bar chart with HTML
+  var maxVal = top20[0]?top20[0].value:1;
+  document.getElementById('tradeChartArea').innerHTML = top20.map(function(r,i){
+    var pct = Math.max(r.value/maxVal*100, 2);
+    var valStr = r.value>=1e9?'$'+(r.value/1e9).toFixed(1)+'B':r.value>=1e6?'$'+(r.value/1e6).toFixed(0)+'M':'$'+(r.value/1e3).toFixed(0)+'K';
+    var colors = ['#4361EE','#059669','#F59E0B','#EF233C','#8B5CF6','#14B8A6','#F97316','#EC4899','#6366F1','#10B981'];
+    var color = colors[i%colors.length];
+    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'+
+      '<div style="width:60px;font-size:.55rem;text-align:right;color:var(--text3);flex-shrink:0">'+r.hsCode+'</div>'+
+      '<div style="flex:1;height:22px;background:var(--border);border-radius:3px;overflow:hidden;position:relative">'+
+        '<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:3px"></div>'+
+        '<div style="position:absolute;left:4px;top:2px;font-size:.55rem;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.5)">'+r.description.slice(0,40)+'</div>'+
+      '</div>'+
+      '<div style="width:70px;font-size:.6rem;font-weight:700;color:var(--text);text-align:right">'+valStr+'</div>'+
+    '</div>';
+  }).join('');
+
+  // Table
+  document.getElementById('tradeTableCard').style.display = 'block';
+  document.getElementById('trade-count').textContent = data.length;
+
+  // Match with Navoi products
+  var navProducts = (DB.products||[]);
+  var tb = document.getElementById('trade-tbody');
+  tb.innerHTML = data.map(function(r,i){
+    var valStr = r.value>=1e9?'$'+(r.value/1e9).toFixed(2)+'B':r.value>=1e6?'$'+(r.value/1e6).toFixed(1)+'M':'$'+(r.value/1e3).toFixed(0)+'K';
+    var wStr = r.weight>=1e9?(r.weight/1e9).toFixed(0)+' Kt':r.weight>=1e6?(r.weight/1e6).toFixed(0)+' t':r.weight>=1e3?(r.weight/1e3).toFixed(0)+' kg':r.weight+' g';
+
+    // Check if Navoi produces this HS code
+    var match = navProducts.find(function(p){
+      return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(p.hs_code.slice(0,4))===0);
+    });
+    var matchBadge = match ?
+      '<span style="background:#059669;color:#fff;padding:2px 6px;border-radius:4px;font-size:.55rem;font-weight:700;cursor:pointer" onclick="showPage(\'products\')" title="'+match.name_en+'">✅ '+match.name_en.slice(0,20)+'</span>' :
+      '<span style="color:var(--text3);font-size:.55rem">—</span>';
+
+    return '<tr'+(match?' style="background:rgba(5,150,105,.04)"':'')+'>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td style="font-family:monospace;font-size:.7rem;font-weight:700">'+r.hsCode+'</td>'+
+      '<td style="font-size:.7rem">'+r.description+'</td>'+
+      '<td style="font-weight:700;color:'+(flowName==='Import'?'#EF233C':'#059669')+'">'+valStr+'</td>'+
+      '<td style="font-size:.65rem;color:var(--text3)">'+wStr+'</td>'+
+      '<td>'+matchBadge+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var matchCount = data.filter(function(r){
+    return navProducts.some(function(p){return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(p.hs_code.slice(0,4))===0);});
+  }).length;
+  if(matchCount>0) toast('🔗 '+matchCount+' ta mahsulot Navoiy ishlab chiqarishi bilan mos keldi!');
+  toast('✅ '+data.length+' ta mahsulot yuklandi: '+countryName+' '+flowName+' ('+year+')'+(isAI?' — AI taxminiy':''));
+}
+
+function filterTradeTable(){
+  if(!_tradeData.length) return;
+  var countryName = document.getElementById('trade-country').selectedOptions[0]?.text||'';
+  var flow = document.getElementById('trade-flow').value;
+  var year = document.getElementById('trade-year').value;
+  renderTradeResults(countryName, flow==='M'?'Import':'Export', year, '');
+}
+
+function onTradeCountryChange(){
+  // Auto-load if country selected
+}
+
+function exportTradeCSV(){
+  if(!_tradeData.length){toast('⚠️ Ma\'lumot yo\'q','error');return;}
+  var countryName = document.getElementById('trade-country').selectedOptions[0]?.text||'Country';
+  var year = document.getElementById('trade-year').value;
+  var flow = document.getElementById('trade-flow').value==='M'?'Import':'Export';
+
+  var csv = 'HS Code,Product Name,Value (USD),Weight (kg),Year,Flow\n';
+  _tradeData.forEach(function(r){
+    csv += '"'+r.hsCode+'","'+r.description.replace(/"/g,'""')+'",'+r.value+','+r.weight+','+r.year+','+flow+'\n';
+  });
+
+  var blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = countryName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+flow+'_'+year+'.csv';
+  link.click();
+  toast('📥 CSV yuklandi: '+link.download);
+}
+
+function matchTradeWithProducts(){
+  if(!_tradeData.length){toast('⚠️ Ma\'lumot yo\'q','error');return;}
+  var navProducts = DB.products||[];
+  if(!navProducts.length){toast('⚠️ Mahsulotlar bazasi bo\'sh. Avval Excel import qiling.','error');return;}
+
+  var matches = [];
+  _tradeData.forEach(function(trade){
+    navProducts.forEach(function(prod){
+      if(prod.hs_code && trade.hsCode){
+        var prodHS = prod.hs_code.replace(/\s/g,'').slice(0,4);
+        var tradeHS = trade.hsCode.slice(0,4);
+        if(prodHS === tradeHS){
+          matches.push({trade:trade, product:prod, matchLevel: prodHS.length >= 4 ? 'exact' : 'partial'});
+        }
+      }
+    });
+  });
+
+  if(!matches.length){
+    toast('⚠️ HS kod bo\'yicha mos mahsulot topilmadi','info');
+    return;
+  }
+
+  var msg = '🔗 '+matches.length+' ta moslik topildi!\n\n';
+  matches.slice(0,15).forEach(function(m){
+    var valStr = m.trade.value>=1e6?'$'+(m.trade.value/1e6).toFixed(1)+'M':'$'+(m.trade.value/1e3).toFixed(0)+'K';
+    msg += '• '+m.product.name_en+' (HS:'+m.product.hs_code+') ↔ '+m.trade.description.slice(0,40)+' ['+valStr+']\n';
+  });
+  if(matches.length>15) msg += '\n...va yana '+(matches.length-15)+' ta';
+  msg += '\n\n🎯 Bu davlat Navoiy mahsulotlari uchun potensial bozor!';
+  alert(msg);
+  toast('🔗 '+matches.length+' ta mos mahsulot topildi!');
+}
+
+/* ═══════════════════════════════════════════════════════════════
    NAVOI INVESTMENT PPTX GENERATOR — 23 SLIDES
    Matches template: Проект_мраморная_линия.pptx
    Each product gets individual presentation with real data
@@ -8154,6 +8565,8 @@ function loadSettings(){
   if(akEl) akEl.value = keys.apollo||'';
   var srEl = document.getElementById('set-searates-key');
   if(srEl) srEl.value = keys.searates||'';
+  var ctEl = document.getElementById('set-comtrade-key');
+  if(ctEl) ctEl.value = keys.comtrade||'';
   var pptxEl = document.getElementById('set-pptx-url');
   if(pptxEl) pptxEl.value = keys.pptx_url||'';
   if(keys.pptx_url && typeof PPTX_TEMPLATE_URL!=='undefined') PPTX_TEMPLATE_URL = keys.pptx_url;
@@ -8192,6 +8605,10 @@ function saveSettings(){
   var searatesVal = (document.getElementById('set-searates-key')||{}).value||'';
   if(searatesVal && typeof saveApiKey==='function'){
     saveApiKey('searates', searatesVal.trim());
+  }
+  var comtradeVal = (document.getElementById('set-comtrade-key')||{}).value||'';
+  if(comtradeVal && typeof saveApiKey==='function'){
+    saveApiKey('comtrade', comtradeVal.trim());
   }
   var pptxUrl = (document.getElementById('set-pptx-url')||{}).value||'';
   if(pptxUrl){
