@@ -1337,58 +1337,69 @@ input[type="time"]{-webkit-appearance:none;}
         <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 12 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
       </div>
 
-      <!-- TRANSPORT KALKULYATOR (SeaRates Widget + Navoiy solishtirma) -->
+      <!-- TRANSPORT — 4 TAB: POYEZD, YUK MASHINA, HAVO, SEARATES -->
       <div class="tcard" style="margin-top:1rem">
-        <div class="tc-head">
-          <div class="tc-title">🚛 Transport Narxi — SeaRates Kalkulyator</div>
-          <div style="display:flex;gap:.5rem">
-            <button class="btn btn-sm" onclick="document.getElementById('searatesWidget').style.display=document.getElementById('searatesWidget').style.display==='none'?'block':'none'" style="background:var(--bg2);border:1px solid var(--border);font-size:.65rem">📐 Katta/Kichik</button>
-          </div>
+        <div class="tc-head"><div class="tc-title">🚛 Transport Kalkulyator</div></div>
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border)">
+          <div onclick="showTransportTab('rail')" id="trTab-rail" style="flex:1;padding:10px;border-bottom:2px solid #4361EE;cursor:pointer;text-align:center;background:rgba(67,97,238,.08)"><div style="font-size:1.2rem">🚂</div><div style="font-size:.65rem;font-weight:700">Poyezd</div></div>
+          <div onclick="showTransportTab('truck')" id="trTab-truck" style="flex:1;padding:10px;border-bottom:2px solid transparent;cursor:pointer;text-align:center"><div style="font-size:1.2rem">🚛</div><div style="font-size:.65rem;font-weight:700">Yuk mashina</div></div>
+          <div onclick="showTransportTab('air')" id="trTab-air" style="flex:1;padding:10px;border-bottom:2px solid transparent;cursor:pointer;text-align:center"><div style="font-size:1.2rem">✈️</div><div style="font-size:.65rem;font-weight:700">Havo</div></div>
+          <div onclick="showTransportTab('widget')" id="trTab-widget" style="flex:1;padding:10px;border-bottom:2px solid transparent;cursor:pointer;text-align:center"><div style="font-size:1.2rem">🌐</div><div style="font-size:.65rem;font-weight:700">SeaRates</div></div>
         </div>
-        <div style="padding:.5rem">
-          <!-- SeaRates Logistics Explorer Widget -->
-          <div id="searatesWidget" style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
-            <iframe src="https://www.searates.com/widget/logistics-explorer?from=Navoi,UZ&color=4361EE" 
-              width="100%" height="520" frameborder="0" style="border:none;border-radius:10px" 
-              allow="geolocation" loading="lazy"></iframe>
-          </div>
-          <div style="font-size:.55rem;color:var(--text3);text-align:right;margin-top:4px">📊 Manba: SeaRates.com — real vaqt yuk tashish narxlari | Bepul</div>
+        <div id="trPanel-rail" style="padding:.8rem">
+          <div class="tscroll"><table><thead><tr><th>Marshrut</th><th>Masofa</th><th>20'</th><th>40'</th><th>Muddat</th></tr></thead><tbody>
+            <tr><td>🇺🇿 Navoiy→Toshkent</td><td>480km</td><td style="color:#059669;font-weight:700">$350</td><td style="color:#059669;font-weight:700">$500</td><td>1 kun</td></tr>
+            <tr><td>🇺🇿 Navoiy→Buxoro</td><td>120km</td><td style="color:#059669;font-weight:700">$150</td><td style="color:#059669;font-weight:700">$220</td><td>0.5 kun</td></tr>
+            <tr><td>🇺🇿 Toshkent→🇰🇿 Olma-ota</td><td>850km</td><td>$600</td><td>$900</td><td>2 kun</td></tr>
+            <tr><td>🇺🇿 Toshkent→🇷🇺 Moskva</td><td>3400km</td><td>$2,800</td><td>$4,200</td><td>12-15 kun</td></tr>
+            <tr><td>🇨🇳 Xi'an→🇺🇿 Toshkent</td><td>4500km</td><td>$3,200</td><td>$4,800</td><td>8-10 kun</td></tr>
+            <tr><td>🇩🇪 Hamburg→🇺🇿 Toshkent</td><td>6200km</td><td>$4,000</td><td>$5,500</td><td>14-18 kun</td></tr>
+            <tr><td>🇹🇷 Istanbul→🇺🇿 Toshkent</td><td>4800km</td><td>$3,500</td><td>$5,000</td><td>12-15 kun</td></tr>
+          </tbody></table></div>
+          <div style="font-size:.5rem;color:var(--text3);margin-top:4px">📊 Taxminiy narxlar — logistika kompaniyalardan aniq taklif oling</div>
+        </div>
+        <div id="trPanel-truck" style="padding:.8rem;display:none">
+          <div class="tscroll"><table><thead><tr><th>Marshrut</th><th>Masofa</th><th>$/tonna</th><th>FTL</th><th>Muddat</th></tr></thead><tbody>
+            <tr><td>🇺🇿 Navoiy→Toshkent</td><td>480km</td><td style="color:#059669;font-weight:700">$18</td><td style="color:#059669;font-weight:700">$350</td><td>8 soat</td></tr>
+            <tr><td>🇺🇿 Navoiy→Samarqand</td><td>300km</td><td style="color:#059669;font-weight:700">$12</td><td style="color:#059669;font-weight:700">$240</td><td>5 soat</td></tr>
+            <tr><td>🇺🇿 Toshkent→🇰🇿 Olma-ota</td><td>850km</td><td>$35</td><td>$700</td><td>1.5 kun</td></tr>
+            <tr><td>🇺🇿 Toshkent→🇰🇬 Bishkek</td><td>650km</td><td>$30</td><td>$600</td><td>1 kun</td></tr>
+            <tr><td>🇺🇿 Toshkent→🇹🇯 Dushanbe</td><td>600km</td><td>$35</td><td>$700</td><td>1.5 kun</td></tr>
+            <tr><td>🇺🇿 Termiz→🇦🇫 Mazori Sharif</td><td>80km</td><td>$40</td><td>$800</td><td>1 kun</td></tr>
+            <tr><td>🇮🇷 Bandar Abbas→🇺🇿 Toshkent</td><td>2800km</td><td>$60</td><td>$2,800</td><td>5-7 kun</td></tr>
+            <tr><td>🇹🇷 Istanbul→🇺🇿 Toshkent</td><td>4800km</td><td>$80</td><td>$4,500</td><td>8-10 kun</td></tr>
+          </tbody></table></div>
+          <div style="font-size:.5rem;color:var(--text3);margin-top:4px">📊 della-uz.com va logistika kompaniyalar asosida</div>
+        </div>
+        <div id="trPanel-air" style="padding:.8rem;display:none">
+          <div class="tscroll"><table><thead><tr><th>Marshrut</th><th>$/kg(100)</th><th>$/kg(500)</th><th>$/kg(1000)</th><th>Muddat</th></tr></thead><tbody>
+            <tr><td>🇩🇪 Frankfurt→🇺🇿 TAS</td><td>$2.50</td><td>$1.90</td><td>$1.70</td><td>1-2 kun</td></tr>
+            <tr><td>🇧🇪 Liege→🇺🇿 TAS</td><td>$2.00</td><td>$1.70</td><td>$1.50</td><td>1-2 kun</td></tr>
+            <tr><td>🇦🇪 Dubai→🇺🇿 TAS</td><td>$1.80</td><td>$1.50</td><td>$1.20</td><td>1 kun</td></tr>
+            <tr><td>🇹🇷 Istanbul→🇺🇿 TAS</td><td>$2.20</td><td>$1.80</td><td>$1.50</td><td>1 kun</td></tr>
+            <tr><td>🇨🇳 Shanghai→🇺🇿 TAS</td><td>$3.00</td><td>$2.50</td><td>$2.00</td><td>1-2 kun</td></tr>
+            <tr><td>🇷🇺 Moskva→🇺🇿 TAS</td><td>$1.50</td><td>$1.20</td><td>$1.00</td><td>4 soat</td></tr>
+          </tbody></table></div>
+          <div style="padding:.6rem;background:rgba(67,97,238,.05);border-radius:8px;margin-top:.6rem;font-size:.65rem">✈️ <b>Navoiy xalqaro aeroporti</b> — Markaziy Osiyodagi eng zamonaviy yuk terminali. Korean Air, Asiana yuk reyslar.</div>
+          <div style="font-size:.5rem;color:var(--text3);margin-top:4px">📊 aircgc.com, corp.uzairways.com asosida</div>
+        </div>
+        <div id="trPanel-widget" style="padding:.5rem;display:none">
+          <iframe src="https://www.searates.com/widget/logistics-explorer?from=Navoi,UZ&color=4361EE" width="100%" height="500" frameborder="0" style="border:none;border-radius:10px" allow="geolocation" loading="lazy"></iframe>
+          <div style="font-size:.5rem;color:var(--text3);text-align:right;margin-top:4px">📊 SeaRates.com — real vaqt (dengiz, havo, temir, avto)</div>
         </div>
       </div>
 
-      <!-- Navoiy vs Xorij solishtirma kalkulyator -->
+      <!-- Navoiy vs Xorij solishtirma -->
       <div class="tcard" style="margin-top:1rem">
-        <div class="tc-head">
-          <div class="tc-title">🇺🇿 Navoiy vs Xorij — Transport Solishtirma</div>
-        </div>
+        <div class="tc-head"><div class="tc-title">🇺🇿 Navoiy vs Xorij — Solishtirma</div></div>
         <div style="padding:1rem">
           <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
-            <div class="form-group" style="flex:1;min-width:180px">
-              <label class="form-label">Xorijdan (konteyner narxi $)</label>
-              <input class="form-input" id="tr-intl-price" type="number" placeholder="5500" value="5500">
-              <div style="font-size:.55rem;color:var(--text3);margin-top:2px">SeaRates'dan olingan narxni kiriting</div>
-            </div>
-            <div class="form-group" style="flex:1;min-width:180px">
-              <label class="form-label">Qayerga</label>
-              <select class="form-input" id="tr-to">
-                <option value="tashkent">🇺🇿 Toshkent ($500)</option>
-                <option value="almaty">🇰🇿 Olma-ota ($1,200)</option>
-                <option value="bishkek">🇰🇬 Bishkek ($1,400)</option>
-                <option value="dushanbe">🇹🇯 Dushanbe ($800)</option>
-                <option value="kabul">🇦🇫 Kobul ($1,100)</option>
-                <option value="navoi">🇺🇿 Navoiy ($0 — mahalliy)</option>
-              </select>
-            </div>
-            <div class="form-group" style="flex:0 0 130px">
-              <label class="form-label">Yiliga konteyner</label>
-              <input class="form-input" id="tr-annual" type="number" value="100" min="1">
-            </div>
-            <div class="form-group" style="flex:0 0 auto">
-              <button class="btn btn-blue" onclick="calculateFreightCompare()">📊 Solishtirish</button>
-            </div>
+            <div class="form-group" style="flex:1;min-width:140px"><label class="form-label">Transport</label><select class="form-input" id="tr-mode"><option value="rail">🚂 Poyezd</option><option value="truck">🚛 Yuk mashina</option><option value="air">✈️ Havo</option></select></div>
+            <div class="form-group" style="flex:1;min-width:140px"><label class="form-label">Xorijdan narx ($)</label><input class="form-input" id="tr-intl-price" type="number" value="5500"></div>
+            <div class="form-group" style="flex:1;min-width:140px"><label class="form-label">Qayerga</label><select class="form-input" id="tr-to"><option value="tashkent">🇺🇿 Toshkent</option><option value="almaty">🇰🇿 Olma-ota</option><option value="bishkek">🇰🇬 Bishkek</option><option value="dushanbe">🇹🇯 Dushanbe</option><option value="kabul">🇦🇫 Kobul</option><option value="navoi">🇺🇿 Navoiy</option></select></div>
+            <div class="form-group" style="flex:0 0 100px"><label class="form-label">Yiliga</label><input class="form-input" id="tr-annual" type="number" value="100"></div>
+            <div class="form-group" style="flex:0 0 auto"><button class="btn btn-blue" onclick="calculateFreightCompare()">📊 Solishtirish</button></div>
           </div>
-
-          <!-- Natija -->
           <div id="freightResult" style="display:none">
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem;margin-bottom:1rem" id="freightCards"></div>
             <div id="freightCompare" style="padding:1rem;background:var(--bg2);border-radius:10px"></div>
@@ -7439,6 +7450,19 @@ function clearWorldBankData(){
   document.getElementById('wb-tbody').innerHTML = '';
   document.getElementById('wbKpiGrid').innerHTML = '';
   toast('🗑 World Bank ma\'lumotlari tozalandi');
+}
+
+/* ═══ TRANSPORT TAB SWITCHING ═══ */
+function showTransportTab(tab){
+  ['rail','truck','air','widget'].forEach(function(t){
+    var panel = document.getElementById('trPanel-'+t);
+    var tabEl = document.getElementById('trTab-'+t);
+    if(panel) panel.style.display = t===tab ? 'block' : 'none';
+    if(tabEl){
+      tabEl.style.borderBottom = t===tab ? '2px solid #4361EE' : '2px solid transparent';
+      tabEl.style.background = t===tab ? 'rgba(67,97,238,.08)' : 'transparent';
+    }
+  });
 }
 
 /* ═══ TRANSPORT SOLISHTIRMA KALKULYATOR ═══ */
