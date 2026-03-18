@@ -161,6 +161,19 @@ window.fbSaveCollection = async function(colName, records){
   } catch(e){ console.error('fbSaveCollection error:', e); }
 };
 
+// Delete entire collection from Firebase
+window.fbDeleteCollection = async function(colName){
+  try {
+    const colRef = collection(db, colName);
+    const snap = await getDocs(colRef);
+    if(snap.empty) return;
+    const batch = writeBatch(db);
+    snap.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    console.log('🗑 Firebase: '+colName+' — '+snap.size+' ta yozuv o\'chirildi');
+  } catch(e){ console.error('fbDeleteCollection error:', e); }
+};
+
 // Wait for DB to be defined then load
 function waitForDB(){
   if(typeof DB !== 'undefined' && typeof renderAll === 'function'){
@@ -1224,7 +1237,10 @@ input[type="time"]{-webkit-appearance:none;}
     <!-- Xomashyo filtrlari -->
     <div class="tcard" style="margin-bottom:1rem">
       <div class="tc-head"><div class="tc-title">⛏️ Xomashyolar</div>
-        <button class="btn btn-blue btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo'shish</button>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-blue btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo'shish</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('rawMaterials')" style="color:#EF233C">🗑 Tozalash</button>
+        </div>
       </div>
       <div id="rawMaterialChips" style="padding:.8rem;display:flex;flex-wrap:wrap;gap:.5rem"></div>
     </div>
@@ -1232,13 +1248,14 @@ input[type="time"]{-webkit-appearance:none;}
     <!-- Mahsulotlar jadvali -->
     <div class="tcard">
       <div class="tc-head"><div class="tc-title">📦 Mahsulotlar (<span id="pr-prod-count">0</span>)</div>
-        <div style="display:flex;gap:.5rem">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
           <button class="btn btn-blue btn-sm" onclick="showAddProductModal()">➕ Mahsulot qo'shish</button>
           <button class="btn btn-sm" onclick="loadSampleProducts()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">🤖 AI bilan to'ldirish</button>
           <label class="btn btn-sm" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none;cursor:pointer">
             📥 Excel import
             <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)">
           </label>
+          <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('products')" style="color:#EF233C">🗑 Tozalash</button>
         </div>
       </div>
       <div class="tscroll"><table>
@@ -1292,7 +1309,10 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="tcard" style="margin-top:1rem">
         <div class="tc-head">
           <div class="tc-title">🏦 12 Davlat Iqtisodiy Ko'rsatkichlari (World Bank)</div>
-          <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
+          </div>
         </div>
         <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
         <div id="wbData" style="display:none">
@@ -1426,7 +1446,10 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: PIPELINE (M5+M6: Outreach + CRM) ===== -->
 <div class="page" id="page-pipeline">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">📋 Pipeline — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
+    <div class="pg-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      <div><div class="pg-title">📋 Pipeline — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="resetAllPipeline()" style="color:#EF233C">🗑 Pipeline tozalash</button>
+    </div>
     <div class="kpi-grid">
       <div class="kpi-card c1"><div class="kpi-icon">📨</div><div class="kpi-label">Jami yuborildi</div><div class="kpi-val" id="pl-k1">0</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">👀</div><div class="kpi-label">Ochildi</div><div class="kpi-val" id="pl-k2">0%</div></div>
@@ -5040,19 +5063,33 @@ function deleteRecord(table, id){
   };
 }
 function clearAllConfirm(table){
-  document.getElementById('deleteMsg').textContent=`"${table}" — ${t('delete_all_msg')}`;
+  var nameMap = {
+    investors:'Investorlar', local:'Tadbirkorlar', zoom:'Zoom', forums:'Forumlar',
+    investorCompanies:'Investorlar bazasi', rawMaterials:'Xomashyolar', products:'Mahsulotlar'
+  };
+  var count = (DB[table]||[]).length;
+  document.getElementById('deleteMsg').textContent = (nameMap[table]||table)+' — '+count+' ta yozuvni o\'chirish tasdiqlaysizmi?';
   document.getElementById('deleteModal').classList.add('open');
+  document.getElementById('deleteModal').style.display = 'flex';
   const confirmBtn = document.getElementById('deleteConfirmBtn');
   const newBtn = confirmBtn.cloneNode(true);
   confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
   newBtn.onclick=()=>{
     DB[table]=[];
-    if(typeof fbSaveCollection==='function') fbSaveCollection(table,[]);
-    ({investors:renderInvestors,local:renderLocal,zoom:renderZoom,forums:renderForums,investorCompanies:renderInvestorCompanies})[table]?.();
+    // Firebase'dan ham o'chirish
+    if(typeof fbDeleteCollection==='function') fbDeleteCollection(table);
+    // Render
+    var renderMap = {
+      investors:renderInvestors, local:renderLocal, zoom:renderZoom, forums:renderForums,
+      investorCompanies:renderInvestorCompanies,
+      rawMaterials:typeof renderProducts==='function'?renderProducts:null,
+      products:typeof renderProducts==='function'?renderProducts:null
+    };
+    if(renderMap[table]) renderMap[table]();
     renderOverview();
     document.getElementById('deleteModal').classList.remove('open');
     document.getElementById('deleteModal').style.display='';
-    toast(t('toast_all_deleted'),'info');
+    toast('🗑 '+count+' ta yozuv o\'chirildi!','info');
   };
 }
 
@@ -6553,7 +6590,8 @@ window.addEventListener('load', ()=>{
 /* ═══ GEMINI CONFIG (must be first) ═══ */
 // API kalit Firebase'dan yuklanadi, agar yo'q bo'lsa fallback
 var GEMINI_KEY = (window._apiKeys && window._apiKeys.gemini) || '';
-const GEMINI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite'];
+// Faqat ishlaydigan modellar — 2.0-flash va lite YOQILMAGAN, faqat 2.5-flash ishlaydi
+const GEMINI_MODELS = ['gemini-2.5-flash'];
 
 function getGeminiKey(){
   // Always check Firebase first
@@ -6565,7 +6603,9 @@ function geminiUrl(model){
 }
 async function callGemini(body, _retryCount){
   var retryCount = _retryCount || 0;
-  var maxRetries = 3;
+  var maxRetries = 2;
+  var key = getGeminiKey();
+  if(!key) throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
   
   for(var m=0; m<GEMINI_MODELS.length; m++){
     try {
@@ -6574,21 +6614,22 @@ async function callGemini(body, _retryCount){
         var data = await resp.json();
         if(data.candidates && data.candidates[0]) return data;
       }
-      // 429 = rate limit — kutib qayta urinish
+      // Read error body once
+      var errBody = await resp.json().catch(function(){return {};});
+      var errMsg = errBody.error?.message || ('Status: '+resp.status);
+      
+      // 429 = rate limit — wait and retry
       if(resp.status === 429 && retryCount < maxRetries){
-        var errData = await resp.json().catch(function(){return {};});
-        var waitMatch = (errData.error?.message||'').match(/retry in (\d+)/i);
-        var waitSec = waitMatch ? parseInt(waitMatch[1])+2 : 15*(retryCount+1);
-        toast('⏳ Gemini limit — '+waitSec+' soniya kutilmoqda... ('+(retryCount+1)+'/'+maxRetries+')','info');
+        var waitMatch = errMsg.match(/retry in (\d+)/i);
+        var waitSec = waitMatch ? parseInt(waitMatch[1])+3 : 20;
+        toast('⏳ Gemini limit — '+waitSec+'s kutilmoqda... ('+(retryCount+1)+'/'+maxRetries+')','info');
         await new Promise(function(r){setTimeout(r, waitSec*1000);});
         return callGemini(body, retryCount+1);
       }
-      var errMsg = '';
-      try { var ej = await resp.json(); errMsg = ej.error?.message||''; } catch(x){}
-      console.log('Gemini '+GEMINI_MODELS[m]+' xato:', errMsg || resp.status);
+      console.log('Gemini '+GEMINI_MODELS[m]+' xato:', errMsg);
     } catch(e){ console.log('Gemini '+GEMINI_MODELS[m]+' fetch error:',e); }
   }
-  throw new Error('Gemini API limit. '+maxRetries+' marta qayta urinildi. Biroz kutib qayta urinib ko\'ring.');
+  throw new Error('Gemini API xato. 15 soniya kutib qayta urinib ko\'ring.');
 }
 
 // Safe JSON parser — handles Gemini's messy responses
@@ -7207,6 +7248,29 @@ async function loadWorldBankData(){
   if(typeof fbSave==='function') fbSave('worldBankData', DB.worldBankData);
 
   toast('✅ 12 davlat iqtisodiy ma\'lumotlari yuklandi! (World Bank)');
+}
+
+function resetAllPipeline(){
+  if(!confirm('Barcha kompaniyalarning pipeline holatini "Yangi" ga qaytarish tasdiqlaysizmi?')) return;
+  var co = DB.investorCompanies||[];
+  co.forEach(function(c){
+    c.pipelineStage = 'new';
+    c.emailSent = false;
+    c.emailSentDate = '';
+    if(typeof fbSave==='function') fbSave('investorCompanies', c);
+  });
+  renderPipeline();
+  toast('🗑 Pipeline tozalandi — barcha kompaniyalar "Yangi" holatiga qaytarildi');
+}
+
+function clearWorldBankData(){
+  if(!confirm('World Bank ma\'lumotlarini tozalash?')) return;
+  DB.worldBankData = null;
+  document.getElementById('wbData').style.display = 'none';
+  document.getElementById('wbEmpty').style.display = 'block';
+  document.getElementById('wb-tbody').innerHTML = '';
+  document.getElementById('wbKpiGrid').innerHTML = '';
+  toast('🗑 World Bank ma\'lumotlari tozalandi');
 }
 
 function goToFinder(prodId, countryCode){
