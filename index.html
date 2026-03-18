@@ -7635,24 +7635,66 @@ function renderEntrepreneurs(){
     return;
   }
   tb.innerHTML = list.map(function(e,i){
-    var stIcon = e.tgSent ? '<span style="color:#059669">✅</span>' : (e.matchedForum ? '<span style="color:#F59E0B">🟡</span>' : '<span style="color:var(--text3)">⚪</span>');
+    var stIcon = e.tgSent ? '<span style="color:#059669" title="'+( e.tgDate||'')+'">✅</span>' : (e.matchedForum ? '<span style="color:#F59E0B">🟡</span>' : '<span style="color:var(--text3)">⚪</span>');
+    var phoneCell = e.phone ?
+      '<span id="ph-display-'+e.id+'" style="cursor:pointer" onclick="editEntPhone(\''+e.id+'\')" title="Bosib o\'zgartiring">'+e.phone+' ✏️</span>' :
+      '<button class="btn btn-sm" onclick="editEntPhone(\''+e.id+'\')" style="background:#F59E0B;color:#fff;border:none;font-size:.6rem;padding:2px 8px">📞 Qo\'shish</button>';
+    var phoneEdit = '<div id="ph-edit-'+e.id+'" style="display:none"><input style="width:120px;padding:2px 4px;font-size:.7rem;border:1px solid #4361EE;border-radius:4px" id="ph-input-'+e.id+'" value="'+(e.phone||'')+'" placeholder="+998..." onkeydown="if(event.key===\'Enter\')saveEntPhone(\''+e.id+'\')"><button onclick="saveEntPhone(\''+e.id+'\')" style="background:#059669;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:.6rem;margin-left:2px;cursor:pointer">💾</button></div>';
     return '<tr'+(e.matchedForum?' style="background:rgba(5,150,105,.04)"':'')+'>'+
       '<td><input type="checkbox" class="entr-check" data-id="'+e.id+'" '+(e.matchedForum?'checked':'')+'></td>'+
       '<td>'+(i+1)+'</td>'+
-      '<td><b>'+(e.name||'')+'</b>'+(e.telegram?'<div style="font-size:.55rem;color:#0088cc">@'+e.telegram+'</div>':'')+'</td>'+
+      '<td><b>'+(e.name||'')+'</b></td>'+
       '<td style="font-size:.7rem">'+(e.district||'—')+'</td>'+
-      '<td style="font-size:.75rem">'+(e.phone||'—')+'</td>'+
+      '<td style="font-size:.75rem">'+phoneCell+phoneEdit+'</td>'+
       '<td style="font-size:.7rem">'+(e.sector||'—')+'</td>'+
       '<td style="font-size:.7rem;font-weight:700;color:#059669">'+(e.projectValue?'$'+e.projectValue+'M':'—')+'</td>'+
       '<td style="font-size:.6rem;color:#4361EE">'+(e.matchedForum||'—')+'</td>'+
       '<td style="font-size:.65rem">'+stIcon+'</td>'+
-      '<td><button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')">🗑</button></td></tr>';
+      '<td style="white-space:nowrap">'+
+        '<button class="btn btn-sm" onclick="sendSingleTg(\''+e.id+'\')" style="background:#0088cc;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram xabar">📲</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')" style="font-size:.55rem;padding:2px 6px">🗑</button>'+
+      '</td></tr>';
   }).join('');
-  // Auto-open when data exists
-  var body=document.getElementById('entrBody');
-  var icon=document.getElementById('entr-toggle-icon');
-  if(body&&list.length>0){body.style.display='block';if(icon)icon.textContent='▲';}
   checkForumAlerts();
+}
+
+function editEntPhone(id){
+  var display = document.getElementById('ph-display-'+id);
+  var edit = document.getElementById('ph-edit-'+id);
+  if(display) display.style.display = 'none';
+  if(edit) edit.style.display = 'inline-flex';
+  var inp = document.getElementById('ph-input-'+id);
+  if(inp) inp.focus();
+}
+
+function saveEntPhone(id){
+  var inp = document.getElementById('ph-input-'+id);
+  if(!inp) return;
+  var newPhone = inp.value.trim();
+  var ent = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
+  if(!ent) return;
+  ent.phone = newPhone;
+  if(typeof fbSave==='function') fbSave('entrepreneurs', ent);
+  renderEntrepreneurs();
+  toast('📞 Telefon yangilandi: '+ent.name+' → '+newPhone);
+}
+
+// Bitta tadbirkorga Telegram xabar yuborish
+async function sendSingleTg(id){
+  var ent = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
+  if(!ent) return;
+  if(!ent.phone){toast('⚠️ Telefon raqam yo\'q. Avval raqam qo\'shing.','error');editEntPhone(id);return;}
+  var msg = '🏭 Hurmatli '+ent.name+'!\n\n'+(ent.district?'📍 '+ent.district+'\n':'')+'📋 '+ent.sector+'\n'+(ent.projectValue?'💰 $'+ent.projectValue+'M\n':'')+(ent.matchedForum?'🗓 '+ent.matchedForum+'\n':'')+'\n✅ Navoiy viloyati Investitsiya boshqarmasi sizni hamkorlikka taklif qiladi!\n\n📞 Bog\'lanish: Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
+  toast('📲 '+ent.name+' ('+ent.phone+') ga xabar yuborilmoqda...');
+  var result = await sendTgMessage(ent.phone, msg, ent.name);
+  if(result.ok){
+    ent.tgSent=true;ent.tgDate=new Date().toISOString().slice(0,10);
+    if(typeof fbSave==='function') fbSave('entrepreneurs',ent);
+    renderEntrepreneurs();
+    toast('📲 ✅ '+ent.name+' ('+ent.phone+') ga xabar yuborildi!'+(result.user?' TG: '+result.user:''));
+  } else {
+    toast('❌ '+ent.name+': '+result.error,'error');
+  }
 }
 
 function importEntrepreneurs(input){
