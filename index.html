@@ -1039,6 +1039,56 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="intl-forums-grid" id="intl-forums-grid"></div>
     </div>
 
+    <!-- MAHALLIY TADBIRKORLAR — tepada, yig'iladigan -->
+    <div class="tcard" style="margin-bottom:1rem">
+      <div class="tc-head" style="cursor:pointer" onclick="toggleEntrepreneurs()">
+        <div class="tc-title">🏭 Mahalliy Tadbirkorlar (<span id="entr-count">0</span>) <span id="entr-toggle-icon" style="font-size:.7rem">▼</span></div>
+        <div style="display:flex;gap:.5rem" onclick="event.stopPropagation()">
+          <label class="btn btn-sm" style="background:#059669;color:#fff;border:none;cursor:pointer">
+            📥 Excel import
+            <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEntrepreneurs(this)">
+          </label>
+          <button class="btn btn-blue btn-sm" onclick="matchForumsToEntrepreneurs()">🔗 Moslashtirish</button>
+          <button class="btn btn-sm" onclick="sendTelegramToMatched()" style="background:linear-gradient(135deg,#0088cc,#229ED9);color:#fff;border:none">📲 Telegram</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('entrepreneurs')" style="color:#EF233C">🗑</button>
+        </div>
+      </div>
+      <div id="entrBody" style="display:none">
+        <!-- Drop zone -->
+        <div id="entrDropZone" style="margin:8px;padding:.6rem;border:2px dashed var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s"
+          ondragover="event.preventDefault();this.style.borderColor='#059669';this.style.background='rgba(5,150,105,.05)'"
+          ondragleave="this.style.borderColor='var(--border)';this.style.background='transparent'"
+          ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='transparent';importEntrepreneurs({files:event.dataTransfer.files})"
+          onclick="this.querySelector('input')&&this.querySelector('input').click()">
+          <span style="font-size:.7rem;color:var(--text3)">📊 Excel faylni shu yerga tashlang</span>
+          <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEntrepreneurs(this)">
+        </div>
+        <!-- Jadval -->
+        <div class="tscroll" style="max-height:450px;overflow-y:auto"><table>
+          <thead><tr><th>☑</th><th>#</th><th>Ism / Kompaniya</th><th>Tuman</th><th>📞 Telefon</th><th>Faoliyat</th><th>$M</th><th>Mos forum</th><th>📨</th><th></th></tr></thead>
+          <tbody id="entr-tbody"></tbody>
+        </table></div>
+        <div style="padding:.3rem .8rem;font-size:.5rem;color:var(--text3)">💡 Hukumat formati (№,Туман,Компания,Лойиҳа,Қиймати,Тел) yoki Oddiy (Ism,Telefon,Faoliyat)</div>
+      </div>
+    </div>
+
+    <!-- Yaqinlashib kelayotgan forumlar — bosilganda mos tadbirkorlar chiqadi -->
+    <div id="forumAlerts" style="display:none;margin-bottom:1rem"></div>
+
+    <!-- Forum tadbirkor modal -->
+    <div id="forumEntrepreneursModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center">
+      <div style="background:var(--card);border-radius:16px;max-width:700px;width:95%;max-height:80vh;overflow-y:auto;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <div id="femTitle" style="font-size:1rem;font-weight:700">🗓 Forum tadbirkorlari</div>
+          <button onclick="document.getElementById('forumEntrepreneursModal').style.display='none'" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text)">✕</button>
+        </div>
+        <div id="femBody"></div>
+        <div style="margin-top:1rem;text-align:right">
+          <button class="btn btn-sm" onclick="sendTgForModalForum()" style="background:#0088cc;color:#fff;border:none">📲 Barchasiga Telegram xabar</button>
+        </div>
+      </div>
+    </div>
+
     <div class="tcard" style="margin-bottom:1.2rem">
       <div class="tc-head">
         <div class="tc-title" data-i18n="fr_table_title">Tadbirlar ro'yxati</div>
@@ -1046,42 +1096,6 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
     </div>
     <div class="forum-grid" id="forum-cards"></div>
-
-    <!-- MAHALLIY TADBIRKORLAR BAZASI -->
-    <div class="tcard" style="margin-top:1.5rem">
-      <div class="tc-head">
-        <div class="tc-title">🏭 Mahalliy Tadbirkorlar (<span id="entr-count">0</span>)</div>
-        <div style="display:flex;gap:.5rem">
-          <label class="btn btn-sm" style="background:#059669;color:#fff;border:none;cursor:pointer">
-            📥 Excel import
-            <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEntrepreneurs(this)">
-          </label>
-          <button class="btn btn-blue btn-sm" onclick="matchForumsToEntrepreneurs()">🔗 Forum moslashtirish</button>
-          <button class="btn btn-sm" onclick="sendTelegramToMatched()" style="background:linear-gradient(135deg,#0088cc,#229ED9);color:#fff;border:none">📲 Telegram xabar</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('entrepreneurs')" style="color:#EF233C">🗑</button>
-        </div>
-      </div>
-
-      <!-- Drag & drop -->
-      <div id="entrDropZone" style="margin:8px;padding:.8rem;border:2px dashed var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s"
-        ondragover="event.preventDefault();this.style.borderColor='#059669';this.style.background='rgba(5,150,105,.05)'"
-        ondragleave="this.style.borderColor='var(--border)';this.style.background='transparent'"
-        ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='transparent';importEntrepreneurs({files:event.dataTransfer.files})"
-        onclick="this.querySelector('input')&&this.querySelector('input').click()">
-        <span style="font-size:.75rem;color:var(--text3)">📊 Excel faylni shu yerga tashlang (Ism, Telefon, Faoliyat yo'nalishi)</span>
-        <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEntrepreneurs(this)">
-      </div>
-
-      <!-- Yaqinlashib kelayotgan forumlar uchun bildirishnoma -->
-      <div id="forumAlerts" style="display:none;padding:.5rem .8rem"></div>
-
-      <!-- Jadval -->
-      <div class="tscroll" style="max-height:500px;overflow-y:auto"><table>
-        <thead><tr><th>☑</th><th>#</th><th>Ism / Kompaniya</th><th>Tuman</th><th>📞 Telefon</th><th>Faoliyat yo'nalishi</th><th>Qiymati ($M)</th><th>Mos forum</th><th>📨</th><th>Amal</th></tr></thead>
-        <tbody id="entr-tbody"></tbody>
-      </table></div>
-      <div style="padding:.4rem .8rem;font-size:.55rem;color:var(--text3)">💡 Excel formatlari avtomatik aniqlanadi: <b>Hukumat formati</b> (№, Туман, Компания, Лойиҳа, Қиймати, Телефон) yoki <b>Oddiy</b> (Ism, Telefon, Faoliyat, Telegram)</div>
-    </div>
   </div>
 </div>
 
@@ -7634,6 +7648,10 @@ function renderEntrepreneurs(){
       '<td style="font-size:.65rem">'+stIcon+'</td>'+
       '<td><button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')">🗑</button></td></tr>';
   }).join('');
+  // Auto-open when data exists
+  var body=document.getElementById('entrBody');
+  var icon=document.getElementById('entr-toggle-icon');
+  if(body&&list.length>0){body.style.display='block';if(icon)icon.textContent='▲';}
   checkForumAlerts();
 }
 
@@ -7897,6 +7915,55 @@ function matchForumsToEntrepreneurs(){
   toast('🔗 '+matched+' ta tadbirkor forumga moslashtirildi! ('+(entrList.length-matched)+' ta mos kelmadi)');
 }
 
+function toggleEntrepreneurs(){
+  var body=document.getElementById('entrBody');
+  var icon=document.getElementById('entr-toggle-icon');
+  if(!body) return;
+  if(body.style.display==='none'){body.style.display='block';if(icon)icon.textContent='▲';}
+  else{body.style.display='none';if(icon)icon.textContent='▼';}
+}
+
+var _currentModalForum = '';
+
+function showForumEntrepreneurs(forumNom){
+  var entrList=DB.entrepreneurs||[];
+  var matched=entrList.filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(forumNom.slice(0,15))!==-1;});
+  _currentModalForum = forumNom;
+
+  document.getElementById('femTitle').innerHTML='🗓 <b>'+forumNom+'</b> — '+matched.length+' ta mos tadbirkor';
+
+  if(!matched.length){
+    document.getElementById('femBody').innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3)">Bu forumga mos tadbirkor topilmadi.<br>Avval "🔗 Moslashtirish" bosing.</div>';
+  } else {
+    document.getElementById('femBody').innerHTML='<table style="width:100%;font-size:.75rem"><thead><tr><th>#</th><th>Ism</th><th>Tuman</th><th>📞 Telefon</th><th>Faoliyat</th><th>📨</th></tr></thead><tbody>'+
+      matched.map(function(e,i){
+        var st=e.tgSent?'<span style="color:#059669">✅</span>':'<span style="color:var(--text3)">⏳</span>';
+        return '<tr><td>'+(i+1)+'</td><td><b>'+e.name+'</b></td><td style="font-size:.65rem">'+(e.district||'—')+'</td><td>'+(e.phone||'—')+'</td><td style="font-size:.65rem">'+e.sector+'</td><td>'+st+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  document.getElementById('forumEntrepreneursModal').style.display='flex';
+}
+
+async function sendTgForModalForum(){
+  if(!_currentModalForum){toast('⚠️ Forum tanlanmagan','error');return;}
+  var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(_currentModalForum.slice(0,15))!==-1&&!e.tgSent&&e.phone;});
+  if(!list.length){toast('⚠️ Xabar yuborish uchun tadbirkor yo\'q (telefonsiz yoki yuborilgan)','info');return;}
+  if(!confirm(list.length+' ta tadbirkorga "'+_currentModalForum.slice(0,30)+'" haqida Telegram xabar yuborilsinmi?')) return;
+  toast('📲 '+list.length+' ta tadbirkorga xabar...');
+  var sent=0;
+  for(var i=0;i<list.length;i++){
+    var e=list[i];
+    var msg='🔔 FORUM TAKLIFI\n\n👤 '+e.name+(e.district?'\n📍 '+e.district:'')+'\n🏭 '+e.sector+(e.projectValue?'\n💰 $'+e.projectValue+'M':'')+'\n🗓 '+_currentModalForum+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
+    var result=await sendTgMessage(e.phone, msg, e.name);
+    if(result.ok){e.tgSent=true;if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;}
+    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1500);});
+  }
+  renderEntrepreneurs();
+  showForumEntrepreneurs(_currentModalForum); // refresh modal
+  toast('📲 '+sent+' ta xabar yuborildi!');
+}
+
 function checkForumAlerts(){
   var forums=DB.forums||[];
   var entrList=DB.entrepreneurs||[];
@@ -7925,15 +7992,16 @@ function checkForumAlerts(){
   });
   if(!alerts.length){el.style.display='none';return;}
   el.style.display='block';
-  el.innerHTML='<div style="font-size:.75rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔔 Yaqinlashib kelayotgan forumlar:</div>'+
+  el.innerHTML='<div class="tcard" style="padding:.8rem"><div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.5rem">🔔 Yaqinlashib kelayotgan forumlar (bosing → mos tadbirkorlar)</div>'+
     alerts.sort(function(a,b){return a.days-b.days;}).map(function(a){
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg2);border-radius:8px;margin-bottom:4px;font-size:.7rem">'+
+      return '<div onclick="showForumEntrepreneurs(\''+a.nom.replace(/'/g,'')+'\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border-radius:8px;margin-bottom:4px;font-size:.75rem;cursor:pointer;transition:all .15s;border:1px solid var(--border)" onmouseover="this.style.background=\'rgba(67,97,238,.08)\';this.style.borderColor=\'#4361EE\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.borderColor=\'var(--border)\'">'+
         '<span>'+a.urgency+'</span>'+
-        '<span style="flex:1"><b>'+a.nom.slice(0,35)+'</b> — '+a.sana+'</span>'+
+        '<span style="flex:1"><b>'+a.nom.slice(0,40)+'</b> — '+a.sana+'</span>'+
         '<span style="color:#4361EE;font-weight:700">'+a.days+' kun</span>'+
-        '<span style="color:#059669">'+a.matches+' tadbirkor</span>'+
-        '<button class="btn btn-sm" onclick="sendTelegramForForum(\''+a.nom.replace(/'/g,'')+'\',\''+a.sana+'\')" style="background:#0088cc;color:#fff;border:none;font-size:.55rem;padding:2px 8px">📨</button></div>';
-    }).join('');
+        '<span style="background:'+(a.matches>0?'#059669':'var(--text3)')+';color:#fff;padding:2px 8px;border-radius:10px;font-size:.6rem;font-weight:700">'+a.matches+' ta tadbirkor</span>'+
+        '<span style="font-size:.8rem">→</span>'+
+      '</div>';
+    }).join('')+'</div>';
 }
 
 async function sendTelegramToMatched(){
