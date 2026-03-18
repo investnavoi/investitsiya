@@ -7600,114 +7600,291 @@ function importEntrepreneurs(input){
       if(file.name.toLowerCase().endsWith('.csv')){
         ev.target.result.split('\n').forEach(function(line){
           var cols = line.split(/[,;\t]/).map(function(c){return c.trim().replace(/^"|"$/g,'');});
-          if(cols.length>=2 && cols[0]) rows.push(cols);
+          if(cols.length>=2) rows.push(cols);
         });
       } else {
         var wb = XLSX.read(ev.target.result,{type:'array'});
-        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
       }
 
-      // Auto-detect format by scanning first 10 rows for header
-      var headerRow = -1;
-      var format = 'simple'; // simple: Ism,Tel,Faoliyat | uz: №,Tuman,Kompaniya,Loyiha,Qiymati,Tel
-      var colMap = {name:0, phone:1, sector:2, tg:3, district:-1, value:-1};
+      console.log('📥 Import: '+rows.length+' qator o\'qildi');
 
-      for(var i=0; i<Math.min(10, rows.length); i++){
-        var s = (rows[i]||[]).join('|').toLowerCase();
-        // Uzbek gov format: №, Туман, Компания, Лойиҳа, Қиймати, Telefon
-        if(s.indexOf('компания')!==-1 || s.indexOf('лойиҳа')!==-1 || s.indexOf('туман')!==-1){
-          headerRow = i;
-          format = 'uz';
-          // Map columns
-          var hdr = rows[i];
-          for(var c=0; c<hdr.length; c++){
-            var h = String(hdr[c]||'').toLowerCase();
-            if(h.indexOf('компания')!==-1 || h.indexOf('корхона')!==-1 || h.indexOf('ism')!==-1) colMap.name = c;
-            if(h.indexOf('телефон')!==-1 || h.indexOf('telefon')!==-1 || h.indexOf('phone')!==-1 || h.indexOf('тел')!==-1) colMap.phone = c;
-            if(h.indexOf('лойиҳа номи')!==-1 || h.indexOf('фаолият')!==-1 || h.indexOf('йўналиш')!==-1 || h.indexOf('yo\'nalish')!==-1) colMap.sector = c;
-            if(h.indexOf('туман')!==-1 || h.indexOf('шаҳар')!==-1 || h.indexOf('район')!==-1) colMap.district = c;
-            if(h.indexOf('қиймат')!==-1 || h.indexOf('долл')!==-1 || h.indexOf('сумма')!==-1 || h.indexOf('млн')!==-1) colMap.value = c;
+      // STEP 1: Find header row — scan for "компания" or "telefon"
+      var headerIdx = -1;
+      var colName=-1, colPhone=-1, colSector=-1, colDistrict=-1, colValue=-1;
+
+      for(var i=0; i<Math.min(15, rows.length); i++){
+        if(!rows[i]) continue;
+        var cells = rows[i].map(function(c){return String(c||'').toLowerCase();});
+        var joined = cells.join('|');
+
+        // Hukumat formati: Компания, Лойиҳа, Туман
+        if(joined.indexOf('компания')!==-1 || joined.indexOf('лойиҳа')!==-1){
+          headerIdx = i;
+          for(var c=0; c<cells.length; c++){
+            var h = cells[c];
+            if(h.indexOf('компания')!==-1 || h.indexOf('корхона')!==-1) colName = c;
+            else if(h.indexOf('telefon')!==-1 || h.indexOf('телефон')!==-1 || h.indexOf('phone')!==-1) colPhone = c;
+            else if(h.indexOf('лойиҳа номи')!==-1 || h.indexOf('фаолият')!==-1 || h.indexOf('лойиха номи')!==-1) colSector = c;
+            else if(h.indexOf('туман')!==-1 || h.indexOf('район')!==-1 || h.indexOf('шаҳар')!==-1) colDistrict = c;
+            else if(h.indexOf('қиймат')!==-1 || h.indexOf('долл')!==-1 || h.indexOf('млн')!==-1) colValue = c;
           }
+          console.log('📋 Header topildi qator '+i+': name='+colName+' phone='+colPhone+' sector='+colSector+' district='+colDistrict+' value='+colValue);
           break;
         }
-        // Simple format: Ism, Telefon, Faoliyat
-        if(s.indexOf('ism')!==-1||s.indexOf('nom')!==-1||s.indexOf('name')!==-1||s.indexOf('telefon')!==-1||s.indexOf('faoliyat')!==-1){
-          headerRow = i;
-          format = 'simple';
+        // Oddiy format: Ism, Telefon, Faoliyat
+        if(joined.indexOf('ism')!==-1 || joined.indexOf('nom')!==-1 || joined.indexOf('name')!==-1){
+          headerIdx = i;
+          colName=0; colPhone=1; colSector=2;
+          console.log('📋 Oddiy header topildi qator '+i);
           break;
         }
       }
 
-      var startRow = headerRow + 1;
-      // Skip empty/formula rows after header
+      // If no header found, try to detect data rows directly
+      if(headerIdx===-1){
+        console.log('⚠️ Header topilmadi — data qatorlardan qidirish');
+        // Look for first row with 3+ non-empty cells
+        for(var i=0; i<rows.length; i++){
+          var nonEmpty = (rows[i]||[]).filter(function(c){return String(c||'').trim().length>1;}).length;
+          if(nonEmpty >= 3){
+            headerIdx = i-1;
+            colName=0; colPhone=1; colSector=2;
+            break;
+          }
+        }
+      }
+
+      // STEP 2: Find first data row after header
+      var startRow = headerIdx + 1;
       while(startRow < rows.length){
         var testRow = rows[startRow];
-        if(!testRow) {startRow++;continue;}
-        // Skip if first cell is empty or has formula
-        var firstCell = String(testRow[0]||'');
-        if(!firstCell || firstCell.startsWith('=') || firstCell.trim().length===0){startRow++;continue;}
-        // Check if it looks like data (first col is number for uz format)
-        if(format==='uz' && !isNaN(parseInt(firstCell))) break;
-        if(format==='simple' && firstCell.length >= 2) break;
+        if(!testRow){startRow++; continue;}
+        // Check if any cell in this row has real data (not formula, not empty)
+        var hasData = false;
+        for(var c=0; c<testRow.length; c++){
+          var cv = String(testRow[c]||'').trim();
+          if(cv && cv.length > 1 && !cv.startsWith('=') && cv !== 'undefined'){
+            hasData = true;
+            break;
+          }
+        }
+        if(hasData) break;
         startRow++;
       }
 
+      console.log('📋 Data boshlanishi: qator '+startRow+' (headerIdx='+headerIdx+')');
+
+      // STEP 3: Parse data rows
       if(!DB.entrepreneurs) DB.entrepreneurs=[];
-      var added=0;
+      var added=0, skipped=0;
 
       for(var r=startRow; r<rows.length; r++){
         var row = rows[r];
         if(!row) continue;
 
-        var nm='', ph='', sec='', tg='', district='', val='';
-
-        if(format==='uz'){
-          // Uzbek gov format
-          nm = String(row[colMap.name]||'').trim();
-          ph = String(row[colMap.phone]||'').trim();
-          sec = String(row[colMap.sector]||'').trim();
-          if(colMap.district>=0) district = String(row[colMap.district]||'').trim();
-          if(colMap.value>=0) val = String(row[colMap.value]||'').trim();
-          // Skip empty/formula rows
-          if(!nm || nm.startsWith('=') || nm.length < 2) continue;
-          // Clean name: remove "жис.шахс: " prefix
-          nm = nm.replace(/жис\.?\s*шахс\s*[:;]\s*/gi,'').trim();
-          // If sector empty but name has info, use project name
-          if(!sec && colMap.sector>=0) sec = String(row[colMap.sector]||'').trim();
-        } else {
-          // Simple format
-          nm = String(row[0]||'').trim();
-          ph = String(row[1]||'').trim();
-          sec = String(row[2]||'').trim();
-          tg = String(row[3]||'').trim().replace('@','');
-          if(!nm || nm.length < 2) continue;
+        // Get name from mapped column (or try multiple columns)
+        var nm = '';
+        if(colName >= 0) nm = String(row[colName]||'').trim();
+        // If name column is empty, try other columns for text
+        if(!nm || nm.length < 2){
+          for(var c=0; c<row.length; c++){
+            var cv = String(row[c]||'').trim();
+            if(cv.length > 3 && isNaN(cv) && !cv.startsWith('=') && !cv.startsWith('+')){
+              nm = cv;
+              break;
+            }
+          }
         }
+        if(!nm || nm.length < 2){skipped++;continue;}
 
-        // Skip duplicates
-        if(DB.entrepreneurs.some(function(x){return x.name===nm && (x.phone===ph || (!x.phone&&!ph));})) continue;
+        // Clean name
+        nm = nm.replace(/жис\.?\s*шахс\s*[:;]\s*/gi,'').replace(/^\d+[\.\)\s]+/,'').trim();
+        if(!nm || nm.length < 2){skipped++;continue;}
+
+        var ph = colPhone>=0 ? String(row[colPhone]||'').trim() : '';
+        var sec = colSector>=0 ? String(row[colSector]||'').trim() : '';
+        var dist = colDistrict>=0 ? String(row[colDistrict]||'').trim() : '';
+        var val = colValue>=0 ? String(row[colValue]||'').trim() : '';
+
+        // Skip formulas and pure number names
+        if(nm.startsWith('=') || sec.startsWith('=')) continue;
+        // Skip if name is just a number
+        if(!isNaN(nm) && nm.length < 3) continue;
+
+        // Clean phone
+        if(ph && !ph.match(/[\d\+]/)) ph = ''; // Not a phone number
+
+        // Dedup check
+        if(DB.entrepreneurs.some(function(x){return x.name===nm;})) continue;
 
         var rec = {
-          id: 'ent_'+(Date.now()+r),
-          name: nm,
-          phone: ph,
-          sector: sec,
-          district: district,
-          projectValue: val,
-          telegram: tg,
-          matchedForum: '',
-          tgSent: false,
-          addedDate: new Date().toISOString().slice(0,10)
+          id:'ent_'+(Date.now()+r),
+          name:nm, phone:ph, sector:sec, district:dist,
+          projectValue:val&&!isNaN(val)?val:'',
+          telegram:'', matchedForum:'', tgSent:false,
+          addedDate:new Date().toISOString().slice(0,10)
         };
         DB.entrepreneurs.push(rec);
-        if(typeof fbSave==='function') fbSave('entrepreneurs', rec);
+        if(typeof fbSave==='function') fbSave('entrepreneurs',rec);
         added++;
+        console.log('  ✅ '+nm+' | '+ph+' | '+sec+' | '+dist+' | $'+val);
       }
+
       renderEntrepreneurs();
-      toast('✅ '+added+' ta tadbirkor import qilindi! (Format: '+(format==='uz'?'O\'zbekcha hukumat':'Oddiy')+', Jami: '+DB.entrepreneurs.length+')');
+      var fmt = (colDistrict>=0||colValue>=0) ? 'Hukumat' : 'Oddiy';
+      toast('✅ '+added+' ta tadbirkor import qilindi! Format: '+fmt);
+
+      // AVTOMATIK: Forum moslashtirish
+      if(added > 0){
+        setTimeout(function(){
+          autoMatchAndNotify(added);
+        }, 500);
+      }
     } catch(err){toast('⚠️ '+err.message,'error');console.error(err);}
   };
   if(file.name.toLowerCase().endsWith('.csv')) reader.readAsText(file); else reader.readAsArrayBuffer(file);
   if(input.value!==undefined) input.value='';
+}
+
+// ═══ AVTOMATIK OQIM: Import → Moslashtirish → Telegram ═══
+async function autoMatchAndNotify(importedCount){
+  toast('🔗 Forum moslashtirish boshlanmoqda...');
+
+  // 1. MOSLASHTIRISH
+  var forums=DB.forums||[];
+  var entrList=DB.entrepreneurs||[];
+  var allForums=[];
+  forums.forEach(function(f){allForums.push({nom:f.nom||'',sana:f.sana||'',desc:f.desc||'',turi:f.turi||''});});
+  if(typeof INTL_FORUMS!=='undefined'&&typeof INTL_REGIONS!=='undefined'){
+    INTL_REGIONS.forEach(function(reg){
+      (INTL_FORUMS[reg.key]||[]).forEach(function(f){allForums.push({nom:f.name||f.nom||'',sana:f.date||f.sana||'',desc:(f.focus||'')+(f.tags?f.tags.join(' '):''),turi:'intl'});});
+    });
+  }
+
+  // Filter upcoming 90 days
+  var now=new Date();
+  var upcoming=allForums.filter(function(f){
+    if(!f.sana) return true;
+    var d=new Date(f.sana); var diff=(d-now)/86400000;
+    return diff>-7 && diff<90;
+  });
+  if(!upcoming.length) upcoming=allForums;
+
+  var matched=0;
+  entrList.forEach(function(ent){
+    if(ent.matchedForum) return; // allaqachon moslashtirilgan
+    var entSec=(ent.sector||'').toLowerCase();
+    if(!entSec) return;
+    var bestForum=null, bestScore=0;
+    upcoming.forEach(function(forum){
+      var fText=(forum.nom+' '+forum.desc).toLowerCase();
+      var score=0;
+      for(var sk in SECTOR_KEYWORDS){
+        var kws=SECTOR_KEYWORDS[sk];
+        var entHas=kws.some(function(kw){return entSec.indexOf(kw)!==-1;});
+        if(entHas&&kws.some(function(kw){return fText.indexOf(kw)!==-1;})) score+=10;
+      }
+      entSec.split(/[\s,;\/]+/).forEach(function(w){if(w.length>3&&fText.indexOf(w)!==-1) score+=5;});
+      if(score>bestScore){bestScore=score;bestForum=forum;}
+    });
+    if(bestForum&&bestScore>=5){
+      ent.matchedForum=bestForum.nom.slice(0,40)+(bestForum.sana?' ('+bestForum.sana+')':'');
+      if(typeof fbSave==='function') fbSave('entrepreneurs',ent);
+      matched++;
+    }
+  });
+
+  renderEntrepreneurs();
+
+  if(!matched){
+    toast('⚠️ '+importedCount+' ta import qilindi, lekin mos forum topilmadi. Forumlar bazasini tekshiring.');
+    return;
+  }
+
+  toast('🔗 '+matched+' ta tadbirkor forumga moslashtirildi!');
+
+  // 2. TELEGRAM YUBORISH — so'rash
+  var s=DB.settings||{};
+  var ak=window._apiKeys||{};
+  var token=s.tgToken||ak.tgToken||'';
+  var chatId=s.tgChatId||ak.tgChatId||'';
+  if(!token||!chatId){
+    toast('💡 Telegram xabar uchun: Firebase → apiKeys → tgToken va tgChatId kiriting','info');
+    return;
+  }
+
+  var readyList=entrList.filter(function(e){return e.matchedForum&&!e.tgSent;});
+  if(!readyList.length) return;
+
+  // Natijani ko'rsatish
+  var summary = '📋 NATIJA:\n\n';
+  summary += '✅ Import: '+importedCount+' ta tadbirkor\n';
+  summary += '🔗 Forum mos: '+matched+' ta\n';
+  summary += '📨 Telegram kutmoqda: '+readyList.length+' ta\n\n';
+  readyList.slice(0,5).forEach(function(e){
+    summary += '• '+e.name+(e.phone?' ('+e.phone+')':'')+'\n  → '+e.matchedForum+'\n';
+  });
+  if(readyList.length>5) summary += '\n... va yana '+(readyList.length-5)+' ta';
+  summary += '\n\nTelegram guruhga xabar yuborilsinmi?';
+
+  if(!confirm(summary)) return;
+
+  // 3. TELEGRAM YUBORISH
+  toast('📨 '+readyList.length+' ta tadbirkorga Telegram xabar yuborilmoqda...');
+  var sent=0, fail=0;
+
+  for(var i=0;i<readyList.length;i++){
+    var e=readyList[i];
+
+    // Xabar matni
+    var msg='🏭 Hurmatli '+e.name+'!\n\n'+
+      (e.district?'📍 '+e.district+'\n':'')+
+      '📋 '+e.sector+'\n'+
+      (e.projectValue?'💰 $'+e.projectValue+' mln\n':'')+
+      '🗓 '+e.matchedForum+'\n\n'+
+      '✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n'+
+      '📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
+
+    try {
+      // Xabar yuborish
+      var resp=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:chatId, text:msg})
+      });
+
+      if(resp.ok){
+        // Telefon raqam orqali kontakt yuborish — Telegram profili avtomatik ko'rinadi
+        if(e.phone){
+          var ph=e.phone.replace(/[\s\-\(\)]/g,'');
+          if(!ph.startsWith('+')&&!ph.startsWith('998')) ph='+998'+ph;
+          if(!ph.startsWith('+')) ph='+'+ph;
+          await fetch('https://api.telegram.org/bot'+token+'/sendContact',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              chat_id:chatId,
+              phone_number:ph,
+              first_name:e.name,
+              last_name:e.sector?e.sector.slice(0,30):''
+            })
+          }).catch(function(){});
+        }
+        e.tgSent=true;
+        e.tgDate=new Date().toISOString().slice(0,10);
+        if(typeof fbSave==='function') fbSave('entrepreneurs',e);
+        sent++;
+      } else {
+        fail++;
+      }
+    } catch(x){fail++;}
+
+    // Telegram rate limit: 1 xabar/sekund
+    if(i<readyList.length-1) await new Promise(function(r){setTimeout(r,1200);});
+  }
+
+  renderEntrepreneurs();
+  toast('📨 Tayyor! '+sent+' ta xabar + kontakt yuborildi'+(fail?' ('+fail+' xato)':'')+'!');
 }
 
 function deleteEntrepreneur(id){
