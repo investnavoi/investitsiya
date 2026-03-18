@@ -1821,9 +1821,35 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group span-2"><label class="form-label">SeaRates API Key</label><input class="form-input" id="set-searates-key" type="password" placeholder="SeaRates API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">searates.com/integrations dan oling (bepul tier — 100 so'rov/oy)</div></div>
         <div class="form-group span-2"><label class="form-label">🌐 UN Comtrade Subscription Key</label><input class="form-input" id="set-comtrade-key" type="password" placeholder="UN Comtrade subscription key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">comtradeplus.un.org → Sign Up → Subscription → Get Key (bepul: 500 so'rov/kun, 100K qator). <b>Kalitsiz ham ishlaydi</b> (100 so'rov/kun, 500 qator)</div></div>
         <div class="form-group span-2"><label class="form-label">📊 PPTX Template (Prezentatsiya namunasi)</label><div style="display:flex;gap:.5rem;align-items:center"><button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:#4361EE;color:#fff;border:none">📁 Template yuklash (.pptx)</button><span id="pptx-template-status" style="font-size:.6rem;color:var(--text3)">Yuklanmagan</span></div><div style="font-size:.55rem;color:var(--text3);margin-top:4px">Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi</div></div>
+      </div>
+    </div>
+    <!-- Telegram MTProto sozlash -->
+    <div class="form-card" style="margin-top:1rem">
+      <div style="font-size:.9rem;font-weight:700;margin-bottom:.8rem">📲 Telegram — Telefonga to'g'ridan-to'g'ri xabar (MTProto)</div>
+      <div style="font-size:.65rem;color:var(--text3);margin-bottom:.8rem">Tadbirkor telefon raqamiga Telegram orqali bevosita xabar yuborish. <b>Bir martalik sozlash</b> — keyin avtomatik ishlaydi.</div>
+      <div id="tg-setup-status" style="margin-bottom:.8rem"></div>
+      <div id="tg-step1">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
+          <div class="form-group" style="flex:1;min-width:180px"><label class="form-label">Telefon raqam (sizning)</label><input class="form-input" id="tg-setup-phone" placeholder="+998888901110"></div>
+          <div class="form-group" style="flex:0 0 auto"><button class="btn btn-blue btn-sm" onclick="tgSetupSendCode()">📩 Kod yuborish</button></div>
+        </div>
+      </div>
+      <div id="tg-step2" style="display:none">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
+          <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">Telegram'dan kelgan kod</label><input class="form-input" id="tg-setup-code" placeholder="12345" maxlength="6"></div>
+          <div class="form-group" style="flex:1;min-width:120px"><label class="form-label">2FA parol (ixtiyoriy)</label><input class="form-input" id="tg-setup-pwd" type="password" placeholder="Yo'q bo'lsa bo'sh"></div>
+          <div class="form-group" style="flex:0 0 auto"><button class="btn btn-sm" onclick="tgSetupVerify()" style="background:#059669;color:#fff;border:none">✅ Tasdiqlash</button></div>
+        </div>
+        <div style="font-size:.6rem;color:var(--text3);margin-top:4px">Kod: Telegram ilova → "Telegram" chati yoki SMS</div>
+      </div>
+      <div id="tg-setup-log" style="font-size:.7rem;margin-top:.5rem;color:var(--text3)"></div>
         <div class="form-group span-2"><label class="form-label">PPTX Template URL</label><input class="form-input" id="set-pptx-url" type="url" placeholder="https://investnavoi.github.io/investitsiya/template_english.pptx"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">GitHub Pages'da template_english.pptx faylini host qiling | <a href="#" onclick="uploadPptxTemplate();return false" style="color:#4361EE">yoki kompyuterdan yuklang</a></div></div>
-        <div class="form-group span-2"><label class="form-label">Telegram Bot Token</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling</div></div>
-        <div class="form-group span-2"><label class="form-label">Telegram Chat ID</label><input class="form-input" id="set-tg-chatid" placeholder="-1001234567890"></div>
+        <div class="form-group span-2"><label class="form-label">Telegram Bot Token (guruhga yuborish uchun)</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling — guruhga xabar uchun</div></div>
+        <div class="form-group span-2"><label class="form-label">Telegram Chat ID (guruh)</label><input class="form-input" id="set-tg-chatid" placeholder="-1001234567890"></div>
+        <div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:.8rem"><label class="form-label">📲 Telegram MTProto — telefonga to'g'ridan-to'g'ri xabar</label><div style="font-size:.55rem;color:var(--text3);margin-bottom:.5rem">Bu sozlamalar Netlify env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.</div></div>
+        <div class="form-group"><label class="form-label">TG API ID</label><input class="form-input" id="set-tg-apiid" placeholder="12345678"><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
+        <div class="form-group"><label class="form-label">TG API Hash</label><input class="form-input" id="set-tg-apihash" type="password" placeholder="abc123..."><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
+        <div class="form-group span-2"><label class="form-label">TG Session String</label><input class="form-input" id="set-tg-session" type="password" placeholder="1BAAOMTQ5LjE1M..."><div style="font-size:.55rem;color:var(--text3)">generate-session.mjs dan oling (bir marta ishga tushiring)</div></div>
       </div>
       <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
     </div>
@@ -3003,7 +3029,7 @@ function showPage(id){
   else if(id==='ailetter')populateProductSelects();
   else if(id==='pipeline')renderPipeline();
   else if(id==='trade'){}// no init needed
-  else if(id==='settings')loadSettings();
+  else if(id==='settings'){loadSettings();if(typeof checkTgStatus==='function')checkTgStatus();}
 }
 
 /* ═══════════════════════════════════════
@@ -7545,6 +7571,93 @@ function matchTradeWithProducts(){
 /* ═══════════════════════════════════════════════════════════════
    MAHALLIY TADBIRKORLAR — Excel import, Forum moslashtirish, Telegram
    ═══════════════════════════════════════════════════════════════ */
+// ═══ TELEGRAM XABAR: MTProto (telefonga) yoki Bot API (guruhga) ═══
+var TG_API_BASE = 'https://keen-biscochitos-9a137d.netlify.app/api';
+
+// Telegram setup status check
+async function checkTgStatus(){
+  var el=document.getElementById('tg-setup-status');if(!el) return;
+  try {
+    var r=await fetch(TG_API_BASE+'/tg-status');var d=await r.json();
+    if(d.hasSession) el.innerHTML='<div style="padding:8px 12px;background:rgba(5,150,105,.1);border-radius:8px;color:#059669;font-weight:700;font-size:.75rem">✅ Telegram ulangan! Telefon raqamga xabar yuborish tayyor.</div>';
+    else if(d.hasApiId) el.innerHTML='<div style="padding:8px 12px;background:rgba(245,158,11,.1);border-radius:8px;color:#F59E0B;font-size:.75rem">⚠️ API sozlangan. Quyida telefon va kodni kiriting.</div>';
+    else el.innerHTML='<div style="padding:8px 12px;background:rgba(239,68,60,.1);border-radius:8px;color:#EF233C;font-size:.7rem">❌ Netlify → Environment → TG_API_ID=1663652, TG_API_HASH=a37d090c554e5593350556985bd9dc05 kiriting</div>';
+  } catch(e){el.innerHTML='<div style="font-size:.65rem;color:var(--text3)">⚠️ Netlify proxy ishlamayapti. api-proxy.zip ni deploy qiling.</div>';}
+}
+async function tgSetupSendCode(){
+  var phone=document.getElementById('tg-setup-phone').value.trim();
+  if(!phone){toast('⚠️ Telefon kiriting','error');return;}
+  var log=document.getElementById('tg-setup-log');
+  log.textContent='📩 Kod yuborilmoqda...';log.style.color='#4361EE';
+  try {
+    var r=await fetch(TG_API_BASE+'/tg-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:phone})});
+    var d=await r.json();
+    if(d.ok){log.innerHTML='✅ Kod yuborildi! Telegram → "Telegram" chati yoki SMS (30 sek)';log.style.color='#059669';document.getElementById('tg-step2').style.display='block';}
+    else{log.textContent='❌ '+d.error;log.style.color='#EF233C';}
+  } catch(e){log.textContent='❌ '+e.message;log.style.color='#EF233C';}
+}
+async function tgSetupVerify(){
+  var code=document.getElementById('tg-setup-code').value.trim();
+  var pwd=document.getElementById('tg-setup-pwd').value;
+  if(!code){toast('⚠️ Kodni kiriting','error');return;}
+  var log=document.getElementById('tg-setup-log');
+  log.textContent='🔄 Tasdiqlanmoqda...';log.style.color='#4361EE';
+  try {
+    var r=await fetch(TG_API_BASE+'/tg-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code,password:pwd})});
+    var d=await r.json();
+    if(d.ok){log.innerHTML='✅ Telegram ulandi! ('+d.user+') Endi telefon raqamga xabar yuborish tayyor.';log.style.color='#059669';document.getElementById('tg-step2').style.display='none';checkTgStatus();toast('✅ Telegram sozlandi!');}
+    else if(d.error==='2FA_NEEDED'){log.textContent='🔑 2FA parol kerak';log.style.color='#F59E0B';}
+    else{log.textContent='❌ '+d.error;log.style.color='#EF233C';}
+  } catch(e){log.textContent='❌ '+e.message;log.style.color='#EF233C';}
+}
+
+async function sendTgMessage(phone, message, name){
+  var ak = window._apiKeys||{};
+  var s = DB.settings||{};
+
+  // 1. MTProto — telefon raqamga to'g'ridan-to'g'ri (agar session bor bo'lsa)
+  if(ak.tgSession && phone){
+    try {
+      var resp = await fetch(TG_API_BASE+'/tg-send', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({phone:phone, message:message, firstName:name||'Tadbirkor'})
+      });
+      var data = await resp.json();
+      if(data.ok) return {ok:true, method:'mtproto', phone:phone};
+      console.log('MTProto xato:', data.error);
+    } catch(e){ console.log('MTProto fetch xato:', e.message); }
+  }
+
+  // 2. Bot API — guruhga (fallback)
+  var token = s.tgToken||ak.tgToken||'';
+  var chatId = s.tgChatId||ak.tgChatId||'';
+  if(token && chatId){
+    try {
+      var resp = await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({chat_id:chatId, text:message})
+      });
+      if(resp.ok){
+        // Send contact card too
+        if(phone){
+          var cp=phone.replace(/[\s\-\(\)]/g,'');
+          if(!cp.startsWith('+')&&!cp.startsWith('998')) cp='+998'+cp;
+          if(!cp.startsWith('+')) cp='+'+cp;
+          await fetch('https://api.telegram.org/bot'+token+'/sendContact',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({chat_id:chatId,phone_number:cp,first_name:name||'Tadbirkor'})
+          }).catch(function(){});
+        }
+        return {ok:true, method:'bot', chatId:chatId};
+      }
+      var err = await resp.json().catch(function(){return{};});
+      console.log('Bot API xato:', err.description);
+    } catch(e){ console.log('Bot API fetch xato:', e.message); }
+  }
+
+  return {ok:false, error:'Telegram sozlanmagan. Firebase → apiKeys → tgSession (MTProto) yoki tgToken+tgChatId (Bot)'};
+}
+
 var SECTOR_KEYWORDS = {
   'qurilish':['qurilish','building','construction','cement','beton','plitka','granit','marmor','tosh','kafel','gips','kirpich','temir','armatura','qum','ohak','bino','uy','қурилиш','цемент','бетон','плитка','гранит','мармар','тош','кафел','гипс','ғишт','темир','арматура','қум','оҳак','бино'],
   'oziq-ovqat':['oziq','ovqat','food','non','go\'sht','sut','meva','sabzavot','don','un','yog\'','shakar','ichimlik','konserva','agrar','agro','озиқ','овқат','нон','гўшт','сут','мева','сабзавот','дон','ун','ёғ','шакар','пахта','ғалла'],
@@ -7680,7 +7793,6 @@ function importEntrepreneurs(input){
   if(file.name.toLowerCase().endsWith('.csv')) reader.readAsText(file); else reader.readAsArrayBuffer(file);
   if(input.value!==undefined) input.value='';
 }
-
 // ═══ AVTOMATIK OQIM: Import → Moslashtirish → Telegram ═══
 async function autoMatchAndNotify(importedCount){
   toast('🔗 Forum moslashtirish boshlanmoqda...');
@@ -7738,15 +7850,7 @@ async function autoMatchAndNotify(importedCount){
 
   toast('🔗 '+matched+' ta tadbirkor forumga moslashtirildi!');
 
-  // 2. TELEGRAM YUBORISH — so'rash
-  var s=DB.settings||{};
-  var ak=window._apiKeys||{};
-  var token=s.tgToken||ak.tgToken||'';
-  var chatId=s.tgChatId||ak.tgChatId||'';
-  if(!token||!chatId){
-    toast('💡 Telegram xabar uchun: Firebase → apiKeys → tgToken va tgChatId kiriting','info');
-    return;
-  }
+  // 2. TELEGRAM YUBORISH
 
   var readyList=entrList.filter(function(e){return e.matchedForum&&!e.tgSent;});
   if(!readyList.length) return;
@@ -7760,18 +7864,16 @@ async function autoMatchAndNotify(importedCount){
     summary += '• '+e.name+(e.phone?' ('+e.phone+')':'')+'\n  → '+e.matchedForum+'\n';
   });
   if(readyList.length>5) summary += '\n... va yana '+(readyList.length-5)+' ta';
-  summary += '\n\nTelegram guruhga xabar yuborilsinmi?';
+  summary += '\n\nTelegram xabar yuborilsinmi?\n(Telefon raqam orqali to\'g\'ridan-to\'g\'ri profilga)';
 
   if(!confirm(summary)) return;
 
-  // 3. TELEGRAM YUBORISH
+  // 3. TELEGRAM YUBORISH — telefonga to'g'ridan-to'g'ri
   toast('📨 '+readyList.length+' ta tadbirkorga Telegram xabar yuborilmoqda...');
   var sent=0, fail=0;
 
   for(var i=0;i<readyList.length;i++){
     var e=readyList[i];
-
-    // Xabar matni
     var msg='🏭 Hurmatli '+e.name+'!\n\n'+
       (e.district?'📍 '+e.district+'\n':'')+
       '📋 '+e.sector+'\n'+
@@ -7780,37 +7882,18 @@ async function autoMatchAndNotify(importedCount){
       '✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n'+
       '📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
 
-    try {
-      // Xabar yuborish
-      var resp=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({chat_id:chatId, text:msg})
-      });
-
-      if(resp.ok){
-        // Telefon raqam orqali kontakt yuborish — Telegram profili avtomatik ko'rinadi
-        if(e.phone){
-          var ph=e.phone.replace(/[\s\-\(\)]/g,'');
-          if(!ph.startsWith('+')&&!ph.startsWith('998')) ph='+998'+ph;
-          if(!ph.startsWith('+')) ph='+'+ph;
-          await fetch('https://api.telegram.org/bot'+token+'/sendContact',{
-            method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-              chat_id:chatId,
-              phone_number:ph,
-              first_name:e.name,
-              last_name:e.sector?e.sector.slice(0,30):''
-            })
-          }).catch(function(){});
-        }
-        e.tgSent=true;
-        e.tgDate=new Date().toISOString().slice(0,10);
-        if(typeof fbSave==='function') fbSave('entrepreneurs',e);
-        sent++;
-      } else {
-        fail++;
-      }
-    } catch(x){fail++;}
+    var result = await sendTgMessage(e.phone, msg, e.name);
+    if(result.ok){
+      e.tgSent=true;
+      e.tgDate=new Date().toISOString().slice(0,10);
+      e.tgMethod=result.method||'';
+      if(typeof fbSave==='function') fbSave('entrepreneurs',e);
+      sent++;
+      console.log('📨 '+e.name+' → '+(result.method==='mtproto'?'telefonga to\'g\'ridan-to\'g\'ri':'guruhga')+' ✅');
+    } else {
+      fail++;
+      console.log('❌ '+e.name+': '+result.error);
+    }
 
     // Telegram rate limit: 1 xabar/sekund
     if(i<readyList.length-1) await new Promise(function(r){setTimeout(r,1200);});
@@ -7920,41 +8003,24 @@ function checkForumAlerts(){
 
 async function sendTelegramToMatched(){
   var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&!e.tgSent;});
-  if(!list.length){toast('⚠️ Xabar yuborish uchun moslashtirilgan tadbirkor yo\'q yoki allaqachon yuborilgan','error');return;}
-  var s=DB.settings||{};
+  if(!list.length){toast('⚠️ Moslashtirilgan/yuborilmagan tadbirkor yo\'q','error');return;}
   var ak=window._apiKeys||{};
-  var token=s.tgToken||ak.tgToken||'';
-  var chatId=s.tgChatId||ak.tgChatId||'';
-  if(!token||!chatId){toast('⚠️ Firebase → apiKeys → keys → tgToken va tgChatId kiriting','error');return;}
-  if(!confirm(list.length+' ta tadbirkorga Telegram xabar yuboriladi. Davom etsinmi?')) return;
+  if(!ak.tgSession && !(DB.settings||{}).tgToken && !ak.tgToken){
+    toast('⚠️ Telegram sozlanmagan. Firebase → apiKeys → tgSession (yoki tgToken+tgChatId)','error');return;
+  }
+  if(!confirm(list.length+' ta tadbirkorga Telegram xabar yuboriladi.\n'+(ak.tgSession?'📲 Telefon raqamga to\'g\'ridan-to\'g\'ri':'📨 Guruhga')+'\nDavom etsinmi?')) return;
+  toast('📨 '+list.length+' ta tadbirkorga xabar yuborilmoqda...');
   var sent=0,fail=0;
   for(var i=0;i<list.length;i++){
     var e=list[i];
-    var msg='🏭 Hurmatli '+e.name+'!\n\n'+
-      (e.district?'📍 '+e.district+'\n':'')+
-      '📋 Faoliyat: '+e.sector+'\n'+
-      (e.projectValue?'💰 Loyiha qiymati: $'+e.projectValue+'M\n':'')+
-      '🗓 Mos forum: '+e.matchedForum+'\n\n'+
-      '✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n'+
-      '📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
-    try {
-      var resp=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text:msg})});
-      if(resp.ok){
-        // Send phone contact — Telegram avtomatik profilni ko'rsatadi
-        if(e.phone){
-          var cp=e.phone.replace(/[\s\-\(\)]/g,'');
-          if(!cp.startsWith('+')&&!cp.startsWith('998')) cp='+998'+cp;
-          if(!cp.startsWith('+')) cp='+'+cp;
-          await fetch('https://api.telegram.org/bot'+token+'/sendContact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,phone_number:cp,first_name:e.name})}).catch(function(){});
-        }
-        e.tgSent=true;e.tgDate=new Date().toISOString().slice(0,10);if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;
-      }
-      else{fail++;var err=await resp.json().catch(function(){return{};});console.log('TG error:',err.description);}
-    }catch(x){fail++;}
-    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1100);});
+    var msg='🏭 Hurmatli '+e.name+'!\n\n'+(e.district?'📍 '+e.district+'\n':'')+'📋 '+e.sector+'\n'+(e.projectValue?'💰 $'+e.projectValue+'M\n':'')+'🗓 '+e.matchedForum+'\n\n✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
+    var result=await sendTgMessage(e.phone, msg, e.name);
+    if(result.ok){e.tgSent=true;e.tgDate=new Date().toISOString().slice(0,10);if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;}
+    else{fail++;console.log('❌ '+e.name+':',result.error);}
+    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1200);});
   }
   renderEntrepreneurs();
-  toast('📨 '+sent+' ta yuborildi'+(fail?' | '+fail+' ta xato':'')+'!');
+  toast('📨 '+sent+' ta yuborildi'+(fail?' | '+fail+' xato':'')+'!');
 }
 
 async function sendTelegramForForum(forumNom, forumSana){
@@ -7962,31 +8028,18 @@ async function sendTelegramForForum(forumNom, forumSana){
   if(!list.length){toast('⚠️ "'+forumNom+'" uchun mos/yuborilmagan tadbirkor yo\'q','info');return;}
   var s=DB.settings||{};
   var ak=window._apiKeys||{};
-  var token=s.tgToken||ak.tgToken||'';
-  var chatId=s.tgChatId||ak.tgChatId||'';
-  if(!token||!chatId){toast('⚠️ Firebase → apiKeys → keys → tgToken va tgChatId kiriting','error');return;}
+  if(!ak.tgSession && !(s.tgToken||ak.tgToken)){toast('⚠️ Telegram sozlanmagan','error');return;}
   toast('📨 "'+forumNom.slice(0,30)+'" — '+list.length+' ta tadbirkorga xabar...');
   var sent=0;
   for(var i=0;i<list.length;i++){
     var e=list[i];
-    // 1. Send text message
     var msg='🔔 FORUM TAKLIFI\n\n👤 '+e.name+(e.district?'\n📍 '+e.district:'')+'\n🏭 '+e.sector+(e.projectValue?'\n💰 $'+e.projectValue+'M':'')+'\n🗓 '+forumNom+(forumSana?' — '+forumSana:'')+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
-    try {
-      var resp=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text:msg})});
-      if(resp.ok){
-        // 2. Send phone as contact — Telegram shows profile if user exists
-        if(e.phone){
-          var cleanPhone=e.phone.replace(/[\s\-\(\)]/g,'');
-          if(!cleanPhone.startsWith('+')) cleanPhone='+'+cleanPhone;
-          await fetch('https://api.telegram.org/bot'+token+'/sendContact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,phone_number:cleanPhone,first_name:e.name})});
-        }
-        e.tgSent=true;if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;
-      }
-    }catch(x){}
-    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1100);});
+    var result=await sendTgMessage(e.phone, msg, e.name);
+    if(result.ok){e.tgSent=true;if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;}
+    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1200);});
   }
   renderEntrepreneurs();
-  toast('📨 '+sent+' ta xabar + kontakt yuborildi!');
+  toast('📨 '+sent+' ta xabar yuborildi!');
 }
 
 // Telegram: telefon raqam orqali kontakt kartasini guruhga yuborish
@@ -9205,7 +9258,8 @@ function loadSettings(){
     'set-yer':s.yer||0, 'set-maosh':s.maosh||400, 'set-min-maosh':s.minMaosh||100,
     'set-soliq':s.soliq||0, 'set-soliq-yil':s.soliqYil||7,
     'set-daily-limit':s.dailyLimit||50, 'set-fu1':s.fu1||7, 'set-fu2':s.fu2||14, 'set-fu3':s.fu3||21,
-    'set-tg-token':s.tgToken||(window._apiKeys&&window._apiKeys.tgToken)||'', 'set-tg-chatid':s.tgChatId||(window._apiKeys&&window._apiKeys.tgChatId)||''
+    'set-tg-token':s.tgToken||(window._apiKeys&&window._apiKeys.tgToken)||'', 'set-tg-chatid':s.tgChatId||(window._apiKeys&&window._apiKeys.tgChatId)||'',
+    'set-tg-apiid':(window._apiKeys&&window._apiKeys.tgApiId)||'', 'set-tg-apihash':(window._apiKeys&&window._apiKeys.tgApiHash)||'', 'set-tg-session':(window._apiKeys&&window._apiKeys.tgSession)||''
   };
   Object.keys(fields).forEach(function(id){
     var el = document.getElementById(id);
@@ -9269,6 +9323,13 @@ function saveSettings(){
   var tgChatVal = (document.getElementById('set-tg-chatid')||{}).value||'';
   if(tgTokenVal && typeof saveApiKey==='function') saveApiKey('tgToken', tgTokenVal.trim());
   if(tgChatVal && typeof saveApiKey==='function') saveApiKey('tgChatId', tgChatVal.trim());
+  // MTProto credentials
+  var tgApiId = (document.getElementById('set-tg-apiid')||{}).value||'';
+  var tgApiHash = (document.getElementById('set-tg-apihash')||{}).value||'';
+  var tgSession = (document.getElementById('set-tg-session')||{}).value||'';
+  if(tgApiId && typeof saveApiKey==='function') saveApiKey('tgApiId', tgApiId.trim());
+  if(tgApiHash && typeof saveApiKey==='function') saveApiKey('tgApiHash', tgApiHash.trim());
+  if(tgSession && typeof saveApiKey==='function') saveApiKey('tgSession', tgSession.trim());
   var pptxUrl = (document.getElementById('set-pptx-url')||{}).value||'';
   if(pptxUrl){
     PPTX_TEMPLATE_URL = pptxUrl.trim();
