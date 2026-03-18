@@ -6885,80 +6885,148 @@ function importProductsExcel(input){
   reader.onload = function(e){
     try {
       var wb = XLSX.read(e.target.result, {type:'array'});
-      // Try sheets: 'асосий ўзгарди', 'асосий', or first sheet
-      var sheetName = wb.SheetNames.find(function(s){return s.indexOf('асосий')!==-1;}) || wb.SheetNames[0];
+      // Find best sheet: 'Master Product List', 'асосий ўзгарди', 'асосий', or first
+      var sheetName = wb.SheetNames.find(function(s){return s.indexOf('Master')!==-1;})
+        || wb.SheetNames.find(function(s){return s.indexOf('асосий')!==-1;})
+        || wb.SheetNames[0];
       var ws = wb.Sheets[sheetName];
       var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
 
       var rawMaterials = [];
       var products = [];
-      var currentRaw = null;
-      var currentRawId = 0;
-      var startRow = 0;
+      var format = 'unknown';
 
-      // Find header row (contains "Хомашё")
+      // AUTO-DETECT FORMAT by scanning first 10 rows
       for(var i=0;i<Math.min(10,rows.length);i++){
-        var rowStr = rows[i].join(' ').toLowerCase();
-        if(rowStr.indexOf('хомаш')!==-1 || rowStr.indexOf('махсулот')!==-1){
-          startRow = i+1;
-          // Check if next row is sub-header
-          if(rows[i+1] && rows[i+1].join(' ').indexOf('Аниқланган')!==-1) startRow = i+2;
+        var rowStr = rows[i].join('|').toLowerCase();
+        if(rowStr.indexOf('raw material')!==-1 && rowStr.indexOf('product name')!==-1){
+          format = 'english';
+          break;
+        }
+        if(rowStr.indexOf('хомаш')!==-1 || (rowStr.indexOf('махсулот')!==-1 && rowStr.indexOf('хомаш')!==-1)){
+          format = 'uzbek';
           break;
         }
       }
-      if(startRow===0) startRow = 5; // fallback
 
-      for(var r=startRow; r<rows.length; r++){
-        var row = rows[r];
-        if(!row || row.length<6) continue;
+      console.log('📥 Excel format aniqlandi:', format, '| Sheet:', sheetName);
 
-        var colB = String(row[1]||'').trim(); // Xomashyo nomi (B = index 1)
-        var colC = String(row[2]||'').trim(); // Olchov
-        var colD = row[3]; // Zahira aniqlangan
-        var colE = row[4]; // Zahira istiqbolli
-        var colF = String(row[5]||'').trim(); // Mahsulot nomi
-        var colG = String(row[6]||'').trim(); // HS kod
-        var colH = String(row[7]||'').trim(); // Ulush
-        var colI = String(row[8]||'').trim(); // Tavsif
-        var colJ = String(row[9]||'').trim(); // Ishlatilish
-        var colK = String(row[10]||'').trim(); // Import hajmi
-        var colL = String(row[11]||'').trim(); // Asosiy soha
-        var colM = String(row[12]||'').trim(); // Haridorlar
+      if(format === 'english'){
+        // ═══ FORMAT: English (Master Product List) ═══
+        // Headers: #, Raw Material, Product Name, HS Code, Processing Level, Raw Material #
+        var currentRaw = null;
+        var currentRawId = 0;
 
-        // Yangi xomashyo — B ustunida nom bor
-        if(colB && colB.length>1 && colB!=='None' && isNaN(colB)){
-          currentRawId++;
-          currentRaw = {
-            id: 'rm_'+currentRawId,
-            name_uz: colB,
-            name_en: colB,
-            unit: colC,
-            reserve_confirmed: parseFloat(colD)||0,
-            reserve_prospective: parseFloat(colE)||0,
-            location: 'Navoiy'
-          };
-          // Dublikat tekshirish
-          var exists = rawMaterials.find(function(rm){return rm.name_uz===colB;});
-          if(!exists) rawMaterials.push(currentRaw);
-          else currentRaw = exists;
+        for(var r=0; r<rows.length; r++){
+          var row = rows[r];
+          if(!row || row.length < 3) continue;
+
+          var colA = String(row[0]||'').trim();
+          var colB = String(row[1]||'').trim();
+          var colC = String(row[2]||'').trim();
+          var colD = String(row[3]||'').trim();
+          var colE = String(row[4]||'').trim();
+
+          // Skip header/title rows
+          if(colA === '#' || colA.indexOf('NAVOI')!==-1 || colA.indexOf('Total')!==-1) continue;
+          if(!colA) continue;
+
+          // Section header: "#1 — GRANITE" or "#2  —  BASALT"
+          if(colA.match(/^#\d+/) && !colB){
+            // Extract raw material name from section header
+            var rawName = colA.replace(/^#\d+\s*[—–-]\s*/,'').trim();
+            currentRawId++;
+            currentRaw = {
+              id: 'rm_'+currentRawId,
+              name_uz: rawName.charAt(0).toUpperCase()+rawName.slice(1).toLowerCase(),
+              name_en: rawName.charAt(0).toUpperCase()+rawName.slice(1).toLowerCase(),
+              location: 'Navoiy'
+            };
+            var exists = rawMaterials.find(function(rm){return rm.name_en.toLowerCase()===rawName.toLowerCase();});
+            if(!exists) rawMaterials.push(currentRaw);
+            else currentRaw = exists;
+            continue;
+          }
+
+          // Data row: number in col A, raw material in B, product in C
+          if(colB && colC && !isNaN(parseInt(colA))){
+            // If no section header was found yet, create raw material from B column
+            if(!currentRaw || currentRaw.name_en.toLowerCase() !== colB.toLowerCase()){
+              var existRM = rawMaterials.find(function(rm){return rm.name_en.toLowerCase()===colB.toLowerCase();});
+              if(!existRM){
+                currentRawId++;
+                currentRaw = {id:'rm_'+currentRawId, name_uz:colB, name_en:colB, location:'Navoiy'};
+                rawMaterials.push(currentRaw);
+              } else {
+                currentRaw = existRM;
+              }
+            }
+
+            products.push({
+              id: 'pr_'+(products.length+1),
+              raw_id: currentRaw.id,
+              raw_name: currentRaw.name_en,
+              name_en: colC,
+              name_uz: colC,
+              hs_code: colD.replace(/\s+/g,''),
+              processing_level: colE,
+              price: '',
+              description: '',
+              usage: colE || '',
+              import_info: '',
+              main_sector: colE || '',
+              main_buyers: ''
+            });
+          }
         }
+      } else {
+        // ═══ FORMAT: Uzbek (асосий) ═══
+        var currentRaw2 = null;
+        var currentRawId2 = 0;
+        var startRow = 0;
 
-        // Mahsulot — F ustunida nom bor
-        if(colF && colF.length>2 && currentRaw){
-          products.push({
-            id: 'pr_'+(products.length+1),
-            raw_id: currentRaw.id,
-            raw_name: currentRaw.name_uz,
-            name_en: colF,
-            name_uz: colF,
-            hs_code: colG.replace(/\s+/g,' '),
-            share: colH,
-            description: colI.slice(0,150),
-            usage: colJ.slice(0,150),
-            import_info: colK.slice(0,150),
-            main_sector: colL.slice(0,150),
-            main_buyers: colM.slice(0,150)
-          });
+        for(var i=0;i<Math.min(10,rows.length);i++){
+          var rowStr = rows[i].join(' ').toLowerCase();
+          if(rowStr.indexOf('хомаш')!==-1 || rowStr.indexOf('махсулот')!==-1){
+            startRow = i+1;
+            if(rows[i+1] && rows[i+1].join(' ').indexOf('Аниқланган')!==-1) startRow = i+2;
+            break;
+          }
+        }
+        if(startRow===0) startRow = 5;
+
+        for(var r=startRow; r<rows.length; r++){
+          var row = rows[r];
+          if(!row || row.length<6) continue;
+
+          var colB = String(row[1]||'').trim();
+          var colC = String(row[2]||'').trim();
+          var colD = row[3];
+          var colE = row[4];
+          var colF = String(row[5]||'').trim();
+          var colG = String(row[6]||'').trim();
+          var colH = String(row[7]||'').trim();
+          var colI = String(row[8]||'').trim();
+          var colJ = String(row[9]||'').trim();
+          var colK = String(row[10]||'').trim();
+          var colL = String(row[11]||'').trim();
+          var colM = String(row[12]||'').trim();
+
+          if(colB && colB.length>1 && colB!=='None' && isNaN(colB)){
+            currentRawId2++;
+            currentRaw2 = {id:'rm_'+currentRawId2, name_uz:colB, name_en:colB, unit:colC,
+              reserve_confirmed:parseFloat(colD)||0, reserve_prospective:parseFloat(colE)||0, location:'Navoiy'};
+            var exists = rawMaterials.find(function(rm){return rm.name_uz===colB;});
+            if(!exists) rawMaterials.push(currentRaw2);
+            else currentRaw2 = exists;
+          }
+
+          if(colF && colF.length>2 && currentRaw2){
+            products.push({id:'pr_'+(products.length+1), raw_id:currentRaw2.id, raw_name:currentRaw2.name_uz,
+              name_en:colF, name_uz:colF, hs_code:colG.replace(/\s+/g,' '), share:colH,
+              description:colI.slice(0,150), usage:colJ.slice(0,150), import_info:colK.slice(0,150),
+              main_sector:colL.slice(0,150), main_buyers:colM.slice(0,150)});
+          }
         }
       }
 
@@ -6968,12 +7036,12 @@ function importProductsExcel(input){
       }
 
       // Preview
-      var msg = '📥 Excel natijasi:\n\n';
+      var msg = '📥 Excel natijasi ('+format+' format):\n\n';
       msg += '⛏️ Xomashyolar: '+rawMaterials.length+' ta\n';
       msg += '📦 Mahsulotlar: '+products.length+' ta\n\n';
       rawMaterials.forEach(function(rm){
         var cnt = products.filter(function(p){return p.raw_id===rm.id;}).length;
-        msg += '• '+rm.name_uz+': '+cnt+' ta mahsulot\n';
+        msg += '• '+(rm.name_en||rm.name_uz)+': '+cnt+' ta\n';
       });
       msg += '\nSaqlashni tasdiqlaysizmi?';
 
@@ -6998,7 +7066,7 @@ function importProductsExcel(input){
     }
   };
   reader.readAsArrayBuffer(file);
-  input.value = '';
+  if(input.value !== undefined) input.value = '';
 }
 
 async function loadSampleProducts(){
