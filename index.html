@@ -7546,19 +7546,19 @@ function matchTradeWithProducts(){
    MAHALLIY TADBIRKORLAR — Excel import, Forum moslashtirish, Telegram
    ═══════════════════════════════════════════════════════════════ */
 var SECTOR_KEYWORDS = {
-  'qurilish':['qurilish','building','construction','cement','beton','plitka','granit','marmor','tosh','kafel','gips','kirpich','temir','armatura','qum','ohak','bino','uy'],
-  'oziq-ovqat':['oziq','ovqat','food','non','go\'sht','sut','meva','sabzavot','don','un','yog\'','shakar','ichimlik','konserva','agrar','agro'],
-  'to\'qimachilik':['to\'qimachilik','textile','mato','ip','gazlama','tikuv','kiyim','libos','charm','teri','paxta','ipak'],
-  'kimyo':['kimyo','chemical','plastik','polietilen','rezina','shisha','boya','dori','farmatsevtika','polimer'],
-  'energetika':['energetika','energy','solar','quyosh','shamol','gaz','neft','elektr','generator','kabel'],
-  'elektronika':['elektronika','electronic','kompyuter','telefon','texnologiya','IT','dastur','software'],
-  'qishloq':['qishloq','fermer','chorva','paranda','baliq','issiqxona','o\'g\'it','dehqon','bog\'dorchilik'],
-  'transport':['transport','logistika','yuk','tashish','avto','poyezd','samolyot','havo','temir yo\'l'],
-  'turizm':['turizm','tourism','mehmonxona','hotel','restoran','sayohat','kafe','dam olish'],
-  'konchilik':['konchilik','mining','kon','oltin','mis','uran','fosfat','maden','mineral','rudnik','qazib'],
-  'mebel':['mebel','furniture','yog\'och','wood','faner','eshik','deraza','karavot','shkaf','stol'],
-  'metallurgiya':['metall','po\'lat','steel','alyuminiy','quyish','prokat','sim','truba','quvur'],
-  'sanoat':['sanoat','industrial','ishlab chiqarish','zavod','fabrika','sex','korxona']
+  'qurilish':['qurilish','building','construction','cement','beton','plitka','granit','marmor','tosh','kafel','gips','kirpich','temir','armatura','qum','ohak','bino','uy','қурилиш','цемент','бетон','плитка','гранит','мармар','тош','кафел','гипс','ғишт','темир','арматура','қум','оҳак','бино'],
+  'oziq-ovqat':['oziq','ovqat','food','non','go\'sht','sut','meva','sabzavot','don','un','yog\'','shakar','ichimlik','konserva','agrar','agro','озиқ','овқат','нон','гўшт','сут','мева','сабзавот','дон','ун','ёғ','шакар','пахта','ғалла'],
+  'to\'qimachilik':['to\'qimachilik','textile','mato','ip','gazlama','tikuv','kiyim','libos','charm','teri','paxta','ipak','тўқимачилик','мато','ип','газлама','тикув','кийим','либос','чарм','тери','пахта','ипак'],
+  'kimyo':['kimyo','chemical','plastik','polietilen','rezina','shisha','boya','dori','farmatsevtika','polimer','кимё','пластик','полиэтилен','резина','шиша','бўёқ','дори','фармацевтика','полимер'],
+  'energetika':['energetika','energy','solar','quyosh','shamol','gaz','neft','elektr','generator','kabel','энергетика','энергия','қуёш','шамол','газ','нефт','электр','генератор','кабел'],
+  'elektronika':['elektronika','electronic','kompyuter','telefon','texnologiya','IT','dastur','software','электроника','компьютер','технология','дастур'],
+  'qishloq':['qishloq','fermer','chorva','paranda','baliq','issiqxona','o\'g\'it','dehqon','bog\'dorchilik','қишлоқ','фермер','чорва','паранда','балиқ','иссиқхона','ўғит','деҳқон','етиштириш','пахта'],
+  'transport':['transport','logistika','yuk','tashish','avto','poyezd','samolyot','havo','temir yo\'l','транспорт','логистика','юк','ташиш','авто','поезд','самолёт','ҳаво','темир йўл'],
+  'turizm':['turizm','tourism','mehmonxona','hotel','restoran','sayohat','kafe','dam olish','туризм','меҳмонхона','отел','ресторан','саёҳат','кафе','дам олиш'],
+  'konchilik':['konchilik','mining','kon','oltin','mis','uran','fosfat','maden','mineral','rudnik','qazib','кончилик','қазиб','олтин','мис','уран','фосфат','минерал','рудник','қазиб олиш','каолин','кварц','marble','гранит'],
+  'mebel':['mebel','furniture','yog\'och','wood','faner','eshik','deraza','karavot','shkaf','stol','мебел','ёғоч','фанер','эшик','дераза','каравот','шкаф','стол'],
+  'metallurgiya':['metall','po\'lat','steel','alyuminiy','quyish','prokat','sim','truba','quvur','металл','пўлат','алюминий','қуйиш','прокат','сим','труба','қувур'],
+  'sanoat':['sanoat','industrial','ishlab chiqarish','zavod','fabrika','sex','korxona','саноат','ишлаб чиқариш','завод','фабрика','цех','корхона','қайта ишлаш']
 };
 
 function renderEntrepreneurs(){
