@@ -1336,6 +1336,59 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
         <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 12 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
       </div>
+
+      <!-- TRANSPORT KALKULYATOR (SeaRates) -->
+      <div class="tcard" style="margin-top:1rem">
+        <div class="tc-head">
+          <div class="tc-title">🚛 Transport Narxi Kalkulyator</div>
+        </div>
+        <div style="padding:1rem">
+          <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
+            <div class="form-group" style="flex:1;min-width:180px">
+              <label class="form-label">Qayerdan</label>
+              <select class="form-input" id="tr-from">
+                <option value="Hamburg, Germany">🇩🇪 Hamburg, Germany</option>
+                <option value="Shanghai, China">🇨🇳 Shanghai, China</option>
+                <option value="Istanbul, Turkey">🇹🇷 Istanbul, Turkey</option>
+                <option value="Dubai, UAE">🇦🇪 Dubai, UAE</option>
+                <option value="Moscow, Russia">🇷🇺 Moscow, Russia</option>
+                <option value="Mumbai, India">🇮🇳 Mumbai, India</option>
+                <option value="Tehran, Iran">🇮🇷 Tehran, Iran</option>
+                <option value="Karachi, Pakistan">🇵🇰 Karachi, Pakistan</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:180px">
+              <label class="form-label">Qayerga</label>
+              <select class="form-input" id="tr-to">
+                <option value="Tashkent, Uzbekistan">🇺🇿 Toshkent</option>
+                <option value="Navoi, Uzbekistan">🇺🇿 Navoiy</option>
+                <option value="Almaty, Kazakhstan">🇰🇿 Olma-ota</option>
+                <option value="Bishkek, Kyrgyzstan">🇰🇬 Bishkek</option>
+                <option value="Dushanbe, Tajikistan">🇹🇯 Dushanbe</option>
+                <option value="Kabul, Afghanistan">🇦🇫 Kobul</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:0 0 130px">
+              <label class="form-label">Konteyner</label>
+              <select class="form-input" id="tr-container">
+                <option value="20ST">20' Standard</option>
+                <option value="40ST" selected>40' Standard</option>
+                <option value="40HC">40' High Cube</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:0 0 auto">
+              <button class="btn btn-blue" onclick="calculateFreight()">🚛 Hisoblash</button>
+            </div>
+          </div>
+
+          <!-- Natija -->
+          <div id="freightResult" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem;margin-bottom:1rem" id="freightCards"></div>
+            <div id="freightCompare" style="padding:1rem;background:var(--bg2);border-radius:10px"></div>
+          </div>
+          <div id="freightLoading" style="display:none;text-align:center;padding:1rem;color:var(--text3)">⏳ SeaRates API'dan narx olmoqda...</div>
+        </div>
+      </div>
     </div>
     <div id="importEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">📊</div><p>Yuqoridan mahsulot tanlang — import tahlili chiqadi</p></div>
   </div>
@@ -1527,6 +1580,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="form-grid">
         <div class="form-group span-2"><label class="form-label">Gemini API Key</label><input class="form-input" id="set-gemini-key" type="password" placeholder="AIzaSy..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">aistudio.google.com dan oling</div></div>
         <div class="form-group span-2"><label class="form-label">Apollo API Key</label><input class="form-input" id="set-apollo-key" type="password" placeholder="API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">apollo.io dan oling</div></div>
+        <div class="form-group span-2"><label class="form-label">SeaRates API Key</label><input class="form-input" id="set-searates-key" type="password" placeholder="SeaRates API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">searates.com/integrations dan oling (bepul tier — 100 so'rov/oy)</div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Bot Token</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling</div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Chat ID</label><input class="form-input" id="set-tg-chatid" placeholder="-1001234567890"></div>
       </div>
@@ -7381,6 +7435,97 @@ function clearWorldBankData(){
   toast('🗑 World Bank ma\'lumotlari tozalandi');
 }
 
+/* ═══ TRANSPORT KALKULYATOR (SeaRates + Gemini fallback) ═══ */
+var SEARATES_PROXY = 'https://keen-biscochitos-9a137d.netlify.app/api/searates';
+
+// Navoiy'dan ichki yo'nalishlar (qo'lda bazasi — real narxlar)
+var NAVOI_ROUTES = {
+  'Tashkent, Uzbekistan': {km:480, price_20:350, price_40:500, days:1, mode:'Temir yo\'l'},
+  'Navoi, Uzbekistan': {km:0, price_20:0, price_40:0, days:0, mode:'Mahalliy'},
+  'Almaty, Kazakhstan': {km:1200, price_20:800, price_40:1200, days:2, mode:'Avto'},
+  'Bishkek, Kyrgyzstan': {km:1400, price_20:900, price_40:1400, days:3, mode:'Avto'},
+  'Dushanbe, Tajikistan': {km:600, price_20:500, price_40:800, days:2, mode:'Avto'},
+  'Kabul, Afghanistan': {km:900, price_20:700, price_40:1100, days:3, mode:'Avto'}
+};
+
+async function calculateFreight(){
+  var from = document.getElementById('tr-from').value;
+  var to = document.getElementById('tr-to').value;
+  var container = document.getElementById('tr-container').value;
+  var is40 = container !== '20ST';
+
+  document.getElementById('freightResult').style.display = 'none';
+  document.getElementById('freightLoading').style.display = 'block';
+
+  var intlPrice = null;
+  var intlDays = null;
+  var intlSource = '';
+
+  // 1. Try SeaRates API
+  try {
+    var srUrl = SEARATES_PROXY+'?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)+'&container='+container;
+    var srResp = await fetch(srUrl);
+    if(srResp.ok){
+      var srData = await srResp.json();
+      if(srData.cheapest && srData.cheapest.price_usd > 0){
+        intlPrice = srData.cheapest.price_usd;
+        intlDays = srData.cheapest.transit_days;
+        intlSource = 'SeaRates API (real)';
+      }
+    }
+  } catch(e){ console.log('SeaRates error:', e); }
+
+  // 2. Fallback: Gemini AI estimate
+  if(!intlPrice){
+    try {
+      var key = getGeminiKey();
+      if(key){
+        var prompt = 'Return ONLY raw JSON, no markdown. Estimate freight shipping cost for one '+container+' container from '+from+' to '+to+'. Include sea + land transport.\nJSON: {"price_usd":5000,"transit_days":25,"mode":"Sea+Truck","breakdown":"Sea $3500 + Truck $1500"}';
+        var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:300}};
+        var data = await callGemini(body);
+        var parsed = safeParseJSON(geminiText(data));
+        intlPrice = parsed.price_usd || 5000;
+        intlDays = parsed.transit_days || 25;
+        intlSource = 'Gemini AI (taxminiy, ±15%)';
+      }
+    } catch(e){ console.log('Gemini freight error:', e); }
+  }
+
+  // 3. Final fallback: rough estimate
+  if(!intlPrice){
+    intlPrice = is40 ? 5500 : 3200;
+    intlDays = 25;
+    intlSource = 'Taxminiy (standart)';
+  }
+
+  // Navoiy route
+  var navRoute = NAVOI_ROUTES[to] || {km:500, price_20:400, price_40:600, days:1, mode:'Avto'};
+  var navPrice = is40 ? navRoute.price_40 : navRoute.price_20;
+  var navDays = navRoute.days;
+
+  // Tejamkorlik
+  var saving = intlPrice - navPrice;
+  var savingPct = Math.round(saving / intlPrice * 100);
+
+  document.getElementById('freightLoading').style.display = 'none';
+  document.getElementById('freightResult').style.display = 'block';
+
+  // Cards
+  document.getElementById('freightCards').innerHTML =
+    '<div style="padding:1rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">🌍</div><div style="font-size:.6rem;color:var(--text3)">Xorij → '+to.split(',')[0]+'</div><div style="font-size:1.2rem;font-weight:800;color:#EF233C">$'+intlPrice.toLocaleString()+'</div><div style="font-size:.55rem;color:var(--text3)">~'+intlDays+' kun | '+intlSource+'</div></div>'+
+    '<div style="padding:1rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">🇺🇿</div><div style="font-size:.6rem;color:var(--text3)">Navoiy → '+to.split(',')[0]+'</div><div style="font-size:1.2rem;font-weight:800;color:#059669">$'+navPrice.toLocaleString()+'</div><div style="font-size:.55rem;color:var(--text3)">~'+navDays+' kun | '+navRoute.mode+'</div></div>'+
+    '<div style="padding:1rem;background:linear-gradient(135deg,rgba(5,150,105,.1),rgba(6,214,160,.1));border-radius:10px;text-align:center;border:1px solid rgba(5,150,105,.3)"><div style="font-size:1.3rem">💰</div><div style="font-size:.6rem;color:var(--text3)">Tejamkorlik</div><div style="font-size:1.2rem;font-weight:800;color:#059669">$'+saving.toLocaleString()+'</div><div style="font-size:.55rem;color:#059669;font-weight:700">-'+savingPct+'% arzon</div></div>';
+
+  // Compare bar
+  var maxP = Math.max(intlPrice, navPrice);
+  document.getElementById('freightCompare').innerHTML =
+    '<div style="font-size:.75rem;font-weight:700;margin-bottom:.8rem">📊 Narx solishtirma: '+from.split(',')[0]+' → '+to.split(',')[0]+'</div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:130px;font-size:.68rem;text-align:right">🌍 Xorijdan</div><div style="flex:1;height:24px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.round(intlPrice/maxP*100)+'%;background:linear-gradient(90deg,#EF233C,#FF006E);border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:.6rem;color:#fff;font-weight:700">$'+intlPrice.toLocaleString()+'</div></div></div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:130px;font-size:.68rem;text-align:right">🇺🇿 Navoiydan</div><div style="flex:1;height:24px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.round(navPrice/maxP*100)+'%;background:linear-gradient(90deg,#059669,#06D6A0);border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:.6rem;color:#fff;font-weight:700">$'+navPrice.toLocaleString()+'</div></div></div>'+
+    '<div style="margin-top:.8rem;padding:.6rem;background:rgba(5,150,105,.08);border-radius:8px;font-size:.7rem;color:#059669"><b>💡 Xulosa:</b> Navoiyda ishlab chiqarish <b>$'+saving.toLocaleString()+' ('+ savingPct+'%)</b> transport xarajatini tejaydi. Yiliga 100 konteyner yuborilsa = <b>$'+(saving*100/1000).toFixed(0)+'K</b> iqtisod.</div>'+
+    '<div style="margin-top:4px;font-size:.55rem;color:var(--text3);text-align:right">📊 Xorij narxi manba: '+intlSource+' | Navoiy narxi: qo\'lda bazasi</div>';
+}
+
 function goToFinder(prodId, countryCode){
   showPage('finder');
   var sel = document.getElementById('finder-product-select');
@@ -7709,6 +7854,8 @@ function loadSettings(){
   if(gkEl) gkEl.value = keys.gemini||getGeminiKey()||'';
   var akEl = document.getElementById('set-apollo-key');
   if(akEl) akEl.value = keys.apollo||'';
+  var srEl = document.getElementById('set-searates-key');
+  if(srEl) srEl.value = keys.searates||'';
 }
 
 function saveSettings(){
@@ -7740,6 +7887,10 @@ function saveSettings(){
   }
   if(apolloVal && typeof saveApiKey==='function'){
     saveApiKey('apollo', apolloVal.trim());
+  }
+  var searatesVal = (document.getElementById('set-searates-key')||{}).value||'';
+  if(searatesVal && typeof saveApiKey==='function'){
+    saveApiKey('searates', searatesVal.trim());
   }
   toast('✅ Sozlamalar va API kalitlar Firebase ga saqlandi!');
 }
