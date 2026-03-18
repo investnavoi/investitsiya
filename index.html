@@ -7215,6 +7215,23 @@ document.addEventListener('click', function(e){
   }
 });
 
+// Klaviaturada harf yozganda avtomatik country search'ga focus
+document.addEventListener('keydown', function(e){
+  if(typeof currentPage==='undefined' || currentPage !== 'trade') return;
+  var active = document.activeElement;
+  if(active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA' || active.tagName==='SELECT')) return;
+  if(e.key.length === 1 && /[a-zA-Z0-9']/.test(e.key)){
+    var searchInput = document.getElementById('trade-country-search');
+    if(searchInput){
+      searchInput.focus();
+      searchInput.value = e.key;
+      showTradeCountries();
+      filterTradeCountries();
+      e.preventDefault();
+    }
+  }
+});
+
 var _tradeData = [];
 var _tradeCache = {};
 var _tradeSource = '';
@@ -7288,57 +7305,67 @@ async function loadGlobalTradeData(){
     }
 
     document.getElementById('tradeBar').style.width = '30%';
-    document.getElementById('tradeLoadingText').textContent = '🌐 '+(comtradeKey?'Premium':'Public')+' API orqali yuklanmoqda...';
+    document.getElementById('tradeLoadingText').textContent = '🌐 UN Comtrade orqali yuklanmoqda...';
     
-    // Try proxy first
-    var resp = null;
+    var json = null;
     var dataSource = '';
+
+    // ═══ SOURCE 1: UN Comtrade Proxy ═══
     try {
-      resp = await fetch(proxyUrl);
-      if(!resp.ok) resp = null; else dataSource = 'UN Comtrade (proxy)';
-    } catch(e){ resp = null; }
+      var r1 = await fetch(proxyUrl);
+      if(r1.ok){
+        var j1 = await r1.json();
+        if((j1.data||[]).length > 0){json = j1; dataSource = 'UN Comtrade';}
+      }
+    } catch(e){}
 
     document.getElementById('tradeBar').style.width = '40%';
     
-    // Fallback to direct Comtrade API
-    if(!resp){
+    // ═══ SOURCE 2: UN Comtrade Direct ═══
+    if(!json){
       try {
-        var headers = {'Accept':'application/json'};
-        if(comtradeKey) headers['Ocp-Apim-Subscription-Key'] = comtradeKey;
-        resp = await fetch(directUrl, {headers:headers});
-        if(resp.ok) dataSource = 'UN Comtrade'; else resp = null;
-      } catch(e){ resp = null; }
+        var hdrs = {'Accept':'application/json'};
+        if(comtradeKey) hdrs['Ocp-Apim-Subscription-Key'] = comtradeKey;
+        var r2 = await fetch(directUrl, {headers:hdrs});
+        if(r2.ok){
+          var j2 = await r2.json();
+          if((j2.data||[]).length > 0){json = j2; dataSource = 'UN Comtrade';}
+        }
+      } catch(e){}
     }
 
     document.getElementById('tradeBar').style.width = '55%';
 
-    // Fallback 2: WTO Timeseries API
-    if(!resp){
+    // ═══ SOURCE 3: WTO API ═══
+    if(!json){
       document.getElementById('tradeLoadingText').textContent = '🌐 WTO API orqali yuklanmoqda...';
       try {
         var wtoKey = (window._apiKeys&&window._apiKeys.wtoKey) || '699f3b04d9b4406a80244064333cc8ae';
-        var wtoUrl = 'https://keen-biscochitos-9a137d.netlify.app/api/wto-trade?reporter='+countryCode+'&year='+year+'&flow='+flow+'&key='+wtoKey;
-        resp = await fetch(wtoUrl);
-        if(resp.ok) dataSource = 'WTO'; else resp = null;
-      } catch(e){ resp = null; }
+        var r3 = await fetch('https://keen-biscochitos-9a137d.netlify.app/api/wto-trade?reporter='+countryCode+'&year='+year+'&flow='+flow+'&key='+wtoKey);
+        if(r3.ok){
+          var j3 = await r3.json();
+          if((j3.data||[]).length > 0){json = j3; dataSource = j3.source||'WTO';}
+        }
+      } catch(e){}
     }
 
     document.getElementById('tradeBar').style.width = '70%';
 
-    // Fallback 3: WITS (World Bank) API
-    if(!resp){
+    // ═══ SOURCE 4: WITS (World Bank) ═══
+    if(!json){
       document.getElementById('tradeLoadingText').textContent = '🌐 WITS (World Bank) orqali yuklanmoqda...';
       try {
-        var witsUrl = 'https://keen-biscochitos-9a137d.netlify.app/api/wits-trade?reporter='+countryCode+'&year='+year+'&flow='+flow;
-        resp = await fetch(witsUrl);
-        if(resp.ok) dataSource = 'WITS (World Bank)'; else resp = null;
-      } catch(e){ resp = null; }
+        var r4 = await fetch('https://keen-biscochitos-9a137d.netlify.app/api/wits-trade?reporter='+countryCode+'&year='+year+'&flow='+flow);
+        if(r4.ok){
+          var j4 = await r4.json();
+          if((j4.data||[]).length > 0){json = j4; dataSource = j4.source||'WITS';}
+        }
+      } catch(e){}
     }
 
-    document.getElementById('tradeBar').style.width = '80%';
+    document.getElementById('tradeBar').style.width = '85%';
 
-    if(!resp || !resp.ok) throw new Error('API javob bermadi: '+(resp?resp.status:'null'));
-    var json = await resp.json();
+    if(!json) throw new Error('Barcha API\'lardan ma\'lumot topilmadi (UN Comtrade, WTO, WITS)');
 
     // Parse results — proxy va direct API turli formatda bo'lishi mumkin
     var rawData = json.data || json.countries || [];
