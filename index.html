@@ -9003,7 +9003,7 @@ function initImportAnalysisComtradeOnly(){
   if(!importPage) return;
 
   var sub = importPage.querySelector('.pg-sub');
-  if(sub) sub.textContent = "13 davlat import statistikasi - faqat UN Comtrade ma'lumotlari";
+  if(sub) sub.textContent = "13 davlat import statistikasi - UN Comtrade va World Bank ko'rsatkichlari";
 
   var kpi4 = document.getElementById('imp-k4');
   var kpi4Label = kpi4 ? kpi4.previousElementSibling : null;
@@ -9016,7 +9016,7 @@ function initImportAnalysisComtradeOnly(){
 
   var wbLoading = document.getElementById('wbLoading');
   var wbCard = wbLoading ? wbLoading.closest('.tcard') : null;
-  if(wbCard) wbCard.style.display = 'none';
+  if(wbCard) wbCard.style.display = '';
 }
 
 async function runImportAnalysis(){
