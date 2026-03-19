@@ -8710,12 +8710,45 @@ async function runImportAnalysis(){
   var countries = null;
 
   // 1. Try UN Comtrade real API
-  if(hsCode && hsCode.length>=4){
+  if(hsCode && hsCode.length>=2){
     toast('📊 UN Comtrade real ma\'lumot olmoqda (HS: '+hsCode+')...');
     countries = await fetchComtrade(hsCode, '2023');
     if(countries && countries.length>0){
       source = 'UN Comtrade (real)';
       toast('✅ UN Comtrade: '+countries.length+' ta davlat ma\'lumoti olindi!');
+    }
+  }
+
+  // 1.5 Try WTO API fallback
+  if(!countries || countries.length===0){
+    if(hsCode && hsCode.length>=2){
+      toast('📊 WTO API orqali sinash...');
+      try {
+        var wtoKey = (window._apiKeys&&window._apiKeys.wtoKey) || '699f3b04d9b4406a80244064333cc8ae';
+        var targetCodes = ['643','398','417','762','795','031','268','051','004','364','586','496'];
+        var wtoCountries = [];
+        for(var ti=0; ti<targetCodes.length; ti++){
+          try {
+            var wr = await fetch(TG_API_BASE.replace('/api','')+'/api/trade?reporter='+targetCodes[ti]+'&year=2023&flow=M&hs='+hsCode);
+            if(wr.ok){
+              var wj = await wr.json();
+              if(wj.data && wj.data.length>0){
+                var totalVal = wj.data.reduce(function(s,d){return s+(d.primaryValue||d.fobvalue||0);},0);
+                if(totalVal>0){
+                  var cNames = {'643':'Russia','398':'Kazakhstan','417':'Kyrgyzstan','762':'Tajikistan','795':'Turkmenistan','031':'Azerbaijan','268':'Georgia','051':'Armenia','004':'Afghanistan','364':'Iran','586':'Pakistan','496':'Mongolia'};
+                  var cCodes = {'643':'RU','398':'KZ','417':'KG','762':'TJ','795':'TM','031':'AZ','268':'GE','051':'AM','004':'AF','364':'IR','586':'PK','496':'MN'};
+                  wtoCountries.push({code:cCodes[targetCodes[ti]]||targetCodes[ti], name:cNames[targetCodes[ti]]||targetCodes[ti], import_usd:totalVal, trend_pct:0, volume_tons:0});
+                }
+              }
+            }
+          } catch(e){}
+        }
+        if(wtoCountries.length>0){
+          countries = wtoCountries;
+          source = 'API (real)';
+          toast('✅ '+countries.length+' ta davlat ma\'lumoti olindi!');
+        }
+      } catch(e){ console.log('WTO import tahlili xato:', e.message); }
     }
   }
 
