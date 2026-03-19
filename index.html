@@ -9065,11 +9065,12 @@ function renderImportResults(countries, prod, source){
   var okCountries = countries.filter(function(c){ return c.status === 'ok'; });
   var total = okCountries.reduce(function(s,c){return s+(c.import_usd||0);},0);
   var biggest = okCountries[0] || {};
-  var fastest = okCountries.slice().sort(function(a,b){return (b.trend_pct||0)-(a.trend_pct||0);})[0] || {};
+  var trendCountries = okCountries.filter(function(c){ return typeof c.trend_pct === 'number'; });
+  var fastest = trendCountries.slice().sort(function(a,b){return (b.trend_pct||0)-(a.trend_pct||0);})[0] || {};
 
   document.getElementById('imp-k1').textContent = '$'+Math.round(total/1e6)+'M';
   document.getElementById('imp-k2').textContent = (biggest.flag||'')+' '+(biggest.name||'—');
-  document.getElementById('imp-k3').textContent = (fastest.flag||'')+' '+(fastest.name||'—')+' ↑'+(fastest.trend_pct||0)+'%';
+  document.getElementById('imp-k3').textContent = fastest.name ? ((fastest.flag||'')+' '+(fastest.name||'—')+' ↑'+(fastest.trend_pct||0)+'%') : '—';
   document.getElementById('imp-k4').textContent = source;
 
   var maxVal = Math.max.apply(null, okCountries.length ? okCountries.map(function(c){return c.import_usd||0;}) : [0]);
@@ -9077,10 +9078,11 @@ function renderImportResults(countries, prod, source){
   chartEl.innerHTML = countries.map(function(c){
     var tc = TARGET_COUNTRIES.find(function(t){return t.code===c.code;});
     var pct = (c.status==='ok' && maxVal>0) ? Math.round((c.import_usd||0)/maxVal*100) : 0;
-    var trend = (c.trend_pct||0);
+    var hasTrend = typeof c.trend_pct === 'number';
+    var trend = hasTrend ? c.trend_pct : 0;
     var trendColor = trend>0 ? '#059669' : '#EF233C';
     var amountLabel = c.status==='ok' ? ('$'+Math.round((c.import_usd||0)/1e6)+'M') : (c.status==='no_data' ? 'yo\'q' : (c.status==='rate_limited' ? 'limit' : 'xato'));
-    var trendLabel = c.status==='ok' ? ((trend>0?'↑':'↓')+Math.abs(trend)+'%') : '—';
+    var trendLabel = (c.status==='ok' && hasTrend) ? ((trend>0?'↑':'↓')+Math.abs(trend)+'%') : '—';
     var trendLabelColor = c.status==='ok' ? trendColor : '#94A3B8';
     return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc?tc.flag:c.flag||'')+' '+(c.name||'')+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:65px;font-size:.68rem;font-weight:700;text-align:right">'+amountLabel+'</div><div style="width:45px;font-size:.62rem;font-weight:700;color:'+trendLabelColor+'">'+trendLabel+'</div></div>';
   }).join('');
@@ -9088,9 +9090,10 @@ function renderImportResults(countries, prod, source){
   var tb = document.getElementById('import-tbody');
   tb.innerHTML = countries.map(function(c,i){
     var tc = TARGET_COUNTRIES.find(function(t){return t.code===c.code;});
-    var trend = (c.trend_pct||0);
+    var hasTrend = typeof c.trend_pct === 'number';
+    var trend = hasTrend ? c.trend_pct : 0;
     var amountCell = c.status==='ok' ? ('$'+Math.round((c.import_usd||0)/1e6)+'M') : (c.status==='no_data' ? 'Ma\'lumot yo\'q' : (c.status==='rate_limited' ? 'Limit' : 'Xato'));
-    var trendCell = c.status==='ok' ? ((trend>0?'↑':'↓')+Math.abs(trend)+'%') : '—';
+    var trendCell = (c.status==='ok' && hasTrend) ? ((trend>0?'↑':'↓')+Math.abs(trend)+'%') : '—';
     var volumeCell = c.status==='ok' && c.volume_tons ? (Math.round(c.volume_tons/1000)+'K t') : '—';
     var trendCellColor = c.status==='ok' ? (trend>0?'#059669':'#EF233C') : '#94A3B8';
     return '<tr><td>'+(i+1)+'</td><td>'+(tc?tc.flag+' ':c.flag||'')+c.name+'</td><td style="font-weight:700">'+amountCell+'</td><td style="color:'+trendCellColor+';font-weight:700">'+trendCell+'</td><td>'+volumeCell+'</td><td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prod.id+'\',\''+c.code+'\')">🔍</button></td></tr>';
