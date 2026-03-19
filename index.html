@@ -9003,7 +9003,11 @@ function initImportAnalysisComtradeOnly(){
   if(!importPage) return;
 
   var sub = importPage.querySelector('.pg-sub');
-  if(sub) sub.textContent = "13 davlat import statistikasi - UN Comtrade va World Bank ko'rsatkichlari";
+  if(sub) sub.textContent = "13 davlat import statistikasi - 2021-2024 UN Comtrade va World Bank ko'rsatkichlari";
+
+  var kpi1 = document.getElementById('imp-k1');
+  var kpi1Label = kpi1 ? kpi1.previousElementSibling : null;
+  if(kpi1Label) kpi1Label.textContent = "Jami import 2021-2024";
 
   var kpi4 = document.getElementById('imp-k4');
   var kpi4Label = kpi4 ? kpi4.previousElementSibling : null;
@@ -9016,7 +9020,7 @@ function initImportAnalysisComtradeOnly(){
   var chartCard = document.getElementById('importBarChart');
   var chartTitle = chartCard ? chartCard.closest('.tcard') : null;
   var chartHead = chartTitle ? chartTitle.querySelector('.tc-title') : null;
-  if(chartHead) chartHead.textContent = "13 Davlat Import Hajmi";
+  if(chartHead) chartHead.textContent = "13 Davlat Import Hajmi (2021-2024)";
 
   var wbLoading = document.getElementById('wbLoading');
   var wbCard = wbLoading ? wbLoading.closest('.tcard') : null;
@@ -9088,7 +9092,16 @@ function renderImportResults(countries, prod, source){
     var amountLabel = c.status==='ok' ? ('$'+Math.round((c.import_usd||0)/1e6)+'M') : (c.status==='no_data' ? 'yo\'q' : (c.status==='rate_limited' ? 'limit' : 'xato'));
     var trendLabel = (c.status==='ok' && hasTrend) ? ((trend>0?'↑':'↓')+Math.abs(trend)+'%') : '—';
     var trendLabelColor = c.status==='ok' ? trendColor : '#94A3B8';
-    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc?tc.flag:c.flag||'')+' '+(c.name||'')+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:65px;font-size:.68rem;font-weight:700;text-align:right">'+amountLabel+'</div><div style="width:45px;font-size:.62rem;font-weight:700;color:'+trendLabelColor+'">'+trendLabel+'</div></div>';
+    var years = ['2021','2022','2023','2024'];
+    var yearImports = c.year_imports || {};
+    var yearStatuses = c.year_statuses || {};
+    var yearsHtml = years.map(function(y){
+      var yStatus = yearStatuses[y] || (c.status || 'no_data');
+      var yValue = Number(yearImports[y] || 0);
+      var yText = yStatus==='ok' ? ('$'+Math.round(yValue/1e6)+'M') : (yStatus==='no_data' ? '—' : (yStatus==='rate_limited' ? 'limit' : 'xato'));
+      return '<div style="min-width:48px;text-align:right"><div style="font-size:.56rem;color:var(--text3);line-height:1.1">'+y+'</div><div style="font-size:.62rem;font-weight:700;line-height:1.2">'+yText+'</div></div>';
+    }).join('');
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc?tc.flag:c.flag||'')+' '+(c.name||'')+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:72px;font-size:.68rem;font-weight:700;text-align:right">'+amountLabel+'</div><div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;min-width:220px">'+yearsHtml+'</div></div>';
   }).join('');
 
   var tb = document.getElementById('import-tbody');
@@ -9106,7 +9119,7 @@ function renderImportResults(countries, prod, source){
   var okCount2 = countries.filter(function(c){ return c.status==='ok'; }).length;
   var noDataCount2 = countries.filter(function(c){ return c.status==='no_data'; }).length;
   var limitCount2 = countries.filter(function(c){ return c.status==='rate_limited'; }).length;
-  chartEl.innerHTML += '<div style="text-align:right;margin-top:8px;font-size:.6rem;color:var(--text3)">📊 Manba: '+source+' | OK: '+okCount2+' | Ma\'lumot yo\'q: '+noDataCount2+' | Limit: '+limitCount2+'</div>';
+  chartEl.innerHTML += '<div style="text-align:right;margin-top:8px;font-size:.6rem;color:var(--text3)">📊 Manba: '+source+' | O\'ngdagi raqamlar: 2021, 2022, 2023, 2024 | OK: '+okCount2+' | Ma\'lumot yo\'q: '+noDataCount2+' | Limit: '+limitCount2+'</div>';
 }
 
 initImportAnalysisComtradeOnly();
