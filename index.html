@@ -1805,9 +1805,9 @@ input[type="time"]{-webkit-appearance:none;}
       <div id="tg-setup-status" style="margin-bottom:.5rem"></div>
       <div style="font-size:.6rem;color:var(--text3)">
         Netlify Environment Variables:<br>
-        <code>TG_API_ID = 31117325</code><br>
-        <code>TG_API_HASH = c32b912f962f5d0d866861787b835acd</code><br>
-        <code>TG_SESSION = (session string)</code>
+        <code>TG_API_ID = your_api_id</code><br>
+        <code>TG_API_HASH = your_api_hash</code><br>
+        <code>TG_SESSION = your_session_string</code>
       </div>
         <div class="form-group span-2"><label class="form-label">PPTX Template URL</label><input class="form-input" id="set-pptx-url" type="url" placeholder="https://investnavoi.github.io/investitsiya/template_english.pptx"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">GitHub Pages'da template_english.pptx faylini host qiling | <a href="#" onclick="uploadPptxTemplate();return false" style="color:#4361EE">yoki kompyuterdan yuklang</a></div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Bot Token (guruhga yuborish uchun)</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling — guruhga xabar uchun</div></div>
@@ -2990,7 +2990,7 @@ function showPage(id){
   else if(id==='investor')renderInvestorCompanies();
   else if(id==='admin')renderAdminLists();
   else if(id==='products')renderProducts();
-  else if(id==='import')populateProductSelects();
+  else if(id==='import'){populateProductSelects();initImportAnalysisComtradeOnly();}
   else if(id==='finder')populateProductSelects();
   else if(id==='ailetter')populateProductSelects();
   else if(id==='pipeline')renderPipeline();
@@ -3521,7 +3521,6 @@ function setIntlRegion(i){
 /* ═══════════════════════════════════════
    APOLLO.IO INTEGRATION
 ═══════════════════════════════════════ */
-const APOLLO_KEY = '_k3r9J1QYdZLU9IopNgcgg';
 const APOLLO_PROXY = 'https://navoiy-api-proxy.vercel.app/api/apollo-search';
 let _apoPage = 1;
 let _apoResults = [];
@@ -7335,8 +7334,8 @@ async function loadGlobalTradeData(){
     if(!json){
       document.getElementById('tradeLoadingText').textContent = '🌐 WTO API orqali...';
       try {
-        var wtoKey = (window._apiKeys&&window._apiKeys.wtoKey) || '699f3b04d9b4406a80244064333cc8ae';
-        var r2 = await fetch(BASE+'/api/wto-trade?reporter='+countryCode+'&year='+year+'&flow='+flow+'&key='+wtoKey);
+        var wtoKey = (window._apiKeys&&window._apiKeys.wtoKey) || '';
+        var r2 = await fetch(BASE+'/api/wto-trade?reporter='+countryCode+'&year='+year+'&flow='+flow+(wtoKey?'&key='+encodeURIComponent(wtoKey):''));
         if(r2.ok){
           var j2 = await r2.json();
           if((j2.data||[]).length > 0){json = j2; dataSource = j2.source||'WTO';}
@@ -8668,11 +8667,15 @@ var COMTRADE_PROXY = 'https://navoiy-api-proxy.vercel.app/api/comtrade';
 var WORLDBANK_URL = 'https://api.worldbank.org/v2/country';
 
 // Country code mapping for Comtrade
-var COUNTRY_COMTRADE = {RU:'643',KZ:'398',KG:'417',TJ:'762',TM:'795',AZ:'031',GE:'268',AM:'051',AF:'004',IR:'364',PK:'586',MN:'496'};
+var COUNTRY_COMTRADE = {UZ:'860',TM:'795',TJ:'762',KG:'417',KZ:'398',MN:'496',RU:'643',AZ:'031',GE:'268',AM:'051',IR:'364',AF:'004',PK:'586'};
 
 async function fetchComtrade(hsCode, year){
   try {
-    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023');
+    var countryCodes = TARGET_COUNTRIES.map(function(t){ return t.comtrade; }).join(',');
+    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countryCodes);
+    if(window._apiKeys && window._apiKeys.comtrade){
+      url += '&key='+encodeURIComponent(window._apiKeys.comtrade);
+    }
     var resp = await fetch(url);
     if(!resp.ok) throw new Error('Comtrade proxy: '+resp.status);
     var data = await resp.json();
@@ -8724,7 +8727,7 @@ async function runImportAnalysis(){
     if(hsCode && hsCode.length>=2){
       toast('📊 WTO API orqali sinash...');
       try {
-        var wtoKey = (window._apiKeys&&window._apiKeys.wtoKey) || '699f3b04d9b4406a80244064333cc8ae';
+        var wtoKey = (window._apiKeys&&window._apiKeys.wtoKey) || '';
         var targetCodes = ['643','398','417','762','795','031','268','051','004','364','586','496'];
         var wtoCountries = [];
         for(var ti=0; ti<targetCodes.length; ti++){
@@ -8979,6 +8982,82 @@ function clearWorldBankData(){
 }
 
 /* ═══ TRANSPORT TAB SWITCHING ═══ */
+TARGET_COUNTRIES = [
+  {code:'UZ',name:"O'zbekiston",flag:'',comtrade:'860'},
+  {code:'TM',name:'Turkmaniston',flag:'',comtrade:'795'},
+  {code:'TJ',name:'Tojikiston',flag:'',comtrade:'762'},
+  {code:'KG',name:"Qirg'iziston",flag:'',comtrade:'417'},
+  {code:'KZ',name:"Qozog'iston",flag:'',comtrade:'398'},
+  {code:'MN',name:"Mo'g'uliston",flag:'',comtrade:'496'},
+  {code:'RU',name:'Rossiya',flag:'',comtrade:'643'},
+  {code:'AZ',name:'Ozarbayjon',flag:'',comtrade:'031'},
+  {code:'GE',name:'Gruziya',flag:'',comtrade:'268'},
+  {code:'AM',name:'Armaniston',flag:'',comtrade:'051'},
+  {code:'IR',name:'Eron',flag:'',comtrade:'364'},
+  {code:'AF',name:"Afg'oniston",flag:'',comtrade:'004'},
+  {code:'PK',name:'Pokiston',flag:'',comtrade:'586'}
+];
+
+function initImportAnalysisComtradeOnly(){
+  var importPage = document.getElementById('page-import');
+  if(!importPage) return;
+
+  var sub = importPage.querySelector('.pg-sub');
+  if(sub) sub.textContent = "13 davlat import statistikasi - faqat UN Comtrade ma'lumotlari";
+
+  var kpi4 = document.getElementById('imp-k4');
+  var kpi4Label = kpi4 ? kpi4.previousElementSibling : null;
+  if(kpi4Label) kpi4Label.textContent = "Ma'lumot manbasi";
+
+  var chartCard = document.getElementById('importBarChart');
+  var chartTitle = chartCard ? chartCard.closest('.tcard') : null;
+  var chartHead = chartTitle ? chartTitle.querySelector('.tc-title') : null;
+  if(chartHead) chartHead.textContent = "13 Davlat Import Hajmi";
+
+  var wbLoading = document.getElementById('wbLoading');
+  var wbCard = wbLoading ? wbLoading.closest('.tcard') : null;
+  if(wbCard) wbCard.style.display = 'none';
+}
+
+async function runImportAnalysis(){
+  initImportAnalysisComtradeOnly();
+
+  var sel = document.getElementById('import-product-select');
+  var prodId = sel ? sel.value : '';
+  if(!prodId){ toast('Mahsulot tanlang','error'); return; }
+
+  var prod = (DB.products||[]).find(function(p){ return String(p.id)===String(prodId); });
+  if(!prod){ toast('Mahsulot topilmadi','error'); return; }
+
+  var resultsEl = document.getElementById('importResults');
+  var emptyEl = document.getElementById('importEmpty');
+  if(resultsEl) resultsEl.style.display = 'block';
+  if(emptyEl) emptyEl.style.display = 'none';
+
+  var hsCode = String(prod.hs_code||'').replace(/\./g,'').replace(/\s+/g,'').slice(0,4);
+  if(hsCode.length < 2){
+    if(resultsEl) resultsEl.style.display = 'none';
+    if(emptyEl) emptyEl.style.display = 'block';
+    toast('Bu mahsulot uchun HS kod topilmadi','error');
+    return;
+  }
+
+  toast('UN Comtrade real ma\'lumot olmoqda (HS: '+hsCode+')...');
+  var countries = await fetchComtrade(hsCode, '2023');
+
+  if(!countries || !countries.length){
+    if(resultsEl) resultsEl.style.display = 'none';
+    if(emptyEl) emptyEl.style.display = 'block';
+    toast('UN Comtrade dan ma\'lumot topilmadi. Faqat real Comtrade ma\'lumoti ishlatiladi.','error');
+    return;
+  }
+
+  renderImportResults(countries, prod, 'UN Comtrade (real)');
+  toast('UN Comtrade: '+countries.length+' ta davlat ma\'lumoti olindi!');
+}
+
+initImportAnalysisComtradeOnly();
+
 function showTransportTab(tab){
   ['rail','truck','air','widget'].forEach(function(t){
     var panel = document.getElementById('trPanel-'+t);
