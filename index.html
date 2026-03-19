@@ -9009,6 +9009,10 @@ function initImportAnalysisComtradeOnly(){
   var kpi4Label = kpi4 ? kpi4.previousElementSibling : null;
   if(kpi4Label) kpi4Label.textContent = "Ma'lumot manbasi";
 
+  var kpi3 = document.getElementById('imp-k3');
+  var kpi3Label = kpi3 ? kpi3.previousElementSibling : null;
+  if(kpi3Label) kpi3Label.textContent = "Top importyor";
+
   var chartCard = document.getElementById('importBarChart');
   var chartTitle = chartCard ? chartCard.closest('.tcard') : null;
   var chartHead = chartTitle ? chartTitle.querySelector('.tc-title') : null;
@@ -9065,12 +9069,12 @@ function renderImportResults(countries, prod, source){
   var okCountries = countries.filter(function(c){ return c.status === 'ok'; });
   var total = okCountries.reduce(function(s,c){return s+(c.import_usd||0);},0);
   var biggest = okCountries[0] || {};
-  var trendCountries = okCountries.filter(function(c){ return typeof c.trend_pct === 'number'; });
-  var fastest = trendCountries.slice().sort(function(a,b){return (b.trend_pct||0)-(a.trend_pct||0);})[0] || {};
+  var topImporter = biggest;
+  var topImporterShare = total > 0 && topImporter.import_usd ? Math.round((topImporter.import_usd / total) * 100) : 0;
 
   document.getElementById('imp-k1').textContent = '$'+Math.round(total/1e6)+'M';
   document.getElementById('imp-k2').textContent = (biggest.flag||'')+' '+(biggest.name||'—');
-  document.getElementById('imp-k3').textContent = fastest.name ? ((fastest.flag||'')+' '+(fastest.name||'—')+' ↑'+(fastest.trend_pct||0)+'%') : '—';
+  document.getElementById('imp-k3').textContent = topImporter.name ? ((topImporter.flag||'')+' '+topImporter.name+' • '+topImporterShare+'%') : '—';
   document.getElementById('imp-k4').textContent = source;
 
   var maxVal = Math.max.apply(null, okCountries.length ? okCountries.map(function(c){return c.import_usd||0;}) : [0]);
