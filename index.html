@@ -1683,7 +1683,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group" style="flex:0 0 120px">
           <label class="form-label">HS daraja</label>
           <select class="form-input" id="trade-hs-level">
-            <option value="2">2-raqamli (guruh)</option><option value="4" selected>4-raqamli (kichik guruh)</option><option value="6">6-raqamli (mahsulot)</option>
+            <option value="all">Darajasiz / avto</option><option value="2">2-raqamli (guruh)</option><option value="4" selected>4-raqamli (kichik guruh)</option><option value="6">6-raqamli (mahsulot)</option>
           </select>
         </div>
         <div class="form-group" style="flex:0 0 auto">
@@ -1691,8 +1691,8 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
       </div>
       <div style="margin-top:.6rem;display:flex;gap:.5rem;align-items:center">
-        <input class="form-input" id="trade-hs-filter" placeholder="HS kod filtr (masalan: 25, 68, 27)" style="max-width:300px;font-size:.75rem">
-        <input class="form-input" id="trade-name-filter" placeholder="Mahsulot nomi bo'yicha qidirish..." style="flex:1;font-size:.75rem" oninput="filterTradeTable()">
+        <input class="form-input" id="trade-hs-filter" placeholder="HS kod filtr (masalan: 25, 6802, 851713) - bo'sh qoldirsangiz barchasi" style="max-width:360px;font-size:.75rem">
+        <input class="form-input" id="trade-name-filter" placeholder="Mahsulot nomi bo'yicha qidirish (HS darajasiz ham ishlaydi)..." style="flex:1;font-size:.75rem" oninput="filterTradeTable()">
       </div>
     </div>
 
@@ -1712,6 +1712,7 @@ input[type="time"]{-webkit-appearance:none;}
     <div id="tradeChartCard" class="tcard" style="display:none;margin-bottom:1rem">
       <div class="tc-head"><div class="tc-title" id="tradeChartTitle">📊 TOP 20 mahsulot</div></div>
       <div id="tradeChartArea" style="padding:.5rem;overflow-x:auto"></div>
+      <div id="tradeChartMeta" style="padding:0 .8rem .7rem;font-size:.62rem;color:var(--text3)"></div>
     </div>
 
     <div id="tradeTableCard" class="tcard" style="display:none">
@@ -7258,6 +7259,7 @@ document.addEventListener('keydown', function(e){
 var _tradeData = [];
 var _tradeCache = {};
 var _tradeSource = '';
+var _tradeMeta = {};
 
 async function loadGlobalTradeData(){
   var countryCode = document.getElementById('trade-country').value;
@@ -7265,14 +7267,16 @@ async function loadGlobalTradeData(){
   var year = document.getElementById('trade-year').value;
   var flow = document.getElementById('trade-flow').value;
   var hsLevel = document.getElementById('trade-hs-level').value;
-  var hsFilter = (document.getElementById('trade-hs-filter').value||'').trim();
+  var hsFilter = (document.getElementById('trade-hs-filter').value||'').trim().replace(/\s+/g,'');
   var countryName = document.getElementById('trade-country-search').value;
   var flowName = flow==='M'?'Import':'Export';
 
   // Check cache
-  var cacheKey = countryCode+'_'+year+'_'+flow+'_'+hsLevel;
+  var cacheKey = countryCode+'_'+year+'_'+flow+'_'+hsLevel+'_'+(hsFilter||'all');
   if(_tradeCache[cacheKey]){
-    _tradeData = _tradeCache[cacheKey];
+    _tradeData = _tradeCache[cacheKey].data||[];
+    _tradeSource = _tradeCache[cacheKey].source||'';
+    _tradeMeta = _tradeCache[cacheKey].meta||{};
     renderTradeResults(countryName, flowName, year, hsFilter);
     return;
   }
@@ -7285,14 +7289,20 @@ async function loadGlobalTradeData(){
     _tradeData = fbData.map(function(r){
       return {hsCode:r.hsCode, description:r.description, value:r.value||0, weight:r.weight||0, partner:'World', year:r.year, flow:r.flow};
     }).filter(function(r){
+      if(hsFilter){
+        return String(r.hsCode||'').indexOf(hsFilter)!==-1;
+      }
       var code = r.hsCode;
+      if(hsLevel==='all') return true;
       if(hsLevel==='2') return code.length<=2;
       if(hsLevel==='4') return code.length<=4;
       if(hsLevel==='6') return code.length<=6;
       return true;
     }).sort(function(a,b){return b.value-a.value;});
 
-    _tradeCache[cacheKey] = _tradeData;
+    _tradeSource = 'Firebase';
+    _tradeMeta = {totalValue:null,isPartial:false,hsFilter:hsFilter,requestedLevel:hsLevel};
+    _tradeCache[cacheKey] = {data:_tradeData,source:_tradeSource,meta:_tradeMeta};
     renderTradeResults(countryName, flowName, year, hsFilter);
     toast('🔥 Firebase\'dan '+_tradeData.length+' ta yozuv yuklandi ('+countryName+' '+flowName+' '+year+')');
     return;
@@ -7316,14 +7326,26 @@ async function loadGlobalTradeData(){
     
     var json = null;
     var dataSource = '';
+    _tradeMeta = {totalValue:null,isPartial:false,hsFilter:hsFilter,requestedLevel:hsLevel};
 
     // ═══ SOURCE 1: UN Comtrade (Netlify proxy) ═══
     document.getElementById('tradeLoadingText').textContent = '🌐 UN Comtrade orqali...';
     try {
-      var r1 = await fetch(BASE+'/api/trade?reporter='+countryCode+'&year='+year+'&flow='+flow+(hsFilter?'&hs='+hsFilter:'')+(comtradeKey?'&key='+comtradeKey:''));
+      var r1 = await fetch(BASE+'/api/trade?reporter='+encodeURIComponent(countryCode)+'&year='+encodeURIComponent(year)+'&flow='+encodeURIComponent(flow)+'&level='+encodeURIComponent(hsLevel)+(hsFilter?'&hs='+encodeURIComponent(hsFilter):'')+(comtradeKey?'&key='+encodeURIComponent(comtradeKey):''));
       if(r1.ok){
         var j1 = await r1.json();
-        if((j1.data||[]).length > 0){json = j1; dataSource = 'UN Comtrade';}
+        if((j1.data||[]).length > 0 || Number(j1.total_value||0) > 0){
+          json = j1;
+          dataSource = 'UN Comtrade';
+          _tradeMeta = {
+            totalValue:Number(j1.total_value||0)||null,
+            isPartial:!!j1.is_partial,
+            hsFilter:j1.hs_filter||hsFilter,
+            requestedLevel:j1.requested_level||hsLevel,
+            requestedCmdCode:j1.requested_cmd_code||'',
+            maxRecords:Number(j1.max_records||0)||0
+          };
+        }
         else console.log('Comtrade: data bo\'sh');
       } else console.log('Comtrade proxy:', r1.status);
     } catch(e){ console.log('Comtrade error:', e.message); }
@@ -7386,6 +7408,7 @@ async function loadGlobalTradeData(){
       };
     }).filter(function(r){
       if(!r.value || r.value <= 0) return false;
+      if(hsFilter || hsLevel==='all') return true;
       // Filter by HS level
       var len = r.hsCode.length;
       if(hsLevel==='2') return len <= 2;
@@ -7395,7 +7418,11 @@ async function loadGlobalTradeData(){
     }).sort(function(a,b){ return b.value - a.value; });
 
     // Cache
-    _tradeCache[cacheKey] = _tradeData;
+    _tradeSource = dataSource;
+    if(!_tradeMeta.requestedLevel) _tradeMeta.requestedLevel = hsLevel;
+    if(!_tradeMeta.hasOwnProperty('hsFilter')) _tradeMeta.hsFilter = hsFilter;
+    if(!_tradeMeta.hasOwnProperty('isPartial')) _tradeMeta.isPartial = false;
+    _tradeCache[cacheKey] = {data:_tradeData,source:_tradeSource,meta:_tradeMeta};
 
     document.getElementById('tradeBar').style.width = '100%';
     document.getElementById('tradeLoading').style.display = 'none';
@@ -7404,7 +7431,7 @@ async function loadGlobalTradeData(){
       console.log('⚠️ Trade: rawData='+rawData.length+', filtered=0. hsLevel='+hsLevel);
       if(rawData.length > 0){
         // Data bor lekin filter tufayli yo'q — HS darajasini o'zgartirish kerak
-        toast('⚠️ '+rawData.length+' ta mahsulot topildi, lekin HS-'+hsLevel+' darajada yo\'q. HS darajasini o\'zgartiring.','info');
+        toast('⚠️ '+rawData.length+' ta mahsulot topildi, lekin tanlangan HS rejimida yo\'q. "Darajasiz / avto" yoki boshqa HS darajani sinab ko\'ring.','info');
         // Show all data without HS filter
         _tradeData = rawData.map(function(r){
           var code = String(r.cmdCode||r.hs_code||'');
@@ -7414,7 +7441,6 @@ async function loadGlobalTradeData(){
       if(!_tradeData.length) throw new Error('Bu davlat uchun '+year+'-yil '+flowName+' ma\'lumoti topilmadi');
     }
 
-    _tradeSource = dataSource;
     renderTradeResults(countryName, flowName, year, hsFilter);
 
   } catch(e){
@@ -7425,7 +7451,7 @@ async function loadGlobalTradeData(){
       '<div style="font-size:.7rem;color:var(--text3);margin-top:.5rem">'+
       '<b>Yechimlar:</b><br>'+
       '1️⃣ Boshqa <b>yilni</b> tanlang (2023 yoki 2022 — ko\'proq ma\'lumot bor)<br>'+
-      '2️⃣ HS darajasini <b>"2-raqamli"</b> ga o\'zgartiring<br>'+
+      '2️⃣ HS darajasini <b>"Darajasiz / avto"</b> yoki <b>"2-raqamli"</b> ga o\'zgartiring<br>'+
       '3️⃣ Boshqa davlatni tanlang (katta davlatlarda ko\'proq ma\'lumot)<br>'+
       '4️⃣ ⚙️ Sozlamalar → UN Comtrade Subscription Key kiriting (500/kun)<br>'+
       '5️⃣ "📥 CSV/Excel import" orqali qo\'lda yuklang</div>';
@@ -7501,6 +7527,13 @@ function translateHS(hsCode, engDesc){
   return engDesc || hsCode;
 }
 
+function formatTradeMoney(value){
+  if(!value || value <= 0) return '$0';
+  if(value >= 1e9) return '$'+(value/1e9).toFixed(1)+'B';
+  if(value >= 1e6) return '$'+(value/1e6).toFixed(0)+'M';
+  return '$'+(value/1e3).toFixed(0)+'K';
+}
+
 function renderTradeResults(countryName, flowName, year, hsFilter){
   var data = _tradeData;
 
@@ -7511,12 +7544,15 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
   }
 
   // KPIs
-  var totalValue = data.reduce(function(s,r){return s+r.value;},0);
+  var filteredTotalValue = data.reduce(function(s,r){return s+r.value;},0);
+  var officialTotalValue = Number((_tradeMeta&&_tradeMeta.totalValue)||0);
+  var useOfficialTotal = !nameFilter && !((_tradeMeta&&_tradeMeta.hsFilter)||hsFilter) && officialTotalValue > 0;
+  var totalValue = useOfficialTotal ? officialTotalValue : filteredTotalValue;
   var totalWeight = data.reduce(function(s,r){return s+r.weight;},0);
   var topProduct = data[0]||{description:'—',value:0,hsCode:''};
   document.getElementById('tradeKpis').style.display = 'grid';
   document.getElementById('tradeKpis').innerHTML =
-    '<div class="kpi-card c1"><div class="kpi-icon">'+(flowName==='Import'?'📥':'📤')+'</div><div class="kpi-label">Jami '+flowName+'</div><div class="kpi-val">$'+(totalValue>=1e9?(totalValue/1e9).toFixed(1)+'B':(totalValue/1e6).toFixed(0)+'M')+'</div></div>'+
+    '<div class="kpi-card c1"><div class="kpi-icon">'+(flowName==='Import'?'📥':'📤')+'</div><div class="kpi-label">Jami '+flowName+'</div><div class="kpi-val">'+formatTradeMoney(totalValue)+'</div></div>'+
     '<div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Mahsulot turlari</div><div class="kpi-val">'+data.length+'</div></div>'+
     '<div class="kpi-card c3"><div class="kpi-icon">🏆</div><div class="kpi-label">Eng katta</div><div class="kpi-val" style="font-size:.6rem">'+translateHS(topProduct.hsCode,topProduct.description).slice(0,25)+'</div></div>'+
     '<div class="kpi-card c4"><div class="kpi-icon">⚖️</div><div class="kpi-label">Jami og\'irlik</div><div class="kpi-val">'+(totalWeight>=1e9?(totalWeight/1e9).toFixed(0)+'Kt':totalWeight>=1e6?(totalWeight/1e6).toFixed(0)+'t':(totalWeight/1e3).toFixed(0)+'kg')+'</div></div>';
@@ -7530,7 +7566,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
   var maxVal = top20[0]?top20[0].value:1;
   document.getElementById('tradeChartArea').innerHTML = top20.map(function(r,i){
     var pct = Math.max(r.value/maxVal*100, 2);
-    var valStr = r.value>=1e9?'$'+(r.value/1e9).toFixed(1)+'B':r.value>=1e6?'$'+(r.value/1e6).toFixed(0)+'M':'$'+(r.value/1e3).toFixed(0)+'K';
+    var valStr = formatTradeMoney(r.value);
     var colors = ['#4361EE','#059669','#F59E0B','#EF233C','#8B5CF6','#14B8A6','#F97316','#EC4899','#6366F1','#10B981'];
     var color = colors[i%colors.length];
     return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'+
@@ -7542,6 +7578,14 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
       '<div style="width:70px;font-size:.6rem;font-weight:700;color:var(--text);text-align:right">'+valStr+'</div>'+
     '</div>';
   }).join('');
+  var chartMeta = document.getElementById('tradeChartMeta');
+  if(chartMeta){
+    var notes = [];
+    if(useOfficialTotal) notes.push('Rasmiy jami: '+formatTradeMoney(officialTotalValue)+' (UN Comtrade TOTAL, partner: World)');
+    if(_tradeMeta && _tradeMeta.isPartial) notes.push('Jadval API limitiga tushgan bo\'lishi mumkin; to\'liq ro\'yxat uchun Comtrade key kiriting');
+    if((_tradeMeta&&_tradeMeta.requestedLevel)==='all') notes.push('Darajasiz qidiruv rejimi: eng batafsil mavjud HS satrlar yuklandi');
+    chartMeta.textContent = notes.join(' | ');
+  }
 
   // Table
   document.getElementById('tradeTableCard').style.display = 'block';
@@ -7576,7 +7620,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
     return navProducts.some(function(p){return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(p.hs_code.slice(0,4))===0);});
   }).length;
   if(matchCount>0) toast('🔗 '+matchCount+' ta mahsulot Navoiy ishlab chiqarishi bilan mos keldi!');
-  toast('✅ '+data.length+' ta mahsulot yuklandi: '+countryName+' '+flowName+' ('+year+') — '+dataSource);
+  toast('✅ '+data.length+' ta mahsulot yuklandi: '+countryName+' '+flowName+' ('+year+') — '+(_tradeSource||'UN Comtrade'));
 }
 
 function filterTradeTable(){
