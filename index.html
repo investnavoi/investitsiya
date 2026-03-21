@@ -31,7 +31,7 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
 // Collections: investors, local, zoom, forums, investorCompanies
-const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products','tradeData','entrepreneurs'];
+const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products','tradeData','tradeSnapshots','importSnapshots','entrepreneurs'];
 
 // Load API keys from separate doc
 async function loadApiKeys(){
@@ -91,7 +91,12 @@ async function loadFromFirestore(){
       const snap = await getDocs(collection(db, col));
       const rows = [];
       snap.forEach(d => rows.push(d.data()));
-      rows.sort((a,b)=>(a.id||0)-(b.id||0));
+      rows.sort((a,b)=>{
+        const av = Number(a.id);
+        const bv = Number(b.id);
+        if(!Number.isNaN(av) && !Number.isNaN(bv)) return av-bv;
+        return String(a.id||'').localeCompare(String(b.id||''));
+      });
       DB[col] = rows;
       totalDocs += rows.length;
     }
@@ -2991,11 +2996,11 @@ function showPage(id){
   else if(id==='investor')renderInvestorCompanies();
   else if(id==='admin')renderAdminLists();
   else if(id==='products')renderProducts();
-  else if(id==='import'){populateProductSelects();initImportAnalysisComtradeOnly();}
+  else if(id==='import'){populateProductSelects();initImportAnalysisComtradeOnly();restoreLastImportSnapshot();}
   else if(id==='finder')populateProductSelects();
   else if(id==='ailetter')populateProductSelects();
   else if(id==='pipeline')renderPipeline();
-  else if(id==='trade'){}// no init needed
+  else if(id==='trade'){restoreLastTradeSnapshot();}
   else if(id==='settings'){loadSettings();if(typeof checkTgStatus==='function')checkTgStatus();}
 }
 
@@ -7019,6 +7024,8 @@ if(!DB.products) DB.products = [];
 if(!DB.settings) DB.settings = {};
 if(!DB.pipeline) DB.pipeline = [];
 if(!DB.aiLetters) DB.aiLetters = [];
+if(!DB.tradeSnapshots) DB.tradeSnapshots = [];
+if(!DB.importSnapshots) DB.importSnapshots = [];
 
 var TARGET_COUNTRIES = [
   {code:'RU',name:'Rossiya',flag:'🇷🇺',comtrade:'643'},
@@ -7206,12 +7213,7 @@ function filterTradeCountries(){
 }
 
 function selectTradeCountry(code, name){
-  document.getElementById('trade-country').value = code;
-  document.getElementById('trade-country-search').value = name;
-  document.getElementById('trade-country-search').style.color = 'transparent';
-  document.getElementById('trade-country-label').textContent = name;
-  document.getElementById('trade-country-label').style.color = 'var(--text)';
-  document.getElementById('trade-country-list').style.display = 'none';
+  setTradeCountrySelection(code, name);
   if(typeof onTradeCountryChange === 'function') onTradeCountryChange();
 }
 
@@ -7256,10 +7258,133 @@ document.addEventListener('keydown', function(e){
   }
 });
 
+var TRADE_SNAPSHOT_ROW_LIMIT = 1500;
 var _tradeData = [];
 var _tradeCache = {};
 var _tradeSource = '';
 var _tradeMeta = {};
+
+function upsertDbRecord(listName, record){
+  if(!DB[listName]) DB[listName] = [];
+  var idx = DB[listName].findIndex(function(item){ return String(item.id)===String(record.id); });
+  if(idx>=0) DB[listName][idx] = record;
+  else DB[listName].push(record);
+}
+
+function saveSettingsPatch(patch){
+  if(!DB.settings) DB.settings = {};
+  Object.keys(patch||{}).forEach(function(key){ DB.settings[key] = patch[key]; });
+  if(typeof fbSaveSettings==='function') fbSaveSettings(DB.settings);
+}
+
+function setTradeCountrySelection(code, name){
+  var searchEl = document.getElementById('trade-country-search');
+  var labelEl = document.getElementById('trade-country-label');
+  var hiddenEl = document.getElementById('trade-country');
+  var listEl = document.getElementById('trade-country-list');
+  if(hiddenEl) hiddenEl.value = code||'';
+  if(searchEl){
+    searchEl.value = name||'';
+    searchEl.style.color = 'transparent';
+  }
+  if(labelEl){
+    labelEl.textContent = name||'🔍 Davlat tanlang...';
+    labelEl.style.color = name ? 'var(--text)' : 'var(--text3)';
+  }
+  if(listEl) listEl.style.display = 'none';
+}
+
+function buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter){
+  return ['trade',countryCode||'na',year||'na',flow||'M',hsLevel||'4',hsFilter||'all']
+    .join('_')
+    .replace(/[^a-zA-Z0-9_-]/g,'_');
+}
+
+function getTradeSnapshot(countryCode, year, flow, hsLevel, hsFilter){
+  var id = buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter);
+  return (DB.tradeSnapshots||[]).find(function(item){ return String(item.id)===String(id); }) || null;
+}
+
+function restoreTradeSnapshot(snapshot, quiet){
+  if(!snapshot || !(snapshot.data||[]).length) return false;
+  setTradeCountrySelection(snapshot.countryCode||'', snapshot.countryName||'');
+  var emptyEl = document.getElementById('tradeEmpty');
+  var loadingEl = document.getElementById('tradeLoading');
+  if(emptyEl) emptyEl.style.display = 'none';
+  if(loadingEl) loadingEl.style.display = 'none';
+  var yearEl = document.getElementById('trade-year');
+  var flowEl = document.getElementById('trade-flow');
+  var levelEl = document.getElementById('trade-hs-level');
+  var hsEl = document.getElementById('trade-hs-filter');
+  var nameEl = document.getElementById('trade-name-filter');
+  if(yearEl && snapshot.year) yearEl.value = String(snapshot.year);
+  if(flowEl && snapshot.flow) flowEl.value = String(snapshot.flow);
+  if(levelEl && snapshot.hsLevel) levelEl.value = String(snapshot.hsLevel);
+  if(hsEl) hsEl.value = snapshot.hsFilter||'';
+  if(nameEl) nameEl.value = '';
+
+  _tradeData = (snapshot.data||[]).map(function(r){
+    return {
+      hsCode:r.h||r.hsCode||'',
+      description:r.d||r.description||'',
+      value:Number(r.v||r.value||0)||0,
+      weight:Number(r.w||r.weight||0)||0,
+      partner:'World',
+      year:snapshot.year||'',
+      flow:snapshot.flow||'M'
+    };
+  });
+  _tradeSource = snapshot.source||'UN Comtrade (cached)';
+  _tradeMeta = {
+    totalValue:Number(snapshot.totalValue||0)||null,
+    isPartial:!!snapshot.isPartial || Number(snapshot.savedRowCount||0) < Number(snapshot.rowCount||0),
+    hsFilter:snapshot.hsFilter||'',
+    requestedLevel:snapshot.requestedLevel||snapshot.hsLevel||'4',
+    requestedCmdCode:snapshot.requestedCmdCode||''
+  };
+  renderTradeResults(snapshot.countryName||'', (snapshot.flow==='X'?'Export':'Import'), snapshot.year||'', snapshot.hsFilter||'');
+  if(!quiet) toast('💾 Firebase cache ochildi: '+(snapshot.countryName||'')+' '+(snapshot.year||''));
+  return true;
+}
+
+function saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter){
+  if(!_tradeData.length) return;
+  if((_tradeSource||'').indexOf('UN Comtrade')===-1) return;
+  var countryCode = document.getElementById('trade-country').value||'';
+  var snapshotRows = _tradeData.slice(0, TRADE_SNAPSHOT_ROW_LIMIT).map(function(r){
+    return {h:r.hsCode||'', d:r.description||'', v:Number(r.value||0)||0, w:Number(r.weight||0)||0};
+  });
+  var snapshot = {
+    id: buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter),
+    countryCode: countryCode,
+    countryName: countryName||'',
+    year: String(year||''),
+    flow: String(flow||'M'),
+    hsLevel: String(hsLevel||'4'),
+    hsFilter: hsFilter||'',
+    source: _tradeSource||'UN Comtrade',
+    totalValue: Number((_tradeMeta&&_tradeMeta.totalValue)||0)||0,
+    isPartial: !!(_tradeMeta&&_tradeMeta.isPartial),
+    requestedLevel: (_tradeMeta&&_tradeMeta.requestedLevel)||hsLevel||'4',
+    requestedCmdCode: (_tradeMeta&&_tradeMeta.requestedCmdCode)||'',
+    rowCount: _tradeData.length,
+    savedRowCount: snapshotRows.length,
+    updatedAt: new Date().toISOString(),
+    data: snapshotRows
+  };
+  upsertDbRecord('tradeSnapshots', snapshot);
+  if(typeof fbSave==='function') fbSave('tradeSnapshots', snapshot);
+  saveSettingsPatch({lastTradeSnapshotId:snapshot.id});
+  if(typeof updateTradeFirebaseCount==='function') updateTradeFirebaseCount();
+}
+
+function restoreLastTradeSnapshot(){
+  var lastId = DB.settings && DB.settings.lastTradeSnapshotId;
+  if(!lastId) return false;
+  var snapshot = (DB.tradeSnapshots||[]).find(function(item){ return String(item.id)===String(lastId); });
+  if(!snapshot) return false;
+  return restoreTradeSnapshot(snapshot, true);
+}
 
 async function loadGlobalTradeData(){
   var countryCode = document.getElementById('trade-country').value;
@@ -7278,6 +7403,12 @@ async function loadGlobalTradeData(){
     _tradeSource = _tradeCache[cacheKey].source||'';
     _tradeMeta = _tradeCache[cacheKey].meta||{};
     renderTradeResults(countryName, flowName, year, hsFilter);
+    return;
+  }
+
+  var savedSnapshot = getTradeSnapshot(countryCode, year, flow, hsLevel, hsFilter);
+  if(savedSnapshot){
+    restoreTradeSnapshot(savedSnapshot, false);
     return;
   }
 
@@ -7442,6 +7573,7 @@ async function loadGlobalTradeData(){
     }
 
     renderTradeResults(countryName, flowName, year, hsFilter);
+    saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter);
 
   } catch(e){
     document.getElementById('tradeLoading').style.display = 'none';
@@ -7711,22 +7843,31 @@ function importTradeCSV(input){
 
 function loadTradeFromFirebase(){
   toast('🔥 Firebase\'dan savdo ma\'lumotlari yuklanmoqda...');
-  if(!(DB.tradeData||[]).length){toast('⚠️ Firebase\'da savdo ma\'lumoti yo\'q. CSV import yoki qo\'lda kiriting.','info');return;}
-  toast('✅ '+(DB.tradeData||[]).length+' ta yozuv Firebase\'da bor!');
+  var manualCount = (DB.tradeData||[]).length;
+  var snapshotCount = (DB.tradeSnapshots||[]).length;
+  if(!manualCount && !snapshotCount){toast('⚠️ Firebase\'da savdo ma\'lumoti yo\'q. CSV import yoki qo\'lda kiriting.','info');return;}
+  toast('✅ Firebase\'da '+manualCount+' ta qo\'lda yozuv va '+snapshotCount+' ta auto-cache bor!');
   updateTradeFirebaseCount();
 }
 
 function clearTradeFirebase(){
-  if(!confirm((DB.tradeData||[]).length+' ta savdo yozuvini o\'chirish?')) return;
+  var manualCount = (DB.tradeData||[]).length;
+  var snapshotCount = (DB.tradeSnapshots||[]).length;
+  if(!confirm((manualCount+snapshotCount)+' ta savdo cache/yozuvini o\'chirish?')) return;
   DB.tradeData=[];
+  DB.tradeSnapshots=[];
+  _tradeCache={};
+  _tradeData=[];
   if(typeof fbDeleteCollection==='function') fbDeleteCollection('tradeData');
+  if(typeof fbDeleteCollection==='function') fbDeleteCollection('tradeSnapshots');
+  saveSettingsPatch({lastTradeSnapshotId:''});
   updateTradeFirebaseCount();
   toast('🗑 Savdo ma\'lumotlari tozalandi');
 }
 
 function updateTradeFirebaseCount(){
   var el=document.getElementById('trade-fb-count');
-  if(el) el.textContent=(DB.tradeData||[]).length;
+  if(el) el.textContent=((DB.tradeData||[]).length + (DB.tradeSnapshots||[]).length);
 }
 
 function exportTradeCSV(){
@@ -9071,6 +9212,83 @@ function initImportAnalysisComtradeOnly(){
   if(wbCard) wbCard.style.display = '';
 }
 
+function buildImportSnapshotId(prod, hsCode){
+  return ['import', (prod&&prod.id)||'na', hsCode||'na']
+    .join('_')
+    .replace(/[^a-zA-Z0-9_-]/g,'_');
+}
+
+function getImportSnapshot(prod, hsCode){
+  var id = buildImportSnapshotId(prod, hsCode);
+  return (DB.importSnapshots||[]).find(function(item){ return String(item.id)===String(id); }) || null;
+}
+
+function restoreImportSnapshot(snapshot, quiet){
+  if(!snapshot || !(snapshot.countries||[]).length) return false;
+  initImportAnalysisComtradeOnly();
+  var sel = document.getElementById('import-product-select');
+  if(sel && snapshot.productId) sel.value = String(snapshot.productId);
+  var prod = (DB.products||[]).find(function(p){ return String(p.id)===String(snapshot.productId); });
+  if(!prod) return false;
+  var resultsEl = document.getElementById('importResults');
+  var emptyEl = document.getElementById('importEmpty');
+  if(resultsEl) resultsEl.style.display = 'block';
+  if(emptyEl) emptyEl.style.display = 'none';
+  var countries = (snapshot.countries||[]).map(function(c){
+    return {
+      code:c.c||c.code||'',
+      name:c.n||c.name||'',
+      flag:c.f||c.flag||'',
+      import_usd:Number(c.u||c.import_usd||0)||0,
+      trend_pct:typeof (c.t||c.trend_pct) === 'number' ? (c.t||c.trend_pct) : (c.t===0?0:null),
+      volume_tons:Number(c.v||c.volume_tons||0)||0,
+      year_imports:c.y||c.year_imports||{},
+      year_statuses:c.s||c.year_statuses||{},
+      status:c.st||c.status||'ok'
+    };
+  });
+  renderImportResults(countries, prod, snapshot.source||'UN Comtrade (cached)');
+  if(!quiet) toast('💾 Firebase cache ochildi: '+(snapshot.productName||prod.name_en||''));
+  return true;
+}
+
+function saveImportSnapshot(prod, hsCode, countries, source){
+  if(!prod || !countries || !countries.length) return;
+  if(String(source||'').indexOf('UN Comtrade')===-1) return;
+  var snapshot = {
+    id: buildImportSnapshotId(prod, hsCode),
+    productId: String(prod.id||''),
+    productName: prod.name_en||prod.name||'',
+    hsCode: hsCode||'',
+    source: source||'UN Comtrade',
+    updatedAt: new Date().toISOString(),
+    countries: countries.map(function(c){
+      return {
+        c:c.code||'',
+        n:c.name||'',
+        f:c.flag||'',
+        u:Number(c.import_usd||0)||0,
+        t:typeof c.trend_pct === 'number' ? c.trend_pct : null,
+        v:Number(c.volume_tons||0)||0,
+        y:c.year_imports||{},
+        s:c.year_statuses||{},
+        st:c.status||'ok'
+      };
+    })
+  };
+  upsertDbRecord('importSnapshots', snapshot);
+  if(typeof fbSave==='function') fbSave('importSnapshots', snapshot);
+  saveSettingsPatch({lastImportSnapshotId:snapshot.id});
+}
+
+function restoreLastImportSnapshot(){
+  var lastId = DB.settings && DB.settings.lastImportSnapshotId;
+  if(!lastId) return false;
+  var snapshot = (DB.importSnapshots||[]).find(function(item){ return String(item.id)===String(lastId); });
+  if(!snapshot) return false;
+  return restoreImportSnapshot(snapshot, true);
+}
+
 async function runImportAnalysis(){
   initImportAnalysisComtradeOnly();
 
@@ -9094,6 +9312,12 @@ async function runImportAnalysis(){
     return;
   }
 
+  var savedSnapshot = getImportSnapshot(prod, hsCode);
+  if(savedSnapshot){
+    restoreImportSnapshot(savedSnapshot, false);
+    return;
+  }
+
   toast('UN Comtrade real ma\'lumot olmoqda (HS: '+hsCode+')...');
   var countries = await fetchComtrade(hsCode, '2023');
 
@@ -9105,6 +9329,7 @@ async function runImportAnalysis(){
   }
 
   renderImportResults(countries, prod, 'UN Comtrade (real)');
+  saveImportSnapshot(prod, hsCode, countries, 'UN Comtrade (real)');
   var okCount = countries.filter(function(c){ return c.status==='ok'; }).length;
   var noDataCount = countries.filter(function(c){ return c.status==='no_data'; }).length;
   var limitCount = countries.filter(function(c){ return c.status==='rate_limited'; }).length;
