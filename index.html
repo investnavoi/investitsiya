@@ -1345,7 +1345,7 @@ input[type="time"]{-webkit-appearance:none;}
         </select>
       </div>
       <div class="form-group" style="flex:0 0 auto;align-self:flex-end">
-        <button class="btn btn-blue" onclick="runImportAnalysis()">📊 Tahlil qilish</button>
+        <button class="btn btn-blue" onclick="runImportAnalysis(true)">📊 Tahlil qilish</button>
       </div>
     </div>
 
@@ -9342,7 +9342,7 @@ function restoreLastImportSnapshot(){
   return restoreImportSnapshot(snapshot, true);
 }
 
-async function runImportAnalysis(){
+async function runImportAnalysis(forceRefresh){
   initImportAnalysisComtradeOnly();
 
   var sel = document.getElementById('import-product-select');
@@ -9365,7 +9365,7 @@ async function runImportAnalysis(){
     return;
   }
 
-  var savedSnapshot = getImportSnapshot(prod, hsCode);
+  var savedSnapshot = !forceRefresh && getImportSnapshot(prod, hsCode);
   if(savedSnapshot){
     restoreImportSnapshot(savedSnapshot, false);
     return;
