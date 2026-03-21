@@ -7259,6 +7259,7 @@ document.addEventListener('keydown', function(e){
 });
 
 var TRADE_SNAPSHOT_ROW_LIMIT = 1500;
+var TRADE_SNAPSHOT_VERSION = 2;
 var _tradeData = [];
 var _tradeCache = {};
 var _tradeSource = '';
@@ -7300,6 +7301,45 @@ function buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter){
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
 
+function normalizeTradeRows(rows){
+  var grouped = {};
+  (rows||[]).forEach(function(row, idx){
+    var hsCode = String(row.hsCode||row.h||row.cmdCode||row.hs_code||row.commodityCode||'').trim();
+    var description = row.description||row.d||row.cmdDesc||row.commodityDescription||'';
+    var key = hsCode || description || ('row_'+idx);
+    var value = Number(row.value||row.v||row.primaryValue||row.fobvalue||row.cifvalue||row.TradeValue||row.import_usd||0) || 0;
+    var weight = Number(row.weight||row.w||row.netWgt||row.grossWgt||row.NetWeight||row.quantity||0) || 0;
+    var partner2 = Number(row.partner2Code || row.partner2 || 0) || 0;
+    var score = partner2===0 ? 2 : 1;
+
+    var normalized = {
+      hsCode: hsCode,
+      description: description,
+      value: value,
+      weight: weight,
+      partner: row.partner || row.partnerDesc || row.ptTitle || 'World',
+      year: row.year || row.period || row.yr || '',
+      flow: row.flow || '',
+      _score: score
+    };
+
+    var current = grouped[key];
+    if(!current || normalized._score > current._score || (normalized._score === current._score && normalized.value > current.value)){
+      grouped[key] = normalized;
+    }
+  });
+
+  return Object.keys(grouped).map(function(key){
+    var row = grouped[key];
+    delete row._score;
+    return row;
+  }).filter(function(row){
+    return row.value > 0;
+  }).sort(function(a,b){
+    return (b.value||0) - (a.value||0);
+  });
+}
+
 function getTradeSnapshot(countryCode, year, flow, hsLevel, hsFilter){
   var id = buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter);
   return (DB.tradeSnapshots||[]).find(function(item){ return String(item.id)===String(id); }) || null;
@@ -7323,7 +7363,7 @@ function restoreTradeSnapshot(snapshot, quiet){
   if(hsEl) hsEl.value = snapshot.hsFilter||'';
   if(nameEl) nameEl.value = '';
 
-  _tradeData = (snapshot.data||[]).map(function(r){
+  _tradeData = normalizeTradeRows((snapshot.data||[]).map(function(r){
     return {
       hsCode:r.h||r.hsCode||'',
       description:r.d||r.description||'',
@@ -7333,7 +7373,7 @@ function restoreTradeSnapshot(snapshot, quiet){
       year:snapshot.year||'',
       flow:snapshot.flow||'M'
     };
-  });
+  }));
   _tradeSource = snapshot.source||'UN Comtrade (cached)';
   _tradeMeta = {
     totalValue:Number(snapshot.totalValue||0)||null,
@@ -7342,7 +7382,16 @@ function restoreTradeSnapshot(snapshot, quiet){
     requestedLevel:snapshot.requestedLevel||snapshot.hsLevel||'4',
     requestedCmdCode:snapshot.requestedCmdCode||''
   };
+  var restoredTotal = Number(_tradeMeta.totalValue||0)||0;
+  var restoredSum = _tradeData.reduce(function(sum, row){ return sum + Number(row.value||0); }, 0);
+  var restoredMax = _tradeData.length ? Number(_tradeData[0].value||0) : 0;
+  if(restoredTotal > 0 && restoredTotal < Math.max(restoredMax, restoredSum)){
+    _tradeMeta.totalValue = null;
+  }
   renderTradeResults(snapshot.countryName||'', (snapshot.flow==='X'?'Export':'Import'), snapshot.year||'', snapshot.hsFilter||'');
+  if(snapshot.version !== TRADE_SNAPSHOT_VERSION){
+    saveTradeSnapshot(snapshot.countryName||'', snapshot.year||'', snapshot.flow||'M', snapshot.hsLevel||'4', snapshot.hsFilter||'');
+  }
   if(!quiet) toast('💾 Firebase cache ochildi: '+(snapshot.countryName||'')+' '+(snapshot.year||''));
   return true;
 }
@@ -7356,6 +7405,7 @@ function saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter){
   });
   var snapshot = {
     id: buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter),
+    version: TRADE_SNAPSHOT_VERSION,
     countryCode: countryCode,
     countryName: countryName||'',
     year: String(year||''),
@@ -7526,7 +7576,7 @@ async function loadGlobalTradeData(){
     var rawData = json.data || json.countries || [];
     if(!rawData.length && json.dataset) rawData = json.dataset; // eski Comtrade format
     
-    _tradeData = rawData.map(function(r){
+    _tradeData = normalizeTradeRows(rawData.map(function(r){
       var code = String(r.cmdCode||r.hs_code||r.commodityCode||'');
       return {
         hsCode: code,
@@ -7534,6 +7584,7 @@ async function loadGlobalTradeData(){
         value: r.primaryValue || r.fobvalue || r.cifvalue || r.TradeValue || r.import_usd || 0,
         weight: r.netWgt || r.grossWgt || r.NetWeight || r.quantity || 0,
         partner: r.partnerDesc || r.partner || r.ptTitle || 'World',
+        partner2Code: r.partner2Code || r.partner2 || 0,
         year: r.period || r.yr || year,
         flow: flow
       };
@@ -7546,7 +7597,7 @@ async function loadGlobalTradeData(){
       if(hsLevel==='4') return len >= 3 && len <= 4;
       if(hsLevel==='6') return len >= 5 && len <= 6;
       return true;
-    }).sort(function(a,b){ return b.value - a.value; });
+    }));
 
     // Cache
     _tradeSource = dataSource;
@@ -7564,10 +7615,10 @@ async function loadGlobalTradeData(){
         // Data bor lekin filter tufayli yo'q — HS darajasini o'zgartirish kerak
         toast('⚠️ '+rawData.length+' ta mahsulot topildi, lekin tanlangan HS rejimida yo\'q. "Darajasiz / avto" yoki boshqa HS darajani sinab ko\'ring.','info');
         // Show all data without HS filter
-        _tradeData = rawData.map(function(r){
+        _tradeData = normalizeTradeRows(rawData.map(function(r){
           var code = String(r.cmdCode||r.hs_code||'');
-          return {hsCode:code, description:r.cmdDesc||r.description||'', value:r.primaryValue||r.fobvalue||0, weight:r.netWgt||0, year:r.period||year, flow:flow};
-        }).filter(function(r){return r.value>0;}).sort(function(a,b){return b.value-a.value;});
+          return {hsCode:code, description:r.cmdDesc||r.description||'', value:r.primaryValue||r.fobvalue||0, weight:r.netWgt||0, partner2Code:r.partner2Code||r.partner2||0, year:r.period||year, flow:flow};
+        }));
       }
       if(!_tradeData.length) throw new Error('Bu davlat uchun '+year+'-yil '+flowName+' ma\'lumoti topilmadi');
     }
@@ -7678,7 +7729,9 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
   // KPIs
   var filteredTotalValue = data.reduce(function(s,r){return s+r.value;},0);
   var officialTotalValue = Number((_tradeMeta&&_tradeMeta.totalValue)||0);
-  var useOfficialTotal = !nameFilter && !((_tradeMeta&&_tradeMeta.hsFilter)||hsFilter) && officialTotalValue > 0;
+  var maxItemValue = data.length ? Number(data[0].value||0) : 0;
+  var officialLooksValid = officialTotalValue > 0 && officialTotalValue >= maxItemValue && officialTotalValue >= filteredTotalValue;
+  var useOfficialTotal = !nameFilter && !((_tradeMeta&&_tradeMeta.hsFilter)||hsFilter) && officialLooksValid;
   var totalValue = useOfficialTotal ? officialTotalValue : filteredTotalValue;
   var totalWeight = data.reduce(function(s,r){return s+r.weight;},0);
   var topProduct = data[0]||{description:'—',value:0,hsCode:''};
