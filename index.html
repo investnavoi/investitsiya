@@ -7992,25 +7992,326 @@ async function checkTgStatus(){
   } catch(e){el.innerHTML='<div style="font-size:.65rem;color:var(--text3)">⚠️ api-proxy.zip ni Netlify\'ga deploy qiling.</div>';}
 }
 
+var TG_SEND_DELAY_MIN_MS = 6000;
+var TG_SEND_DELAY_MAX_MS = 9000;
+var TG_BATCH_BURST_SIZE = 4;
+var TG_BATCH_BURST_PAUSE_MS = 30000;
+var TG_DEFAULT_COOLDOWN_MS = 45 * 60 * 1000;
+var _tgBatchRunning = false;
+
+function tgEscapeAttr(value){
+  return String(value||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function tgNormalizePhone(phone){
+  var raw = String(phone||'').trim();
+  if(!raw) return '';
+  var cleanPhone = raw.replace(/[\s\-\(\)]/g,'');
+  if(cleanPhone.indexOf('00')===0) cleanPhone = '+' + cleanPhone.slice(2);
+  if(cleanPhone.startsWith('+')) return cleanPhone.replace(/^\+998998/,'+998');
+  var digits = cleanPhone.replace(/\D/g,'');
+  if(!digits) return '';
+  if(digits.length===9) return ('+998' + digits).replace(/^\+998998/,'+998');
+  if(digits.length===12 && digits.indexOf('998')===0) return ('+' + digits).replace(/^\+998998/,'+998');
+  if(digits.length>=10) return '+' + digits;
+  return '+' + digits;
+}
+
+function detectTgErrorCode(value){
+  var raw = String(value||'').toUpperCase();
+  if(raw.indexOf('PEER_FLOOD')!==-1) return 'PEER_FLOOD';
+  if(raw.indexOf('FLOOD_WAIT')!==-1) return 'FLOOD_WAIT';
+  if(raw.indexOf('PHONE_NOT_OCCUPIED')!==-1) return 'PHONE_NOT_OCCUPIED';
+  if(raw.indexOf('USER_PRIVACY_RESTRICTED')!==-1) return 'USER_PRIVACY_RESTRICTED';
+  if(raw.indexOf('CHAT_WRITE_FORBIDDEN')!==-1) return 'CHAT_WRITE_FORBIDDEN';
+  if(raw.indexOf('USER_IS_BLOCKED')!==-1) return 'USER_IS_BLOCKED';
+  if(raw.indexOf('INPUT_USER_DEACTIVATED')!==-1) return 'INPUT_USER_DEACTIVATED';
+  return '';
+}
+
+function parseTgRetryAfterMs(value){
+  var raw = String(value||'');
+  var match = raw.match(/FLOOD_WAIT_?(\d+)/i);
+  if(match) return (parseInt(match[1],10)||0) * 1000;
+  match = raw.match(/(\d+)\s*(seconds?|sec|s)\b/i);
+  if(match) return (parseInt(match[1],10)||0) * 1000;
+  match = raw.match(/retry\s+after\s+(\d+)/i);
+  if(match) return (parseInt(match[1],10)||0) * 1000;
+  return 0;
+}
+
+function formatTgDuration(ms){
+  var totalSec = Math.max(1, Math.ceil((ms||0)/1000));
+  var min = Math.floor(totalSec/60);
+  var sec = totalSec % 60;
+  if(min && sec) return min+' daqiqa '+sec+' soniya';
+  if(min) return min+' daqiqa';
+  return sec+' soniya';
+}
+
+function humanizeTgError(value, code){
+  var finalCode = code || detectTgErrorCode(value);
+  if(finalCode==='PEER_FLOOD') return 'Telegram akkaunt vaqtincha chekladi (PEER_FLOOD).';
+  if(finalCode==='FLOOD_WAIT'){
+    var waitMs = parseTgRetryAfterMs(value);
+    return 'Telegram kutishni talab qildi' + (waitMs ? ' ('+formatTgDuration(waitMs)+')' : '') + '.';
+  }
+  if(finalCode==='PHONE_NOT_OCCUPIED') return 'Bu raqam Telegram profiliga ulanmagan.';
+  if(finalCode==='USER_PRIVACY_RESTRICTED') return 'Foydalanuvchi maxfiylik sozlamasi sabab xabar qabul qila olmaydi.';
+  if(finalCode==='CHAT_WRITE_FORBIDDEN') return 'Bu foydalanuvchiga yozish ruxsati yo\'q.';
+  if(finalCode==='USER_IS_BLOCKED') return 'Telegram akkaunt bloklangan foydalanuvchiga duch keldi.';
+  if(finalCode==='INPUT_USER_DEACTIVATED') return 'Foydalanuvchi akkaunti faol emas.';
+  return String(value||'Telegram yuborishda xato');
+}
+
+function clearTgCooldownInfo(){
+  if(typeof saveSettingsPatch==='function') saveSettingsPatch({tgFloodUntil:'',tgFloodReason:'',tgFloodUpdatedAt:''});
+  try {
+    localStorage.removeItem('_tgFloodUntil');
+    localStorage.removeItem('_tgFloodReason');
+  } catch(e){}
+}
+
+function getTgCooldownInfo(){
+  var settingUntil = DB.settings && DB.settings.tgFloodUntil ? DB.settings.tgFloodUntil : '';
+  var settingReason = DB.settings && DB.settings.tgFloodReason ? DB.settings.tgFloodReason : '';
+  var localUntil = '';
+  var localReason = '';
+  try {
+    localUntil = localStorage.getItem('_tgFloodUntil') || '';
+    localReason = localStorage.getItem('_tgFloodReason') || '';
+  } catch(e){}
+
+  var until = settingUntil || localUntil;
+  if(settingUntil && localUntil){
+    until = new Date(settingUntil).getTime() >= new Date(localUntil).getTime() ? settingUntil : localUntil;
+  }
+  var reason = settingReason || localReason || 'PEER_FLOOD';
+  var ts = until ? new Date(until).getTime() : 0;
+  if(ts && ts > Date.now()){
+    return {active:true, until:until, reason:reason, remainingMs:ts-Date.now()};
+  }
+  if(until) clearTgCooldownInfo();
+  return {active:false, until:'', reason:'', remainingMs:0};
+}
+
+function setTgCooldownInfo(result){
+  var retryMs = ((result && result.retryAfterSec) ? result.retryAfterSec * 1000 : 0) || parseTgRetryAfterMs(result && (result.rawError || result.error));
+  var cooldownMs = retryMs || TG_DEFAULT_COOLDOWN_MS;
+  var untilIso = new Date(Date.now() + cooldownMs).toISOString();
+  if(typeof saveSettingsPatch==='function') saveSettingsPatch({
+    tgFloodUntil:untilIso,
+    tgFloodReason:(result && result.code) || 'PEER_FLOOD',
+    tgFloodUpdatedAt:new Date().toISOString()
+  });
+  try {
+    localStorage.setItem('_tgFloodUntil', untilIso);
+    localStorage.setItem('_tgFloodReason', (result && result.code) || 'PEER_FLOOD');
+  } catch(e){}
+  return untilIso;
+}
+
+function tgRandomInt(min, max){
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getTgQueueDelayMs(attemptNumber){
+  var delay = tgRandomInt(TG_SEND_DELAY_MIN_MS, TG_SEND_DELAY_MAX_MS);
+  if(attemptNumber > 0 && attemptNumber % TG_BATCH_BURST_SIZE === 0) delay += TG_BATCH_BURST_PAUSE_MS;
+  return delay;
+}
+
+function getEntrepreneurTgStatusMeta(ent, tgCooldown){
+  if(ent.tgSent){
+    var sentTitle = 'Yuborilgan';
+    if(ent.tgDate) sentTitle += ': ' + ent.tgDate;
+    if(ent.tgUser) sentTitle += ' (' + ent.tgUser + ')';
+    return {icon:'✅', color:'#059669', title:sentTitle};
+  }
+  var blockedUntil = ent.tgBlockedUntil ? new Date(ent.tgBlockedUntil).getTime() : 0;
+  if(blockedUntil && blockedUntil > Date.now()){
+    return {
+      icon:'⏳',
+      color:'#F59E0B',
+      title:'Telegram cheklovi: ' + new Date(ent.tgBlockedUntil).toLocaleString('uz-UZ')
+    };
+  }
+  if(ent.tgLastError){
+    return {icon:'⚠️', color:'#EF233C', title:'Oxirgi xato: ' + ent.tgLastError};
+  }
+  if(tgCooldown && tgCooldown.active && ent.matchedForum){
+    return {
+      icon:'⏸',
+      color:'#F59E0B',
+      title:'Telegram batch pauzada: ' + formatTgDuration(tgCooldown.remainingMs)
+    };
+  }
+  if(ent.matchedForum) return {icon:'🟡', color:'#F59E0B', title:'Forumga mos, hali yuborilmagan'};
+  return {icon:'⚪', color:'var(--text3)', title:'Telegram yuborilmagan'};
+}
+
+function applyTgResultToEntrepreneur(ent, result){
+  if(!ent) return;
+  var nowIso = new Date().toISOString();
+  if(result.ok){
+    ent.tgSent = true;
+    ent.tgDate = nowIso.slice(0,10);
+    ent.tgMethod = result.method || 'mtproto';
+    ent.tgUser = result.user || '';
+    ent.tgLastTryAt = nowIso;
+    ent.tgLastError = '';
+    ent.tgRawError = '';
+    ent.tgRetryAfterSec = 0;
+    ent.tgBlockedUntil = '';
+  } else {
+    ent.tgSent = false;
+    ent.tgLastTryAt = nowIso;
+    ent.tgLastError = result.error || 'Telegram yuborishda xato';
+    ent.tgRawError = result.rawError || '';
+    ent.tgRetryAfterSec = result.retryAfterSec || 0;
+    ent.tgBlockedUntil = '';
+    if(result.shouldStopBatch || detectTgErrorCode(result.rawError || result.error)==='PEER_FLOOD' || detectTgErrorCode(result.rawError || result.error)==='FLOOD_WAIT'){
+      ent.tgBlockedUntil = setTgCooldownInfo(result);
+    }
+  }
+  if(typeof fbSave==='function') fbSave('entrepreneurs', ent);
+}
+
+function buildTgBatchToast(prefix, result){
+  var parts = [prefix + ' ' + (result.sent||0) + ' ta yuborildi'];
+  if(result.fail) parts.push(result.fail + ' ta xato');
+  if(result.skipped) parts.push(result.skipped + ' ta telefonsiz');
+  if(result.remaining) parts.push(result.remaining + ' ta navbatda qoldi');
+  return parts.join(', ') + '.';
+}
+
+async function sendTelegramBatch(rawList, buildMessage, options){
+  options = options || {};
+  var list = (rawList || []).filter(function(item){ return !!item; });
+  var sendable = list.filter(function(item){ return !!item.phone; });
+  var skipped = list.length - sendable.length;
+
+  if(_tgBatchRunning){
+    var busyMsg = 'Telegram yuborish allaqachon davom etmoqda. Avvalgi navbat tugasin.';
+    toast(busyMsg,'info');
+    return {sent:0, fail:0, skipped:skipped, remaining:sendable.length, stopped:true, reason:'BUSY', message:busyMsg};
+  }
+
+  var cooldown = getTgCooldownInfo();
+  if(cooldown.active){
+    var cooldownMsg = 'Telegram vaqtincha pauzada. ' + formatTgDuration(cooldown.remainingMs) + ' dan keyin yana urinib ko\'ring.';
+    toast(cooldownMsg,'error');
+    return {sent:0, fail:0, skipped:skipped, remaining:sendable.length, stopped:true, reason:cooldown.reason, message:cooldownMsg};
+  }
+
+  if(!sendable.length){
+    return {sent:0, fail:0, skipped:skipped, remaining:0, stopped:false, reason:'NO_PHONE', message:'Telefon raqamli tadbirkor topilmadi'};
+  }
+
+  _tgBatchRunning = true;
+  var sent = 0, fail = 0, stopped = false, stopReason = '', stopMessage = '';
+  try {
+    for(var i=0;i<sendable.length;i++){
+      var ent = sendable[i];
+      var result = await sendTgMessage(ent.phone, buildMessage(ent, i), ent.name);
+      applyTgResultToEntrepreneur(ent, result);
+      if(result.ok){
+        sent++;
+        console.log('📲 '+ent.name+' → '+(result.phone||ent.phone)+' ✅');
+      } else {
+        fail++;
+        console.log('❌ '+ent.name+' ('+(result.phone||ent.phone||'')+'): '+result.error);
+        if(result.shouldStopBatch){
+          stopped = true;
+          stopReason = result.code || detectTgErrorCode(result.rawError || result.error) || 'PEER_FLOOD';
+          var activeCooldown = getTgCooldownInfo();
+          stopMessage = 'Telegram ' + stopReason + ' chiqardi, batch to\'xtatildi.';
+          if(activeCooldown.active) stopMessage += ' Qayta urinish: ' + new Date(activeCooldown.until).toLocaleString('uz-UZ');
+          break;
+        }
+      }
+
+      if(i < sendable.length - 1){
+        var waitMs = getTgQueueDelayMs(i + 1);
+        if(waitMs >= TG_BATCH_BURST_PAUSE_MS && options.showWaitToasts!==false){
+          toast('⏳ Limitni asrash uchun ' + Math.round(waitMs/1000) + ' soniya pauza qilinmoqda...','info');
+        }
+        await new Promise(function(resolve){ setTimeout(resolve, waitMs); });
+      }
+    }
+  } finally {
+    _tgBatchRunning = false;
+    renderEntrepreneurs();
+  }
+
+  return {
+    sent:sent,
+    fail:fail,
+    skipped:skipped,
+    stopped:stopped,
+    remaining:Math.max(0, sendable.length - sent - fail),
+    reason:stopReason,
+    message:stopMessage
+  };
+}
+
 // Telefon raqamga to'g'ridan-to'g'ri Telegram xabar yuborish
 async function sendTgMessage(phone, message, name){
-  if(!phone){return {ok:false, error:'Telefon raqam yo\'q'};}
-  var cleanPhone = phone.replace(/[\s\-\(\)]/g,'');
-  if(!cleanPhone.startsWith('+')&&!cleanPhone.startsWith('998')) cleanPhone='+998'+cleanPhone;
-  if(!cleanPhone.startsWith('+')) cleanPhone='+'+cleanPhone;
+  var cleanPhone = tgNormalizePhone(phone);
+  if(!cleanPhone) return {ok:false, error:'Telefon raqam yo\'q', code:'NO_PHONE', shouldStopBatch:false};
+
+  var cooldown = getTgCooldownInfo();
+  if(cooldown.active){
+    return {
+      ok:false,
+      phone:cleanPhone,
+      error:'Telegram vaqtincha pauzada. ' + formatTgDuration(cooldown.remainingMs) + ' dan keyin yana urinib ko\'ring.',
+      rawError:cooldown.reason || 'PEER_FLOOD',
+      code:cooldown.reason || 'PEER_FLOOD',
+      retryAfterSec:Math.ceil(cooldown.remainingMs / 1000),
+      shouldStopBatch:true
+    };
+  }
+
   try {
     var resp = await fetch(TG_API_BASE+'/tg-send', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({phone:cleanPhone, message:message, firstName:name||'Tadbirkor'})
     });
     var data = await resp.json();
-    if(data.ok) return {ok:true, method:'mtproto', phone:cleanPhone, user:data.user||''};
-    return {ok:false, error:data.error||'Xato'};
+    if(data.ok){
+      return {
+        ok:true,
+        method:data.method||'mtproto',
+        phone:cleanPhone,
+        user:data.user||'',
+        contactSource:data.contactSource||''
+      };
+    }
+    var code = data.code || detectTgErrorCode(data.error);
+    return {
+      ok:false,
+      phone:cleanPhone,
+      error:humanizeTgError(data.error, code),
+      rawError:data.error || '',
+      code:code,
+      retryAfterSec:data.retryAfterSec || 0,
+      shouldStopBatch:!!data.shouldStopBatch || code==='PEER_FLOOD' || code==='FLOOD_WAIT'
+    };
   } catch(e){
-    return {ok:false, error:e.message};
+    var fallbackCode = detectTgErrorCode(e.message);
+    return {
+      ok:false,
+      phone:cleanPhone,
+      error:humanizeTgError(e.message, fallbackCode),
+      rawError:e.message || '',
+      code:fallbackCode,
+      retryAfterSec:Math.ceil(parseTgRetryAfterMs(e.message) / 1000),
+      shouldStopBatch:fallbackCode==='PEER_FLOOD' || fallbackCode==='FLOOD_WAIT'
+    };
   }
 }
-
 
 var SECTOR_KEYWORDS = {
   'qurilish':['qurilish','building','construction','cement','beton','plitka','granit','marmor','tosh','kafel','gips','kirpich','temir','armatura','qum','ohak','bino','uy','қурилиш','цемент','бетон','плитка','гранит','мармар','тош','кафел','гипс','ғишт','темир','арматура','қум','оҳак','бино'],
@@ -8030,6 +8331,7 @@ var SECTOR_KEYWORDS = {
 
 function renderEntrepreneurs(){
   var list = DB.entrepreneurs||[];
+  var tgCooldown = getTgCooldownInfo();
   var el = document.getElementById('entr-count');
   if(el) el.textContent = list.length;
   var tb = document.getElementById('entr-tbody');
@@ -8040,7 +8342,8 @@ function renderEntrepreneurs(){
     return;
   }
   tb.innerHTML = list.map(function(e,i){
-    var stIcon = e.tgSent ? '<span style="color:#059669" title="'+( e.tgDate||'')+'">✅</span>' : (e.matchedForum ? '<span style="color:#F59E0B">🟡</span>' : '<span style="color:var(--text3)">⚪</span>');
+    var tgMeta = getEntrepreneurTgStatusMeta(e, tgCooldown);
+    var stIcon = '<span style="color:'+tgMeta.color+'" title="'+tgEscapeAttr(tgMeta.title)+'">'+tgMeta.icon+'</span>';
     var phoneCell = e.phone ?
       '<span id="ph-display-'+e.id+'" style="cursor:pointer" onclick="editEntPhone(\''+e.id+'\')" title="Bosib o\'zgartiring">'+e.phone+' ✏️</span>' :
       '<button class="btn btn-sm" onclick="editEntPhone(\''+e.id+'\')" style="background:#F59E0B;color:#fff;border:none;font-size:.6rem;padding:2px 8px">📞 Qo\'shish</button>';
@@ -8076,12 +8379,24 @@ function saveEntPhone(id){
   var inp = document.getElementById('ph-input-'+id);
   if(!inp) return;
   var newPhone = inp.value.trim();
+  var normalizedPhone = tgNormalizePhone(newPhone);
   var ent = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
   if(!ent) return;
-  ent.phone = newPhone;
+  var oldPhone = ent.phone || '';
+  ent.phone = normalizedPhone || newPhone;
+  if(oldPhone !== ent.phone){
+    ent.tgSent = false;
+    ent.tgDate = '';
+    ent.tgMethod = '';
+    ent.tgUser = '';
+    ent.tgLastError = '';
+    ent.tgRawError = '';
+    ent.tgRetryAfterSec = 0;
+    ent.tgBlockedUntil = '';
+  }
   if(typeof fbSave==='function') fbSave('entrepreneurs', ent);
   renderEntrepreneurs();
-  toast('📞 Telefon yangilandi: '+ent.name+' → '+newPhone);
+  toast('📞 Telefon yangilandi: '+ent.name+' → '+ent.phone);
 }
 
 // Bitta tadbirkorga Telegram xabar yuborish
@@ -8089,17 +8404,14 @@ async function sendSingleTg(id){
   var ent = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
   if(!ent) return;
   if(!ent.phone){toast('⚠️ Telefon raqam yo\'q. Avval raqam qo\'shing.','error');editEntPhone(id);return;}
+  if(_tgBatchRunning){toast('⏳ Hozir Telegram batch ishlayapti. Tugagach qayta urinib ko\'ring.','info');return;}
   var msg = '🏭 Hurmatli '+ent.name+'!\n\n'+(ent.district?'📍 '+ent.district+'\n':'')+'📋 '+ent.sector+'\n'+(ent.projectValue?'💰 $'+ent.projectValue+'M\n':'')+(ent.matchedForum?'🗓 '+ent.matchedForum+'\n':'')+'\n✅ Navoiy viloyati Investitsiya boshqarmasi sizni hamkorlikka taklif qiladi!\n\n📞 Bog\'lanish: Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
   toast('📲 '+ent.name+' ('+ent.phone+') ga xabar yuborilmoqda...');
   var result = await sendTgMessage(ent.phone, msg, ent.name);
-  if(result.ok){
-    ent.tgSent=true;ent.tgDate=new Date().toISOString().slice(0,10);
-    if(typeof fbSave==='function') fbSave('entrepreneurs',ent);
-    renderEntrepreneurs();
-    toast('📲 ✅ '+ent.name+' ('+ent.phone+') ga xabar yuborildi!'+(result.user?' TG: '+result.user:''));
-  } else {
-    toast('❌ '+ent.name+': '+result.error,'error');
-  }
+  applyTgResultToEntrepreneur(ent, result);
+  renderEntrepreneurs();
+  if(result.ok) toast('📲 ✅ '+ent.name+' ('+ent.phone+') ga xabar yuborildi!'+(result.user?' TG: '+result.user:''));
+  else toast('❌ '+ent.name+': '+result.error,'error');
 }
 
 function importEntrepreneurs(input){
@@ -8179,7 +8491,7 @@ function importEntrepreneurs(input){
         if(!nm||nm.length<2) continue;
         if(ph&&!ph.match(/[\d\+]/)) ph='';
         if(DB.entrepreneurs.some(function(x){return x.name===nm;})) continue;
-        var rec={id:'ent_'+(Date.now()+r),name:nm,phone:ph,sector:sec,district:dist,projectValue:(val&&!isNaN(val)?val:''),telegram:'',matchedForum:'',tgSent:false,addedDate:new Date().toISOString().slice(0,10)};
+        var rec={id:'ent_'+(Date.now()+r),name:nm,phone:(tgNormalizePhone(ph)||ph),sector:sec,district:dist,projectValue:(val&&!isNaN(val)?val:''),telegram:'',matchedForum:'',tgSent:false,addedDate:new Date().toISOString().slice(0,10)};
         DB.entrepreneurs.push(rec);
         if(typeof fbSave==='function') fbSave('entrepreneurs',rec);
         added++;
@@ -8253,54 +8565,42 @@ async function autoMatchAndNotify(importedCount){
   // 2. TELEGRAM YUBORISH
 
   var readyList=entrList.filter(function(e){return e.matchedForum&&!e.tgSent;});
+  var readyWithPhone=readyList.filter(function(e){return !!e.phone;});
+  var noPhoneCount=readyList.length-readyWithPhone.length;
   if(!readyList.length) return;
+  if(!readyWithPhone.length){
+    toast('⚠️ Moslashtirilgan tadbirkorlar bor, lekin telefon raqamlari yo\'q. Avval raqamlarni to\'ldiring.','error');
+    return;
+  }
 
   // Natijani ko'rsatish
   var summary = '📋 NATIJA:\n\n';
   summary += '✅ Import: '+importedCount+' ta tadbirkor\n';
   summary += '🔗 Forum mos: '+matched+' ta\n';
-  summary += '📨 Telegram kutmoqda: '+readyList.length+' ta\n\n';
-  readyList.slice(0,5).forEach(function(e){
+  summary += '📨 Telegram tayyor: '+readyWithPhone.length+' ta\n';
+  if(noPhoneCount) summary += '📵 Telefonsiz: '+noPhoneCount+' ta\n';
+  summary += '\n';
+  readyWithPhone.slice(0,5).forEach(function(e){
     summary += '• '+e.name+(e.phone?' ('+e.phone+')':'')+'\n  → '+e.matchedForum+'\n';
   });
-  if(readyList.length>5) summary += '\n... va yana '+(readyList.length-5)+' ta';
-  summary += '\n\nTelegram xabar yuborilsinmi?\n(Telefon raqam orqali to\'g\'ridan-to\'g\'ri profilga)';
+  if(readyWithPhone.length>5) summary += '\n... va yana '+(readyWithPhone.length-5)+' ta';
+  summary += '\n\nTelegram xabar yuborilsinmi?\n(Xavfsiz navbat bilan, har birida bir necha soniya pauza bo\'ladi)';
 
   if(!confirm(summary)) return;
 
   // 3. TELEGRAM YUBORISH — telefonga to'g'ridan-to'g'ri
-  toast('📨 '+readyList.length+' ta tadbirkorga Telegram xabar yuborilmoqda...');
-  var sent=0, fail=0;
-
-  for(var i=0;i<readyList.length;i++){
-    var e=readyList[i];
-    var msg='🏭 Hurmatli '+e.name+'!\n\n'+
+  toast('📨 '+readyWithPhone.length+' ta tadbirkorga Telegram xabar xavfsiz navbat bilan yuborilmoqda...');
+  var batch = await sendTelegramBatch(readyWithPhone, function(e){
+    return '🏭 Hurmatli '+e.name+'!\n\n'+
       (e.district?'📍 '+e.district+'\n':'')+
       '📋 '+e.sector+'\n'+
       (e.projectValue?'💰 $'+e.projectValue+' mln\n':'')+
       '🗓 '+e.matchedForum+'\n\n'+
       '✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n'+
       '📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
-
-    var result = await sendTgMessage(e.phone, msg, e.name);
-    if(result.ok){
-      e.tgSent=true;
-      e.tgDate=new Date().toISOString().slice(0,10);
-      e.tgMethod=result.method||'';
-      if(typeof fbSave==='function') fbSave('entrepreneurs',e);
-      sent++;
-      console.log('📨 '+e.name+' → '+(result.method==='mtproto'?'telefonga to\'g\'ridan-to\'g\'ri':'guruhga')+' ✅');
-    } else {
-      fail++;
-      console.log('❌ '+e.name+': '+result.error);
-    }
-
-    // Telegram rate limit: 1 xabar/sekund
-    if(i<readyList.length-1) await new Promise(function(r){setTimeout(r,1200);});
-  }
-
-  renderEntrepreneurs();
-  toast('📨 Tayyor! '+sent+' ta xabar + kontakt yuborildi'+(fail?' ('+fail+' xato)':'')+'!');
+  }, {showWaitToasts:true});
+  toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📨 Tayyor!', batch), batch.stopped?'error':'success');
+  if(batch.message) toast(batch.message, batch.stopped?'error':'info');
 }
 
 function deleteEntrepreneur(id){
@@ -8374,6 +8674,7 @@ var _currentModalForum = '';
 
 function showForumEntrepreneurs(forumNom){
   var entrList=DB.entrepreneurs||[];
+  var tgCooldown = getTgCooldownInfo();
   var matched=entrList.filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(forumNom.slice(0,15))!==-1;});
   _currentModalForum = forumNom;
 
@@ -8384,7 +8685,8 @@ function showForumEntrepreneurs(forumNom){
   } else {
     document.getElementById('femBody').innerHTML='<table style="width:100%;font-size:.75rem"><thead><tr><th>#</th><th>Ism</th><th>Tuman</th><th>📞 Telefon</th><th>Faoliyat</th><th>📨</th></tr></thead><tbody>'+
       matched.map(function(e,i){
-        var st=e.tgSent?'<span style="color:#059669">✅</span>':'<span style="color:var(--text3)">⏳</span>';
+        var tgMeta = getEntrepreneurTgStatusMeta(e, tgCooldown);
+        var st='<span style="color:'+tgMeta.color+'" title="'+tgEscapeAttr(tgMeta.title)+'">'+tgMeta.icon+'</span>';
         return '<tr><td>'+(i+1)+'</td><td><b>'+e.name+'</b></td><td style="font-size:.65rem">'+(e.district||'—')+'</td><td>'+(e.phone||'—')+'</td><td style="font-size:.65rem">'+e.sector+'</td><td>'+st+'</td></tr>';
       }).join('')+'</tbody></table>';
   }
@@ -8394,21 +8696,20 @@ function showForumEntrepreneurs(forumNom){
 
 async function sendTgForModalForum(){
   if(!_currentModalForum){toast('⚠️ Forum tanlanmagan','error');return;}
-  var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(_currentModalForum.slice(0,15))!==-1&&!e.tgSent&&e.phone;});
-  if(!list.length){toast('⚠️ Xabar yuborish uchun tadbirkor yo\'q (telefonsiz yoki yuborilgan)','info');return;}
-  if(!confirm(list.length+' ta tadbirkorga "'+_currentModalForum.slice(0,30)+'" haqida Telegram xabar yuborilsinmi?')) return;
-  toast('📲 '+list.length+' ta tadbirkorga xabar...');
-  var sent=0;
-  for(var i=0;i<list.length;i++){
-    var e=list[i];
-    var msg='🔔 FORUM TAKLIFI\n\n👤 '+e.name+(e.district?'\n📍 '+e.district:'')+'\n🏭 '+e.sector+(e.projectValue?'\n💰 $'+e.projectValue+'M':'')+'\n🗓 '+_currentModalForum+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
-    var result=await sendTgMessage(e.phone, msg, e.name);
-    if(result.ok){e.tgSent=true;if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;}
-    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1500);});
-  }
-  renderEntrepreneurs();
-  showForumEntrepreneurs(_currentModalForum); // refresh modal
-  toast('📲 '+sent+' ta xabar yuborildi!');
+  var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(_currentModalForum.slice(0,15))!==-1&&!e.tgSent;});
+  var sendable=list.filter(function(e){return !!e.phone;});
+  var noPhoneCount=list.length-sendable.length;
+  if(!sendable.length){toast('⚠️ Xabar yuborish uchun telefon raqamli tadbirkor yo\'q','info');return;}
+  var confirmMsg = sendable.length+' ta tadbirkorga "'+_currentModalForum.slice(0,30)+'" haqida Telegram xabar yuborilsinmi?\nXabarlar navbat bilan yuboriladi.';
+  if(noPhoneCount) confirmMsg += '\nTelefonsiz: '+noPhoneCount+' ta';
+  if(!confirm(confirmMsg)) return;
+  toast('📲 '+sendable.length+' ta tadbirkorga xabar xavfsiz navbat bilan yuborilmoqda...');
+  var batch = await sendTelegramBatch(sendable, function(e){
+    return '🔔 FORUM TAKLIFI\n\n👤 '+e.name+(e.district?'\n📍 '+e.district:'')+'\n🏭 '+e.sector+(e.projectValue?'\n💰 $'+e.projectValue+'M':'')+'\n🗓 '+_currentModalForum+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
+  }, {showWaitToasts:true});
+  showForumEntrepreneurs(_currentModalForum);
+  toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📲 Tayyor!', batch), batch.stopped?'error':'success');
+  if(batch.message) toast(batch.message, batch.stopped?'error':'info');
 }
 
 function checkForumAlerts(){
@@ -8454,35 +8755,33 @@ function checkForumAlerts(){
 async function sendTelegramToMatched(){
   var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&!e.tgSent;});
   if(!list.length){toast('⚠️ Moslashtirilgan/yuborilmagan tadbirkor yo\'q','error');return;}
-  if(!confirm(list.length+' ta tadbirkorga Telegram profiliga to\'g\'ridan-to\'g\'ri xabar yuboriladi.\nDavom etsinmi?')) return;
-  toast('📲 '+list.length+' ta tadbirkorga xabar yuborilmoqda...');
-  var sent=0,fail=0;
-  for(var i=0;i<list.length;i++){
-    var e=list[i];
-    var msg='🏭 Hurmatli '+e.name+'!\n\n'+(e.district?'📍 '+e.district+'\n':'')+'📋 '+e.sector+'\n'+(e.projectValue?'💰 $'+e.projectValue+'M\n':'')+'🗓 '+e.matchedForum+'\n\n✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
-    var result=await sendTgMessage(e.phone, msg, e.name);
-    if(result.ok){e.tgSent=true;e.tgDate=new Date().toISOString().slice(0,10);if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;console.log('📲 '+e.name+' → '+e.phone+' ✅');}
-    else{fail++;console.log('❌ '+e.name+' ('+e.phone+'): '+result.error);}
-    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1500);});
-  }
-  renderEntrepreneurs();
-  toast('📲 '+sent+' ta tadbirkor Telegram profiliga xabar yuborildi!'+(fail?' ('+fail+' ta xato — Telegram yo\'q)':''));
+  var sendable=list.filter(function(e){return !!e.phone;});
+  var noPhoneCount=list.length-sendable.length;
+  if(!sendable.length){toast('⚠️ Moslashtirilgan tadbirkorlar bor, lekin telefon raqamlari yo\'q','error');return;}
+  var confirmMsg = sendable.length+' ta tadbirkorga Telegram profiliga to\'g\'ridan-to\'g\'ri xabar yuboriladi.\nXabarlar xavfsiz navbat bilan ketadi.';
+  if(noPhoneCount) confirmMsg += '\nTelefonsiz: '+noPhoneCount+' ta';
+  if(!confirm(confirmMsg)) return;
+  toast('📲 '+sendable.length+' ta tadbirkorga xabar yuborilmoqda...');
+  var batch = await sendTelegramBatch(sendable, function(e){
+    return '🏭 Hurmatli '+e.name+'!\n\n'+(e.district?'📍 '+e.district+'\n':'')+'📋 '+e.sector+'\n'+(e.projectValue?'💰 $'+e.projectValue+'M\n':'')+'🗓 '+e.matchedForum+'\n\n✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
+  }, {showWaitToasts:true});
+  toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📲 Tayyor!', batch), batch.stopped?'error':'success');
+  if(batch.message) toast(batch.message, batch.stopped?'error':'info');
 }
 
 async function sendTelegramForForum(forumNom, forumSana){
   var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(forumNom.slice(0,15))!==-1&&!e.tgSent;});
   if(!list.length){toast('⚠️ "'+forumNom+'" uchun mos/yuborilmagan tadbirkor yo\'q','info');return;}
-  toast('📲 "'+forumNom.slice(0,30)+'" — '+list.length+' ta tadbirkorga...');
-  var sent=0;
-  for(var i=0;i<list.length;i++){
-    var e=list[i];
-    var msg='🔔 FORUM TAKLIFI\n\n👤 '+e.name+(e.district?'\n📍 '+e.district:'')+'\n🏭 '+e.sector+(e.projectValue?'\n💰 $'+e.projectValue+'M':'')+'\n🗓 '+forumNom+(forumSana?' — '+forumSana:'')+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
-    var result=await sendTgMessage(e.phone, msg, e.name);
-    if(result.ok){e.tgSent=true;if(typeof fbSave==='function') fbSave('entrepreneurs',e);sent++;}
-    if(i<list.length-1) await new Promise(function(r){setTimeout(r,1500);});
-  }
-  renderEntrepreneurs();
-  toast('📲 '+sent+' ta xabar yuborildi!');
+  var sendable=list.filter(function(e){return !!e.phone;});
+  var noPhoneCount=list.length-sendable.length;
+  if(!sendable.length){toast('⚠️ "'+forumNom+'" uchun telefon raqamli tadbirkor topilmadi','info');return;}
+  toast('📲 "'+forumNom.slice(0,30)+'" — '+sendable.length+' ta tadbirkorga xavfsiz navbat bilan...');
+  if(noPhoneCount) toast('ℹ️ Telefonsiz '+noPhoneCount+' ta tadbirkor o\'tkazib yuborildi.','info');
+  var batch = await sendTelegramBatch(sendable, function(e){
+    return '🔔 FORUM TAKLIFI\n\n👤 '+e.name+(e.district?'\n📍 '+e.district:'')+'\n🏭 '+e.sector+(e.projectValue?'\n💰 $'+e.projectValue+'M':'')+'\n🗓 '+forumNom+(forumSana?' — '+forumSana:'')+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
+  }, {showWaitToasts:true});
+  toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📲 Tayyor!', batch), batch.stopped?'error':'success');
+  if(batch.message) toast(batch.message, batch.stopped?'error':'info');
 }
 
 /* ═══════════════════════════════════════════════════════════════
