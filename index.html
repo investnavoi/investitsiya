@@ -1810,7 +1810,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="font-size:.9rem;font-weight:700;margin-bottom:.8rem">📲 Telegram — Telefon raqamga to'g'ridan-to'g'ri xabar</div>
       <div id="tg-setup-status" style="margin-bottom:.5rem"></div>
       <div style="font-size:.6rem;color:var(--text3)">
-        Netlify Environment Variables:<br>
+Vercel Environment Variables:<br>
         <code>TG_API_ID = your_api_id</code><br>
         <code>TG_API_HASH = your_api_hash</code><br>
         <code>TG_SESSION = your_session_string</code>
@@ -1818,7 +1818,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group span-2"><label class="form-label">PPTX Template URL</label><input class="form-input" id="set-pptx-url" type="url" placeholder="https://investnavoi.github.io/investitsiya/template_english.pptx"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">GitHub Pages'da template_english.pptx faylini host qiling | <a href="#" onclick="uploadPptxTemplate();return false" style="color:#4361EE">yoki kompyuterdan yuklang</a></div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Bot Token (guruhga yuborish uchun)</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling — guruhga xabar uchun</div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Chat ID (guruh)</label><input class="form-input" id="set-tg-chatid" placeholder="-1001234567890"></div>
-        <div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:.8rem"><label class="form-label">📲 Telegram MTProto — telefonga to'g'ridan-to'g'ri xabar</label><div style="font-size:.55rem;color:var(--text3);margin-bottom:.5rem">Bu sozlamalar Netlify env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.</div></div>
+<div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:.8rem"><label class="form-label">📲 Telegram MTProto — telefonga to'g'ridan-to'g'ri xabar</label><div style="font-size:.55rem;color:var(--text3);margin-bottom:.5rem">Bu sozlamalar Vercel env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.</div></div>
         <div class="form-group"><label class="form-label">TG API ID</label><input class="form-input" id="set-tg-apiid" placeholder="12345678"><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
         <div class="form-group"><label class="form-label">TG API Hash</label><input class="form-input" id="set-tg-apihash" type="password" placeholder="abc123..."><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
         <div class="form-group span-2"><label class="form-label">TG Session String</label><input class="form-input" id="set-tg-session" type="password" placeholder="1BAAOMTQ5LjE1M..."><div style="font-size:.55rem;color:var(--text3)">generate-session.mjs dan oling (bir marta ishga tushiring)</div></div>
@@ -7988,8 +7988,8 @@ async function checkTgStatus(){
   try {
     var r=await fetch(TG_API_BASE+'/tg-status');var d=await r.json();
     if(d.ready) el.innerHTML='<div style="padding:8px 12px;background:rgba(5,150,105,.1);border-radius:8px;color:#059669;font-weight:700;font-size:.75rem">✅ Telegram MTProto tayyor! Telefon raqamga to\'g\'ridan-to\'g\'ri xabar yuboriladi.</div>';
-    else el.innerHTML='<div style="padding:8px 12px;background:rgba(239,68,60,.1);border-radius:8px;color:#EF233C;font-size:.7rem">❌ Netlify env sozlanmagan. TG_API_ID, TG_API_HASH, TG_SESSION kerak.</div>';
-  } catch(e){el.innerHTML='<div style="font-size:.65rem;color:var(--text3)">⚠️ api-proxy.zip ni Netlify\'ga deploy qiling.</div>';}
+else el.innerHTML='<div style="padding:8px 12px;background:rgba(239,68,60,.1);border-radius:8px;color:#EF233C;font-size:.7rem">❌ Vercel env sozlanmagan. TG_API_ID, TG_API_HASH, TG_SESSION kerak.</div>';
+} catch(e){el.innerHTML='<div style="font-size:.65rem;color:var(--text3)">⚠️ Vercel project deploy va env sozlamalarini tekshiring.</div>';}
 }
 
 var TG_SEND_DELAY_MIN_MS = 6000;
