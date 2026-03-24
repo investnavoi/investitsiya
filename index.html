@@ -882,6 +882,10 @@ input[type="time"]{-webkit-appearance:none;}
 .mailbox-legend-dot.warm{background:#8B5CF6}
 .mailbox-legend-dot.cold{background:#38BDF8}
 .mailbox-inline-note{font-size:.62rem;color:var(--text3)}
+.trade-subtabs{display:flex;gap:.55rem;flex-wrap:wrap;padding:.85rem .9rem .25rem;border-top:1px solid var(--border)}
+.trade-subtab{padding:7px 12px;border-radius:999px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:.68rem;font-weight:700;cursor:pointer;transition:all .18s}
+.trade-subtab.active{background:linear-gradient(135deg,#4361EE,#6D28D9);border-color:transparent;color:#fff;box-shadow:0 8px 18px rgba(67,97,238,.18)}
+.trade-view-note{padding:0 .9rem .7rem;font-size:.62rem;color:var(--text3)}
 @media(max-width:1100px){
   .mailbox-kpi-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}
   .mailbox-grid{grid-template-columns:1fr}
@@ -896,6 +900,7 @@ input[type="time"]{-webkit-appearance:none;}
   .mailbox-kpi-grid{grid-template-columns:1fr}
   .mailbox-add-form{grid-template-columns:1fr}
   .mailbox-shell{padding:.95rem}
+  .trade-subtabs{padding:.7rem .7rem .15rem}
 }
 /* ===== AI CHATBOT WIDGET ===== */
 .chat-fab{position:fixed;left:1.2rem;bottom:1.5rem;z-index:350;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;box-shadow:0 4px 20px rgba(66,133,244,.5);transition:all .2s;}
@@ -1926,16 +1931,18 @@ input[type="time"]{-webkit-appearance:none;}
 
     <div id="tradeTableCard" class="tcard" style="display:none">
       <div class="tc-head">
-        <div class="tc-title">📋 Mahsulotlar ro'yxati (<span id="trade-count">0</span>)</div>
+        <div class="tc-title"><span id="trade-title-text">📋 Mahsulotlar ro'yxati</span> (<span id="trade-count">0</span>)</div>
         <div style="display:flex;gap:.5rem">
-          <button class="btn btn-sm" onclick="exportTradeCSV()" style="background:#059669;color:#fff;border:none">📥 CSV yuklash</button>
-          <button class="btn btn-sm" onclick="matchTradeWithProducts()" style="background:#4361EE;color:#fff;border:none">🔗 Navoiy mahsulotlarga moslashtirish</button>
+          <button class="btn btn-sm" id="trade-export-btn" onclick="exportTradeCSV()" style="background:#059669;color:#fff;border:none">📥 CSV yuklash</button>
+          <button class="btn btn-sm" id="trade-match-btn" onclick="matchTradeWithProducts()" style="background:#4361EE;color:#fff;border:none">🔗 Navoiy mahsulotlarga moslashtirish</button>
         </div>
       </div>
+      <div class="trade-subtabs" id="tradeSubTabs"></div>
+      <div class="trade-view-note" id="tradeViewNote"></div>
       <div class="tscroll" style="max-height:600px;overflow-y:auto"><table>
-        <thead><tr>
+        <thead id="tradeTableHead"><tr>
           <th>#</th><th>HS Kod</th><th>Mahsulot nomi</th>
-          <th>Qiymati ($)</th><th>Og'irligi (kg)</th><th>Navoiy mos</th>
+          <th>Qiymati ($)</th><th>Og'irligi (kg)</th><th id="trade-last-col">Navoiy mos</th>
         </tr></thead>
         <tbody id="trade-tbody"></tbody>
       </table></div>
@@ -7584,6 +7591,11 @@ var _tradeData = [];
 var _tradeCache = {};
 var _tradeSource = '';
 var _tradeMeta = {};
+var _tradeViewMode = 'market';
+var _tradeUzExportData = [];
+var _tradeUzExportSource = '';
+var _tradeUzExportMeta = {};
+var _tradeUzExportCache = {};
 
 function upsertDbRecord(listName, record){
   if(!DB[listName]) DB[listName] = [];
@@ -7658,6 +7670,195 @@ function normalizeTradeRows(rows){
   }).sort(function(a,b){
     return (b.value||0) - (a.value||0);
   });
+}
+
+function buildNavoiProductRows(){
+  var raws = DB.rawMaterials || [];
+  return (DB.products||[]).map(function(p){
+    var raw = raws.find(function(r){ return String(r.id) === String(p.raw_id); });
+    return {
+      hsCode: String(p.hs_code||'').replace(/\s+/g,''),
+      description: p.name_uz || p.name_en || '—',
+      value: 0,
+      weight: 0,
+      note: (raw ? raw.name_uz : (p.raw_name||'—')),
+      tag: p.main_sector || p.usage || p.price || 'Navoiy mahsuloti',
+      source: 'Navoi'
+    };
+  }).sort(function(a,b){
+    return String(a.description||'').localeCompare(String(b.description||''), 'uz');
+  });
+}
+
+function getCurrentTradeRows(){
+  if(_tradeViewMode === 'navoi') return buildNavoiProductRows();
+  if(_tradeViewMode === 'uzexport') return _tradeUzExportData || [];
+  return _tradeData || [];
+}
+
+async function loadUzbekistanExportData(partnerCode, partnerName, year, hsLevel, hsFilter){
+  if(!partnerCode || String(partnerCode) === '860'){
+    _tradeUzExportData = [];
+    _tradeUzExportSource = 'UN Comtrade';
+    _tradeUzExportMeta = { emptyReason: 'same_country' };
+    return;
+  }
+  var cacheKey = [partnerCode, year, hsLevel||'4', hsFilter||'all'].join('_');
+  if(_tradeUzExportCache[cacheKey]){
+    _tradeUzExportData = _tradeUzExportCache[cacheKey].data||[];
+    _tradeUzExportSource = _tradeUzExportCache[cacheKey].source||'UN Comtrade';
+    _tradeUzExportMeta = _tradeUzExportCache[cacheKey].meta||{};
+    return;
+  }
+  var BASE = 'https://navoiy-api-proxy.vercel.app';
+  var comtradeKey = (window._apiKeys && window._apiKeys.comtrade) || '';
+  var url = BASE+'/api/trade?reporter=860&partner='+encodeURIComponent(partnerCode)+'&year='+encodeURIComponent(year)+'&flow=X&level='+encodeURIComponent(hsLevel||'4')+(hsFilter?'&hs='+encodeURIComponent(hsFilter):'')+(comtradeKey?'&key='+encodeURIComponent(comtradeKey):'');
+  try{
+    var resp = await fetch(url);
+    var json = resp.ok ? await resp.json() : {data:[]};
+    var rawData = json.data || [];
+    _tradeUzExportData = normalizeTradeRows(rawData.map(function(r){
+      return {
+        hsCode: String(r.cmdCode||r.hs_code||r.commodityCode||''),
+        description: r.cmdDesc || r.description || r.commodityDescription || '',
+        value: r.primaryValue || r.fobvalue || r.cifvalue || r.TradeValue || 0,
+        weight: r.netWgt || r.grossWgt || r.NetWeight || r.quantity || 0,
+        partner: r.partnerDesc || r.partner || partnerName || 'World',
+        year: r.period || r.yr || year,
+        flow: 'X'
+      };
+    }).filter(function(r){
+      if(!r.value || r.value <= 0) return false;
+      if(hsFilter || hsLevel==='all') return true;
+      var len = String(r.hsCode||'').length;
+      if(hsLevel==='2') return len <= 2;
+      if(hsLevel==='4') return len >= 3 && len <= 4;
+      if(hsLevel==='6') return len >= 5 && len <= 6;
+      return true;
+    }));
+    _tradeUzExportSource = json.source || 'UN Comtrade';
+    _tradeUzExportMeta = {
+      partnerCode: partnerCode,
+      partnerName: partnerName || '',
+      year: year,
+      hsLevel: hsLevel || '4',
+      hsFilter: hsFilter || ''
+    };
+    _tradeUzExportCache[cacheKey] = {
+      data: _tradeUzExportData.slice(),
+      source: _tradeUzExportSource,
+      meta: Object.assign({}, _tradeUzExportMeta)
+    };
+  } catch(err){
+    console.log('Uzbekistan export error:', err.message);
+    _tradeUzExportData = [];
+    _tradeUzExportSource = 'UN Comtrade';
+    _tradeUzExportMeta = { error: err.message, partnerCode: partnerCode, partnerName: partnerName || '' };
+  }
+}
+
+function ensureUzExportDataLoaded(countryCode, countryName, year, hsLevel, hsFilter){
+  var samePayload =
+    _tradeUzExportMeta &&
+    String(_tradeUzExportMeta.partnerCode||'') === String(countryCode||'') &&
+    String(_tradeUzExportMeta.year||'') === String(year||'') &&
+    String(_tradeUzExportMeta.hsLevel||'4') === String(hsLevel||'4') &&
+    String(_tradeUzExportMeta.hsFilter||'') === String(hsFilter||'');
+  if(samePayload) return;
+  loadUzbekistanExportData(countryCode, countryName, year, hsLevel, hsFilter).then(function(){
+    var currentCode = document.getElementById('trade-country').value || '';
+    var currentYear = document.getElementById('trade-year').value || '';
+    if(String(currentCode) !== String(countryCode) || String(currentYear) !== String(year)) return;
+    var flow = document.getElementById('trade-flow').value;
+    renderTradeListView(countryName, flow==='M'?'Import':'Export', year);
+  });
+}
+
+function renderTradeSubTabs(countryName){
+  var tabs = document.getElementById('tradeSubTabs');
+  if(!tabs) return;
+  var marketCount = (_tradeData||[]).length;
+  var navoiCount = (DB.products||[]).length;
+  var exportCount = (_tradeUzExportData||[]).length;
+  tabs.innerHTML =
+    '<button class="trade-subtab '+(_tradeViewMode==='navoi'?'active':'')+'" onclick="setTradeViewMode(\'navoi\')">🏭 Navoiy viloyatida mavjud mahsulotlar ('+navoiCount+')</button>'+
+    '<button class="trade-subtab '+(_tradeViewMode==='uzexport'?'active':'')+'" onclick="setTradeViewMode(\'uzexport\')">🇺🇿 O\'zbekistondan '+(countryName||'shu davlatga')+' eksport bo\'lgan ('+exportCount+')</button>'+
+    '<button class="trade-subtab '+(_tradeViewMode==='market'?'active':'')+'" onclick="setTradeViewMode(\'market\')">📋 Mahsulotlar ro\'yxati ('+marketCount+')</button>';
+}
+
+function renderTradeListView(countryName, flowName, year){
+  var data = getCurrentTradeRows();
+  var titleEl = document.getElementById('trade-title-text');
+  var noteEl = document.getElementById('tradeViewNote');
+  var lastCol = document.getElementById('trade-last-col');
+  var matchBtn = document.getElementById('trade-match-btn');
+  var tb = document.getElementById('trade-tbody');
+  var navProducts = DB.products || [];
+  if(!tb) return;
+
+  renderTradeSubTabs(countryName);
+
+  if(_tradeViewMode === 'navoi'){
+    if(titleEl) titleEl.textContent = '🏭 Navoiy viloyatida mavjud mahsulotlar ro\'yxati';
+    if(lastCol) lastCol.textContent = 'Holat';
+    if(noteEl) noteEl.textContent = 'Bu ro\'yxat Navoiy mahsulotlar bazasidan olinadi.';
+    if(matchBtn) matchBtn.style.display = 'none';
+    document.getElementById('trade-count').textContent = data.length;
+    tb.innerHTML = data.length ? data.map(function(r,i){
+      return '<tr style="background:rgba(5,150,105,.04)">'+
+        '<td>'+(i+1)+'</td>'+
+        '<td style="font-family:monospace;font-size:.7rem;font-weight:700">'+(r.hsCode||'—')+'</td>'+
+        '<td style="font-size:.7rem"><b>'+(r.description||'—')+'</b><div style="font-size:.58rem;color:var(--text3);margin-top:2px">'+(r.note||'—')+'</div></td>'+
+        '<td style="font-weight:700;color:#059669">'+(r.tag||'—')+'</td>'+
+        '<td style="font-size:.65rem;color:var(--text3)">—</td>'+
+        '<td><span style="background:#059669;color:#fff;padding:2px 8px;border-radius:999px;font-size:.55rem;font-weight:700">✅ Mavjud</span></td>'+
+      '</tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text3)">Mahsulot bazasi bo\'sh</td></tr>';
+    return;
+  }
+
+  if(_tradeViewMode === 'uzexport'){
+    if(titleEl) titleEl.textContent = '🇺🇿 O\'zbekistondan '+(countryName||'shu davlatga')+' eksport bo\'lgan';
+    if(lastCol) lastCol.textContent = 'Navoiy mos';
+    if(noteEl){
+      if(_tradeUzExportMeta && _tradeUzExportMeta.emptyReason === 'same_country') noteEl.textContent = 'Tanlangan davlat O\'zbekiston bo\'lgani uchun bu bo\'lim bo\'sh.';
+      else noteEl.textContent = 'UN Comtrade orqali O\'zbekistondan shu davlatga eksport qilingan mahsulotlar.';
+    }
+    if(matchBtn) matchBtn.style.display = '';
+  } else {
+    if(titleEl) titleEl.textContent = '📋 Mahsulotlar ro\'yxati';
+    if(lastCol) lastCol.textContent = 'Navoiy mos';
+    if(noteEl) noteEl.textContent = (countryName||'Tanlangan davlat')+' uchun '+flowName+' mahsulotlar ro\'yxati ('+year+').';
+    if(matchBtn) matchBtn.style.display = '';
+  }
+
+  document.getElementById('trade-count').textContent = data.length;
+  tb.innerHTML = data.length ? data.map(function(r,i){
+    var valStr = r.value>=1e9?'$'+(r.value/1e9).toFixed(2)+'B':r.value>=1e6?'$'+(r.value/1e6).toFixed(1)+'M':'$'+(r.value/1e3).toFixed(0)+'K';
+    var wStr = r.weight>=1e9?(r.weight/1e9).toFixed(0)+' Kt':r.weight>=1e6?(r.weight/1e6).toFixed(0)+' t':r.weight>=1e3?(r.weight/1e3).toFixed(0)+' kg':(r.weight||0)+' g';
+    var match = navProducts.find(function(p){
+      return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(String(p.hs_code).replace(/\s/g,'').slice(0,4))===0);
+    });
+    var matchBadge = match ?
+      '<span style="background:#059669;color:#fff;padding:2px 6px;border-radius:4px;font-size:.55rem;font-weight:700;cursor:pointer" onclick="showPage(\'products\')" title="'+match.name_en+'">✅ '+match.name_en.slice(0,20)+'</span>' :
+      '<span style="color:var(--text3);font-size:.55rem">—</span>';
+    return '<tr'+(match?' style="background:rgba(5,150,105,.04)"':'')+'>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td style="font-family:monospace;font-size:.7rem;font-weight:700">'+(r.hsCode||'—')+'</td>'+
+      '<td style="font-size:.7rem">'+translateHS(r.hsCode,r.description)+'</td>'+
+      '<td style="font-weight:700;color:'+(_tradeViewMode==='uzexport'?'#059669':(flowName==='Import'?'#EF233C':'#059669'))+'">'+valStr+'</td>'+
+      '<td style="font-size:.65rem;color:var(--text3)">'+wStr+'</td>'+
+      '<td>'+matchBadge+'</td>'+
+    '</tr>';
+  }).join('') : '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text3)">Bu bo\'lim uchun ma\'lumot topilmadi</td></tr>';
+}
+
+function setTradeViewMode(mode){
+  _tradeViewMode = mode;
+  var countryName = document.getElementById('trade-country-search').value;
+  var flow = document.getElementById('trade-flow').value;
+  var year = document.getElementById('trade-year').value;
+  renderTradeListView(countryName, flow==='M'?'Import':'Export', year);
 }
 
 function getTradeSnapshot(countryCode, year, flow, hsLevel, hsFilter){
@@ -8092,35 +8293,12 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
     chartMeta.textContent = notes.join(' | ');
   }
 
-  // Table
+  _tradeViewMode = _tradeViewMode || 'market';
   document.getElementById('tradeTableCard').style.display = 'block';
-  document.getElementById('trade-count').textContent = data.length;
+  renderTradeListView(countryName, flowName, year);
+  ensureUzExportDataLoaded(document.getElementById('trade-country').value, countryName, year, document.getElementById('trade-hs-level').value, hsFilter);
 
-  // Match with Navoi products
   var navProducts = (DB.products||[]);
-  var tb = document.getElementById('trade-tbody');
-  tb.innerHTML = data.map(function(r,i){
-    var valStr = r.value>=1e9?'$'+(r.value/1e9).toFixed(2)+'B':r.value>=1e6?'$'+(r.value/1e6).toFixed(1)+'M':'$'+(r.value/1e3).toFixed(0)+'K';
-    var wStr = r.weight>=1e9?(r.weight/1e9).toFixed(0)+' Kt':r.weight>=1e6?(r.weight/1e6).toFixed(0)+' t':r.weight>=1e3?(r.weight/1e3).toFixed(0)+' kg':r.weight+' g';
-
-    // Check if Navoi produces this HS code
-    var match = navProducts.find(function(p){
-      return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(p.hs_code.slice(0,4))===0);
-    });
-    var matchBadge = match ?
-      '<span style="background:#059669;color:#fff;padding:2px 6px;border-radius:4px;font-size:.55rem;font-weight:700;cursor:pointer" onclick="showPage(\'products\')" title="'+match.name_en+'">✅ '+match.name_en.slice(0,20)+'</span>' :
-      '<span style="color:var(--text3);font-size:.55rem">—</span>';
-
-    return '<tr'+(match?' style="background:rgba(5,150,105,.04)"':'')+'>'+
-      '<td>'+(i+1)+'</td>'+
-      '<td style="font-family:monospace;font-size:.7rem;font-weight:700">'+r.hsCode+'</td>'+
-      '<td style="font-size:.7rem">'+translateHS(r.hsCode,r.description)+'</td>'+
-      '<td style="font-weight:700;color:'+(flowName==='Import'?'#EF233C':'#059669')+'">'+valStr+'</td>'+
-      '<td style="font-size:.65rem;color:var(--text3)">'+wStr+'</td>'+
-      '<td>'+matchBadge+'</td>'+
-    '</tr>';
-  }).join('');
-
   var matchCount = data.filter(function(r){
     return navProducts.some(function(p){return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(p.hs_code.slice(0,4))===0);});
   }).length;
@@ -8244,31 +8422,53 @@ function updateTradeFirebaseCount(){
 }
 
 function exportTradeCSV(){
-  if(!_tradeData.length){toast('⚠️ Ma\'lumot yo\'q','error');return;}
+  var rows = getCurrentTradeRows();
+  if(!rows.length){toast('⚠️ Ma\'lumot yo\'q','error');return;}
   var countryName = document.getElementById('trade-country-search').value||'Country';
   var year = document.getElementById('trade-year').value;
   var flow = document.getElementById('trade-flow').value==='M'?'Import':'Export';
-
-  var csv = 'HS Code,Product Name,Value (USD),Weight (kg),Year,Flow\n';
-  _tradeData.forEach(function(r){
-    csv += '"'+r.hsCode+'","'+r.description.replace(/"/g,'""')+'",'+r.value+','+r.weight+','+r.year+','+flow+'\n';
-  });
+  var filenamePrefix = 'trade_list';
+  var csv = '';
+  if(_tradeViewMode === 'navoi'){
+    filenamePrefix = 'navoiy_products';
+    csv = 'HS Code,Product Name,Category,Note\n';
+    rows.forEach(function(r){
+      csv += '"'+(r.hsCode||'')+'","'+String(r.description||'').replace(/"/g,'""')+'","'+String(r.tag||'').replace(/"/g,'""')+'","'+String(r.note||'').replace(/"/g,'""')+'"\n';
+    });
+  } else if(_tradeViewMode === 'uzexport'){
+    filenamePrefix = 'uzbekistan_exports_to_'+countryName.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase();
+    csv = 'HS Code,Product Name,Value (USD),Weight (kg),Year,Flow,Partner\n';
+    rows.forEach(function(r){
+      csv += '"'+(r.hsCode||'')+'","'+String(r.description||'').replace(/"/g,'""')+'",'+(r.value||0)+','+(r.weight||0)+','+(r.year||year)+',Export,"'+String(countryName||r.partner||'').replace(/"/g,'""')+'"\n';
+    });
+  } else {
+    filenamePrefix = countryName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+flow+'_'+year;
+    csv = 'HS Code,Product Name,Value (USD),Weight (kg),Year,Flow\n';
+    rows.forEach(function(r){
+      csv += '"'+(r.hsCode||'')+'","'+String(r.description||'').replace(/"/g,'""')+'",'+(r.value||0)+','+(r.weight||0)+','+(r.year||year)+','+flow+'\n';
+    });
+  }
 
   var blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
   var link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = countryName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+flow+'_'+year+'.csv';
+  link.download = filenamePrefix+'.csv';
   link.click();
   toast('📥 CSV yuklandi: '+link.download);
 }
 
 function matchTradeWithProducts(){
-  if(!_tradeData.length){toast('⚠️ Ma\'lumot yo\'q','error');return;}
+  if(_tradeViewMode === 'navoi'){
+    toast('ℹ️ Bu bo\'lim Navoiy mahsulotlar bazasining o\'zi. Moslashtirish kerak emas.','info');
+    return;
+  }
+  var sourceRows = getCurrentTradeRows();
+  if(!sourceRows.length){toast('⚠️ Ma\'lumot yo\'q','error');return;}
   var navProducts = DB.products||[];
   if(!navProducts.length){toast('⚠️ Mahsulotlar bazasi bo\'sh. Avval Excel import qiling.','error');return;}
 
   var matches = [];
-  _tradeData.forEach(function(trade){
+  sourceRows.forEach(function(trade){
     navProducts.forEach(function(prod){
       if(prod.hs_code && trade.hsCode){
         var prodHS = prod.hs_code.replace(/\s/g,'').slice(0,4);
