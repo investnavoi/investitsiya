@@ -816,6 +816,87 @@ input[type="time"]{-webkit-appearance:none;}
 .kanban-card-name{font-size:.75rem;font-weight:700;color:var(--text)}
 .kanban-card-sub{font-size:.6rem;color:var(--text3);margin-top:3px}
 .kanban-card-score{font-size:.55rem;font-weight:800;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;display:inline-block;margin-top:4px}
+/* ===== MAILBOXES PANEL ===== */
+.mailbox-shell{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:1.2rem 1.25rem;box-shadow:var(--shadow);margin-bottom:1.2rem}
+.mailbox-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.mailbox-title-row{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
+.mailbox-title-main{font-size:1rem;font-weight:800;color:var(--text)}
+.mailbox-title-icon{width:38px;height:38px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#4361EE,#7C3AED);color:#fff;font-size:1rem;box-shadow:0 10px 20px rgba(124,58,237,.2)}
+.mailbox-pill{display:inline-flex;align-items:center;justify-content:center;padding:6px 12px;border-radius:999px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.16);color:#6D28D9;font-size:.72rem;font-weight:800}
+.mailbox-sub{font-size:.68rem;color:var(--text3);margin-top:.35rem}
+.mailbox-add-form{display:grid;grid-template-columns:1.2fr .7fr 1fr auto;gap:.7rem;align-items:end;padding:.85rem;border:1px solid var(--border);border-radius:18px;background:linear-gradient(180deg,rgba(124,58,237,.04),rgba(67,97,238,.03));margin-bottom:1rem}
+.mailbox-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:.9rem;margin-bottom:1rem}
+.mailbox-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:1rem;position:relative;overflow:hidden}
+.mailbox-kpi::after{content:'';position:absolute;top:-18px;right:-18px;width:72px;height:72px;border-radius:50%;background:var(--orb,#6366F1);opacity:.1}
+.mailbox-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.65rem}
+.mailbox-kpi-icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;color:#fff;background:var(--orb,#6366F1);box-shadow:0 10px 18px rgba(99,102,241,.2)}
+.mailbox-kpi-label{font-size:.63rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+.mailbox-kpi-value{font-size:2rem;line-height:1;font-weight:900;color:var(--text)}
+.mailbox-kpi-meta{font-size:.68rem;color:var(--text3);margin-top:.3rem}
+.mailbox-grid{display:grid;grid-template-columns:1.55fr .95fr;gap:1rem}
+.mailbox-panel{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1rem}
+.mailbox-panel-title{font-size:.82rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.45rem}
+.mailbox-panel-sub{font-size:.64rem;color:var(--text3);margin-top:.25rem}
+.mailbox-table-head,.mailbox-row{display:grid;grid-template-columns:1.6fr .9fr 1fr .95fr .9fr 1fr;gap:.7rem;align-items:center}
+.mailbox-table-head{font-size:.58rem;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.65rem 0;border-bottom:1px solid var(--border)}
+.mailbox-rows{display:flex;flex-direction:column}
+.mailbox-row{padding:.85rem 0;border-bottom:1px solid rgba(148,163,184,.16)}
+.mailbox-row:last-child{border-bottom:none}
+.mailbox-account{display:flex;align-items:center;gap:.7rem;min-width:0}
+.mailbox-avatar{width:38px;height:38px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#F8FAFC,#E2E8F0);border:1px solid rgba(148,163,184,.22);font-size:1rem;flex:0 0 auto}
+.mailbox-acc-meta{min-width:0}
+.mailbox-acc-email{font-size:.78rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mailbox-acc-sub{font-size:.63rem;color:var(--text3);margin-top:2px}
+.mailbox-capacity strong{font-size:.95rem;color:var(--text)}
+.mailbox-capacity div{font-size:.63rem;color:var(--text3);margin-top:2px}
+.mailbox-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:.64rem;font-weight:800;border:1px solid transparent;white-space:nowrap}
+.mailbox-chip.ok{background:rgba(5,150,105,.1);color:#047857;border-color:rgba(5,150,105,.18)}
+.mailbox-chip.warn{background:rgba(245,158,11,.1);color:#b45309;border-color:rgba(245,158,11,.18)}
+.mailbox-chip.bad{background:rgba(239,68,68,.1);color:#dc2626;border-color:rgba(239,68,68,.18)}
+.mailbox-health-wrap{display:flex;align-items:center;gap:.45rem}
+.mailbox-health-bars{display:flex;align-items:center;gap:4px}
+.mailbox-health-bars span{width:12px;height:4px;border-radius:999px;background:#D5DCEA}
+.mailbox-health-bars span.on.ok{background:#10B981}
+.mailbox-health-bars span.on.warn{background:#F59E0B}
+.mailbox-health-bars span.on.bad{background:#EF4444}
+.mailbox-health-num{font-size:.68rem;font-weight:800;color:var(--text2)}
+.mailbox-use{display:flex;justify-content:center}
+.mailbox-toggle{width:46px;height:26px;border-radius:999px;border:none;cursor:pointer;position:relative;background:#D7DCEF;transition:all .2s}
+.mailbox-toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.15);transition:all .2s}
+.mailbox-toggle.active{background:linear-gradient(135deg,#8B5CF6,#6366F1)}
+.mailbox-toggle.active::after{left:23px}
+.mailbox-actions{display:flex;align-items:center;gap:.45rem;justify-content:flex-end;flex-wrap:wrap}
+.mailbox-mini-btn{padding:7px 10px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.63rem;font-weight:700;cursor:pointer}
+.mailbox-mini-btn.danger{color:#DC2626;border-color:rgba(220,38,38,.18);background:rgba(220,38,38,.04)}
+.mailbox-mini-btn.primary{color:#5B21B6;border-color:rgba(91,33,182,.16);background:rgba(91,33,182,.06)}
+.mailbox-empty{padding:1.2rem;text-align:center;font-size:.72rem;color:var(--text3)}
+.mailbox-chart{height:220px;display:flex;align-items:flex-end;gap:8px;padding-top:1rem}
+.mailbox-chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+.mailbox-chart-bars{height:150px;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:5px}
+.mailbox-chart-bar{width:14px;border-radius:999px 999px 4px 4px;min-height:6px}
+.mailbox-chart-bar.warm{background:linear-gradient(180deg,#A78BFA,#7C3AED)}
+.mailbox-chart-bar.cold{background:linear-gradient(180deg,#60A5FA,#38BDF8)}
+.mailbox-chart-label{font-size:.58rem;color:var(--text3);text-align:center}
+.mailbox-chart-legend{display:flex;align-items:center;gap:1rem;justify-content:flex-end;font-size:.6rem;color:var(--text3)}
+.mailbox-legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px}
+.mailbox-legend-dot.warm{background:#8B5CF6}
+.mailbox-legend-dot.cold{background:#38BDF8}
+.mailbox-inline-note{font-size:.62rem;color:var(--text3)}
+@media(max-width:1100px){
+  .mailbox-kpi-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}
+  .mailbox-grid{grid-template-columns:1fr}
+}
+@media(max-width:900px){
+  .mailbox-add-form{grid-template-columns:1fr 1fr}
+  .mailbox-table-head{display:none}
+  .mailbox-row{grid-template-columns:1fr;gap:.6rem}
+  .mailbox-actions,.mailbox-use{justify-content:flex-start}
+}
+@media(max-width:600px){
+  .mailbox-kpi-grid{grid-template-columns:1fr}
+  .mailbox-add-form{grid-template-columns:1fr}
+  .mailbox-shell{padding:.95rem}
+}
 /* ===== AI CHATBOT WIDGET ===== */
 .chat-fab{position:fixed;left:1.2rem;bottom:1.5rem;z-index:350;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;box-shadow:0 4px 20px rgba(66,133,244,.5);transition:all .2s;}
 .chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(66,133,244,.6)}
@@ -1640,6 +1721,102 @@ input[type="time"]{-webkit-appearance:none;}
       <div><div class="pg-title">📋 Pipeline — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
       <button class="btn btn-ghost btn-sm" onclick="resetAllPipeline()" style="color:#EF233C">🗑 Pipeline tozalash</button>
     </div>
+    <div class="mailbox-shell">
+      <div class="mailbox-head">
+        <div>
+          <div class="mailbox-title-row">
+            <div class="mailbox-title-icon">📬</div>
+            <div class="mailbox-title-main">Mailboxes Connected</div>
+            <div class="mailbox-pill" id="mb-connected-pill">0 / 0</div>
+          </div>
+          <div class="mailbox-sub" id="mb-sub">Reply-to email, Gmail ulanishi va yuborish tayyorligi shu yerda boshqariladi.</div>
+        </div>
+        <div style="display:flex;gap:.55rem;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="refreshMailboxPanel()">🔄 Yangilash</button>
+          <button class="btn btn-blue btn-sm" onclick="toggleMailboxForm()">➕ Add Email Address</button>
+        </div>
+      </div>
+
+      <div class="mailbox-add-form" id="mailboxAddForm" style="display:none">
+        <input type="hidden" id="mailbox-edit-id">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Email address</label>
+          <input class="form-input" id="mailbox-email" type="email" placeholder="name@company.com">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Kunlik limit</label>
+          <input class="form-input" id="mailbox-capacity" type="number" placeholder="50" value="50">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Izoh / Label</label>
+          <input class="form-input" id="mailbox-notes" placeholder="Masalan: Asosiy Gmail">
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:flex-end;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleMailboxForm(false)">Bekor qilish</button>
+          <button class="btn btn-blue btn-sm" type="button" onclick="saveMailbox()">💾 Saqlash</button>
+        </div>
+      </div>
+
+      <div class="mailbox-kpi-grid">
+        <div class="mailbox-kpi" style="--orb:#3B82F6">
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">📨</div><div class="mailbox-kpi-label">Sent</div></div>
+          <div class="mailbox-kpi-value" id="mb-k1">0</div>
+          <div class="mailbox-kpi-meta">Investorlar bazasidan yuborilganlar</div>
+        </div>
+        <div class="mailbox-kpi" style="--orb:#10B981">
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">💬</div><div class="mailbox-kpi-label">Responses</div></div>
+          <div class="mailbox-kpi-value" id="mb-k2">0</div>
+          <div class="mailbox-kpi-meta">Gmail javoblar panelidan</div>
+        </div>
+        <div class="mailbox-kpi" style="--orb:#8B5CF6">
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">✨</div><div class="mailbox-kpi-label">Deliverability</div></div>
+          <div class="mailbox-kpi-value" id="mb-k3">0%</div>
+          <div class="mailbox-kpi-meta">Mailboxlar umumiy tayyorligi</div>
+        </div>
+        <div class="mailbox-kpi" style="--orb:#FB7185">
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">❤️</div><div class="mailbox-kpi-label">Mailbox Health</div></div>
+          <div class="mailbox-kpi-value" id="mb-k4">0%</div>
+          <div class="mailbox-kpi-meta">O'rtacha health ball</div>
+        </div>
+        <div class="mailbox-kpi" style="--orb:#F59E0B">
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">📮</div><div class="mailbox-kpi-label">Active Mailboxes</div></div>
+          <div class="mailbox-kpi-value" id="mb-k5">0</div>
+          <div class="mailbox-kpi-meta">Reply-to uchun tanlanganlar</div>
+        </div>
+      </div>
+
+      <div class="mailbox-grid">
+        <div class="mailbox-panel">
+          <div class="mailbox-panel-title">📂 Mailbox accountlari</div>
+          <div class="mailbox-panel-sub">Asosiy reply-to emailni tanlang, health holatini ko'ring va mailboxlarni boshqaring.</div>
+          <div class="mailbox-table-head">
+            <div>Accounts</div>
+            <div>Daily Email Capacity</div>
+            <div>Status</div>
+            <div>Mailbox Health</div>
+            <div>Use This Mailbox</div>
+            <div style="text-align:right">Actions</div>
+          </div>
+          <div class="mailbox-rows" id="mailboxRows"></div>
+        </div>
+
+        <div class="mailbox-panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap">
+            <div>
+              <div class="mailbox-panel-title">📈 So'nggi 14 kun email faolligi</div>
+              <div class="mailbox-panel-sub">Warmup va sovuq outreach yuborishlar grafigi.</div>
+            </div>
+            <div class="mailbox-chart-legend">
+              <span><span class="mailbox-legend-dot warm"></span>Warmup Emails Sent</span>
+              <span><span class="mailbox-legend-dot cold"></span>Cold Emails Sent</span>
+            </div>
+          </div>
+          <div class="mailbox-chart" id="mailboxChart"></div>
+          <div class="mailbox-inline-note" id="mailboxChartNote">Hozircha faqat dashboard ichidan yuborilgan xatlar hisoblanadi.</div>
+        </div>
+      </div>
+    </div>
+
     <div class="kpi-grid">
       <div class="kpi-card c1"><div class="kpi-icon">📨</div><div class="kpi-label">Jami yuborildi</div><div class="kpi-val" id="pl-k1">0</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">👀</div><div class="kpi-label">Ochildi</div><div class="kpi-val" id="pl-k2">0%</div></div>
@@ -4654,6 +4831,7 @@ async function executeBulkSend(){
 
   for(let i=0; i<targets.length; i++){
     const r = targets[i];
+    const mailboxEmail = getPrimaryMailboxEmail();
     progressText.textContent = `"${r.kompaniya}" ga yuborilmoqda...`;
     progressCount.textContent = `${i+1}/${targets.length}`;
     progressBar.style.width = `${Math.round((i+1)/targets.length*100)}%`;
@@ -4663,12 +4841,18 @@ async function executeBulkSend(){
         to_name: r.rahbar,
         company_name: r.kompaniya,
         message: msg,
-        reply_to: localStorage.getItem('_myEmail')||'',
+        reply_to: mailboxEmail || '',
         from_name: 'Navoiy Investitsiya Bo\'limi',
       });
       if(result.status===200){
         const rec = DB.investorCompanies.find(x=>x.id===r.id);
-        if(rec){ rec.emailSent=true; rec.emailSentDate=new Date().toISOString().split('T')[0]; if(typeof fbSave==='function') fbSave('investorCompanies',rec); }
+        if(rec){
+          rec.emailSent=true;
+          rec.emailSentDate=new Date().toISOString().split('T')[0];
+          rec.sentByMailbox = mailboxEmail || '';
+          if(typeof fbSave==='function') fbSave('investorCompanies',rec);
+        }
+        recordMailboxActivity(mailboxEmail, 'cold', 1);
         sent++;
       } else { failed++; }
     } catch(e){ console.error(e); failed++; }
@@ -4677,6 +4861,7 @@ async function executeBulkSend(){
   }
 
   renderInvestorCompanies();
+  if(typeof renderPipeline==='function') renderPipeline();
   progressText.textContent = `✅ ${sent} ta yuborildi${failed?`, ❌ ${failed} ta xato`:''}`;
   progressBar.style.background = failed ? 'linear-gradient(90deg,#059669,#EF233C)' : 'linear-gradient(90deg,#059669,#06D6A0)';
   btn.textContent = 'TAYYOR ✅';
@@ -5298,18 +5483,26 @@ function clearEmailFile(){
 
 async function sendViaEmailJS(fullMsg){
   emailjs.init('tPxgtKC4xvZkjqpd7');
+  const mailboxEmail = getPrimaryMailboxEmail();
   const result=await emailjs.send('service_1w08xxe','template_c1nxcvg',{
     to_email:  emailTarget.email,
     to_name:   emailTarget.rahbar,
     company_name: emailTarget.kompaniya,
     message:   fullMsg,
-    reply_to:  localStorage.getItem('_myEmail')||'',
+    reply_to:  mailboxEmail || '',
     from_name: 'Navoiy Investitsiya Bo\'limi',
   });
   if(result.status===200){
     const rec=DB.investorCompanies.find(r=>r.id===emailTarget.id);
-    if(rec){ rec.emailSent=true; rec.emailSentDate=new Date().toISOString().split('T')[0]; if(typeof fbSave==='function') fbSave('investorCompanies',rec); }
+    if(rec){
+      rec.emailSent=true;
+      rec.emailSentDate=new Date().toISOString().split('T')[0];
+      rec.sentByMailbox = mailboxEmail || '';
+      if(typeof fbSave==='function') fbSave('investorCompanies',rec);
+    }
+    recordMailboxActivity(mailboxEmail, 'cold', 1);
     renderInvestorCompanies();
+    if(typeof renderPipeline==='function') renderPipeline();
     toast('✅ Xabar yuborildi (EmailJS)!');
     closeEmailModal();
   }
@@ -6483,8 +6676,10 @@ function onGmailToken(resp){
       _gmailUser = u.email||'';
       document.getElementById('gmailStatus').textContent = _gmailUser;
       localStorage.setItem('_gmailUserEmail', _gmailUser);
+      if(typeof renderPipeline==='function') renderPipeline();
     });
   toast('✅ Gmail ulandi!', 'success');
+  if(typeof renderPipeline==='function') renderPipeline();
   checkGmailReplies(true);
   startPolling();
 }
@@ -6570,6 +6765,7 @@ async function checkGmailReplies(manual=false){
       const bodyText = extractEmailBody(md.payload);
       const company  = DB.investorCompanies.find(r=>r.email&&r.email.toLowerCase()===fromEmail.toLowerCase());
 
+      const notifToEmail = extractEmailFromHeaderText(toHeader) || getPrimaryMailboxEmail() || '';
       const notif = {
         id: m.id,
         fromRaw, fromShort, fromEmail, subject,
@@ -6577,11 +6773,18 @@ async function checkGmailReplies(manual=false){
         body:     bodyText,
         companyName: company?.kompaniya||'',
         companyId:   company?.id||null,
+        toEmail:   notifToEmail,
         time:     formatNotifTime(h['date']),
         dateRaw:  h['date']||'',
         unread:   true,
         ts:       Date.now()
       };
+
+      if(company && company.pipelineStage !== 'meeting'){
+        company.pipelineStage = 'replied';
+        company.replyReceivedAt = new Date().toISOString();
+        if(typeof fbSave === 'function') fbSave('investorCompanies', company);
+      }
 
       // Double-check not already in _notifications (in case localStorage had it)
       if(_notifications.some(function(x){return x.id===notif.id;})) continue;
@@ -6864,12 +7067,14 @@ window.addEventListener('load', ()=>{
     if(statusEl) statusEl.textContent = _gmailUser || 'Ulangan';
     const btn = document.getElementById('gmailConnectBtn');
     if(btn){ btn.textContent = '✅ Ulangan'; btn.classList.add('connected'); }
+    if(typeof renderPipeline==='function') renderPipeline();
     startPolling();
   } else if(savedEmail2){
     // Token muddati o'tgan — emailni ko'rsatib, qayta ulash taklifi
     const statusEl = document.getElementById('gmailStatus');
     if(statusEl) statusEl.textContent = savedEmail2 + ' (qayta ulang)';
     localStorage.removeItem('_gmailToken');
+    if(typeof renderPipeline==='function') renderPipeline();
   }
 
   _unreadCount = _notifications.filter(n=>n.unread).length;
@@ -10271,7 +10476,403 @@ function scheduleAiLetter(){
 /* ═══════════════════════════════════════
    M5: PIPELINE (KANBAN CRM)
 ═══════════════════════════════════════ */
+function normalizeMailboxEmail(email){
+  return String(email||'').trim().toLowerCase();
+}
+function extractEmailFromHeaderText(text){
+  var m = String(text||'').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return m ? m[0].toLowerCase() : '';
+}
+function getMailboxDefaultCapacity(){
+  return Math.max(1, parseInt(DB.settings && DB.settings.dailyLimit, 10) || 50);
+}
+function getMailboxProvider(email){
+  var domain = normalizeMailboxEmail(email).split('@')[1]||'';
+  if(!domain) return 'Custom';
+  if(domain === 'gmail.com') return 'Gmail';
+  if(/outlook|hotmail|live/.test(domain)) return 'Outlook';
+  if(/yahoo/.test(domain)) return 'Yahoo';
+  if(/icloud/.test(domain)) return 'iCloud';
+  return domain;
+}
+function getMailboxAvatar(provider){
+  var p = String(provider||'').toLowerCase();
+  if(p === 'gmail') return '📧';
+  if(p === 'outlook') return '📮';
+  if(p === 'yahoo') return '✉️';
+  if(p === 'icloud') return '☁️';
+  return '📨';
+}
+function ensureMailboxSeed(email, patch){
+  var key = normalizeMailboxEmail(email);
+  if(!key) return null;
+  if(!DB.settings) DB.settings = {};
+  if(!Array.isArray(DB.settings.mailboxes)) DB.settings.mailboxes = [];
+  var arr = DB.settings.mailboxes;
+  var found = arr.find(function(m){ return normalizeMailboxEmail(m.email) === key; });
+  if(found){
+    Object.keys(patch||{}).forEach(function(k){
+      if(patch[k] === undefined) return;
+      if(found[k] === undefined || found[k] === '' || k === 'active' || k === 'provider' || k === 'dailyCapacity'){
+        found[k] = patch[k];
+      }
+    });
+    return found;
+  }
+  var nextId = arr.length ? Math.max.apply(null, arr.map(function(m){ return Number(m.id)||0; })) + 1 : 1;
+  found = Object.assign({
+    id: nextId,
+    email: key,
+    provider: getMailboxProvider(key),
+    notes: '',
+    dailyCapacity: getMailboxDefaultCapacity(),
+    active: false,
+    disabled: false,
+    connected: false,
+    health: 0,
+    status: 'Disconnected',
+    createdAt: new Date().toISOString()
+  }, patch||{});
+  arr.push(found);
+  return found;
+}
+function getMailboxStore(){
+  if(!DB.settings) DB.settings = {};
+  if(!Array.isArray(DB.settings.mailboxes)) DB.settings.mailboxes = [];
+  if(!Array.isArray(DB.settings.mailboxActivity)) DB.settings.mailboxActivity = [];
+  var replyEmail = normalizeMailboxEmail(localStorage.getItem('_myEmail')||'');
+  var gmailEmail = normalizeMailboxEmail((typeof _gmailUser !== 'undefined' && _gmailUser) || localStorage.getItem('_gmailUserEmail') || '');
+  var emailjsEmail = normalizeMailboxEmail(window._sgFrom||'');
+  if(replyEmail) ensureMailboxSeed(replyEmail, { active:true, notes:'Reply-to mailbox', provider:getMailboxProvider(replyEmail) });
+  if(gmailEmail) ensureMailboxSeed(gmailEmail, { provider:'Gmail' });
+  if(!DB.settings.mailboxes.length && emailjsEmail){
+    ensureMailboxSeed(emailjsEmail, { active:true, notes:'EmailJS default', provider:getMailboxProvider(emailjsEmail) });
+  }
+  return DB.settings.mailboxes;
+}
+function getPrimaryMailboxEmail(){
+  var mailboxes = syncMailboxStateFromIntegrations();
+  var active = mailboxes.find(function(m){ return m.active && !m.disabled; });
+  if(active && active.email){
+    localStorage.setItem('_myEmail', active.email);
+    return active.email;
+  }
+  var fallback = normalizeMailboxEmail(localStorage.getItem('_myEmail') || ((typeof _gmailUser !== 'undefined' && _gmailUser) || window._sgFrom || ''));
+  if(fallback) localStorage.setItem('_myEmail', fallback);
+  return fallback || '';
+}
+function getMailboxMetrics(email){
+  var key = normalizeMailboxEmail(email);
+  var companies = DB.investorCompanies || [];
+  var notifs = (typeof _notifications !== 'undefined' && Array.isArray(_notifications)) ? _notifications : [];
+  var primary = normalizeMailboxEmail(localStorage.getItem('_myEmail')||'');
+  var sent = companies.filter(function(c){
+    if(!c.emailSent) return false;
+    var sentBy = normalizeMailboxEmail(c.sentByMailbox || (primary && primary === key ? primary : ''));
+    return sentBy === key;
+  }).length;
+  var responses = notifs.filter(function(n){
+    var toMail = normalizeMailboxEmail(n.toEmail || (primary && primary === key ? primary : ''));
+    return toMail === key;
+  }).length;
+  var today = new Date().toISOString().slice(0,10);
+  var warmToday = 0, coldToday = 0;
+  (DB.settings.mailboxActivity||[]).forEach(function(item){
+    if(normalizeMailboxEmail(item.email) !== key || item.date !== today) return;
+    warmToday += parseInt(item.warm,10)||0;
+    coldToday += parseInt(item.cold,10)||0;
+  });
+  return { sent:sent, responses:responses, warmToday:warmToday, coldToday:coldToday, usedToday:warmToday+coldToday };
+}
+function getMailboxHealthMeta(mailbox){
+  var health = Math.max(0, Math.min(100, parseInt(mailbox.health,10)||0));
+  if(mailbox.disabled || !mailbox.connected) return { health:health || 28, cls:'bad', text:'Disconnected' };
+  if(health >= 85) return { health:health, cls:'ok', text:'Fully Operational' };
+  if(health >= 60) return { health:health, cls:'warn', text:'Minor Issues' };
+  return { health:health, cls:'bad', text:'Urgent Issues' };
+}
+function syncMailboxStateFromIntegrations(){
+  var mailboxes = getMailboxStore();
+  var replyEmail = normalizeMailboxEmail(localStorage.getItem('_myEmail')||'');
+  var gmailEmail = normalizeMailboxEmail((typeof _gmailUser !== 'undefined' && _gmailUser) || localStorage.getItem('_gmailUserEmail') || '');
+  if(gmailEmail) ensureMailboxSeed(gmailEmail, { provider:'Gmail' });
+  if(replyEmail) ensureMailboxSeed(replyEmail, { active:true });
+
+  var hasActive = false;
+  mailboxes.forEach(function(m){
+    m.email = normalizeMailboxEmail(m.email);
+    if(typeof m.dailyCapacity !== 'number' || !isFinite(m.dailyCapacity) || m.dailyCapacity <= 0) m.dailyCapacity = getMailboxDefaultCapacity();
+    if(replyEmail && m.email === replyEmail && !m.disabled){
+      m.active = true;
+      hasActive = true;
+    } else if(replyEmail) {
+      m.active = false;
+    }
+  });
+  if(!hasActive && mailboxes.length){
+    var firstAvailable = mailboxes.find(function(m){ return !m.disabled; }) || mailboxes[0];
+    mailboxes.forEach(function(m){ m.active = m.id === firstAvailable.id; });
+    if(firstAvailable && firstAvailable.email) localStorage.setItem('_myEmail', firstAvailable.email);
+  }
+
+  mailboxes.forEach(function(m){
+    var metrics = getMailboxMetrics(m.email);
+    var baseHealth = m.disabled ? 26 : 42;
+    if(m.active) baseHealth += 18;
+    if(gmailEmail && m.email === gmailEmail && typeof _gmailConnected !== 'undefined' && _gmailConnected) baseHealth += 28;
+    if(metrics.sent > 0) baseHealth += Math.min(16, metrics.sent * 2);
+    if(metrics.responses > 0) baseHealth += Math.min(12, metrics.responses * 4);
+    if(metrics.usedToday > m.dailyCapacity) baseHealth -= 12;
+    if(m.notes && /issue|spam|bounce|flood/i.test(String(m.notes).toLowerCase())) baseHealth -= 15;
+    m.connected = !m.disabled && (!!m.active || ((gmailEmail && m.email === gmailEmail) && (typeof _gmailConnected !== 'undefined' && _gmailConnected)));
+    if(!m.health || m.health < 1 || m.health > 100){
+      m.health = Math.max(18, Math.min(100, baseHealth));
+    } else {
+      m.health = Math.max(18, Math.min(100, Math.round((Number(m.health)*0.6) + (baseHealth*0.4))));
+    }
+    var meta = getMailboxHealthMeta(m);
+    m.status = meta.text;
+  });
+  return mailboxes;
+}
+function persistMailboxSettings(){
+  if(typeof fbSaveSettings === 'function') fbSaveSettings(DB.settings);
+}
+function recordMailboxActivity(mailboxEmail, kind, count){
+  var email = normalizeMailboxEmail(mailboxEmail);
+  if(!email) return;
+  if(!DB.settings) DB.settings = {};
+  if(!Array.isArray(DB.settings.mailboxActivity)) DB.settings.mailboxActivity = [];
+  var qty = parseInt(count,10)||1;
+  var date = new Date().toISOString().slice(0,10);
+  var row = DB.settings.mailboxActivity.find(function(r){ return normalizeMailboxEmail(r.email)===email && r.date===date; });
+  if(!row){
+    row = { date:date, email:email, warm:0, cold:0 };
+    DB.settings.mailboxActivity.push(row);
+  }
+  if(kind === 'warm') row.warm += qty;
+  else row.cold += qty;
+  persistMailboxSettings();
+}
+function buildMailboxSeries(){
+  var list = [];
+  var map = {};
+  var base = new Date();
+  for(var i=13;i>=0;i--){
+    var d = new Date(base);
+    d.setDate(base.getDate()-i);
+    var iso = d.toISOString().slice(0,10);
+    map[iso] = { date:iso, warm:0, cold:0 };
+    list.push(map[iso]);
+  }
+  (DB.settings.mailboxActivity||[]).forEach(function(item){
+    if(!map[item.date]) return;
+    map[item.date].warm += parseInt(item.warm,10)||0;
+    map[item.date].cold += parseInt(item.cold,10)||0;
+  });
+  var hasActivity = list.some(function(r){ return r.warm>0 || r.cold>0; });
+  if(!hasActivity){
+    (DB.investorCompanies||[]).forEach(function(c){
+      if(!c.emailSentDate || !map[c.emailSentDate]) return;
+      map[c.emailSentDate].cold += 1;
+    });
+  }
+  return list;
+}
+function renderMailboxChart(){
+  var root = document.getElementById('mailboxChart');
+  if(!root) return;
+  var series = buildMailboxSeries();
+  var maxVal = series.reduce(function(mx,row){ return Math.max(mx, row.warm, row.cold); }, 0) || 1;
+  root.innerHTML = series.map(function(row){
+    var day = row.date.slice(5).replace('-','/');
+    var warmH = Math.max(6, Math.round((row.warm / maxVal) * 140));
+    var coldH = Math.max(6, Math.round((row.cold / maxVal) * 140));
+    if(row.warm === 0) warmH = 6;
+    if(row.cold === 0) coldH = 6;
+    return '<div class="mailbox-chart-col"><div class="mailbox-chart-bars"><div class="mailbox-chart-bar warm" style="height:'+warmH+'px" title="Warmup: '+row.warm+'"></div><div class="mailbox-chart-bar cold" style="height:'+coldH+'px" title="Cold: '+row.cold+'"></div></div><div class="mailbox-chart-label">'+day+'</div></div>';
+  }).join('');
+}
+function renderMailboxHealthBars(meta){
+  var level = meta.cls;
+  var onCount = meta.health >= 90 ? 4 : meta.health >= 65 ? 3 : meta.health >= 40 ? 2 : 1;
+  var bars = [0,1,2,3].map(function(idx){
+    return '<span class="'+(idx < onCount ? ('on '+level) : '')+'"></span>';
+  }).join('');
+  return '<div class="mailbox-health-wrap"><div class="mailbox-health-bars">'+bars+'</div><div class="mailbox-health-num">'+meta.health+'%</div></div>';
+}
+function renderMailboxPanel(){
+  var rowsEl = document.getElementById('mailboxRows');
+  if(!rowsEl) return;
+  var mailboxes = syncMailboxStateFromIntegrations().slice();
+  var companies = DB.investorCompanies || [];
+  var notifs = (typeof _notifications !== 'undefined' && Array.isArray(_notifications)) ? _notifications : [];
+  var connected = mailboxes.filter(function(m){ return m.connected; }).length;
+  var active = mailboxes.filter(function(m){ return m.active && !m.disabled; }).length;
+  var sentTotal = companies.filter(function(c){ return c.emailSent; }).length;
+  var responses = notifs.length;
+  var avgHealth = mailboxes.length ? Math.round(mailboxes.reduce(function(sum,m){ return sum + (parseInt(m.health,10)||0); },0) / mailboxes.length) : 0;
+  var deliverability = mailboxes.length ? Math.round(mailboxes.reduce(function(sum,m){
+    var meta = getMailboxHealthMeta(m);
+    return sum + (meta.cls === 'bad' ? Math.max(20, meta.health-8) : meta.health);
+  },0) / mailboxes.length) : 0;
+
+  var pill = document.getElementById('mb-connected-pill');
+  if(pill) pill.textContent = connected + ' / ' + mailboxes.length;
+  var sub = document.getElementById('mb-sub');
+  if(sub){
+    var primary = getPrimaryMailboxEmail();
+    sub.textContent = (primary ? ('Asosiy reply-to: ' + primary) : 'Asosiy reply-to tanlanmagan') + ' • ' + active + ' ta aktiv mailbox';
+  }
+  var note = document.getElementById('mailboxChartNote');
+  if(note) note.textContent = (typeof _gmailConnected !== 'undefined' && _gmailConnected) ? 'Gmail ulangan — javoblar mailbox bo\'yicha taqsimlanadi.' : 'Gmail ulanmagan — javoblar soni umumiy hisobda ko\'rsatiladi.';
+  document.getElementById('mb-k1').textContent = sentTotal;
+  document.getElementById('mb-k2').textContent = responses;
+  document.getElementById('mb-k3').textContent = deliverability + '%';
+  document.getElementById('mb-k4').textContent = avgHealth + '%';
+  document.getElementById('mb-k5').textContent = active;
+
+  if(!mailboxes.length){
+    rowsEl.innerHTML = '<div class="mailbox-empty">Hozircha mailbox qo\'shilmagan. "Add Email Address" bilan boshlang.</div>';
+  } else {
+    rowsEl.innerHTML = mailboxes.map(function(m){
+      var meta = getMailboxHealthMeta(m);
+      var metrics = getMailboxMetrics(m.email);
+      var used = metrics.usedToday;
+      var left = Math.max(0, (parseInt(m.dailyCapacity,10)||0) - used);
+      var provider = m.provider || getMailboxProvider(m.email);
+      var actionLabel = m.disabled ? 'Reconnect' : 'Disconnect';
+      var actionClass = m.disabled ? 'primary' : '';
+      return '<div class="mailbox-row">'
+        + '<div class="mailbox-account"><div class="mailbox-avatar">'+getMailboxAvatar(provider)+'</div><div class="mailbox-acc-meta"><div class="mailbox-acc-email">'+m.email+'</div><div class="mailbox-acc-sub">'+provider+(m.notes ? ' • '+m.notes : '')+' • Sent: '+metrics.sent+' • Replies: '+metrics.responses+'</div></div></div>'
+        + '<div class="mailbox-capacity"><strong>'+(m.dailyCapacity||0)+'</strong><div>'+used+' ishlatilgan • '+left+' qolgan</div></div>'
+        + '<div><span class="mailbox-chip '+meta.cls+'">'+meta.text+'</span></div>'
+        + '<div>'+renderMailboxHealthBars(meta)+'</div>'
+        + '<div class="mailbox-use"><button class="mailbox-toggle '+((m.active && !m.disabled)?'active':'')+'" onclick="toggleMailboxPrimary('+m.id+')" title="Asosiy mailbox qilish"></button></div>'
+        + '<div class="mailbox-actions"><button class="mailbox-mini-btn '+actionClass+'" onclick="toggleMailboxConnection('+m.id+')">'+actionLabel+'</button><button class="mailbox-mini-btn" onclick="editMailbox('+m.id+')">Edit</button><button class="mailbox-mini-btn danger" onclick="removeMailbox('+m.id+')">Delete</button></div>'
+      + '</div>';
+    }).join('');
+  }
+  renderMailboxChart();
+}
+function toggleMailboxForm(forceOpen){
+  var form = document.getElementById('mailboxAddForm');
+  if(!form) return;
+  var shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : form.style.display === 'none';
+  if(shouldOpen){
+    form.style.display = 'grid';
+  } else {
+    form.style.display = 'none';
+    document.getElementById('mailbox-edit-id').value = '';
+    document.getElementById('mailbox-email').value = '';
+    document.getElementById('mailbox-capacity').value = getMailboxDefaultCapacity();
+    document.getElementById('mailbox-notes').value = '';
+  }
+}
+function editMailbox(id){
+  var box = getMailboxStore().find(function(m){ return Number(m.id) === Number(id); });
+  if(!box) return;
+  document.getElementById('mailbox-edit-id').value = box.id;
+  document.getElementById('mailbox-email').value = box.email || '';
+  document.getElementById('mailbox-capacity').value = box.dailyCapacity || getMailboxDefaultCapacity();
+  document.getElementById('mailbox-notes').value = box.notes || '';
+  toggleMailboxForm(true);
+}
+function saveMailbox(){
+  var id = parseInt(document.getElementById('mailbox-edit-id').value || '0', 10);
+  var email = normalizeMailboxEmail(document.getElementById('mailbox-email').value);
+  var capacity = Math.max(1, parseInt(document.getElementById('mailbox-capacity').value || getMailboxDefaultCapacity(), 10));
+  var notes = document.getElementById('mailbox-notes').value.trim();
+  if(!email || email.indexOf('@') === -1){
+    toast('⚠️ To\'g\'ri email kiriting', 'error');
+    return;
+  }
+  var mailboxes = getMailboxStore();
+  var existing = mailboxes.find(function(m){ return normalizeMailboxEmail(m.email) === email && Number(m.id) !== Number(id); });
+  if(existing){
+    toast('⚠️ Bu email allaqachon ro\'yxatda bor', 'error');
+    return;
+  }
+  var box = id ? mailboxes.find(function(m){ return Number(m.id) === Number(id); }) : null;
+  if(!box){
+    box = ensureMailboxSeed(email, { active:mailboxes.length === 0, disabled:false });
+  }
+  box.email = email;
+  box.provider = getMailboxProvider(email);
+  box.dailyCapacity = capacity;
+  box.notes = notes;
+  if(mailboxes.length === 1 || !mailboxes.some(function(m){ return m.active && !m.disabled; })){
+    box.active = true;
+    localStorage.setItem('_myEmail', email);
+  }
+  syncMailboxStateFromIntegrations();
+  persistMailboxSettings();
+  renderPipeline();
+  toggleMailboxForm(false);
+  toast('✅ Mailbox saqlandi');
+}
+function removeMailbox(id){
+  var mailboxes = getMailboxStore();
+  var box = mailboxes.find(function(m){ return Number(m.id) === Number(id); });
+  if(!box) return;
+  if(!confirm(box.email + ' ni o\'chirishni tasdiqlaysizmi?')) return;
+  DB.settings.mailboxes = mailboxes.filter(function(m){ return Number(m.id) !== Number(id); });
+  if(normalizeMailboxEmail(localStorage.getItem('_myEmail')) === normalizeMailboxEmail(box.email)){
+    localStorage.removeItem('_myEmail');
+  }
+  syncMailboxStateFromIntegrations();
+  persistMailboxSettings();
+  renderPipeline();
+  toast('🗑 Mailbox o\'chirildi');
+}
+function toggleMailboxConnection(id){
+  var box = getMailboxStore().find(function(m){ return Number(m.id) === Number(id); });
+  if(!box) return;
+  if(box.disabled){
+    box.disabled = false;
+    box.active = true;
+    localStorage.setItem('_myEmail', box.email);
+    getMailboxStore().forEach(function(m){ if(Number(m.id)!==Number(id)) m.active = false; });
+    toast('✅ Mailbox qayta ulandi');
+  } else {
+    box.disabled = true;
+    box.connected = false;
+    if(box.active){
+      box.active = false;
+      var replacement = getMailboxStore().find(function(m){ return !m.disabled && Number(m.id)!==Number(id); });
+      if(replacement){
+        replacement.active = true;
+        localStorage.setItem('_myEmail', replacement.email);
+      } else {
+        localStorage.removeItem('_myEmail');
+      }
+    }
+    toast('⏸ Mailbox vaqtincha ajratildi');
+  }
+  syncMailboxStateFromIntegrations();
+  persistMailboxSettings();
+  renderPipeline();
+}
+function toggleMailboxPrimary(id){
+  var mailboxes = getMailboxStore();
+  var box = mailboxes.find(function(m){ return Number(m.id) === Number(id); });
+  if(!box) return;
+  box.disabled = false;
+  mailboxes.forEach(function(m){ m.active = Number(m.id) === Number(id); });
+  localStorage.setItem('_myEmail', box.email);
+  syncMailboxStateFromIntegrations();
+  persistMailboxSettings();
+  renderPipeline();
+  toast('📮 Asosiy mailbox: ' + box.email);
+}
+function refreshMailboxPanel(){
+  syncMailboxStateFromIntegrations();
+  persistMailboxSettings();
+  renderPipeline();
+  toast('🔄 Mailbox panel yangilandi');
+}
 function renderPipeline(){
+  renderMailboxPanel();
   var co = DB.investorCompanies||[];
   var stages = {new:[],sent:[],opened:[],replied:[],meeting:[]};
 
@@ -10382,7 +10983,7 @@ function loadSettings(){
 }
 
 function saveSettings(){
-  DB.settings = {
+  DB.settings = Object.assign({}, DB.settings||{}, {
     elektr: parseFloat(document.getElementById('set-elektr').value)||0.03,
     gaz: parseFloat(document.getElementById('set-gaz').value)||0.01,
     suv: parseFloat(document.getElementById('set-suv').value)||0.15,
@@ -10397,7 +10998,7 @@ function saveSettings(){
     fu3: parseInt(document.getElementById('set-fu3').value)||21,
     tgToken: document.getElementById('set-tg-token').value.trim(),
     tgChatId: document.getElementById('set-tg-chatid').value.trim()
-  };
+  });
   // Save settings to Firebase
   if(typeof fbSaveSettings==='function') fbSaveSettings(DB.settings);
 
