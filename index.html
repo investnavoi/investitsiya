@@ -7727,16 +7727,14 @@ function buildNavoiProductRows(){
       };
     }
     var navoiName = p.name_uz || p.name_en || '—';
-    var rawName = raw ? raw.name_uz : (p.raw_name||'—');
     var tag = p.main_sector || p.usage || p.price || 'Navoiy mahsuloti';
     if(grouped[key].navoiNames.indexOf(navoiName) === -1) grouped[key].navoiNames.push(navoiName);
-    if(grouped[key].notes.indexOf(rawName) === -1) grouped[key].notes.push(rawName);
     if(grouped[key].tags.indexOf(tag) === -1) grouped[key].tags.push(tag);
   });
   return Object.keys(grouped).map(function(key){
     var row = grouped[key];
     row.navoiName = row.navoiNames[0] || 'Mavjud';
-    row.note = row.notes.join(' • ');
+    row.note = '';
     row.tag = row.tags[0] || 'Navoiy mahsuloti';
     return row;
   }).sort(function(a,b){
@@ -7867,10 +7865,11 @@ function renderTradeListView(countryName, flowName, year){
       if((r.navoiNames||[]).length > 4){
         badgeHtml += '<span style="display:inline-block;background:#e2e8f0;color:#0f172a;padding:2px 8px;border-radius:999px;font-size:.55rem;font-weight:700;margin:2px 4px 2px 0">+'+((r.navoiNames||[]).length-4)+' ta</span>';
       }
+      var descExtra = r.note ? '<div style="font-size:.58rem;color:var(--text3);margin-top:2px">'+(r.note||'—')+'</div>' : '';
       return '<tr style="background:rgba(5,150,105,.04)">'+
         '<td>'+(i+1)+'</td>'+
         '<td style="font-family:monospace;font-size:.7rem;font-weight:700">'+(r.hsCode||'—')+'</td>'+
-        '<td style="font-size:.7rem"><b>'+(r.description||'—')+'</b><div style="font-size:.58rem;color:var(--text3);margin-top:2px">'+(r.note||'—')+'</div></td>'+
+        '<td style="font-size:.7rem"><b>'+(r.description||'—')+'</b>'+descExtra+'</td>'+
         '<td style="font-weight:700;color:#059669">'+valStr+'</td>'+
         '<td style="font-size:.65rem;color:var(--text3)">'+wStr+'</td>'+
         '<td title="'+String((r.tags||[]).join(', ') || r.tag || 'Navoiy mahsuloti').replace(/"/g,'&quot;')+'">'+badgeHtml+'</td>'+
