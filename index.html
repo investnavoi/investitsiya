@@ -8051,6 +8051,7 @@ function formatTgDuration(ms){
 
 function humanizeTgError(value, code){
   var finalCode = code || detectTgErrorCode(value);
+  if(finalCode==='CONTACT_IMPORTED') return 'Kontakt Telegram akkauntga saqlandi. Spam himoyasi sabab 10-15 daqiqadan keyin yana yuboring.';
   if(finalCode==='PEER_FLOOD') return 'Telegram akkaunt vaqtincha chekladi (PEER_FLOOD).';
   if(finalCode==='FLOOD_WAIT'){
     var waitMs = parseTgRetryAfterMs(value);
@@ -8136,6 +8137,9 @@ function getEntrepreneurTgStatusMeta(ent, tgCooldown){
       title:'Telegram cheklovi: ' + new Date(ent.tgBlockedUntil).toLocaleString('uz-UZ')
     };
   }
+  if(ent.tgPreparedAt){
+    return {icon:'рџ“‡', color:'#2563EB', title:'Kontakt saqlandi, keyingi urinishda yuboriladi: ' + new Date(ent.tgPreparedAt).toLocaleString('uz-UZ')};
+  }
   if(ent.tgLastError){
     return {icon:'⚠️', color:'#EF233C', title:'Oxirgi xato: ' + ent.tgLastError};
   }
@@ -8163,6 +8167,7 @@ function applyTgResultToEntrepreneur(ent, result){
     ent.tgRawError = '';
     ent.tgRetryAfterSec = 0;
     ent.tgBlockedUntil = '';
+    ent.tgPreparedAt = '';
   } else {
     ent.tgSent = false;
     ent.tgLastTryAt = nowIso;
@@ -8170,6 +8175,7 @@ function applyTgResultToEntrepreneur(ent, result){
     ent.tgRawError = result.rawError || '';
     ent.tgRetryAfterSec = result.retryAfterSec || 0;
     ent.tgBlockedUntil = '';
+    ent.tgPreparedAt = result.code==='CONTACT_IMPORTED' ? nowIso : '';
     if(result.shouldStopBatch || detectTgErrorCode(result.rawError || result.error)==='PEER_FLOOD' || detectTgErrorCode(result.rawError || result.error)==='FLOOD_WAIT'){
       ent.tgBlockedUntil = setTgCooldownInfo(result);
     }
@@ -8221,6 +8227,12 @@ async function sendTelegramBatch(rawList, buildMessage, options){
       } else {
         fail++;
         console.log('❌ '+ent.name+' ('+(result.phone||ent.phone||'')+'): '+result.error);
+        if(result.code==='CONTACT_IMPORTED'){
+          stopped = true;
+          stopReason = result.code;
+          stopMessage = 'Yangi kontakt Telegram akkauntga saqlandi. Spam himoyasini asrash uchun 10-15 daqiqadan keyin yana yuboring.';
+          break;
+        }
         if(result.shouldStopBatch){
           stopped = true;
           stopReason = result.code || detectTgErrorCode(result.rawError || result.error) || 'PEER_FLOOD';
