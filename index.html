@@ -7674,19 +7674,33 @@ function normalizeTradeRows(rows){
 
 function buildNavoiProductRows(){
   var raws = DB.rawMaterials || [];
-  return (DB.products||[]).map(function(p){
+  var tradeRows = _tradeData || [];
+  var rows = [];
+  (DB.products||[]).forEach(function(p){
+    var navoiHs = String(p.hs_code||'').replace(/\s+/g,'');
+    if(!navoiHs) return;
+    var navoiHs4 = navoiHs.slice(0,4);
+    var matchedTrade = tradeRows.find(function(t){
+      var tradeHs = String(t.hsCode||'').replace(/\s+/g,'');
+      var tradeHs4 = tradeHs.slice(0,4);
+      if(!tradeHs) return false;
+      return tradeHs === navoiHs || tradeHs.indexOf(navoiHs)===0 || navoiHs.indexOf(tradeHs)===0 || (navoiHs4 && tradeHs4 && navoiHs4 === tradeHs4);
+    });
+    if(!matchedTrade) return;
     var raw = raws.find(function(r){ return String(r.id) === String(p.raw_id); });
-    return {
-      hsCode: String(p.hs_code||'').replace(/\s+/g,''),
-      description: p.name_uz || p.name_en || '—',
-      value: 0,
-      weight: 0,
-      note: (raw ? raw.name_uz : (p.raw_name||'—')),
+    rows.push({
+      hsCode: matchedTrade.hsCode || navoiHs,
+      description: matchedTrade.description || p.name_uz || p.name_en || '—',
+      value: Number(matchedTrade.value||0),
+      weight: Number(matchedTrade.weight||0),
+      note: (p.name_uz || p.name_en || '—') + ' • ' + (raw ? raw.name_uz : (p.raw_name||'—')),
       tag: p.main_sector || p.usage || p.price || 'Navoiy mahsuloti',
+      navoiName: p.name_uz || p.name_en || '—',
       source: 'Navoi'
-    };
-  }).sort(function(a,b){
-    return String(a.description||'').localeCompare(String(b.description||''), 'uz');
+    });
+  });
+  return rows.sort(function(a,b){
+    return (b.value||0) - (a.value||0);
   });
 }
 
@@ -7778,7 +7792,7 @@ function renderTradeSubTabs(countryName){
   var tabs = document.getElementById('tradeSubTabs');
   if(!tabs) return;
   var marketCount = (_tradeData||[]).length;
-  var navoiCount = (DB.products||[]).length;
+  var navoiCount = buildNavoiProductRows().length;
   var exportCount = (_tradeUzExportData||[]).length;
   tabs.innerHTML =
     '<button class="trade-subtab '+(_tradeViewMode==='navoi'?'active':'')+'" onclick="setTradeViewMode(\'navoi\')">🏭 Navoiy viloyatida mavjud mahsulotlar ('+navoiCount+')</button>'+
@@ -7800,20 +7814,22 @@ function renderTradeListView(countryName, flowName, year){
 
   if(_tradeViewMode === 'navoi'){
     if(titleEl) titleEl.textContent = '🏭 Navoiy viloyatida mavjud mahsulotlar ro\'yxati';
-    if(lastCol) lastCol.textContent = 'Holat';
-    if(noteEl) noteEl.textContent = 'Bu ro\'yxat Navoiy mahsulotlar bazasidan olinadi.';
+    if(lastCol) lastCol.textContent = 'Navoiy mahsuloti';
+    if(noteEl) noteEl.textContent = 'Tanlangan davlatning '+year+'-yildagi importi ichidan Navoiyda mavjud mahsulotlar qoldirildi.';
     if(matchBtn) matchBtn.style.display = 'none';
     document.getElementById('trade-count').textContent = data.length;
     tb.innerHTML = data.length ? data.map(function(r,i){
+      var valStr = r.value>=1e9?'$'+(r.value/1e9).toFixed(2)+'B':r.value>=1e6?'$'+(r.value/1e6).toFixed(1)+'M':'$'+(r.value/1e3).toFixed(0)+'K';
+      var wStr = r.weight>=1e9?(r.weight/1e9).toFixed(0)+' Kt':r.weight>=1e6?(r.weight/1e6).toFixed(0)+' t':r.weight>=1e3?(r.weight/1e3).toFixed(0)+' kg':(r.weight||0)+' g';
       return '<tr style="background:rgba(5,150,105,.04)">'+
         '<td>'+(i+1)+'</td>'+
         '<td style="font-family:monospace;font-size:.7rem;font-weight:700">'+(r.hsCode||'—')+'</td>'+
         '<td style="font-size:.7rem"><b>'+(r.description||'—')+'</b><div style="font-size:.58rem;color:var(--text3);margin-top:2px">'+(r.note||'—')+'</div></td>'+
-        '<td style="font-weight:700;color:#059669">'+(r.tag||'—')+'</td>'+
-        '<td style="font-size:.65rem;color:var(--text3)">—</td>'+
-        '<td><span style="background:#059669;color:#fff;padding:2px 8px;border-radius:999px;font-size:.55rem;font-weight:700">✅ Mavjud</span></td>'+
+        '<td style="font-weight:700;color:#059669">'+valStr+'</td>'+
+        '<td style="font-size:.65rem;color:var(--text3)">'+wStr+'</td>'+
+        '<td><span style="background:#059669;color:#fff;padding:2px 8px;border-radius:999px;font-size:.55rem;font-weight:700" title="'+(r.tag||'Navoiy mahsuloti')+'">✅ '+(r.navoiName||'Mavjud')+'</span></td>'+
       '</tr>';
-    }).join('') : '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text3)">Mahsulot bazasi bo\'sh</td></tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text3)">Tanlangan davlat importida Navoiyga mos mahsulot topilmadi</td></tr>';
     return;
   }
 
