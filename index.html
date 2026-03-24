@@ -242,6 +242,24 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .tn-tab.admin-tab.active{background:rgba(114,9,183,.2);border-right:1px solid rgba(181,23,158,.3);border-bottom-color:#b5179e;}
 .tn-tab-icon{font-size:15px;}
 .tn-badge{font-size:.6rem;font-weight:700;background:#4361EE;color:#fff;padding:2px 8px;border-radius:20px;min-width:20px;text-align:center;}
+.tn-menu-shell{display:flex;align-items:stretch;gap:0;max-width:1600px;margin:0 auto;}
+.tn-menu-left{width:360px;min-width:320px;border-right:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.06);}
+.tn-menu-right{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));align-content:start;}
+.tn-menu-group{border-bottom:1px solid rgba(255,255,255,.08);}
+.tn-group-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:rgba(255,255,255,.04);border:none;color:#fff;cursor:pointer;font-size:.8rem;font-weight:800;letter-spacing:.01em;text-align:left;transition:all .18s;}
+.tn-group-head:hover{background:rgba(255,255,255,.10);}
+.tn-group-head.active-group{background:rgba(67,97,238,.22);}
+.tn-group-head.open{box-shadow:inset 0 -1px 0 rgba(255,255,255,.06);}
+.tn-group-head-main{display:flex;align-items:center;gap:10px;min-width:0;}
+.tn-group-icon{font-size:1rem;flex-shrink:0;}
+.tn-group-caret{font-size:.9rem;opacity:.8;transition:transform .18s ease;}
+.tn-group-head.open .tn-group-caret{transform:rotate(180deg);}
+.tn-group-body{display:none;flex-direction:column;background:rgba(12,21,48,.18);}
+.tn-group-body.open{display:flex;}
+.tn-group-body .tn-tab{justify-content:flex-start;flex:none;width:100%;padding:11px 16px 11px 18px;border-right:none;border-bottom:1px solid rgba(255,255,255,.06);background:transparent;font-size:.75rem;}
+.tn-group-body .tn-tab:last-child{border-bottom:none;}
+.tn-group-body .tn-tab.active{background:rgba(67,97,238,.24);border-bottom-color:rgba(67,97,238,.28);}
+.tn-menu-right .tn-tab{min-height:62px;}
 /* Notification bell */
 .notif-bell{position:relative;cursor:pointer;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s;}
 .notif-bell:hover{background:rgba(255,255,255,.2);}
@@ -624,13 +642,15 @@ tbody td:first-child{color:var(--text);font-weight:600;}
   .tn-btn{padding:5px 10px;font-size:.65rem;}
 
   /* — Nav Row 2 Tabs — */
-  .tn-row2{gap:0;flex-wrap:wrap;overflow-x:visible;}
-  .tn-row2::-webkit-scrollbar{display:none;}
-  .tn-tab{flex:1;padding:7px 10px;font-size:.65rem;gap:3px;min-width:0;}
-  .tn-tab span:not(.tn-tab-icon):not(.tn-badge){display:none;}
+  .tn-menu-shell{flex-direction:column;}
+  .tn-menu-left{width:100%;min-width:0;border-right:none;border-bottom:1px solid rgba(255,255,255,.10);}
+  .tn-menu-right{width:100%;grid-template-columns:repeat(2,minmax(0,1fr));}
+  .tn-group-head{padding:11px 12px;font-size:.72rem;}
+  .tn-group-body .tn-tab,.tn-menu-right .tn-tab{flex:none;width:100%;padding:9px 10px;font-size:.68rem;gap:6px;justify-content:flex-start;min-height:auto;}
+  .tn-tab span:not(.tn-tab-icon):not(.tn-badge){display:inline;}
   .tn-tab .tn-tab-icon{font-size:15px;}
-  .tn-tab .tn-badge{font-size:.5rem;padding:1px 4px;margin-left:2px;}
-  .tn-tab #adminTabLabel{display:none;}
+  .tn-tab .tn-badge{font-size:.5rem;padding:1px 4px;margin-left:auto;}
+  #adminTabLabel{display:inline;}
 
   /* — Page Content — */
   .page{padding:.8rem!important;}
@@ -858,7 +878,7 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
     </div>
   </div>
-  <div style="background:var(--nav-bg2)">
+  <div id="tnNavGroups" style="background:var(--nav-bg2)">
   <!-- 1-QATOR: Asosiy bo'limlar -->
   <div class="tn-row2" style="max-width:1600px;margin:0 auto">
     <div class="tn-tab active" id="tab-overview" onclick="showPage('overview')" title="Umumiy"><span class="tn-tab-icon">🏠</span><span data-i18n="nav_overview">Umumiy</span></div>
@@ -2890,6 +2910,7 @@ const DB = {
    STATE
 ═══════════════════════════════════════ */
 var currentPage = 'overview';
+var NAV_GROUP_PAGE_MAP = {sections:['overview','investors','local','zoom'], outreach:['products','import','finder','ailetter','pipeline']};
 var currentLang = 'uz';
 var isAdmin = false;
 var isDark = false;
@@ -2979,6 +3000,99 @@ function toast(msg,type='success'){
 /* ═══════════════════════════════════════
    NAVIGATION
 ═══════════════════════════════════════ */
+function setNavGroupState(groupId, isOpen){
+  var head=document.getElementById('nav-group-head-'+groupId);
+  var body=document.getElementById('nav-group-body-'+groupId);
+  var wrap=document.getElementById('nav-group-'+groupId);
+  if(!head || !body) return;
+  head.classList.toggle('open', !!isOpen);
+  body.classList.toggle('open', !!isOpen);
+  if(wrap) wrap.classList.toggle('open', !!isOpen);
+}
+
+function toggleNavGroup(groupId){
+  var body=document.getElementById('nav-group-body-'+groupId);
+  if(!body) return;
+  setNavGroupState(groupId, !body.classList.contains('open'));
+}
+
+function syncNavGroups(activePage){
+  Object.keys(NAV_GROUP_PAGE_MAP).forEach(function(groupId){
+    var pages = NAV_GROUP_PAGE_MAP[groupId] || [];
+    var isActiveGroup = pages.indexOf(activePage)!==-1;
+    var head=document.getElementById('nav-group-head-'+groupId);
+    if(head) head.classList.toggle('active-group', isActiveGroup);
+    if(isActiveGroup) setNavGroupState(groupId, true);
+  });
+}
+
+function buildNavGroup(groupId, icon, label, isOpen){
+  var wrap=document.createElement('div');
+  wrap.className='tn-menu-group' + (isOpen ? ' open' : '');
+  wrap.id='nav-group-'+groupId;
+
+  var head=document.createElement('button');
+  head.className='tn-group-head' + (isOpen ? ' open' : '');
+  head.id='nav-group-head-'+groupId;
+  head.type='button';
+  head.onclick=function(){ toggleNavGroup(groupId); };
+  head.innerHTML='<span class="tn-group-head-main"><span class="tn-group-icon">'+icon+'</span><span>'+label+'</span></span><span class="tn-group-caret">▾</span>';
+
+  var body=document.createElement('div');
+  body.className='tn-group-body' + (isOpen ? ' open' : '');
+  body.id='nav-group-body-'+groupId;
+
+  wrap.appendChild(head);
+  wrap.appendChild(body);
+  return {wrap:wrap, body:body, head:head};
+}
+
+function initGroupedNav(){
+  var host=document.getElementById('tnNavGroups');
+  if(!host || host.dataset.grouped==='1') return;
+
+  var tabs = {
+    overview:document.getElementById('tab-overview'),
+    investors:document.getElementById('tab-investors'),
+    local:document.getElementById('tab-local'),
+    zoom:document.getElementById('tab-zoom'),
+    forums:document.getElementById('tab-forums'),
+    investor:document.getElementById('tab-investor'),
+    admin:document.getElementById('tab-admin'),
+    products:document.getElementById('tab-products'),
+    import:document.getElementById('tab-import'),
+    finder:document.getElementById('tab-finder'),
+    ailetter:document.getElementById('tab-ailetter'),
+    pipeline:document.getElementById('tab-pipeline'),
+    trade:document.getElementById('tab-trade'),
+    settings:document.getElementById('tab-settings')
+  };
+  if(!tabs.overview || !tabs.products || !tabs.forums) return;
+
+  var shell=document.createElement('div');
+  shell.className='tn-menu-shell';
+
+  var left=document.createElement('div');
+  left.className='tn-menu-left';
+  var sectionsGroup=buildNavGroup('sections','🗂',"Bo'lim ma'lumotlari", true);
+  [tabs.overview,tabs.investors,tabs.local,tabs.zoom].forEach(function(tab){ if(tab) sectionsGroup.body.appendChild(tab); });
+  var outreachGroup=buildNavGroup('outreach','📡','Outreach tizimi', false);
+  [tabs.products,tabs.import,tabs.finder,tabs.ailetter,tabs.pipeline].forEach(function(tab){ if(tab) outreachGroup.body.appendChild(tab); });
+  left.appendChild(sectionsGroup.wrap);
+  left.appendChild(outreachGroup.wrap);
+
+  var right=document.createElement('div');
+  right.className='tn-menu-right';
+  [tabs.forums,tabs.investor,tabs.trade,tabs.settings,tabs.admin].forEach(function(tab){ if(tab) right.appendChild(tab); });
+
+  shell.appendChild(left);
+  shell.appendChild(right);
+  host.innerHTML='';
+  host.appendChild(shell);
+  host.dataset.grouped='1';
+  syncNavGroups(currentPage || 'overview');
+}
+
 function showPage(id){
   if(id==='admin'&&!isAdmin){openAdminOrLogin();return;}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -2988,6 +3102,7 @@ function showPage(id){
   const tb=document.getElementById('tab-'+id);
   if(tb)tb.classList.add('active');
   currentPage=id;
+  syncNavGroups(id);
   if(id==='overview')renderOverview();
   else if(id==='investors')renderInvestors();
   else if(id==='local')renderLocal();
@@ -3007,6 +3122,8 @@ function showPage(id){
 /* ═══════════════════════════════════════
    THEME & LANG
 ═══════════════════════════════════════ */
+setTimeout(initGroupedNav, 0);
+
 function toggleTheme(){
   isDark=!isDark;
   document.documentElement.setAttribute('data-theme',isDark?'dark':'light');
