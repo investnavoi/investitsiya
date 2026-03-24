@@ -1942,7 +1942,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="tscroll" style="max-height:600px;overflow-y:auto"><table>
         <thead id="tradeTableHead"><tr>
           <th>#</th><th>HS Kod</th><th>Mahsulot nomi</th>
-          <th>Qiymati ($)</th><th>Og'irligi (kg)</th><th id="trade-last-col">Navoiy mos</th>
+          <th>Qiymati ($)</th><th>Og'irligi (kg)</th><th id="trade-tariff-col">Tarif (%)</th><th id="trade-last-col">Navoiy mos</th>
         </tr></thead>
         <tbody id="trade-tbody"></tbody>
       </table></div>
@@ -7597,6 +7597,10 @@ var _tradeUzExportData = [];
 var _tradeUzExportSource = '';
 var _tradeUzExportMeta = {};
 var _tradeUzExportCache = {};
+var _tradeTariffData = [];
+var _tradeTariffSource = '';
+var _tradeTariffMeta = {};
+var _tradeTariffCache = {};
 
 function upsertDbRecord(listName, record){
   if(!DB[listName]) DB[listName] = [];
@@ -7748,6 +7752,108 @@ function getCurrentTradeRows(){
   return _tradeData || [];
 }
 
+function parseTariffRange(productCode){
+  var code = String(productCode||'');
+  var m = code.match(/^(\d{2})-(\d{2})_/);
+  if(m) return { start: Number(m[1]), end: Number(m[2]) };
+  var s = code.match(/^(\d{2})_/);
+  if(s) return { start: Number(s[1]), end: Number(s[1]) };
+  return null;
+}
+
+function getTariffInfoForHs(hsCode){
+  var hs2 = parseInt(String(hsCode||'').replace(/\D/g,'').slice(0,2), 10);
+  if(!hs2 || !_tradeTariffData || !_tradeTariffData.length) return null;
+  var match = _tradeTariffData.find(function(row){
+    var range = parseTariffRange(row.productCode);
+    return range && hs2 >= range.start && hs2 <= range.end;
+  });
+  if(!match) return null;
+  var rate = (match.appliedRate!=null && !isNaN(match.appliedRate)) ? Number(match.appliedRate) : ((match.mfnRate!=null && !isNaN(match.mfnRate)) ? Number(match.mfnRate) : null);
+  if(rate==null || isNaN(rate)) return null;
+  return {
+    rate: rate,
+    type: (match.appliedRate!=null && !isNaN(match.appliedRate)) ? 'AHS' : 'MFN',
+    productCode: match.productCode,
+    productName: match.productName || '',
+    appliedRate: match.appliedRate,
+    mfnRate: match.mfnRate
+  };
+}
+
+function formatTariffCell(hsCode){
+  if(String(document.getElementById('trade-country').value||'') === '860'){
+    return '<span style="color:var(--text3);font-size:.58rem">—</span>';
+  }
+  if(_tradeTariffMeta && _tradeTariffMeta.loading){
+    return '<span style="color:#6366f1;font-size:.58rem;font-weight:700">⏳ Yuklanmoqda</span>';
+  }
+  var info = getTariffInfoForHs(hsCode);
+  if(!info){
+    return '<span style="color:var(--text3);font-size:.58rem">—</span>';
+  }
+  var badgeColor = info.type === 'AHS' ? '#7c3aed' : '#f59e0b';
+  var title = (info.type === 'AHS' ? 'Applied tariff (Uzbekistan)' : 'MFN tariff (World)') + ' • ' + (info.productName||info.productCode||'');
+  return '<div title="'+String(title).replace(/"/g,'&quot;')+'"><span style="display:inline-block;background:'+badgeColor+';color:#fff;padding:2px 8px;border-radius:999px;font-size:.55rem;font-weight:700">'+info.rate.toFixed(2)+'%</span><div style="font-size:.52rem;color:var(--text3);margin-top:3px">'+info.type+'</div></div>';
+}
+
+async function loadTradeTariffData(countryCode, countryName, year){
+  if(!countryCode || String(countryCode) === '860'){
+    _tradeTariffData = [];
+    _tradeTariffSource = '';
+    _tradeTariffMeta = { emptyReason: 'same_country' };
+    return;
+  }
+  var cacheKey = [countryCode, year].join('_');
+  if(_tradeTariffCache[cacheKey]){
+    _tradeTariffData = _tradeTariffCache[cacheKey].data||[];
+    _tradeTariffSource = _tradeTariffCache[cacheKey].source||'WITS - UNCTAD TRAINS';
+    _tradeTariffMeta = _tradeTariffCache[cacheKey].meta||{};
+    return;
+  }
+  _tradeTariffMeta = { loading: true, countryCode: countryCode, countryName: countryName||'', year: year };
+  var BASE = 'https://navoiy-api-proxy.vercel.app';
+  var url = BASE+'/api/wits-tariff?reporter='+encodeURIComponent(countryCode)+'&partner=UZB&year='+encodeURIComponent(year||'2024');
+  try{
+    var resp = await fetch(url);
+    var json = resp.ok ? await resp.json() : {data:[]};
+    _tradeTariffData = Array.isArray(json.data) ? json.data : [];
+    _tradeTariffSource = json.source || 'WITS - UNCTAD TRAINS';
+    _tradeTariffMeta = {
+      countryCode: countryCode,
+      countryName: countryName || '',
+      year: year,
+      count: _tradeTariffData.length
+    };
+    _tradeTariffCache[cacheKey] = {
+      data: _tradeTariffData.slice(),
+      source: _tradeTariffSource,
+      meta: Object.assign({}, _tradeTariffMeta)
+    };
+  } catch(err){
+    console.log('Trade tariff error:', err.message);
+    _tradeTariffData = [];
+    _tradeTariffSource = 'WITS - UNCTAD TRAINS';
+    _tradeTariffMeta = { error: err.message, countryCode: countryCode, countryName: countryName||'', year: year };
+  }
+}
+
+function ensureTradeTariffLoaded(countryCode, countryName, year){
+  var samePayload =
+    _tradeTariffMeta &&
+    !_tradeTariffMeta.loading &&
+    String(_tradeTariffMeta.countryCode||'') === String(countryCode||'') &&
+    String(_tradeTariffMeta.year||'') === String(year||'');
+  if(samePayload) return;
+  loadTradeTariffData(countryCode, countryName, year).then(function(){
+    var currentCode = document.getElementById('trade-country').value || '';
+    var currentYear = document.getElementById('trade-year').value || '';
+    if(String(currentCode) !== String(countryCode) || String(currentYear) !== String(year)) return;
+    var flow = document.getElementById('trade-flow').value;
+    renderTradeListView(countryName, flow==='M'?'Import':'Export', year);
+  });
+}
+
 async function loadUzbekistanExportData(partnerCode, partnerName, year, hsLevel, hsFilter){
   if(!partnerCode || String(partnerCode) === '860'){
     _tradeUzExportData = [];
@@ -7842,6 +7948,7 @@ function renderTradeListView(countryName, flowName, year){
   var data = getCurrentTradeRows();
   var titleEl = document.getElementById('trade-title-text');
   var noteEl = document.getElementById('tradeViewNote');
+  var tariffCol = document.getElementById('trade-tariff-col');
   var lastCol = document.getElementById('trade-last-col');
   var matchBtn = document.getElementById('trade-match-btn');
   var tb = document.getElementById('trade-tbody');
@@ -7852,13 +7959,15 @@ function renderTradeListView(countryName, flowName, year){
 
   if(_tradeViewMode === 'navoi'){
     if(titleEl) titleEl.textContent = '🏭 Navoiy viloyatida mavjud mahsulotlar ro\'yxati';
+    if(tariffCol) tariffCol.textContent = 'Tarif (%)';
     if(lastCol) lastCol.textContent = 'Navoiy mahsuloti';
-    if(noteEl) noteEl.textContent = 'Tanlangan davlatning '+year+'-yildagi importi ichidan Navoiyda mavjud mahsulotlar qoldirildi.';
+    if(noteEl) noteEl.textContent = 'Tanlangan davlatning '+year+'-yildagi importi ichidan Navoiyda mavjud mahsulotlar qoldirildi. Tarif ustuni WITS - UNCTAD TRAINS rasmiy ma\'lumotidan olinadi.';
     if(matchBtn) matchBtn.style.display = 'none';
     document.getElementById('trade-count').textContent = data.length;
     tb.innerHTML = data.length ? data.map(function(r,i){
       var valStr = r.value>=1e9?'$'+(r.value/1e9).toFixed(2)+'B':r.value>=1e6?'$'+(r.value/1e6).toFixed(1)+'M':'$'+(r.value/1e3).toFixed(0)+'K';
       var wStr = r.weight>=1e9?(r.weight/1e9).toFixed(0)+' Kt':r.weight>=1e6?(r.weight/1e6).toFixed(0)+' t':r.weight>=1e3?(r.weight/1e3).toFixed(0)+' kg':(r.weight||0)+' g';
+      var tariffHtml = formatTariffCell(r.hsCode);
       var badgeHtml = (r.navoiNames||[r.navoiName||'Mavjud']).slice(0,4).map(function(name){
         return '<span style="display:inline-block;background:#059669;color:#fff;padding:2px 8px;border-radius:999px;font-size:.55rem;font-weight:700;margin:2px 4px 2px 0">'+name+'</span>';
       }).join('');
@@ -7872,24 +7981,27 @@ function renderTradeListView(countryName, flowName, year){
         '<td style="font-size:.7rem"><b>'+(r.description||'—')+'</b>'+descExtra+'</td>'+
         '<td style="font-weight:700;color:#059669">'+valStr+'</td>'+
         '<td style="font-size:.65rem;color:var(--text3)">'+wStr+'</td>'+
+        '<td>'+tariffHtml+'</td>'+
         '<td title="'+String((r.tags||[]).join(', ') || r.tag || 'Navoiy mahsuloti').replace(/"/g,'&quot;')+'">'+badgeHtml+'</td>'+
       '</tr>';
-    }).join('') : '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text3)">Tanlangan davlat importida Navoiyga mos mahsulot topilmadi</td></tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text3)">Tanlangan davlat importida Navoiyga mos mahsulot topilmadi</td></tr>';
     return;
   }
 
   if(_tradeViewMode === 'uzexport'){
+    if(tariffCol) tariffCol.textContent = 'Tarif (%)';
     if(titleEl) titleEl.textContent = '🇺🇿 O\'zbekistondan '+(countryName||'shu davlatga')+' eksport bo\'lgan';
     if(lastCol) lastCol.textContent = 'Navoiy mos';
     if(noteEl){
       if(_tradeUzExportMeta && _tradeUzExportMeta.emptyReason === 'same_country') noteEl.textContent = 'Tanlangan davlat O\'zbekiston bo\'lgani uchun bu bo\'lim bo\'sh.';
-      else noteEl.textContent = 'UN Comtrade orqali O\'zbekistondan shu davlatga eksport qilingan mahsulotlar.';
+      else noteEl.textContent = 'UN Comtrade orqali O\'zbekistondan shu davlatga eksport qilingan mahsulotlar. Tarif ustuni WITS - UNCTAD TRAINS rasmiy ma\'lumotidan olinadi.';
     }
     if(matchBtn) matchBtn.style.display = '';
   } else {
+    if(tariffCol) tariffCol.textContent = 'Tarif (%)';
     if(titleEl) titleEl.textContent = '📋 Mahsulotlar ro\'yxati';
     if(lastCol) lastCol.textContent = 'Navoiy mos';
-    if(noteEl) noteEl.textContent = (countryName||'Tanlangan davlat')+' uchun '+flowName+' mahsulotlar ro\'yxati ('+year+').';
+    if(noteEl) noteEl.textContent = (countryName||'Tanlangan davlat')+' uchun '+flowName+' mahsulotlar ro\'yxati ('+year+'). Tarif ustuni WITS - UNCTAD TRAINS rasmiy ma\'lumotidan olinadi.';
     if(matchBtn) matchBtn.style.display = '';
   }
 
@@ -7897,6 +8009,7 @@ function renderTradeListView(countryName, flowName, year){
   tb.innerHTML = data.length ? data.map(function(r,i){
     var valStr = r.value>=1e9?'$'+(r.value/1e9).toFixed(2)+'B':r.value>=1e6?'$'+(r.value/1e6).toFixed(1)+'M':'$'+(r.value/1e3).toFixed(0)+'K';
     var wStr = r.weight>=1e9?(r.weight/1e9).toFixed(0)+' Kt':r.weight>=1e6?(r.weight/1e6).toFixed(0)+' t':r.weight>=1e3?(r.weight/1e3).toFixed(0)+' kg':(r.weight||0)+' g';
+    var tariffHtml = formatTariffCell(r.hsCode);
     var match = navProducts.find(function(p){
       return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(String(p.hs_code).replace(/\s/g,'').slice(0,4))===0);
     });
@@ -7909,9 +8022,10 @@ function renderTradeListView(countryName, flowName, year){
       '<td style="font-size:.7rem">'+translateHS(r.hsCode,r.description)+'</td>'+
       '<td style="font-weight:700;color:'+(_tradeViewMode==='uzexport'?'#059669':(flowName==='Import'?'#EF233C':'#059669'))+'">'+valStr+'</td>'+
       '<td style="font-size:.65rem;color:var(--text3)">'+wStr+'</td>'+
+      '<td>'+tariffHtml+'</td>'+
       '<td>'+matchBadge+'</td>'+
     '</tr>';
-  }).join('') : '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text3)">Bu bo\'lim uchun ma\'lumot topilmadi</td></tr>';
+  }).join('') : '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text3)">Bu bo\'lim uchun ma\'lumot topilmadi</td></tr>';
 }
 
 function setTradeViewMode(mode){
@@ -8385,6 +8499,7 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
   document.getElementById('tradeTableCard').style.display = 'block';
   renderTradeListView(countryName, flowName, year);
   ensureUzExportDataLoaded(document.getElementById('trade-country').value, countryName, year, document.getElementById('trade-hs-level').value, hsFilter);
+  ensureTradeTariffLoaded(document.getElementById('trade-country').value, countryName, year);
 
   var navProducts = (DB.products||[]);
   var matchCount = data.filter(function(r){
@@ -8521,21 +8636,24 @@ function exportTradeCSV(){
   var csv = '';
   if(_tradeViewMode === 'navoi'){
     filenamePrefix = 'navoiy_products';
-    csv = 'HS Code,Product Name,Category,Note\n';
+    csv = 'HS Code,Product Name,Tariff (%),Category,Note\n';
     rows.forEach(function(r){
-      csv += '"'+(r.hsCode||'')+'","'+String(r.description||'').replace(/"/g,'""')+'","'+String(r.tag||'').replace(/"/g,'""')+'","'+String(r.note||'').replace(/"/g,'""')+'"\n';
+      var tariffInfo = getTariffInfoForHs(r.hsCode);
+      csv += '"'+(r.hsCode||'')+'","'+String(r.description||'').replace(/"/g,'""')+'","'+(tariffInfo ? tariffInfo.rate.toFixed(2) : '')+'","'+String(r.tag||'').replace(/"/g,'""')+'","'+String(r.note||'').replace(/"/g,'""')+'"\n';
     });
   } else if(_tradeViewMode === 'uzexport'){
     filenamePrefix = 'uzbekistan_exports_to_'+countryName.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase();
-    csv = 'HS Code,Product Name,Value (USD),Weight (kg),Year,Flow,Partner\n';
+    csv = 'HS Code,Product Name,Value (USD),Weight (kg),Tariff (%),Year,Flow,Partner\n';
     rows.forEach(function(r){
-      csv += '"'+(r.hsCode||'')+'","'+String(r.description||'').replace(/"/g,'""')+'",'+(r.value||0)+','+(r.weight||0)+','+(r.year||year)+',Export,"'+String(countryName||r.partner||'').replace(/"/g,'""')+'"\n';
+      var tariffInfo = getTariffInfoForHs(r.hsCode);
+      csv += '"'+(r.hsCode||'')+'","'+String(r.description||'').replace(/"/g,'""')+'",'+(r.value||0)+','+(r.weight||0)+',"'+(tariffInfo ? tariffInfo.rate.toFixed(2) : '')+'",'+(r.year||year)+',Export,"'+String(countryName||r.partner||'').replace(/"/g,'""')+'"\n';
     });
   } else {
     filenamePrefix = countryName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+flow+'_'+year;
-    csv = 'HS Code,Product Name,Value (USD),Weight (kg),Year,Flow\n';
+    csv = 'HS Code,Product Name,Value (USD),Weight (kg),Tariff (%),Year,Flow\n';
     rows.forEach(function(r){
-      csv += '"'+(r.hsCode||'')+'","'+String(r.description||'').replace(/"/g,'""')+'",'+(r.value||0)+','+(r.weight||0)+','+(r.year||year)+','+flow+'\n';
+      var tariffInfo = getTariffInfoForHs(r.hsCode);
+      csv += '"'+(r.hsCode||'')+'","'+String(r.description||'').replace(/"/g,'""')+'",'+(r.value||0)+','+(r.weight||0)+',"'+(tariffInfo ? tariffInfo.rate.toFixed(2) : '')+'",'+(r.year||year)+','+flow+'\n';
     });
   }
 
