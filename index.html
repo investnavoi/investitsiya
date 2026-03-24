@@ -31,7 +31,7 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
 // Collections: investors, local, zoom, forums, investorCompanies
-const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products','tradeData','tradeSnapshots','importSnapshots','entrepreneurs'];
+const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products','tradeData','tradeSnapshots','tradeSnapshotChunks','importSnapshots','entrepreneurs'];
 
 // Load API keys from separate doc
 async function loadApiKeys(){
@@ -7586,7 +7586,8 @@ document.addEventListener('keydown', function(e){
 });
 
 var TRADE_SNAPSHOT_ROW_LIMIT = 1500;
-var TRADE_SNAPSHOT_VERSION = 2;
+var TRADE_SNAPSHOT_CHUNK_SIZE = 1200;
+var TRADE_SNAPSHOT_VERSION = 3;
 var _tradeData = [];
 var _tradeCache = {};
 var _tradeSource = '';
@@ -7602,6 +7603,29 @@ function upsertDbRecord(listName, record){
   var idx = DB[listName].findIndex(function(item){ return String(item.id)===String(record.id); });
   if(idx>=0) DB[listName][idx] = record;
   else DB[listName].push(record);
+}
+
+function removeDbRecord(listName, id){
+  if(!DB[listName]) return;
+  DB[listName] = DB[listName].filter(function(item){ return String(item.id)!==String(id); });
+}
+
+function getTradeSnapshotRows(snapshot){
+  if(!snapshot) return [];
+  if(Array.isArray(snapshot.data) && snapshot.data.length && (!snapshot.chunkCount || snapshot.version < 3)){
+    return snapshot.data;
+  }
+  var chunks = (DB.tradeSnapshotChunks||[]).filter(function(chunk){
+    return String(chunk.parentId||'') === String(snapshot.id||'');
+  }).sort(function(a,b){
+    return Number(a.index||0) - Number(b.index||0);
+  });
+  if(!chunks.length) return Array.isArray(snapshot.data) ? snapshot.data : [];
+  var rows = [];
+  chunks.forEach(function(chunk){
+    (chunk.rows||[]).forEach(function(row){ rows.push(row); });
+  });
+  return rows;
 }
 
 function saveSettingsPatch(patch){
@@ -7905,7 +7929,8 @@ function getTradeSnapshot(countryCode, year, flow, hsLevel, hsFilter){
 }
 
 function restoreTradeSnapshot(snapshot, quiet){
-  if(!snapshot || !(snapshot.data||[]).length) return false;
+  var snapshotRows = getTradeSnapshotRows(snapshot);
+  if(!snapshot || !snapshotRows.length) return false;
   setTradeCountrySelection(snapshot.countryCode||'', snapshot.countryName||'');
   var emptyEl = document.getElementById('tradeEmpty');
   var loadingEl = document.getElementById('tradeLoading');
@@ -7922,7 +7947,7 @@ function restoreTradeSnapshot(snapshot, quiet){
   if(hsEl) hsEl.value = snapshot.hsFilter||'';
   if(nameEl) nameEl.value = '';
 
-  _tradeData = normalizeTradeRows((snapshot.data||[]).map(function(r){
+  _tradeData = normalizeTradeRows((snapshotRows||[]).map(function(r){
     return {
       hsCode:r.h||r.hsCode||'',
       description:r.d||r.description||'',
@@ -7959,11 +7984,18 @@ function saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter){
   if(!_tradeData.length) return;
   if((_tradeSource||'').indexOf('UN Comtrade')===-1) return;
   var countryCode = document.getElementById('trade-country').value||'';
-  var snapshotRows = _tradeData.slice(0, TRADE_SNAPSHOT_ROW_LIMIT).map(function(r){
+  var allRows = _tradeData.map(function(r){
     return {h:r.hsCode||'', d:r.description||'', v:Number(r.value||0)||0, w:Number(r.weight||0)||0};
   });
+  var chunkedRows = [];
+  for(var i=0;i<allRows.length;i+=TRADE_SNAPSHOT_CHUNK_SIZE){
+    chunkedRows.push(allRows.slice(i, i+TRADE_SNAPSHOT_CHUNK_SIZE));
+  }
+  var snapshotId = buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter);
+  var previous = (DB.tradeSnapshots||[]).find(function(item){ return String(item.id)===String(snapshotId); });
+  var previousChunkCount = Number(previous && previous.chunkCount || 0);
   var snapshot = {
-    id: buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter),
+    id: snapshotId,
     version: TRADE_SNAPSHOT_VERSION,
     countryCode: countryCode,
     countryName: countryName||'',
@@ -7977,12 +8009,31 @@ function saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter){
     requestedLevel: (_tradeMeta&&_tradeMeta.requestedLevel)||hsLevel||'4',
     requestedCmdCode: (_tradeMeta&&_tradeMeta.requestedCmdCode)||'',
     rowCount: _tradeData.length,
-    savedRowCount: snapshotRows.length,
+    savedRowCount: allRows.length,
+    chunkCount: chunkedRows.length,
     updatedAt: new Date().toISOString(),
-    data: snapshotRows
+    data: chunkedRows.length <= 1 ? allRows : []
   };
   upsertDbRecord('tradeSnapshots', snapshot);
   if(typeof fbSave==='function') fbSave('tradeSnapshots', snapshot);
+  if(!DB.tradeSnapshotChunks) DB.tradeSnapshotChunks = [];
+  chunkedRows.forEach(function(rows, idx){
+    var chunk = {
+      id: snapshotId+'__'+idx,
+      parentId: snapshotId,
+      index: idx,
+      rowCount: rows.length,
+      updatedAt: snapshot.updatedAt,
+      rows: rows
+    };
+    upsertDbRecord('tradeSnapshotChunks', chunk);
+    if(typeof fbSave==='function') fbSave('tradeSnapshotChunks', chunk);
+  });
+  for(var j=chunkedRows.length;j<previousChunkCount;j++){
+    var staleId = snapshotId+'__'+j;
+    removeDbRecord('tradeSnapshotChunks', staleId);
+    if(typeof fbDelete==='function') fbDelete('tradeSnapshotChunks', staleId);
+  }
   saveSettingsPatch({lastTradeSnapshotId:snapshot.id});
   if(typeof updateTradeFirebaseCount==='function') updateTradeFirebaseCount();
 }
@@ -8445,10 +8496,12 @@ function clearTradeFirebase(){
   if(!confirm((manualCount+snapshotCount)+' ta savdo cache/yozuvini o\'chirish?')) return;
   DB.tradeData=[];
   DB.tradeSnapshots=[];
+  DB.tradeSnapshotChunks=[];
   _tradeCache={};
   _tradeData=[];
   if(typeof fbDeleteCollection==='function') fbDeleteCollection('tradeData');
   if(typeof fbDeleteCollection==='function') fbDeleteCollection('tradeSnapshots');
+  if(typeof fbDeleteCollection==='function') fbDeleteCollection('tradeSnapshotChunks');
   saveSettingsPatch({lastTradeSnapshotId:''});
   updateTradeFirebaseCount();
   toast('🗑 Savdo ma\'lumotlari tozalandi');
