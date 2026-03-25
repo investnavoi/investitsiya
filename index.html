@@ -90,7 +90,13 @@ async function loadFromFirestore(){
     for(const col of COLLECTIONS){
       const snap = await getDocs(collection(db, col));
       const rows = [];
-      snap.forEach(d => rows.push(d.data()));
+      snap.forEach(d => {
+        const row = d.data();
+        if(row && (row.id === undefined || row.id === null || String(row.id).trim() === '')){
+          row.id = d.id;
+        }
+        rows.push(row);
+      });
       rows.sort((a,b)=>{
         const av = Number(a.id);
         const bv = Number(b.id);
@@ -3147,7 +3153,10 @@ function dateToDisplay(s){
   return s;
 }
 function fmtMoney(v){const n=parseFloat(v)||0;if(n>=1e6)return`$${(n/1e6).toFixed(1)}M`;if(n>=1000)return`$${(n/1000).toFixed(0)}K`;return`$${n}`;}
-function nextId(arr){return arr.length?Math.max(...arr.map(r=>r.id))+1:1;}
+function nextId(arr){
+  const nums = (arr||[]).map(r=>Number(r&&r.id)).filter(n=>Number.isFinite(n));
+  return nums.length ? Math.max(...nums)+1 : 1;
+}
 function getInitials(name=''){return(name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase())||'??';}
 function v(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 
@@ -4030,19 +4039,20 @@ function apolloPersonToRecord(p){
 }
 
 async function saveApolloRecords(list){
+  if(!DB.investorCompanies) DB.investorCompanies = [];
   var successCount = 0;
   var existNames = DB.investorCompanies.map(function(r){ return ((r.kompaniya||'')+'|'+(r.rahbar||'')).toLowerCase(); });
 
   for(var i=0; i<list.length; i++){
-    var item = list[i];
+    var item = Object.assign({}, list[i]);
     var key = ((item.kompaniya||'')+'|'+(item.rahbar||'')).toLowerCase();
     if(existNames.includes(key)) continue;
     try {
-      if(typeof firebase !== 'undefined' && firebase.firestore){
-        var docRef = await firebase.firestore().collection('investorCompanies').add(item);
-        item.id = docRef.id;
-      } else {
-        item.id = 'apo_'+Date.now()+'_'+i;
+      item.id = nextId(DB.investorCompanies);
+      if(typeof fbSave==='function'){
+        await fbSave('investorCompanies', item);
+      } else if(typeof firebase !== 'undefined' && firebase.firestore){
+        await firebase.firestore().collection('investorCompanies').doc(String(item.id)).set(item);
       }
       DB.investorCompanies.push(item);
       existNames.push(key);
@@ -4777,14 +4787,14 @@ function updateSelectedCount(){
 }
 
 function getSelectedIds(){
-  return Array.from(document.querySelectorAll('.ic-check:checked')).map(c=>parseInt(c.dataset.id));
+  return Array.from(document.querySelectorAll('.ic-check:checked')).map(c=>String(c.dataset.id));
 }
 
 function sendBulkEmail(){
   if(!isAdmin){toast('⚠️ Email yuborish uchun admin sifatida kiring!','error');openAdminOrLogin();return;}
   const ids = getSelectedIds();
   if(!ids.length){ toast('⚠️ Avval kompaniyalarni tanlang!','error'); return; }
-  const targets = ids.map(id=>DB.investorCompanies.find(r=>r.id===id)).filter(r=>r&&r.email);
+  const targets = ids.map(id=>DB.investorCompanies.find(r=>String(r.id)===String(id))).filter(r=>r&&r.email);
   if(!targets.length){ toast('⚠️ Tanlangan kompaniyalarda email manzil topilmadi','error'); return; }
 
   // Populate modal
@@ -4852,7 +4862,7 @@ async function executeBulkSend(){
         from_name: 'Navoiy Investitsiya Bo\'limi',
       });
       if(result.status===200){
-        const rec = DB.investorCompanies.find(x=>x.id===r.id);
+        const rec = DB.investorCompanies.find(x=>String(x.id)===String(r.id));
         if(rec){
           rec.emailSent=true;
           rec.emailSentDate=new Date().toISOString().split('T')[0];
@@ -4956,7 +4966,7 @@ function renderAdminLists(){
 /* ═══════════════════════════════════════
    INVESTOR COMPANIES ADD / EXCEL
 ═══════════════════════════════════════ */
-function addInvestorCo(){
+async function addInvestorCo(){
   const komp = document.getElementById('ic-kompaniya').value.trim();
   const rahb = document.getElementById('ic-rahbar').value.trim();
   const soha = document.getElementById('ic-soha').value.trim();
@@ -4979,7 +4989,7 @@ function addInvestorCo(){
   };
   if(!DB.investorCompanies) DB.investorCompanies = [];
   DB.investorCompanies.push(rec);
-  if(typeof fbSave==='function') fbSave('investorCompanies', rec);
+  if(typeof fbSave==='function') await fbSave('investorCompanies', rec);
   clearIcForm();
   renderInvestorCompanies();
   renderAdminLists();
@@ -5131,12 +5141,13 @@ function handleIcExcelUpload(input){
   if(input.value !== undefined) input.value = '';
 }
 
-function importIcExcel(){
+async function importIcExcel(){
   if(!_icExcelParsed || !_icExcelParsed.length) return;
   if(!DB.investorCompanies) DB.investorCompanies = [];
 
   var existKeys = DB.investorCompanies.map(function(r){ return ((r.kompaniya||'')+'|'+(r.rahbar||'')).toLowerCase(); });
   var added = 0;
+  var saveJobs = [];
 
   _icExcelParsed.forEach(function(r){
     var key = ((r.kompaniya||'')+'|'+(r.rahbar||'')).toLowerCase();
@@ -5145,9 +5156,11 @@ function importIcExcel(){
     var rec = Object.assign({id: nextId(DB.investorCompanies)}, r);
     DB.investorCompanies.push(rec);
     existKeys.push(key);
-    if(typeof fbSave==='function') fbSave('investorCompanies', rec);
+    if(typeof fbSave==='function') saveJobs.push(fbSave('investorCompanies', rec));
     added++;
   });
+
+  if(saveJobs.length) await Promise.all(saveJobs);
 
   toast('\u2705 ' + added + ' ta kompaniya import qilindi!' + (_icExcelParsed.length - added > 0 ? ' (' + (_icExcelParsed.length - added) + ' ta dublikat o\'tkazildi)' : ''));
   _icExcelParsed = [];
@@ -5188,7 +5201,7 @@ function closeZoomDetail(){document.getElementById('zoomDetailModal').classList.
 ═══════════════════════════════════════ */
 function openEmailModal(id){
   if(!isAdmin){toast('⚠️ Email yuborish uchun admin sifatida kiring!','error');openAdminOrLogin();return;}
-  const co=DB.investorCompanies.find(r=>r.id===id);
+  const co=DB.investorCompanies.find(r=>String(r.id)===String(id));
   if(!co||!co.email){toast('Email manzil topilmadi','error');return;}
   emailTarget=co;
   document.getElementById('emailModalSub').textContent=co.kompaniya;
@@ -5232,7 +5245,7 @@ function openBulkScheduleModal(){
   const all = DB.investorCompanies||[];
   // email mavjud bo'lganlarni olish
   const targets = ids.length
-    ? ids.map(id=>all.find(r=>r.id===id)).filter(r=>r&&r.email)
+    ? ids.map(id=>all.find(r=>String(r.id)===String(id))).filter(r=>r&&r.email)
     : all.filter(r=>r.email);
 
   if(!targets.length){ toast('⚠️ Email manzili bo\'lgan kompaniya yo\'q','error'); return; }
@@ -5275,7 +5288,7 @@ function saveBulkSchedule(){
   const ids = getSelectedIds();
   const all = DB.investorCompanies||[];
   const targets = ids.length
-    ? ids.map(id=>all.find(r=>r.id===id)).filter(r=>r&&r.email)
+    ? ids.map(id=>all.find(r=>String(r.id)===String(id))).filter(r=>r&&r.email)
     : all.filter(r=>r.email);
 
   const schedule = {
@@ -5309,7 +5322,7 @@ var _schedTargetId = null;
 
 function openScheduleModal(id){
   _schedTargetId = id;
-  const co = (DB.investorCompanies||[]).find(r=>r.id===id);
+  const co = (DB.investorCompanies||[]).find(r=>String(r.id)===String(id));
   if(!co) return;
 
   document.getElementById('scheduleCompanyName').textContent = `🏢 ${co.kompaniya}  ·  ${co.email}`;
@@ -5349,7 +5362,7 @@ function onSchedTypeChange(){
 }
 
 function saveSchedule(){
-  const co = (DB.investorCompanies||[]).find(r=>r.id===_schedTargetId);
+  const co = (DB.investorCompanies||[]).find(r=>String(r.id)===String(_schedTargetId));
   if(!co) return;
 
   const type    = document.querySelector('input[name="schedType"]:checked')?.value || 'once';
@@ -5380,7 +5393,7 @@ function saveSchedule(){
 }
 
 function disableSchedule(){
-  const co = (DB.investorCompanies||[]).find(r=>r.id===_schedTargetId);
+  const co = (DB.investorCompanies||[]).find(r=>String(r.id)===String(_schedTargetId));
   if(!co||!co.emailSchedule) return;
   co.emailSchedule.active = false;
   if(typeof fbSave==='function') fbSave('investorCompanies', co);
