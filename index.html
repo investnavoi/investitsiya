@@ -7488,7 +7488,7 @@ function renderProducts(){
     document.getElementById('pr-prod-count').textContent = prods.length;
     tb.innerHTML = prods.length ? prods.map(function(p,i){
       var rm = rms.find(function(r){return r.id==p.raw_id});
-      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="background:#4361EE;color:#fff;border:none;margin-right:3px" title="Prezentatsiya">📊</button><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+      return '<tr><td>'+(i+1)+'</td><td><b>'+formatBilingualProductName(p)+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="background:#4361EE;color:#fff;border:none;margin-right:3px" title="Prezentatsiya">📊</button><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
     }).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text3)">Mahsulot qo\'shilmagan</td></tr>';
   }
 
@@ -7496,10 +7496,26 @@ function renderProducts(){
   populateProductSelects();
 }
 
+function formatBilingualProductName(p){
+  if(!p) return '—';
+  var en = String(p.name_en || p.name || '').trim();
+  var uz = String(p.name_uz || '').trim();
+  var hsFallback = '';
+  if(typeof translateHS === 'function'){
+    hsFallback = String(translateHS(p.hs_code, en) || '').trim();
+  }
+  if((!uz || uz.toLowerCase() === en.toLowerCase()) && hsFallback && hsFallback.toLowerCase() !== en.toLowerCase()){
+    uz = hsFallback;
+  }
+  if(!en && uz) return uz;
+  if(!uz || uz.toLowerCase() === en.toLowerCase()) return en || '—';
+  return en + ' (' + uz + ')';
+}
+
 function populateProductSelects(){
   var prods = DB.products||[];
   var opts = '<option value="">— Tanlang —</option>' + prods.map(function(p){
-    return '<option value="'+p.id+'">'+p.name_en+(p.hs_code?' ('+p.hs_code+')':'')+'</option>';
+    return '<option value="'+p.id+'">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</option>';
   }).join('');
   ['import-product-select','finder-product-select'].forEach(function(id){
     var el = document.getElementById(id);
@@ -7524,7 +7540,7 @@ function filterProductsByRaw(rawId){
     document.getElementById('pr-prod-count').textContent = prods.length;
     tb.innerHTML = prods.map(function(p,i){
       var rm = rms.find(function(r){return r.id==p.raw_id});
-      return '<tr><td>'+(i+1)+'</td><td><b>'+p.name_en+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||'—').slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').slice(0,40)+'</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="background:#4361EE;color:#fff;border:none;margin-right:3px" title="Prezentatsiya">📊</button><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+      return '<tr><td>'+(i+1)+'</td><td><b>'+formatBilingualProductName(p)+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||'—').slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').slice(0,40)+'</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="background:#4361EE;color:#fff;border:none;margin-right:3px" title="Prezentatsiya">📊</button><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
     }).join('');
   }
 }
@@ -10432,7 +10448,7 @@ function restoreImportSnapshot(snapshot, quiet){
     };
   });
   renderImportResults(countries, prod, snapshot.source||'UN Comtrade (cached)');
-  if(!quiet) toast('💾 Firebase cache ochildi: '+(snapshot.productName||prod.name_en||''));
+  if(!quiet) toast('💾 Firebase cache ochildi: '+(snapshot.productName||formatBilingualProductName(prod)||''));
   return true;
 }
 
@@ -10442,7 +10458,7 @@ function saveImportSnapshot(prod, hsCode, countries, source){
   var snapshot = {
     id: buildImportSnapshotId(prod, hsCode),
     productId: String(prod.id||''),
-    productName: prod.name_en||prod.name||'',
+    productName: formatBilingualProductName(prod),
     hsCode: hsCode||'',
     source: source||'UN Comtrade',
     updatedAt: new Date().toISOString(),
