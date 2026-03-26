@@ -1491,15 +1491,42 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Kompaniya topildi</div><div class="kpi-val" id="pr-k4">0</div></div>
     </div>
 
-    <!-- Xomashyo filtrlari -->
+    <!-- Mahsulot bo'limlari -->
     <div class="tcard" style="margin-bottom:1rem">
-      <div class="tc-head"><div class="tc-title">⛏️ Xomashyolar</div>
+      <div class="tc-head"><div class="tc-title">🗂 Mahsulot bo'limlari</div>
         <div style="display:flex;gap:.5rem">
           <button class="btn btn-blue btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo'shish</button>
           <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('rawMaterials')" style="color:#EF233C">🗑 Tozalash</button>
         </div>
       </div>
-      <div id="rawMaterialChips" style="padding:.8rem;display:flex;flex-wrap:wrap;gap:.5rem"></div>
+      <div style="padding:.8rem">
+        <div style="display:flex;flex-direction:column;gap:.7rem">
+          <div style="border:1px solid var(--border);border-radius:16px;background:var(--bg)">
+            <button type="button" onclick="toggleProductSection('build')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.95rem 1rem;border:none;background:transparent;color:var(--text);font-weight:800;font-size:.9rem;cursor:pointer">
+              <span>🏗 Qurilish-materiallari</span>
+              <span id="productSectionBuildMeta" style="font-size:.72rem;color:var(--text3);font-weight:700">0 xomashyo • 0 mahsulot</span>
+            </button>
+            <div id="productSectionBuildBody" style="padding:0 0 .8rem 0">
+              <div style="padding:0 1rem .5rem 1rem;font-size:.7rem;color:var(--text3)">Qurilish materiallari yo'nalishidagi xomashyo va mahsulotlar</div>
+              <div id="rawMaterialChips" style="padding:0 1rem .2rem 1rem;display:flex;flex-wrap:wrap;gap:.5rem"></div>
+            </div>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:16px;background:var(--bg)">
+            <button type="button" onclick="toggleProductSection('azot')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.95rem 1rem;border:none;background:transparent;color:var(--text);font-weight:800;font-size:.9rem;cursor:pointer">
+              <span>🧪 Navoiyazot mahsulotlari</span>
+              <span id="productSectionAzotMeta" style="font-size:.72rem;color:var(--text3);font-weight:700">keyin kiritiladi</span>
+            </button>
+            <div id="productSectionAzotBody" style="display:none;padding:0 1rem .9rem 1rem;font-size:.78rem;color:var(--text3)">Bu bo'limga Navoiyazot mahsulotlarini keyin qo'shasiz.</div>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:16px;background:var(--bg)">
+            <button type="button" onclick="toggleProductSection('other')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.95rem 1rem;border:none;background:transparent;color:var(--text);font-weight:800;font-size:.9rem;cursor:pointer">
+              <span>📁 Boshqalar</span>
+              <span id="productSectionOtherMeta" style="font-size:.72rem;color:var(--text3);font-weight:700">keyin to'ldiriladi</span>
+            </button>
+            <div id="productSectionOtherBody" style="display:none;padding:0 1rem .9rem 1rem;font-size:.78rem;color:var(--text3)">Bu bo'limga keyin boshqa mahsulot guruhlarini joylashtirasiz.</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Mahsulotlar jadvali -->
@@ -7526,6 +7553,43 @@ var TARGET_COUNTRIES = [
   {code:'MN',name:'Mo\'g\'uliston',flag:'🇲🇳',comtrade:'496'}
 ];
 
+var PRODUCT_SECTION_STATE = {
+  build: true,
+  azot: false,
+  other: false
+};
+
+function syncProductSections(rms, prods){
+  var bodies = {
+    build: document.getElementById('productSectionBuildBody'),
+    azot: document.getElementById('productSectionAzotBody'),
+    other: document.getElementById('productSectionOtherBody')
+  };
+  if(bodies.build) bodies.build.style.display = PRODUCT_SECTION_STATE.build ? 'block' : 'none';
+  if(bodies.azot) bodies.azot.style.display = PRODUCT_SECTION_STATE.azot ? 'block' : 'none';
+  if(bodies.other) bodies.other.style.display = PRODUCT_SECTION_STATE.other ? 'block' : 'none';
+
+  var buildMeta = document.getElementById('productSectionBuildMeta');
+  var azotMeta = document.getElementById('productSectionAzotMeta');
+  var otherMeta = document.getElementById('productSectionOtherMeta');
+
+  if(buildMeta){
+    buildMeta.textContent = (rms||DB.rawMaterials||[]).length + ' ta xomashyo • ' + (prods||DB.products||[]).length + ' ta mahsulot';
+  }
+  if(azotMeta){
+    azotMeta.textContent = 'mahsulotlar keyin kiritiladi';
+  }
+  if(otherMeta){
+    otherMeta.textContent = 'bo\'lim keyin to\'ldiriladi';
+  }
+}
+
+function toggleProductSection(section){
+  if(!PRODUCT_SECTION_STATE.hasOwnProperty(section)) return;
+  PRODUCT_SECTION_STATE[section] = !PRODUCT_SECTION_STATE[section];
+  syncProductSections();
+}
+
 function renderProducts(){
   var rms = DB.rawMaterials||[];
   var prods = DB.products||[];
@@ -7533,6 +7597,7 @@ function renderProducts(){
   document.getElementById('pr-k2').textContent = prods.length;
   document.getElementById('pr-k4').textContent = (DB.investorCompanies||[]).length;
   document.getElementById('badge-products').textContent = prods.length;
+  syncProductSections(rms, prods);
 
   // Resize drop zone: compact when has data, large when empty
   var dropZone = document.getElementById('prodDropZone');
