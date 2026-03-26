@@ -12030,6 +12030,99 @@ function exportInvestAiWorkbook(){
   toast('📥 Excel workbook namuna formatida yuklab olindi!');
 }
 
+function investAiSummarizeCountries(countries){
+  var expanded = investAiExpandImportSnapshotCountries({ countries: countries || [] });
+  var summarized = expanded.map(function(country){
+    var latest = Number((((country.year_imports || {})['2024']) || ((country.year_imports || {})['2023']) || country.import_usd || 0)) || 0;
+    return {
+      code: country.code,
+      name: country.name,
+      status: country.status || 'ok',
+      latestImportUsd: latest,
+      import2021: Number((country.year_imports || {})['2021'] || 0) || 0,
+      import2022: Number((country.year_imports || {})['2022'] || 0) || 0,
+      import2023: Number((country.year_imports || {})['2023'] || 0) || 0,
+      import2024: Number((country.year_imports || {})['2024'] || 0) || 0,
+      volumeTons: Number(country.volume_tons || 0) || 0
+    };
+  });
+  summarized.sort(function(a,b){ return (b.latestImportUsd || 0) - (a.latestImportUsd || 0); });
+  return summarized;
+}
+
+async function collectInvestAiTradeContext(material){
+  var found = investAiFindProducts(material);
+  var products = (found.products || []).slice(0, 10);
+  var uniqueHsFetches = {};
+  var liveByHs = {};
+  var fetchedCount = 0;
+  var summaries = [];
+
+  for(var i=0;i<products.length;i++){
+    var product = products[i];
+    var hsCode = investAiParseHsCode(product.hs_code).slice(0,4);
+    if(!hsCode || hsCode.length < 2) continue;
+    var snapshot = getImportSnapshot(product, hsCode);
+    if(!snapshot && liveByHs[hsCode]){
+      snapshot = {
+        id: buildImportSnapshotId(product, hsCode),
+        productId: String(product.id || ''),
+        productName: formatBilingualProductName(product),
+        hsCode: hsCode,
+        source: 'UN Comtrade (real)',
+        countries: liveByHs[hsCode]
+      };
+    }
+    if(!snapshot && !uniqueHsFetches[hsCode] && fetchedCount < 3){
+      uniqueHsFetches[hsCode] = true;
+      fetchedCount += 1;
+      try{
+        var liveCountries = await fetchComtrade(hsCode, '2023');
+        if(liveCountries && liveCountries.length){
+          liveByHs[hsCode] = liveCountries;
+          saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real)');
+          snapshot = getImportSnapshot(product, hsCode) || {
+            id: buildImportSnapshotId(product, hsCode),
+            productId: String(product.id || ''),
+            productName: formatBilingualProductName(product),
+            hsCode: hsCode,
+            source: 'UN Comtrade (real)',
+            countries: liveCountries
+          };
+        }
+      }catch(e){
+        console.log('AI analyzer Comtrade context xato:', e.message);
+      }
+    }
+    if(!snapshot) continue;
+    var summarizedCountries = investAiSummarizeCountries(snapshot.countries || []);
+    var totalLatest = summarizedCountries.reduce(function(sum, item){ return sum + (Number(item.latestImportUsd || 0) || 0); }, 0);
+    summaries.push({
+      productId: String(product.id || ''),
+      productName: formatBilingualProductName(product),
+      hsCode: hsCode,
+      source: snapshot.source || 'UN Comtrade',
+      totalLatestUsd: totalLatest,
+      topCountries: summarizedCountries.slice(0,5)
+    });
+  }
+
+  return {
+    material: material,
+    rawMaterial: found.raw ? (found.raw.name_en || found.raw.name_uz || material) : material,
+    matchedProducts: products.map(function(product){
+      return {
+        id: String(product.id || ''),
+        name: formatBilingualProductName(product),
+        hsCode: investAiParseHsCode(product.hs_code).slice(0,6) || String(product.hs_code || '')
+      };
+    }),
+    officialDataAvailable: summaries.length > 0,
+    officialSource: summaries.length > 0 ? 'UN Comtrade' : '',
+    analyzedProducts: summaries
+  };
+}
+
 function setInvestAiBusy(flag){
   _investAiBusy = !!flag;
   var btn = document.getElementById('materialAiAnalyzeBtn');
@@ -12120,10 +12213,21 @@ async function analyzeInvestmentMaterial(){
   toast(investAiT('toastStream'));
 
   try {
+    toast('📊 UN Comtrade konteksti tekshirilmoqda...');
+    var tradeContext = await collectInvestAiTradeContext(material);
+    if(tradeContext && tradeContext.officialDataAvailable){
+      toast('✅ UN Comtrade konteksti topildi: ' + tradeContext.analyzedProducts.length + ' ta mahsulot');
+    } else {
+      toast('⚠️ Bu material uchun saqlangan yoki yangi UN Comtrade konteksti topilmadi', 'error');
+    }
     var resp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ materialName: material, geminiKey: (typeof getGeminiKey === 'function' ? getGeminiKey() : '') })
+      body:JSON.stringify({
+        materialName: material,
+        geminiKey: (typeof getGeminiKey === 'function' ? getGeminiKey() : ''),
+        tradeContext: tradeContext
+      })
     });
 
     if(!resp.ok){
