@@ -1506,67 +1506,22 @@ input[type="time"]{-webkit-appearance:none;}
               <span>🏗 Qurilish-materiallari</span>
               <span id="productSectionBuildMeta" style="font-size:.72rem;color:var(--text3);font-weight:700">0 xomashyo • 0 mahsulot</span>
             </button>
-            <div id="productSectionBuildBody" style="padding:0 0 .8rem 0">
-              <div style="padding:0 1rem .5rem 1rem;font-size:.7rem;color:var(--text3)">Qurilish materiallari yo'nalishidagi xomashyo va mahsulotlar</div>
-              <div id="rawMaterialChips" style="padding:0 1rem .2rem 1rem;display:flex;flex-wrap:wrap;gap:.5rem"></div>
-            </div>
+            <div id="productSectionBuildBody" style="display:none;padding:0 1rem 1rem 1rem"></div>
           </div>
           <div style="border:1px solid var(--border);border-radius:16px;background:var(--bg)">
             <button type="button" onclick="toggleProductSection('azot')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.95rem 1rem;border:none;background:transparent;color:var(--text);font-weight:800;font-size:.9rem;cursor:pointer">
               <span>🧪 Navoiyazot mahsulotlari</span>
               <span id="productSectionAzotMeta" style="font-size:.72rem;color:var(--text3);font-weight:700">keyin kiritiladi</span>
             </button>
-            <div id="productSectionAzotBody" style="display:none;padding:0 1rem .9rem 1rem;font-size:.78rem;color:var(--text3)">Bu bo'limga Navoiyazot mahsulotlarini keyin qo'shasiz.</div>
+            <div id="productSectionAzotBody" style="display:none;padding:0 1rem 1rem 1rem"></div>
           </div>
           <div style="border:1px solid var(--border);border-radius:16px;background:var(--bg)">
             <button type="button" onclick="toggleProductSection('other')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.95rem 1rem;border:none;background:transparent;color:var(--text);font-weight:800;font-size:.9rem;cursor:pointer">
               <span>📁 Boshqalar</span>
               <span id="productSectionOtherMeta" style="font-size:.72rem;color:var(--text3);font-weight:700">keyin to'ldiriladi</span>
             </button>
-            <div id="productSectionOtherBody" style="display:none;padding:0 1rem .9rem 1rem;font-size:.78rem;color:var(--text3)">Bu bo'limga keyin boshqa mahsulot guruhlarini joylashtirasiz.</div>
+            <div id="productSectionOtherBody" style="display:none;padding:0 1rem 1rem 1rem"></div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mahsulotlar jadvali -->
-    <div id="productSectionWindowOverlay" onclick="if(event.target===this) closeProductSectionWindow()" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.46);backdrop-filter:blur(6px);z-index:1400;padding:2rem;overflow:auto">
-      <div class="tcard" style="max-width:1280px;margin:0 auto;box-shadow:0 24px 70px rgba(2,6,23,.28);border:1px solid rgba(148,163,184,.35)">
-        <div class="tc-head">
-          <div>
-            <div class="tc-title" id="productSectionWindowTitle">📦 Bo'lim mahsulotlari</div>
-            <div id="productSectionWindowSub" style="font-size:.72rem;color:var(--text3);margin-top:.2rem">Tanlangan bo'limga tegishli xomashyo va mahsulotlar</div>
-          </div>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-            <button class="btn btn-blue btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo'shish</button>
-            <button class="btn btn-blue btn-sm" onclick="showAddProductModal()">➕ Mahsulot qo'shish</button>
-            <button class="btn btn-sm" onclick="loadSampleProducts()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">🤖 AI bilan to'ldirish</button>
-            <button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;border:none">📎 PPTX Template</button>
-            <button class="btn btn-ghost btn-sm" onclick="closeProductSectionWindow()">✕ Yopish</button>
-          </div>
-        </div>
-
-        <div style="padding:0 1rem 1rem 1rem">
-          <div id="productSectionRawMaterialChips" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem"></div>
-
-          <div id="prodDropZone" style="margin:0 0 1rem 0;padding:1.5rem;border:2px dashed var(--border);border-radius:14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg)"
-            ondragover="event.preventDefault();this.style.borderColor='#059669';this.style.background='rgba(5,150,105,.05)'"
-            ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--bg)'"
-            ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='var(--bg)';importProductsExcel({files:event.dataTransfer.files})"
-            onclick="var fi=this.querySelector('input[type=file]');if(fi)fi.click()">
-            <div style="font-size:2rem;margin-bottom:.4rem">📊</div>
-            <div style="font-size:.82rem;font-weight:700;color:var(--text)">Excel faylni shu yerga tashlang</div>
-            <div id="productSectionImportHint" style="font-size:.65rem;color:var(--text3);margin-top:4px">Import tanlangan bo'limga yoziladi</div>
-            <input type="file" id="prodFileInput" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)">
-          </div>
-
-          <div class="tscroll">
-            <table>
-              <thead><tr><th>#</th><th>Mahsulot</th><th>Xomashyo</th><th>HS Kod</th><th>Soha</th><th>Import</th><th>Amal</th></tr></thead>
-              <tbody id="products-tbody"></tbody>
-            </table>
-          </div>
-          <div style="padding:.8rem 0 0 0;font-size:.72rem;color:var(--text3)">Jami mahsulotlar: <span id="pr-prod-count">0</span></div>
         </div>
       </div>
     </div>
@@ -7568,7 +7523,7 @@ var TARGET_COUNTRIES = [
 ];
 
 var PRODUCT_SECTION_STATE = {
-  build: true,
+  build: false,
   azot: false,
   other: false
 };
@@ -7610,10 +7565,6 @@ function getSectionProducts(section){
 }
 
 function syncProductSections(rms, prods){
-  ['productSectionBuildBody','productSectionAzotBody','productSectionOtherBody'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(el) el.style.display = 'none';
-  });
   var buildMeta = document.getElementById('productSectionBuildMeta');
   var azotMeta = document.getElementById('productSectionAzotMeta');
   var otherMeta = document.getElementById('productSectionOtherMeta');
@@ -7641,10 +7592,25 @@ function syncProductSections(rms, prods){
       ? sectionRaws.other.length + ' ta xomashyo • ' + sectionProds.other.length + ' ta mahsulot'
       : 'bo\'lim keyin to\'ldiriladi';
   }
+
+  ['build','azot','other'].forEach(function(section){
+    var body = document.getElementById('productSection' + section.charAt(0).toUpperCase() + section.slice(1) + 'Body');
+    if(!body) return;
+    body.style.display = PRODUCT_SECTION_STATE[section] ? 'block' : 'none';
+    if(PRODUCT_SECTION_STATE[section]) renderInlineProductSection(section);
+  });
 }
 
 function toggleProductSection(section){
-  openProductSectionWindow(section);
+  section = normalizeProductSection(section);
+  var nextState = !PRODUCT_SECTION_STATE[section];
+  PRODUCT_SECTION_STATE.build = false;
+  PRODUCT_SECTION_STATE.azot = false;
+  PRODUCT_SECTION_STATE.other = false;
+  PRODUCT_SECTION_STATE[section] = nextState;
+  PRODUCT_ACTIVE_SECTION = section;
+  PRODUCT_SECTION_RAW_FILTER = '';
+  syncProductSections();
 }
 
 function renderProducts(){
@@ -7656,82 +7622,47 @@ function renderProducts(){
   document.getElementById('badge-products').textContent = prods.length;
   syncProductSections(rms, prods);
 
-  // Resize drop zone: compact when has data, large when empty
-  var dropZone = document.getElementById('prodDropZone');
-  if(dropZone){
-    if(prods.length > 0){
-      dropZone.style.padding = '.6rem';
-      dropZone.style.margin = '8px 12px';
-      dropZone.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap"><span style="font-size:.7rem;color:var(--text3)">📊 Excel faylni shu yerga tashlang yoki</span><label style="font-size:.7rem;color:#059669;font-weight:700;cursor:pointer;text-decoration:underline">tanlang<input type="file" id="prodFileInput" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)"></label></div>';
-    } else {
-      dropZone.style.padding = '1.5rem';
-      dropZone.style.margin = '12px';
-      dropZone.innerHTML = '<div style="font-size:2rem;margin-bottom:.4rem">📊</div><div style="font-size:.82rem;font-weight:700;color:var(--text)">Excel faylni shu yerga tashlang</div><div style="font-size:.65rem;color:var(--text3);margin-top:4px">yoki bosib tanlang — .xlsx, .xls formatlar qo\'llab-quvvatlanadi</div><input type="file" id="prodFileInput" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)">';
-    }
-  }
-
-  renderProductSectionWindow();
-
-  // Legacy section body chips
-  var chipsEl = document.getElementById('rawMaterialChips');
-  if(chipsEl){
-    var sectionRaws = getSectionRawMaterials('build');
-    var sectionProds = getSectionProducts('build');
-    chipsEl.innerHTML = sectionRaws.length ? '<div style="padding:8px 14px;background:var(--accent);color:#fff;border-radius:10px;font-size:.75rem;font-weight:700">📦 Qurilish-materiallari ('+sectionProds.length+')</div>' + sectionRaws.map(function(r){
-      var cnt = sectionProds.filter(function(p){return p.raw_id==r.id}).length;
-      return '<div style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:.75rem;font-weight:600;transition:all .15s"><span onclick="filterProductsByRaw(\''+r.id+'\')" style="cursor:pointer" onmouseover="this.parentElement.style.borderColor=\'var(--accent)\'" onmouseout="this.parentElement.style.borderColor=\'var(--border)\'">⛏️ '+r.name_uz+' <span style="font-size:.58rem;color:var(--text3)">('+cnt+')</span></span><span onclick="event.stopPropagation();deleteRawMaterial(\''+r.id+'\')" style="cursor:pointer;color:var(--text3);font-size:.65rem;margin-left:4px;padding:2px" title="O\'chirish">&times;</span></div>';
-    }).join('') : '<div style="color:var(--text3);font-size:.8rem;padding:1rem">Hali xomashyo qo\'shilmagan. "📥 Excel import" yoki "➕ Xomashyo qo\'shish" bosing.</div>';
-  }
-
   // Populate selects
   populateProductSelects();
 }
-
-function renderProductSectionWindow(){
-  var section = normalizeProductSection(PRODUCT_ACTIVE_SECTION);
+function renderInlineProductSection(section){
+  section = normalizeProductSection(section);
+  var bodyId = 'productSection' + section.charAt(0).toUpperCase() + section.slice(1) + 'Body';
+  var body = document.getElementById(bodyId);
+  if(!body) return;
   var sectionRaws = getSectionRawMaterials(section);
   var sectionProds = getSectionProducts(section);
-  var filteredProds = PRODUCT_SECTION_RAW_FILTER ? sectionProds.filter(function(product){ return String(product.raw_id) === String(PRODUCT_SECTION_RAW_FILTER); }) : sectionProds.slice();
+  var filteredProds = PRODUCT_ACTIVE_SECTION === section && PRODUCT_SECTION_RAW_FILTER
+    ? sectionProds.filter(function(product){ return String(product.raw_id) === String(PRODUCT_SECTION_RAW_FILTER); })
+    : sectionProds.slice();
 
-  var titleEl = document.getElementById('productSectionWindowTitle');
-  var subEl = document.getElementById('productSectionWindowSub');
-  var hintEl = document.getElementById('productSectionImportHint');
-  var countEl = document.getElementById('pr-prod-count');
-  var chipsEl = document.getElementById('productSectionRawMaterialChips');
-  var tb = document.getElementById('products-tbody');
+  var chipsHtml = sectionRaws.length ? '<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem"><div onclick="filterProductsByRaw(\'\')" style="padding:8px 14px;background:var(--accent);color:#fff;border-radius:10px;cursor:pointer;font-size:.75rem;font-weight:700">📦 Hammasi ('+sectionProds.length+')</div>' + sectionRaws.map(function(r){
+    var cnt = sectionProds.filter(function(p){ return p.raw_id == r.id; }).length;
+    var isActive = PRODUCT_ACTIVE_SECTION === section && String(PRODUCT_SECTION_RAW_FILTER || '') === String(r.id);
+    return '<div style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:'+(isActive ? 'rgba(67,97,238,.12)' : 'var(--bg2)')+';border:1px solid '+(isActive ? 'var(--accent)' : 'var(--border)')+';border-radius:10px;font-size:.75rem;font-weight:600;transition:all .15s"><span onclick="filterProductsByRaw(\''+r.id+'\')" style="cursor:pointer">⛏️ '+(r.name_uz||r.name_en||'—')+' <span style="font-size:.58rem;color:var(--text3)">('+cnt+')</span></span><span onclick="event.stopPropagation();deleteRawMaterial(\''+r.id+'\')" style="cursor:pointer;color:var(--text3);font-size:.65rem;margin-left:4px;padding:2px" title="O\'chirish">&times;</span></div>';
+  }).join('') + '</div>' : '<div style="font-size:.78rem;color:var(--text3);margin-bottom:1rem">Bu bo\'limda hali xomashyo yo\'q.</div>';
 
-  if(titleEl) titleEl.textContent = getProductSectionIcon(section) + ' ' + getProductSectionLabel(section);
-  if(subEl) subEl.textContent = sectionRaws.length + ' ta xomashyo • ' + sectionProds.length + ' ta mahsulot';
-  if(hintEl) hintEl.textContent = 'Excel import tanlangan "' + getProductSectionLabel(section) + '" bo\'limiga yoziladi';
-  if(countEl) countEl.textContent = filteredProds.length;
+  var rowsHtml = filteredProds.length ? filteredProds.map(function(p,i){
+    var rm = sectionRaws.find(function(r){ return r.id == p.raw_id; });
+    return '<tr><td>'+(i+1)+'</td><td><b>'+formatBilingualProductName(p)+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:(p.raw_name||'—'))+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="background:#4361EE;color:#fff;border:none;margin-right:3px" title="Prezentatsiya">📊</button><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+  }).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text3)">Bu bo\'limda mahsulot qo\'shilmagan</td></tr>';
 
-  if(chipsEl){
-    chipsEl.innerHTML = sectionRaws.length ? '<div onclick="filterProductsByRaw(\'\')" style="padding:8px 14px;background:var(--accent);color:#fff;border-radius:10px;cursor:pointer;font-size:.75rem;font-weight:700">📦 Hammasi ('+sectionProds.length+')</div>' + sectionRaws.map(function(r){
-      var cnt = sectionProds.filter(function(p){ return p.raw_id == r.id; }).length;
-      var isActive = String(PRODUCT_SECTION_RAW_FILTER || '') === String(r.id);
-      return '<div style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:'+(isActive ? 'rgba(67,97,238,.12)' : 'var(--bg2)')+';border:1px solid '+(isActive ? 'var(--accent)' : 'var(--border)')+';border-radius:10px;font-size:.75rem;font-weight:600;transition:all .15s"><span onclick="filterProductsByRaw(\''+r.id+'\')" style="cursor:pointer">⛏️ '+(r.name_uz||r.name_en||'—')+' <span style="font-size:.58rem;color:var(--text3)">('+cnt+')</span></span><span onclick="event.stopPropagation();deleteRawMaterial(\''+r.id+'\')" style="cursor:pointer;color:var(--text3);font-size:.65rem;margin-left:4px;padding:2px" title="O\'chirish">&times;</span></div>';
-    }).join('') : '<div style="color:var(--text3);font-size:.8rem;padding:.6rem 0">Bu bo\'limda hali xomashyo yo\'q.</div>';
-  }
-
-  if(tb){
-    tb.innerHTML = filteredProds.length ? filteredProds.map(function(p,i){
-      var rm = sectionRaws.find(function(r){ return r.id == p.raw_id; });
-      return '<tr><td>'+(i+1)+'</td><td><b>'+formatBilingualProductName(p)+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:(p.raw_name||'—'))+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="background:#4361EE;color:#fff;border:none;margin-right:3px" title="Prezentatsiya">📊</button><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
-    }).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text3)">Bu bo\'limda mahsulot qo\'shilmagan</td></tr>';
-  }
-}
-
-function openProductSectionWindow(section){
-  PRODUCT_ACTIVE_SECTION = normalizeProductSection(section);
-  PRODUCT_SECTION_RAW_FILTER = '';
-  renderProductSectionWindow();
-  var overlay = document.getElementById('productSectionWindowOverlay');
-  if(overlay) overlay.style.display = 'block';
-}
-
-function closeProductSectionWindow(){
-  var overlay = document.getElementById('productSectionWindowOverlay');
-  if(overlay) overlay.style.display = 'none';
+  body.innerHTML =
+    '<div style="padding:0 0 .5rem 0;font-size:.72rem;color:var(--text3)">'+getProductSectionLabel(section)+' bo\'limiga tegishli xomashyo va mahsulotlar</div>' +
+    '<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">' +
+      '<button class="btn btn-blue btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo\'shish</button>' +
+      '<button class="btn btn-blue btn-sm" onclick="showAddProductModal()">➕ Mahsulot qo\'shish</button>' +
+      '<button class="btn btn-sm" onclick="loadSampleProducts()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">🤖 AI bilan to\'ldirish</button>' +
+      '<button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;border:none">📎 PPTX Template</button>' +
+    '</div>' +
+    chipsHtml +
+    '<div id="prodDropZone-'+section+'" style="margin:0 0 1rem 0;padding:'+(sectionProds.length > 0 ? '.6rem' : '1.5rem')+';border:2px dashed var(--border);border-radius:14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg)" ondragover="event.preventDefault();this.style.borderColor=\'#059669\';this.style.background=\'rgba(5,150,105,.05)\'" ondragleave="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--bg)\'" ondrop="event.preventDefault();this.style.borderColor=\'var(--border)\';this.style.background=\'var(--bg)\';importProductsExcel({files:event.dataTransfer.files})" onclick="var fi=this.querySelector(\'input[type=file]\');if(fi)fi.click()">' +
+      (sectionProds.length > 0
+        ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap"><span style="font-size:.7rem;color:var(--text3)">📊 Excel faylni shu yerga tashlang yoki</span><label style="font-size:.7rem;color:#059669;font-weight:700;cursor:pointer;text-decoration:underline">tanlang<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)"></label></div>'
+        : '<div style="font-size:2rem;margin-bottom:.4rem">📊</div><div style="font-size:.82rem;font-weight:700;color:var(--text)">Excel faylni shu yerga tashlang</div><div style="font-size:.65rem;color:var(--text3);margin-top:4px">Import "'+getProductSectionLabel(section)+'" bo\'limiga yoziladi</div><input type="file" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)">') +
+    '</div>' +
+    '<div class="tscroll"><table><thead><tr><th>#</th><th>Mahsulot</th><th>Xomashyo</th><th>HS Kod</th><th>Soha</th><th>Import</th><th>Amal</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>' +
+    '<div style="padding:.8rem 0 0 0;font-size:.72rem;color:var(--text3)">Jami mahsulotlar: '+filteredProds.length+'</div>';
 }
 
 function formatBilingualProductName(p){
@@ -7768,7 +7699,7 @@ function populateProductSelects(){
 
 function filterProductsByRaw(rawId){
   PRODUCT_SECTION_RAW_FILTER = rawId || '';
-  renderProductSectionWindow();
+  renderInlineProductSection(PRODUCT_ACTIVE_SECTION);
 }
 
 var PRODUCT_NAME_UZ_EXACT = [
