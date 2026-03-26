@@ -81,6 +81,23 @@ async function fbLoadSettings(){
   } catch(e){}
 }
 
+function getLocalCollectionBackup(colName){
+  try {
+    var raw = localStorage.getItem('_backup_'+colName);
+    if(!raw) return [];
+    var parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch(e){
+    return [];
+  }
+}
+
+function setLocalCollectionBackup(colName, rows){
+  try {
+    localStorage.setItem('_backup_'+colName, JSON.stringify(Array.isArray(rows) ? rows : []));
+  } catch(e){}
+}
+
 // Load all data from Firestore and replace DB
 async function loadFromFirestore(){
   try {
@@ -104,7 +121,17 @@ async function loadFromFirestore(){
         if(!Number.isNaN(av) && !Number.isNaN(bv)) return av-bv;
         return String(a.id||'').localeCompare(String(b.id||''));
       });
+      if(col==='entrepreneurs' && rows.length===0){
+        var localBackup = getLocalCollectionBackup('entrepreneurs');
+        if(localBackup.length){
+          rows.push.apply(rows, localBackup);
+          console.log('♻️ Mahalliy tadbirkorlar local backupdan tiklandi:', localBackup.length);
+        }
+      }
       DB[col] = rows;
+      if(col==='entrepreneurs' && rows.length){
+        setLocalCollectionBackup('entrepreneurs', rows);
+      }
       totalDocs += rows.length;
     }
 
@@ -150,6 +177,10 @@ async function loadFromFirestore(){
 window.fbSave = async function(colName, record){
   try {
     await setDoc(doc(db, colName, String(record.id)), record);
+    if(colName==='entrepreneurs'){
+      var list = Array.isArray(DB.entrepreneurs) ? DB.entrepreneurs : [];
+      setLocalCollectionBackup('entrepreneurs', list);
+    }
   } catch(e){ console.error('fbSave error:', e); }
 };
 
@@ -157,6 +188,10 @@ window.fbSave = async function(colName, record){
 window.fbDelete = async function(colName, id){
   try {
     await deleteDoc(doc(db, colName, String(id)));
+    if(colName==='entrepreneurs'){
+      var list = Array.isArray(DB.entrepreneurs) ? DB.entrepreneurs : [];
+      setLocalCollectionBackup('entrepreneurs', list.filter(function(item){ return String(item.id)!==String(id); }));
+    }
   } catch(e){ console.error('fbDelete error:', e); }
 };
 
@@ -3181,6 +3216,13 @@ function getDefaultDB(){
       {id:9,kompaniya:"Navoiy Pharma",rahbar:"Shahzod Bekmurodov",lavozim:"CEO",soha:"Farmatsevtika",summa:7000000,holat:"Yangi",tel:"+998 79 901 23 45",email:"shahzod@navoipharma.uz",manzil:"Navoiy shahri",izoh:"Dori-darmonlar"},
       {id:10,kompaniya:"Green Valley Agro",rahbar:"Malika Turg'unova",lavozim:"Asoschi",soha:"Agro",summa:4500000,holat:"Tayyor",tel:"+998 79 012 34 56",email:"malika@greenvalleyagro.uz",manzil:"Karmana tumani",izoh:"Organik meva-sabzavot"},
     ],
+    entrepreneurs: [
+      {id:'ent_seed_1',name:'CHEN JIANVEI',phone:'+998931174527',sector:'Granit qazib olish va qayta ishlash',district:"G'ozg'on shahri",projectValue:'11.0',telegram:'',matchedForum:'Mining World Central Asia (2026-04-10)',tgSent:false,addedDate:'2026-03-18'},
+      {id:'ent_seed_2',name:'ZHENG XIAODONG',phone:'+998997500508',sector:'Granit toshlarni qazib olish va qayta ishlash ishlab chiqarishni tashkil etish',district:'Nurota tumani',projectValue:'50.0',telegram:'',matchedForum:'Mining World Central Asia (2026-04-10)',tgSent:false,addedDate:'2026-03-18'},
+      {id:'ent_seed_3',name:'Sun Szya',phone:'+998973204055',sector:'Paxta yetishtirish va qayta ishlashni tashkil etish',district:'Navbahor tumani',projectValue:'20.0',telegram:'',matchedForum:'Mining World Central Asia (2026-04-10)',tgSent:false,addedDate:'2026-03-18'},
+      {id:'ent_seed_4',name:'Tyanjin Huaxushengtai Technology Co., Ltd.',phone:'+998993848085',sector:'Kaolin qazib olish va qayta ishlash',district:'Uchquduq tumani',projectValue:'15.0',telegram:'',matchedForum:'Mining World Central Asia (2026-04-10)',tgSent:false,addedDate:'2026-03-18'},
+      {id:'ent_seed_5',name:'Sinoma Energy Conservation Co., Ltd.',phone:'+998997500508',sector:'Kvartsni qazib olish va qayta ishlashni tashkil etish',district:'Uchquduq tumani',projectValue:'20.0',telegram:'',matchedForum:'Mining World Central Asia (2026-04-10)',tgSent:false,addedDate:'2026-03-18'}
+    ],
   };
 }
 
@@ -5858,6 +5900,7 @@ function clearAllConfirm(table){
   confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
   newBtn.onclick=()=>{
     DB[table]=[];
+    if(table==='entrepreneurs') setLocalCollectionBackup('entrepreneurs', []);
     if(typeof fbDeleteCollection==='function') fbDeleteCollection(table);
     var renderMap = {
       investors:renderInvestors, local:renderLocal, zoom:renderZoom, forums:renderForums,
@@ -9459,6 +9502,18 @@ var SECTOR_KEYWORDS = {
 
 function renderEntrepreneurs(){
   var list = DB.entrepreneurs||[];
+  if(!list.length){
+    var fallbackEntrepreneurs = getLocalCollectionBackup('entrepreneurs');
+    if(!fallbackEntrepreneurs.length){
+      fallbackEntrepreneurs = (getDefaultDB().entrepreneurs||[]).map(function(item){ return Object.assign({}, item); });
+    }
+    if(fallbackEntrepreneurs.length){
+      DB.entrepreneurs = fallbackEntrepreneurs;
+      list = DB.entrepreneurs;
+      setLocalCollectionBackup('entrepreneurs', list);
+      if(typeof fbSaveCollection==='function') fbSaveCollection('entrepreneurs', list);
+    }
+  }
   var tgCooldown = getTgCooldownInfo();
   var el = document.getElementById('entr-count');
   if(el) el.textContent = list.length;
@@ -9694,6 +9749,7 @@ function importEntrepreneurs(input){
         added++;
         console.log('  ✅ '+nm+' | '+ph+' | '+sec);
       }
+      setLocalCollectionBackup('entrepreneurs', DB.entrepreneurs||[]);
       renderEntrepreneurs();
       toast('✅ '+added+' ta tadbirkor import qilindi!');
       if(added>0) setTimeout(function(){autoMatchAndNotify(added);},500);
@@ -9802,6 +9858,7 @@ async function autoMatchAndNotify(importedCount){
 
 function deleteEntrepreneur(id){
   DB.entrepreneurs=(DB.entrepreneurs||[]).filter(function(e){return e.id!==id;});
+  setLocalCollectionBackup('entrepreneurs', DB.entrepreneurs||[]);
   if(typeof fbDelete==='function') fbDelete('entrepreneurs',id);
   renderEntrepreneurs();
 }
