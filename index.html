@@ -10570,6 +10570,23 @@ function resetImportAnalysisUi(message){
 
 function handleImportProductChange(){
   initImportAnalysisComtradeOnly();
+  var sel = document.getElementById('import-product-select');
+  var prodId = sel ? sel.value : '';
+  if(!prodId){
+    resetImportAnalysisUi('Mahsulot tanlang va "Tahlil qilish" tugmasini bosing');
+    return;
+  }
+  var prod = (DB.products||[]).find(function(p){ return String(p.id)===String(prodId); });
+  if(!prod){
+    resetImportAnalysisUi('Mahsulot tanlandi. Endi "Tahlil qilish" tugmasini bosing');
+    return;
+  }
+  var hsCode = String(prod.hs_code||'').replace(/\./g,'').replace(/\s+/g,'').slice(0,4);
+  var savedSnapshot = getImportSnapshot(prod, hsCode);
+  if(savedSnapshot){
+    restoreImportSnapshot(savedSnapshot, false);
+    return;
+  }
   resetImportAnalysisUi('Mahsulot tanlandi. Endi "Tahlil qilish" tugmasini bosing');
 }
 
@@ -12013,5 +12030,4 @@ function removeTyping(){
 </div><!-- /main-content -->
 </body>
 </html>
-
 
