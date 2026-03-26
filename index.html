@@ -9531,13 +9531,13 @@ function renderEntrepreneurs(){
     var tgMeta = getEntrepreneurTgStatusMeta(e, tgCooldown);
     var stIcon = '<span style="color:'+tgMeta.color+'" title="'+tgEscapeAttr(tgMeta.title)+'">'+tgMeta.icon+'</span>';
     var checked = hasSavedSelection ? _entrSelectedIds.indexOf(String(e.id)) !== -1 : !!e.matchedForum;
-    var nameCell = '<span id="nm-display-'+e.id+'" style="cursor:pointer" onclick="editEntName(\''+e.id+'\')" title="Bosib o\\'zgartiring"><b>'+escHtml(e.name||'—')+'</b> ✏️</span>'+
+    var nameCell = '<span id="nm-display-'+e.id+'" style="cursor:pointer" onclick="editEntName(\''+e.id+'\')" title="Bosib tahrirlang"><b>'+escHtml(e.name||'—')+'</b> ✏️</span>'+
       '<div id="nm-edit-'+e.id+'" style="display:none;align-items:center;gap:4px;flex-wrap:wrap">'+
         '<input style="width:220px;padding:2px 6px;font-size:.72rem;border:1px solid #4361EE;border-radius:4px" id="nm-input-'+e.id+'" value="'+tgEscapeAttr(e.name||'')+'" placeholder="Ism / Kompaniya" onkeydown="if(event.key===\'Enter\')saveEntName(\''+e.id+'\')">'+
         '<button onclick="saveEntName(\''+e.id+'\')" style="background:#059669;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:.6rem;cursor:pointer">💾</button>'+
       '</div>';
     var phoneCell = e.phone ?
-      '<span id="ph-display-'+e.id+'" style="cursor:pointer" onclick="editEntPhone(\''+e.id+'\')" title="Bosib o\'zgartiring">'+e.phone+' ✏️</span>' :
+      '<span id="ph-display-'+e.id+'" style="cursor:pointer" onclick="editEntPhone(\''+e.id+'\')" title="Bosib tahrirlang">'+e.phone+' ✏️</span>' :
       '<button class="btn btn-sm" onclick="editEntPhone(\''+e.id+'\')" style="background:#F59E0B;color:#fff;border:none;font-size:.6rem;padding:2px 8px">📞 Qo\'shish</button>';
     var phoneEdit = '<div id="ph-edit-'+e.id+'" style="display:none"><input style="width:120px;padding:2px 4px;font-size:.7rem;border:1px solid #4361EE;border-radius:4px" id="ph-input-'+e.id+'" value="'+(e.phone||'')+'" placeholder="+998..." onkeydown="if(event.key===\'Enter\')saveEntPhone(\''+e.id+'\')"><button onclick="saveEntPhone(\''+e.id+'\')" style="background:#059669;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:.6rem;margin-left:2px;cursor:pointer">💾</button></div>';
     return '<tr'+(e.matchedForum?' style="background:rgba(5,150,105,.04)"':'')+'>'+
@@ -9665,6 +9665,7 @@ async function sendTelegramToSelected(){
   toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📲 Tayyor!', batch), batch.stopped?'error':'success');
   if(batch.message) toast(batch.message, batch.stopped?'error':'info');
 }
+window.sendTelegramToSelected = sendTelegramToSelected;
 
 function importEntrepreneurs(input){
   var file = (input.files||[])[0];
@@ -9923,6 +9924,7 @@ function toggleEntrepreneurs(){
   if(body.style.display==='none'){body.style.display='block';if(icon)icon.textContent='▲';}
   else{body.style.display='none';if(icon)icon.textContent='▼';}
 }
+window.toggleEntrepreneurs = toggleEntrepreneurs;
 
 var _currentModalForum = '';
 
@@ -10022,6 +10024,7 @@ async function sendTelegramToMatched(){
   toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📲 Tayyor!', batch), batch.stopped?'error':'success');
   if(batch.message) toast(batch.message, batch.stopped?'error':'info');
 }
+window.sendTelegramToMatched = sendTelegramToMatched;
 
 async function sendTelegramForForum(forumNom, forumSana){
   var list=(DB.entrepreneurs||[]).filter(function(e){return e.matchedForum&&e.matchedForum.indexOf(forumNom.slice(0,15))!==-1&&!e.tgSent;});
