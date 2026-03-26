@@ -224,6 +224,7 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .sidebar-logo-sub{font-size:.68rem;color:#EAF2FF;margin-top:4px;font-weight:700;text-shadow:none;}
 .sidebar-logo-sub:empty{display:none;}
 .sidebar-divider{height:1px;background:rgba(255,255,255,.08);margin:8px 8px;}
+.sidebar-section-label{padding:4px 18px 8px;font-family:'Sora',sans-serif;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(230,236,255,.42);}
 .sb-tab{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:#FFFFFF;cursor:pointer;transition:all .2s;font-family:'Sora',sans-serif;font-size:.92rem;font-weight:800;position:relative;border:none;background:none;width:100%;text-align:left;white-space:normal;line-height:1.18;min-height:50px;text-shadow:none;letter-spacing:0;-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto;text-rendering:geometricPrecision;}
 .sb-tab:hover{background:rgba(255,255,255,.08);color:#fff;transform:translateX(2px);}
 .sb-tab.active{background:#4361EE;color:#fff;box-shadow:0 8px 20px rgba(67,97,238,.28);}
@@ -981,6 +982,7 @@ input[type="time"]{-webkit-appearance:none;}
   <button class="sb-tab" id="tab-forums" onclick="showPage('forums')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_forums">Forumlar</span><span class="sb-badge" id="badge-forums">0</span></button>
   <button class="sb-tab" id="tab-investor" onclick="showPage('investor')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investorco">Investorlar bazasi</span><span class="sb-badge" id="badge-investorco">0</span></button>
   <div class="sidebar-divider"></div>
+  <div class="sidebar-section-label">Outreach</div>
   <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
   <button class="sb-tab" id="tab-import" onclick="showPage('import')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Import Tahlili</span></button>
   <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Company Finder</span></button>
@@ -3294,7 +3296,7 @@ function initGroupedNav(){
   left.className='tn-menu-left';
   var sectionsGroup=buildNavGroup('sections','🗂',"Bo'lim ma'lumotlari", true);
   [tabs.overview,tabs.investors,tabs.local,tabs.zoom].forEach(function(tab){ if(tab) sectionsGroup.body.appendChild(tab); });
-  var outreachGroup=buildNavGroup('outreach','📡','Outreach tizimi', false);
+  var outreachGroup=buildNavGroup('outreach','📡','Outreach', false);
   [tabs.products,tabs.import,tabs.finder,tabs.ailetter,tabs.pipeline].forEach(function(tab){ if(tab) outreachGroup.body.appendChild(tab); });
   left.appendChild(sectionsGroup.wrap);
   left.appendChild(outreachGroup.wrap);
