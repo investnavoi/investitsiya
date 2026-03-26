@@ -1638,79 +1638,92 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
       </div>
 
-      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
-        <div id="importResults" style="display:none">
-          <div class="kpi-grid" style="margin-bottom:1.2rem">
-            <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label">Jami import</div><div class="kpi-val" id="imp-k1">—</div></div>
-            <div class="kpi-card c2"><div class="kpi-icon">📈</div><div class="kpi-label">Eng katta bozor</div><div class="kpi-val" id="imp-k2">—</div></div>
-            <div class="kpi-card c3"><div class="kpi-icon">🚀</div><div class="kpi-label">Top importyor</div><div class="kpi-val" id="imp-k3">—</div></div>
-            <div class="kpi-card c4"><div class="kpi-icon">💡</div><div class="kpi-label">Ma'lumot manbasi</div><div class="kpi-val" id="imp-k4" style="font-size:.7rem">—</div></div>
+      <div id="finderAnalysisGrid" style="display:grid;grid-template-columns:minmax(0,1.45fr) minmax(340px,.92fr);gap:1rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);align-items:start">
+        <div>
+          <div id="importResults" style="display:none">
+            <div class="tcard" style="margin-bottom:1rem">
+              <div class="tc-head"><div class="tc-title">📊 Import tahlili</div></div>
+              <div class="kpi-grid" style="padding:1rem 1rem .3rem 1rem;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem">
+                <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label">Jami import</div><div class="kpi-val" id="imp-k1">—</div></div>
+                <div class="kpi-card c2"><div class="kpi-icon">📈</div><div class="kpi-label">Eng katta bozor</div><div class="kpi-val" id="imp-k2">—</div></div>
+                <div class="kpi-card c3"><div class="kpi-icon">🚀</div><div class="kpi-label">Top importyor</div><div class="kpi-val" id="imp-k3">—</div></div>
+                <div class="kpi-card c4"><div class="kpi-icon">💡</div><div class="kpi-label">Ma'lumot manbasi</div><div class="kpi-val" id="imp-k4" style="font-size:.7rem">—</div></div>
+              </div>
+              <div id="importBarChart" style="padding:0 1rem 1rem 1rem"></div>
+            </div>
           </div>
-          <div class="tcard" style="margin-bottom:1rem">
-            <div class="tc-head"><div class="tc-title">13 Davlat Import Hajmi</div></div>
-            <div id="importBarChart" style="padding:1rem"></div>
-          </div>
-          <div class="tcard" style="margin-bottom:1rem">
-            <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
-            <div class="tscroll"><table>
-              <thead><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
-              <tbody id="import-tbody"></tbody>
-            </table></div>
-          </div>
-          <div class="tcard" style="margin-bottom:1rem">
-            <div class="tc-head">
-              <div class="tc-title">🏦 13 Davlat Iqtisodiy Ko'rsatkichlari (World Bank)</div>
-              <div style="display:flex;gap:.5rem">
-                <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
-                <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
+          <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem;height:100%"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:1rem">
+          <div class="tcard" style="margin:0">
+            <div class="tc-head"><div class="tc-title">🌍 Maqsad davlatlar</div></div>
+            <div style="padding:1rem">
+              <label class="form-label" style="margin-bottom:.5rem" id="finderCountriesLabel">Importyor kompaniyalar qidiriladi</label>
+              <div id="finderCountries" style="display:flex;flex-wrap:wrap;gap:.4rem">
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Uzbekistan" checked> 🇺🇿 O'zbekiston</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Turkmenistan" checked> 🇹🇲 Turkmaniston</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Tajikistan" checked> 🇹🇯 Tojikiston</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kyrgyzstan" checked> 🇰🇬 Qirg'iziston</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kazakhstan" checked> 🇰🇿 Qozog'iston</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Mongolia" checked> 🇲🇳 Mongoliya</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Russia" checked> 🇷🇺 Rossiya</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Azerbaijan" checked> 🇦🇿 Ozarbayjon</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Georgia" checked> 🇬🇪 Gruziya</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Armenia" checked> 🇦🇲 Armaniston</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Iran" checked> 🇮🇷 Eron</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Afghanistan" checked> 🇦🇫 Afg'oniston</label>
+                <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Pakistan" checked> 🇵🇰 Pokiston</label>
               </div>
             </div>
-            <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
-            <div id="wbData" style="display:none">
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
-              <div class="tscroll"><table>
-                <thead><tr>
-                  <th>#</th><th>Davlat</th><th>YaIM/kishi ($)</th><th>Sanoat (%)</th>
-                  <th>O'rt. ish haqi ($)</th><th>Elektr ($/kWh)</th><th>Aholi (mln)</th><th>Navoiyga nisbat</th>
-                </tr></thead>
-                <tbody id="wb-tbody"></tbody>
-              </table></div>
-              <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
+          </div>
+
+          <div id="finderSourceScopeWrap" class="tcard" style="display:none;margin:0">
+            <div class="tc-head">
+              <div class="tc-title">🌐 Eksportyor manbasi</div>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="clearFinderSourceFilters()">Tozalash</button>
             </div>
-            <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 13 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
+            <div style="padding:1rem">
+              <label class="form-label" style="margin:0 0 .5rem 0" id="finderSourceLabel">Eksportyor manbasi (qit'a yoki davlat bo'yicha)</label>
+              <div id="finderSourceContinentChips" style="display:grid;grid-template-columns:1fr;gap:.45rem;margin-bottom:.55rem"></div>
+              <input class="form-input" id="finderSourceSearch" type="text" placeholder="Davlat qidirish..." oninput="renderFinderSourceFilters()" style="margin-bottom:.55rem">
+              <div id="finderSourceSelected" style="font-size:.65rem;color:var(--text3);margin-bottom:.5rem"></div>
+              <div id="finderSourceCountriesList" style="max-height:220px;overflow:auto;padding:.3rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.55)"></div>
+            </div>
           </div>
         </div>
-        <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
       </div>
 
-      <!-- Target countries -->
-      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
-        <label class="form-label" style="margin-bottom:.4rem" id="finderCountriesLabel">🌍 Maqsad davlatlar (import qilayotgan kompaniyalar qidiriladi)</label>
-        <div id="finderCountries" style="display:flex;flex-wrap:wrap;gap:.4rem">
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Uzbekistan" checked> 🇺🇿 O'zbekiston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Turkmenistan" checked> 🇹🇲 Turkmaniston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Tajikistan" checked> 🇹🇯 Tojikiston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kyrgyzstan" checked> 🇰🇬 Qirg'iziston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kazakhstan" checked> 🇰🇿 Qozog'iston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Mongolia" checked> 🇲🇳 Mongoliya</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Russia" checked> 🇷🇺 Rossiya</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Azerbaijan" checked> 🇦🇿 Ozarbayjon</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Georgia" checked> 🇬🇪 Gruziya</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Armenia" checked> 🇦🇲 Armaniston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Iran" checked> 🇮🇷 Eron</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Afghanistan" checked> 🇦🇫 Afg'oniston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Pakistan" checked> 🇵🇰 Pokiston</label>
+      <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
+        <div class="tcard" style="margin-bottom:1rem">
+          <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
+          <div class="tscroll"><table>
+            <thead><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
+            <tbody id="import-tbody"></tbody>
+          </table></div>
         </div>
-      </div>
-      <div id="finderSourceScopeWrap" style="display:none;margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.45rem">
-          <label class="form-label" style="margin:0" id="finderSourceLabel">🌐 Eksportyor manbasi (qit'a yoki davlat bo'yicha)</label>
-          <button class="btn btn-ghost btn-sm" type="button" onclick="clearFinderSourceFilters()">Tozalash</button>
+        <div class="tcard" style="margin-bottom:1rem">
+          <div class="tc-head">
+            <div class="tc-title">🏦 13 Davlat Iqtisodiy Ko'rsatkichlari (World Bank)</div>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
+              <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
+            </div>
+          </div>
+          <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
+          <div id="wbData" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
+            <div class="tscroll"><table>
+              <thead><tr>
+                <th>#</th><th>Davlat</th><th>YaIM/kishi ($)</th><th>Sanoat (%)</th>
+                <th>O'rt. ish haqi ($)</th><th>Elektr ($/kWh)</th><th>Aholi (mln)</th><th>Navoiyga nisbat</th>
+              </tr></thead>
+              <tbody id="wb-tbody"></tbody>
+            </table></div>
+            <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
+          </div>
+          <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 13 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
         </div>
-        <div id="finderSourceContinentChips" style="display:grid;grid-template-columns:1fr;gap:.45rem;margin-bottom:.55rem"></div>
-        <input class="form-input" id="finderSourceSearch" type="text" placeholder="Davlat qidirish..." oninput="renderFinderSourceFilters()" style="margin-bottom:.55rem">
-        <div id="finderSourceSelected" style="font-size:.65rem;color:var(--text3);margin-bottom:.5rem"></div>
-        <div id="finderSourceCountriesList" style="max-height:220px;overflow:auto;padding:.3rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.55)"></div>
       </div>
     </div>
 
@@ -10701,8 +10714,10 @@ function restoreImportSnapshot(snapshot, quiet){
   if(!prod) return false;
   var resultsEl = document.getElementById('importResults');
   var emptyEl = document.getElementById('importEmpty');
+  var detailEl = document.getElementById('finderImportDetailWrap');
   if(resultsEl) resultsEl.style.display = 'block';
   if(emptyEl) emptyEl.style.display = 'none';
+  if(detailEl) detailEl.style.display = 'block';
   var countries = (snapshot.countries||[]).map(function(c){
     return {
       code:c.c||c.code||'',
@@ -10761,9 +10776,11 @@ function restoreLastImportSnapshot(){
 function resetImportAnalysisUi(message){
   var resultsEl = document.getElementById('importResults');
   var emptyEl = document.getElementById('importEmpty');
+  var detailEl = document.getElementById('finderImportDetailWrap');
   var emptyText = emptyEl ? emptyEl.querySelector('p') : null;
   if(resultsEl) resultsEl.style.display = 'none';
   if(emptyEl) emptyEl.style.display = 'block';
+  if(detailEl) detailEl.style.display = 'none';
   if(emptyText) emptyText.textContent = message || 'Mahsulot tanlang va "Tahlil qilish" tugmasini bosing';
 
   var ids = ['imp-k1','imp-k2','imp-k3','imp-k4'];
@@ -10816,13 +10833,16 @@ async function runImportAnalysis(forceRefresh){
 
   var resultsEl = document.getElementById('importResults');
   var emptyEl = document.getElementById('importEmpty');
+  var detailEl = document.getElementById('finderImportDetailWrap');
   if(resultsEl) resultsEl.style.display = 'block';
   if(emptyEl) emptyEl.style.display = 'none';
+  if(detailEl) detailEl.style.display = 'none';
 
   var hsCode = String(prod.hs_code||'').replace(/\./g,'').replace(/\s+/g,'').slice(0,4);
   if(hsCode.length < 2){
     if(resultsEl) resultsEl.style.display = 'none';
     if(emptyEl) emptyEl.style.display = 'block';
+    if(detailEl) detailEl.style.display = 'none';
     toast('Bu mahsulot uchun HS kod topilmadi','error');
     return;
   }
@@ -10839,11 +10859,13 @@ async function runImportAnalysis(forceRefresh){
   if(!countries || !countries.length){
     if(resultsEl) resultsEl.style.display = 'none';
     if(emptyEl) emptyEl.style.display = 'block';
+    if(detailEl) detailEl.style.display = 'none';
     toast('UN Comtrade dan ma\'lumot topilmadi. Faqat real Comtrade ma\'lumoti ishlatiladi.','error');
     return;
   }
 
   renderImportResults(countries, prod, 'UN Comtrade (real)');
+  if(detailEl) detailEl.style.display = 'block';
   saveImportSnapshot(prod, hsCode, countries, 'UN Comtrade (real)');
   var okCount = countries.filter(function(c){ return c.status==='ok'; }).length;
   var noDataCount = countries.filter(function(c){ return c.status==='no_data'; }).length;
