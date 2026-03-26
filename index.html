@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client"></script>
 <!-- Firebase -->
@@ -378,6 +379,58 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 }
 .reply-queue-dot.visible{ display:block; }
 .notif-empty{padding:2rem;text-align:center;font-size:.75rem;color:var(--text3);}
+
+/* ═══ INVEST ANALYZER PAGE ═══ */
+#tab-materialai .sb-tab-icon::before{content:"\1F9E0";}
+.anx-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:1rem;align-items:start;}
+.anx-main,.anx-side{min-width:0;}
+.anx-chip-wrap{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:.9rem}
+.anx-chip{padding:.52rem .82rem;border:1px solid rgba(67,97,238,.18);border-radius:999px;background:rgba(67,97,238,.08);color:#21406D;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .18s ease}
+.anx-chip:hover{background:rgba(67,97,238,.14);transform:translateY(-1px)}
+.anx-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;padding:1rem}
+.anx-step{padding:.9rem .95rem;border-radius:14px;background:var(--bg2);border:1px solid var(--border);position:relative;overflow:hidden}
+.anx-step-num{font-size:.65rem;font-weight:900;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:.35rem}
+.anx-step-name{font-size:.78rem;font-weight:800;color:var(--text);line-height:1.35}
+.anx-step-status{font-size:.62rem;color:var(--text3);margin-top:.45rem}
+.anx-step.active{border-color:rgba(67,97,238,.42);box-shadow:0 10px 24px rgba(67,97,238,.14)}
+.anx-step.active::after{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:#4361EE}
+.anx-step.done{background:linear-gradient(135deg,rgba(5,150,105,.10),rgba(67,97,238,.08));border-color:rgba(5,150,105,.3)}
+.anx-step.done::after{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:#059669}
+.anx-step.done .anx-step-status{color:#059669;font-weight:800}
+.anx-output-wrap{padding:1rem 1rem 1.3rem}
+.anx-output{font-size:.88rem;line-height:1.78;color:var(--text)}
+.anx-output h1,.anx-output h2{font-family:'Sora',sans-serif;color:#173260;margin:1.2rem 0 .75rem;font-size:1.25rem}
+.anx-output h3{font-family:'Sora',sans-serif;color:#244A87;margin:1rem 0 .65rem;font-size:1.05rem}
+.anx-output p{margin:.72rem 0}
+.anx-output ul,.anx-output ol{padding-left:1.25rem;margin:.7rem 0}
+.anx-output li{margin:.35rem 0}
+.anx-output table{width:100%;border-collapse:collapse;margin:1rem 0;border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+.anx-output th{background:#1E3A6A;color:#fff;padding:.75rem .8rem;font-size:.72rem;text-align:left}
+.anx-output td{padding:.72rem .8rem;font-size:.76rem;border-top:1px solid var(--border);vertical-align:top}
+.anx-output tr:nth-child(even) td{background:rgba(67,97,238,.04)}
+.anx-badge{display:inline-flex;align-items:center;justify-content:center;padding:.2rem .5rem;border-radius:999px;font-size:.64rem;font-weight:900;letter-spacing:.03em}
+.anx-badge-a{background:rgba(5,150,105,.12);color:#047857}
+.anx-badge-b{background:rgba(37,99,235,.12);color:#1D4ED8}
+.anx-badge-c{background:rgba(217,119,6,.12);color:#B45309}
+.anx-badge-d{background:rgba(100,116,139,.14);color:#475569}
+.anx-money{font-weight:800;color:#0F766E}
+.anx-check{color:#059669;font-weight:800}
+.anx-warn{color:#DC2626;font-weight:800}
+.anx-mid{color:#D97706;font-weight:800}
+.anx-history-list{padding:.4rem 0}
+.anx-history-item{padding:.8rem .95rem;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s ease}
+.anx-history-item:hover{background:rgba(67,97,238,.06)}
+.anx-history-material{font-size:.8rem;font-weight:800;color:var(--text)}
+.anx-history-meta{font-size:.63rem;color:var(--text3);margin-top:.2rem}
+.anx-history-headline{font-size:.7rem;color:var(--text2);margin-top:.35rem;line-height:1.45}
+.anx-history-empty{padding:1.1rem;color:var(--text3);font-size:.72rem;text-align:center}
+.anx-cta-card{padding:1rem 1.05rem;background:linear-gradient(135deg,rgba(67,97,238,.10),rgba(5,150,105,.09));border:1px solid rgba(67,97,238,.18);border-radius:16px}
+.anx-cta-title{font-size:.88rem;font-weight:900;color:#173260}
+.anx-cta-body{font-size:.75rem;color:var(--text2);line-height:1.65;margin-top:.35rem}
+.anx-running{display:inline-flex;align-items:center;gap:.45rem;font-size:.72rem;color:#4361EE;font-weight:800}
+.anx-running::before{content:'';width:8px;height:8px;border-radius:50%;background:#4361EE;box-shadow:0 0 0 0 rgba(67,97,238,.45);animation:pulse 1.5s infinite}
+@media (max-width:1100px){.anx-layout{grid-template-columns:1fr}}
+@media (max-width:760px){.anx-progress{grid-template-columns:1fr}}
 .notif-footer{padding:.6rem 1.1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(1.3);}}
 .page{display:none;padding:1.8rem;max-width:1600px;margin:0 auto;animation:fadeUp .25s ease;}
@@ -985,6 +1038,7 @@ input[type="time"]{-webkit-appearance:none;}
   <div class="sidebar-section-label">Outreach</div>
   <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
   <button class="sb-tab" id="tab-import" onclick="showPage('import')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Import Tahlili</span></button>
+  <button class="sb-tab" id="tab-materialai" onclick="showPage('materialai')"><span class="sb-tab-icon"></span><span class="sb-tab-label" id="materialAiNavLabel">AI Invest Tahlil</span></button>
   <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Company Finder</span></button>
   <button class="sb-tab" id="tab-ailetter" onclick="showPage('ailetter')"><span class="sb-tab-icon"></span><span class="sb-tab-label">AI Xatlar</span></button>
   <button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Pipeline</span></button>
@@ -1543,6 +1597,65 @@ input[type="time"]{-webkit-appearance:none;}
 
     </div>
     <div id="importEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
+  </div>
+</div>
+
+<!-- ===== PAGE: AI INVEST ANALYZER ===== -->
+<div class="page" id="page-materialai">
+  <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
+    <div class="pg-head">
+      <div class="pg-title" id="materialAiPageTitle">🧠 AI Investitsiya Tahlili</div>
+      <div class="pg-sub" id="materialAiPageSub">Navoiy viloyati uchun xomashyo bo‘yicha AI-powered trade analysis va investitsiya tavsiyasi</div>
+    </div>
+
+    <div class="anx-layout">
+      <div class="anx-main">
+        <div class="form-card" style="margin-bottom:1rem">
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+            <div class="form-group" style="flex:1;min-width:260px">
+              <label class="form-label" id="materialAiInputLabel">Xomashyo nomini kiriting</label>
+              <input class="form-input" id="materialAiInput" placeholder="Basalt, Quartz, Limestone, Gypsum..." autocomplete="off">
+            </div>
+            <div class="form-group" style="flex:0 0 auto">
+              <button class="btn btn-blue" id="materialAiAnalyzeBtn" onclick="analyzeInvestmentMaterial()">🔎 Tahlil qilish</button>
+            </div>
+          </div>
+          <div class="anx-chip-wrap" id="materialAiChips"></div>
+        </div>
+
+        <div class="tcard" id="materialAiProgressCard" style="display:none;margin-bottom:1rem">
+          <div class="tc-head">
+            <div class="tc-title" id="materialAiProgressTitle">⏳ Tahlil bosqichlari</div>
+            <div class="anx-running" id="materialAiRunningLabel">AI tahlil ishlayapti...</div>
+          </div>
+          <div class="anx-progress" id="materialAiProgress"></div>
+        </div>
+
+        <div class="tcard" id="materialAiOutputCard" style="display:none;margin-bottom:1rem">
+          <div class="tc-head">
+            <div class="tc-title" id="materialAiOutputTitle">📄 AI hisoboti</div>
+            <div style="font-size:.72rem;color:var(--text3)" id="materialAiOutputMeta">—</div>
+          </div>
+          <div class="anx-output-wrap">
+            <div class="anx-output" id="materialAiOutput"></div>
+          </div>
+        </div>
+
+        <div class="tcard" id="materialAiExcelNotice" style="display:none">
+          <div class="anx-cta-card">
+            <div class="anx-cta-title" id="materialAiExcelTitle">📘 To‘liq Excel workbook mavjud</div>
+            <div class="anx-cta-body" id="materialAiExcelBody">9 ta analitik sheetdan iborat to‘liq Excel workbook tayyor bo‘ladi. To‘liq hisobotni olish uchun Investitsiya boshqarmasi bilan bog‘laning.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="anx-side">
+        <div class="tcard">
+          <div class="tc-head"><div class="tc-title" id="materialAiHistoryTitle">🕘 So‘nggi 5 tahlil</div></div>
+          <div class="anx-history-list" id="materialAiHistoryList"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3012,6 +3125,8 @@ function applyTranslations(){
     const adminLbl = document.getElementById('adminTabLabel');
     if(adminLbl) adminLbl.textContent = tr('nav_admin');
   }
+  if(typeof updateInvestAiI18n==='function') updateInvestAiI18n();
+  if(typeof renderInvestAiHistory==='function') renderInvestAiHistory();
 }
 
 /* ═══════════════════════════════════════
@@ -3308,6 +3423,7 @@ function showPage(id){
     investor:'Investorlar bazasi',
     products:'Mahsulotlar',
     import:'Import Tahlili',
+    materialai:'AI Invest Tahlil',
     finder:'Company Finder',
     ailetter:'AI Xatlar',
     pipeline:'Pipeline',
@@ -3326,6 +3442,7 @@ function showPage(id){
   else if(id==='admin')renderAdminLists();
   else if(id==='products')renderProducts();
   else if(id==='import'){populateProductSelects();prepareImportAnalysisPage();}
+  else if(id==='materialai'){renderInvestAiPage();}
   else if(id==='finder')populateProductSelects();
   else if(id==='ailetter')populateProductSelects();
   else if(id==='pipeline')renderPipeline();
@@ -10707,6 +10824,420 @@ function goToFinder(prodId, countryCode){
   showPage('finder');
   var sel = document.getElementById('finder-product-select');
   if(sel) sel.value = prodId;
+}
+
+/* ═══════════════════════════════════════
+   AI INVEST ANALYZER
+═══════════════════════════════════════ */
+var AI_TRADE_ANALYZER_API_BASE = 'https://navoiy-api-proxy.vercel.app/api';
+var INVEST_AI_HISTORY_KEY = '_invest_ai_history_v1';
+var _investAiBusy = false;
+var _investAiPhase = -1;
+var _investAiMarkdown = '';
+var _investAiCurrentMaterial = '';
+var INVEST_AI_FALLBACK_MATERIALS = [
+  'Basalt','Quartz','Limestone','Gypsum','Granite','Marble','Kaolin','Bentonite','Dolomite','Phosphorite',
+  'Silica Sand','Feldspar','Barite','Calcite','Fluorite','Clay','Copper Ore','Lead Ore','Zinc Ore','Iron Ore',
+  'Manganese','Talc','Graphite','Sulfur','Salt','Potash','Uranium','Coal','Alumina','Chromite'
+];
+var INVEST_AI_PHASES = [
+  { key:'phase0', title:'Product Research & HS Code Mapping' },
+  { key:'phase1', title:'UN Comtrade Data Collection' },
+  { key:'phase2', title:'Data Processing & Analysis' },
+  { key:'phase3', title:'Report Generation' }
+];
+var INVEST_AI_I18N = {
+  uz: {
+    nav:'AI Invest Tahlil',
+    pageTitle:'🧠 AI Investitsiya Tahlili',
+    pageSub:'Navoiy viloyati uchun xomashyo bo‘yicha AI-powered trade analysis va investitsiya tavsiyasi',
+    inputLabel:'Xomashyo nomini kiriting',
+    placeholder:'Basalt, Quartz, Limestone, Gypsum...',
+    analyze:'🔎 Tahlil qilish',
+    analyzing:'⏳ Tahlil qilinmoqda...',
+    progressTitle:'⏳ Tahlil bosqichlari',
+    running:'AI tahlil ishlayapti...',
+    reportTitle:'📄 AI hisoboti',
+    historyTitle:'🕘 So‘nggi 5 tahlil',
+    historyEmpty:'Hali tahlillar saqlanmagan',
+    excelTitle:'📘 To‘liq Excel workbook mavjud',
+    excelBody:'9 ta analitik sheetdan iborat to‘liq Excel workbook tayyor bo‘ladi. To‘liq hisobotni olish uchun Investitsiya boshqarmasi bilan bog‘laning.',
+    statusPending:'Kutilmoqda',
+    statusActive:'Jarayonda',
+    statusDone:'Tayyor',
+    emptyHeadline:'Natija mavjud emas',
+    outputMeta:'Material: {material} · {time}',
+    toastPick:'⚠️ Xomashyo nomini kiriting',
+    toastStream:'🤖 AI tahlil boshlanmoqda...',
+    toastReady:'✅ Tahlil tayyor!',
+    toastHistory:'📂 Saqlangan tahlil yuklandi',
+    outputEmpty:'Natija hozircha yo‘q',
+    noSystemPrompt:'Anthropic system prompt env sozlanmagan',
+    phase0:'Mahsulot va HS mapping',
+    phase1:'UN Comtrade yig‘ish',
+    phase2:'Qayta ishlash va tahlil',
+    phase3:'Hisobot yaratish'
+  },
+  ru: {
+    nav:'AI Инвест Анализ',
+    pageTitle:'🧠 AI Анализ Инвестиций',
+    pageSub:'AI trade analysis и инвестиционные рекомендации по сырью для Навоийского региона',
+    inputLabel:'Введите название сырья',
+    placeholder:'Basalt, Quartz, Limestone, Gypsum...',
+    analyze:'🔎 Анализировать',
+    analyzing:'⏳ Идёт анализ...',
+    progressTitle:'⏳ Этапы анализа',
+    running:'AI выполняет анализ...',
+    reportTitle:'📄 AI отчёт',
+    historyTitle:'🕘 Последние 5 анализов',
+    historyEmpty:'История анализов пока пуста',
+    excelTitle:'📘 Полная Excel-книга доступна',
+    excelBody:'Полная Excel-книга с 9 аналитическими листами доступна. Свяжитесь с Департаментом инвестиций, чтобы получить полный отчёт.',
+    statusPending:'Ожидание',
+    statusActive:'В процессе',
+    statusDone:'Готово',
+    emptyHeadline:'Нет итоговой строки',
+    outputMeta:'Материал: {material} · {time}',
+    toastPick:'⚠️ Введите название сырья',
+    toastStream:'🤖 Запуск AI-анализа...',
+    toastReady:'✅ Анализ готов!',
+    toastHistory:'📂 Сохранённый анализ загружен',
+    outputEmpty:'Результат пока пуст',
+    noSystemPrompt:'Anthropic system prompt не настроен в env',
+    phase0:'Исследование продукта и HS-код',
+    phase1:'Сбор UN Comtrade',
+    phase2:'Обработка и анализ',
+    phase3:'Генерация отчёта'
+  },
+  en: {
+    nav:'AI Invest Analysis',
+    pageTitle:'🧠 AI Investment Analysis',
+    pageSub:'AI-powered trade analysis and investment recommendations for raw materials in Navoi Region',
+    inputLabel:'Enter raw material name',
+    placeholder:'Basalt, Quartz, Limestone, Gypsum...',
+    analyze:'🔎 Analyze',
+    analyzing:'⏳ Analyzing...',
+    progressTitle:'⏳ Analysis phases',
+    running:'AI analysis is running...',
+    reportTitle:'📄 AI report',
+    historyTitle:'🕘 Last 5 analyses',
+    historyEmpty:'No analyses saved yet',
+    excelTitle:'📘 Full Excel workbook is available',
+    excelBody:'A full Excel workbook with 9 analytical sheets is available. Contact the Investment Department to receive the complete report.',
+    statusPending:'Pending',
+    statusActive:'Running',
+    statusDone:'Done',
+    emptyHeadline:'No headline available',
+    outputMeta:'Material: {material} · {time}',
+    toastPick:'⚠️ Enter a raw material name',
+    toastStream:'🤖 Starting AI analysis...',
+    toastReady:'✅ Analysis complete!',
+    toastHistory:'📂 Saved analysis loaded',
+    outputEmpty:'No output yet',
+    noSystemPrompt:'Anthropic system prompt env is not configured',
+    phase0:'Product research & HS mapping',
+    phase1:'UN Comtrade collection',
+    phase2:'Processing & analysis',
+    phase3:'Report generation'
+  }
+};
+
+function investAiT(key){
+  var dict = INVEST_AI_I18N[currentLang] || INVEST_AI_I18N.uz;
+  return dict[key] || (INVEST_AI_I18N.uz[key] || key);
+}
+
+function getInvestAiMaterials(){
+  var materials = [];
+  (DB.rawMaterials||[]).forEach(function(item){
+    var name = String((item && (item.name_en || item.name_uz || item.name)) || '').trim();
+    if(name && materials.indexOf(name) === -1) materials.push(name);
+  });
+  INVEST_AI_FALLBACK_MATERIALS.forEach(function(name){
+    if(materials.length >= 30) return;
+    if(materials.indexOf(name) === -1) materials.push(name);
+  });
+  return materials.slice(0, 30);
+}
+
+function updateInvestAiI18n(){
+  var nav = document.getElementById('materialAiNavLabel');
+  if(nav) nav.textContent = investAiT('nav');
+  var pageTitle = document.getElementById('materialAiPageTitle');
+  if(pageTitle) pageTitle.textContent = investAiT('pageTitle');
+  var pageSub = document.getElementById('materialAiPageSub');
+  if(pageSub) pageSub.textContent = investAiT('pageSub');
+  var inputLabel = document.getElementById('materialAiInputLabel');
+  if(inputLabel) inputLabel.textContent = investAiT('inputLabel');
+  var input = document.getElementById('materialAiInput');
+  if(input) input.placeholder = investAiT('placeholder');
+  var btn = document.getElementById('materialAiAnalyzeBtn');
+  if(btn) btn.textContent = _investAiBusy ? investAiT('analyzing') : investAiT('analyze');
+  var progressTitle = document.getElementById('materialAiProgressTitle');
+  if(progressTitle) progressTitle.textContent = investAiT('progressTitle');
+  var running = document.getElementById('materialAiRunningLabel');
+  if(running) running.textContent = investAiT('running');
+  var outputTitle = document.getElementById('materialAiOutputTitle');
+  if(outputTitle) outputTitle.textContent = investAiT('reportTitle');
+  var historyTitle = document.getElementById('materialAiHistoryTitle');
+  if(historyTitle) historyTitle.textContent = investAiT('historyTitle');
+  var excelTitle = document.getElementById('materialAiExcelTitle');
+  if(excelTitle) excelTitle.textContent = investAiT('excelTitle');
+  var excelBody = document.getElementById('materialAiExcelBody');
+  if(excelBody) excelBody.textContent = investAiT('excelBody');
+}
+
+function renderInvestAiChips(){
+  var wrap = document.getElementById('materialAiChips');
+  if(!wrap) return;
+  wrap.innerHTML = getInvestAiMaterials().map(function(name){
+    return '<button type="button" class="anx-chip" onclick="fillInvestAiMaterial(\''+String(name).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">'+escapeHtmlText(name)+'</button>';
+  }).join('');
+}
+
+function fillInvestAiMaterial(name){
+  var input = document.getElementById('materialAiInput');
+  if(input) input.value = name || '';
+}
+
+function getInvestAiHistory(){
+  try{
+    var raw = localStorage.getItem(INVEST_AI_HISTORY_KEY);
+    var parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(e){
+    return [];
+  }
+}
+
+function saveInvestAiHistory(material, markdown){
+  var headline = String(markdown || '').split(/\r?\n/).map(function(line){
+    return String(line || '').replace(/^#+\s*/, '').trim();
+  }).find(function(line){ return !!line; }) || investAiT('emptyHeadline');
+  var next = [{
+    material: material,
+    markdown: markdown,
+    headline: headline,
+    savedAt: new Date().toISOString()
+  }].concat(getInvestAiHistory()).filter(function(item, idx, arr){
+    return idx === arr.findIndex(function(other){
+      return other.material === item.material && other.savedAt === item.savedAt;
+    });
+  }).slice(0,5);
+  localStorage.setItem(INVEST_AI_HISTORY_KEY, JSON.stringify(next));
+}
+
+function renderInvestAiHistory(){
+  var list = document.getElementById('materialAiHistoryList');
+  if(!list) return;
+  var items = getInvestAiHistory();
+  if(!items.length){
+    list.innerHTML = '<div class="anx-history-empty">'+investAiT('historyEmpty')+'</div>';
+    return;
+  }
+  list.innerHTML = items.map(function(item, idx){
+    var date = new Date(item.savedAt);
+    var stamp = isNaN(date.getTime()) ? item.savedAt : date.toLocaleString();
+    return '<div class="anx-history-item" onclick="loadInvestAiHistory('+idx+')">'+
+      '<div class="anx-history-material">'+escapeHtmlText(item.material)+'</div>'+
+      '<div class="anx-history-meta">'+escapeHtmlText(stamp)+'</div>'+
+      '<div class="anx-history-headline">'+escapeHtmlText(item.headline || investAiT('emptyHeadline'))+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function loadInvestAiHistory(idx){
+  var items = getInvestAiHistory();
+  var item = items[idx];
+  if(!item) return;
+  _investAiMarkdown = item.markdown || '';
+  _investAiCurrentMaterial = item.material || '';
+  fillInvestAiMaterial(_investAiCurrentMaterial);
+  renderInvestAiMarkdown(_investAiMarkdown);
+  var outputCard = document.getElementById('materialAiOutputCard');
+  var notice = document.getElementById('materialAiExcelNotice');
+  if(outputCard) outputCard.style.display = 'block';
+  if(notice) notice.style.display = 'block';
+  updateInvestAiOutputMeta(item.material, item.savedAt);
+  renderInvestAiProgress(3, true);
+  toast(investAiT('toastHistory'));
+}
+
+function renderInvestAiProgress(activeIdx, forceDone){
+  var wrap = document.getElementById('materialAiProgress');
+  var card = document.getElementById('materialAiProgressCard');
+  if(!wrap || !card) return;
+  card.style.display = 'block';
+  wrap.innerHTML = INVEST_AI_PHASES.map(function(step, idx){
+    var state = forceDone || idx < activeIdx ? 'done' : (idx === activeIdx ? 'active' : 'pending');
+    var status = state === 'done' ? investAiT('statusDone') : (state === 'active' ? investAiT('statusActive') : investAiT('statusPending'));
+    var title = investAiT(step.key) || step.title;
+    return '<div class="anx-step '+state+'">'+
+      '<div class="anx-step-num">Phase '+idx+'</div>'+
+      '<div class="anx-step-name">'+escapeHtmlText(title)+'</div>'+
+      '<div class="anx-step-status">'+escapeHtmlText(status)+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function inferInvestAiPhase(markdown){
+  var text = String(markdown || '').toLowerCase();
+  if(/phase\s*3|report generation|final summary|investment recommendation|recommendations/i.test(text)) return 3;
+  if(/phase\s*2|data processing|analysis|processed data|comparative analysis/i.test(text)) return 2;
+  if(/phase\s*1|un comtrade|trade data collection|data collection/i.test(text)) return 1;
+  if(/phase\s*0|hs code|product research|code mapping/i.test(text)) return 0;
+  return _investAiPhase < 0 ? 0 : _investAiPhase;
+}
+
+function decorateInvestAiHtml(html){
+  return String(html || '')
+    .replace(/\bPriority\s*A\b/gi, '<span class="anx-badge anx-badge-a">Priority A</span>')
+    .replace(/\bPriority\s*B\b/gi, '<span class="anx-badge anx-badge-b">Priority B</span>')
+    .replace(/\bPriority\s*C\b/gi, '<span class="anx-badge anx-badge-c">Priority C</span>')
+    .replace(/\bPriority\s*D\b/gi, '<span class="anx-badge anx-badge-d">Priority D</span>')
+    .replace(/✓/g, '<span class="anx-check">✓</span>')
+    .replace(/△/g, '<span class="anx-mid">△</span>')
+    .replace(/⚠️|⚠/g, '<span class="anx-warn">⚠️</span>')
+    .replace(/(\$[0-9][0-9,]*(?:\.\d+)?(?:\s?(?:million|billion|M|B|K))?)/g, '<strong class="anx-money">$1</strong>');
+}
+
+function renderInvestAiMarkdown(markdown){
+  var output = document.getElementById('materialAiOutput');
+  if(!output) return;
+  var source = String(markdown || '');
+  if(!source.trim()){
+    output.innerHTML = '<p>'+investAiT('outputEmpty')+'</p>';
+    return;
+  }
+  var html = window.marked ? window.marked.parse(source) : escapeHtmlText(source).replace(/\n/g, '<br>');
+  output.innerHTML = decorateInvestAiHtml(html);
+}
+
+function updateInvestAiOutputMeta(material, dateValue){
+  var meta = document.getElementById('materialAiOutputMeta');
+  if(!meta) return;
+  var date = dateValue ? new Date(dateValue) : new Date();
+  var stamp = isNaN(date.getTime()) ? '' : date.toLocaleString();
+  meta.textContent = investAiT('outputMeta').replace('{material}', material || '—').replace('{time}', stamp || '—');
+}
+
+function setInvestAiBusy(flag){
+  _investAiBusy = !!flag;
+  var btn = document.getElementById('materialAiAnalyzeBtn');
+  var input = document.getElementById('materialAiInput');
+  if(btn){
+    btn.disabled = _investAiBusy;
+    btn.textContent = _investAiBusy ? investAiT('analyzing') : investAiT('analyze');
+    btn.style.opacity = _investAiBusy ? '.75' : '1';
+    btn.style.cursor = _investAiBusy ? 'not-allowed' : 'pointer';
+  }
+  if(input) input.disabled = _investAiBusy;
+}
+
+function parseAnthropicSseChunk(chunk, onText){
+  var lines = String(chunk || '').split(/\r?\n/);
+  var dataLines = [];
+  for(var i=0;i<lines.length;i++){
+    var line = lines[i];
+    if(line.indexOf('data:') === 0) dataLines.push(line.slice(5).trim());
+  }
+  var dataStr = dataLines.join('\n');
+  if(!dataStr || dataStr === '[DONE]') return;
+  var payload = null;
+  try { payload = JSON.parse(dataStr); } catch(e){ return; }
+  if(payload.type === 'content_block_delta' && payload.delta && payload.delta.text){
+    onText(payload.delta.text);
+  } else if(payload.type === 'error'){
+    throw new Error((payload.error && payload.error.message) || payload.message || 'Anthropic stream error');
+  }
+}
+
+async function analyzeInvestmentMaterial(){
+  if(_investAiBusy) return;
+  var input = document.getElementById('materialAiInput');
+  var material = String((input && input.value) || '').trim();
+  if(!material){ toast(investAiT('toastPick'),'error'); return; }
+
+  _investAiCurrentMaterial = material;
+  _investAiMarkdown = '';
+  _investAiPhase = 0;
+  setInvestAiBusy(true);
+  renderInvestAiProgress(0, false);
+  updateInvestAiOutputMeta(material, new Date().toISOString());
+  var outputCard = document.getElementById('materialAiOutputCard');
+  var notice = document.getElementById('materialAiExcelNotice');
+  if(outputCard) outputCard.style.display = 'block';
+  if(notice) notice.style.display = 'none';
+  renderInvestAiMarkdown('');
+  toast(investAiT('toastStream'));
+
+  try {
+    var resp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ materialName: material })
+    });
+
+    if(!resp.ok){
+      var errText = await resp.text();
+      var errMsg = errText;
+      try{
+        var errJson = JSON.parse(errText);
+        errMsg = errJson.error || errJson.detail || errText;
+      }catch(e){}
+      throw new Error(errMsg || ('API error ' + resp.status));
+    }
+
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+    while(true){
+      var part = await reader.read();
+      if(part.done) break;
+      buffer += decoder.decode(part.value, {stream:true});
+      var match;
+      while((match = buffer.match(/\r?\n\r?\n/))){
+        var idx = match.index;
+        var chunk = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + match[0].length);
+        parseAnthropicSseChunk(chunk, function(textDelta){
+          _investAiMarkdown += textDelta;
+          renderInvestAiMarkdown(_investAiMarkdown);
+          var stage = inferInvestAiPhase(_investAiMarkdown);
+          if(stage !== _investAiPhase){
+            _investAiPhase = stage;
+            renderInvestAiProgress(_investAiPhase, false);
+          }
+        });
+      }
+    }
+    if(buffer.trim()){
+      parseAnthropicSseChunk(buffer, function(textDelta){
+        _investAiMarkdown += textDelta;
+        renderInvestAiMarkdown(_investAiMarkdown);
+      });
+    }
+
+    renderInvestAiProgress(3, true);
+    if(notice) notice.style.display = 'block';
+    updateInvestAiOutputMeta(material, new Date().toISOString());
+    saveInvestAiHistory(material, _investAiMarkdown);
+    renderInvestAiHistory();
+    toast(investAiT('toastReady'));
+  } catch(e){
+    console.error(e);
+    renderInvestAiMarkdown('## Error\n\n' + (e && e.message ? e.message : 'Unknown error'));
+    toast('⚠️ ' + (e.message || 'Error'),'error');
+  } finally {
+    setInvestAiBusy(false);
+  }
+}
+
+function renderInvestAiPage(){
+  updateInvestAiI18n();
+  renderInvestAiChips();
+  renderInvestAiHistory();
+  if(_investAiBusy) renderInvestAiProgress(_investAiPhase < 0 ? 0 : _investAiPhase, false);
 }
 
 /* ═══════════════════════════════════════
