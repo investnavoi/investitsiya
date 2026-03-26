@@ -1531,68 +1531,15 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: IMPORT TAHLILI (M2: Analysis Engine) ===== -->
 <div class="page" id="page-import">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">📊 Import Tahlili</div><div class="pg-sub">12 davlat import statistikasi — UN Comtrade & World Bank ma'lumotlari</div></div>
-
-    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem">
-      <div class="form-group" style="flex:1;min-width:200px">
-        <label class="form-label">Mahsulot tanlang</label>
-        <select class="form-input" id="import-product-select" onchange="handleImportProductChange()">
-          <option value="">— Tanlang —</option>
-        </select>
-      </div>
-      <div class="form-group" style="flex:0 0 auto;align-self:flex-end">
-        <button class="btn btn-blue" onclick="runImportAnalysis(true)">📊 Tahlil qilish</button>
+    <div class="pg-head"><div class="pg-title">📊 Import Tahlili</div><div class="pg-sub">Mahsulot tahlili endi Company Finder bo'limiga ko'chirildi</div></div>
+    <div class="tcard">
+      <div class="tc-head"><div class="tc-title">ℹ️ Tahlil funksiyasi ko'chirildi</div></div>
+      <div class="tc-empty" style="padding:3rem">
+        <div class="tc-empty-icon">🔍</div>
+        <p>Mahsulot tahlili endi Company Finder ichida ko'rsatiladi. Avval mahsulot tahlil qilinadi, keyin pastda maqsad davlatlar va kompaniya qidirish funksiyalari ishlaydi.</p>
+        <button class="btn btn-blue" type="button" onclick="showPage('finder')">Company Finder ga o'tish</button>
       </div>
     </div>
-
-    <!-- Import natijalari -->
-    <div id="importResults" style="display:none">
-      <div class="kpi-grid" style="margin-bottom:1.2rem">
-        <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label">Jami import</div><div class="kpi-val" id="imp-k1">—</div></div>
-        <div class="kpi-card c2"><div class="kpi-icon">📈</div><div class="kpi-label">Eng katta bozor</div><div class="kpi-val" id="imp-k2">—</div></div>
-        <div class="kpi-card c3"><div class="kpi-icon">🚀</div><div class="kpi-label">Eng tez o'sish</div><div class="kpi-val" id="imp-k3">—</div></div>
-        <div class="kpi-card c4"><div class="kpi-icon">💡</div><div class="kpi-label">AI Tavsiya</div><div class="kpi-val" id="imp-k4" style="font-size:.7rem">—</div></div>
-      </div>
-      <!-- Bar chart -->
-      <div class="tcard" style="margin-bottom:1rem">
-        <div class="tc-head"><div class="tc-title">12 Davlat Import Hajmi</div></div>
-        <div id="importBarChart" style="padding:1rem"></div>
-      </div>
-      <!-- Jadval -->
-      <div class="tcard">
-        <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
-        <div class="tscroll"><table>
-          <thead><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
-          <tbody id="import-tbody"></tbody>
-        </table></div>
-      </div>
-
-      <!-- WORLD BANK: Iqtisodiy ko'rsatkichlar -->
-      <div class="tcard" style="margin-top:1rem">
-        <div class="tc-head">
-          <div class="tc-title">🏦 12 Davlat Iqtisodiy Ko'rsatkichlari (World Bank)</div>
-          <div style="display:flex;gap:.5rem">
-            <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
-            <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
-          </div>
-        </div>
-        <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
-        <div id="wbData" style="display:none">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
-          <div class="tscroll"><table>
-            <thead><tr>
-              <th>#</th><th>Davlat</th><th>YaIM/kishi ($)</th><th>Sanoat (%)</th>
-              <th>O'rt. ish haqi ($)</th><th>Elektr ($/kWh)</th><th>Aholi (mln)</th><th>Navoiyga nisbat</th>
-            </tr></thead>
-            <tbody id="wb-tbody"></tbody>
-          </table></div>
-          <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
-        </div>
-        <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 12 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
-      </div>
-
-    </div>
-    <div id="importEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
   </div>
 </div>
 
@@ -1674,7 +1621,7 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
         <div class="form-group" style="flex:1;min-width:200px">
           <label class="form-label">Mahsulot</label>
-          <select class="form-input" id="finder-product-select"><option value="">— Tanlang —</option></select>
+          <select class="form-input" id="finder-product-select" onchange="handleImportProductChange()"><option value="">— Tanlang —</option></select>
         </div>
         <div class="form-group" style="flex:0 0 120px">
           <label class="form-label">Har davlatdan</label>
@@ -1682,11 +1629,60 @@ input[type="time"]{-webkit-appearance:none;}
             <option value="3">3 ta</option><option value="5" selected>5 ta</option><option value="10">10 ta</option>
           </select>
         </div>
-        <div class="form-group" style="flex:0 0 auto">
-          <button class="btn btn-blue" onclick="runCompanyFinder('gemini')" style="margin-right:.5rem">🤖 Gemini bilan topish</button>
-          <button class="btn" onclick="runCompanyFinder('apollo')" style="background:linear-gradient(135deg,#FFB703,#FB8500);color:#000;border:none;font-weight:700">🅰️ Apollo</button>
+        <div class="form-group" style="flex:0 0 210px">
+          <div style="display:flex;flex-direction:column;gap:.45rem">
+            <button class="btn btn-blue" type="button" onclick="runCompanyFinder('gemini')">🤖 Gemini bilan topish</button>
+            <button class="btn" type="button" onclick="runCompanyFinder('apollo')" style="background:linear-gradient(135deg,#FFB703,#FB8500);color:#000;border:none;font-weight:700">🅰️ Apollo</button>
+            <button class="btn btn-blue" type="button" onclick="runImportAnalysis(true)">📊 Tahlil qilish</button>
+          </div>
         </div>
       </div>
+
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+        <div id="importResults" style="display:none">
+          <div class="kpi-grid" style="margin-bottom:1.2rem">
+            <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label">Jami import</div><div class="kpi-val" id="imp-k1">—</div></div>
+            <div class="kpi-card c2"><div class="kpi-icon">📈</div><div class="kpi-label">Eng katta bozor</div><div class="kpi-val" id="imp-k2">—</div></div>
+            <div class="kpi-card c3"><div class="kpi-icon">🚀</div><div class="kpi-label">Top importyor</div><div class="kpi-val" id="imp-k3">—</div></div>
+            <div class="kpi-card c4"><div class="kpi-icon">💡</div><div class="kpi-label">Ma'lumot manbasi</div><div class="kpi-val" id="imp-k4" style="font-size:.7rem">—</div></div>
+          </div>
+          <div class="tcard" style="margin-bottom:1rem">
+            <div class="tc-head"><div class="tc-title">13 Davlat Import Hajmi</div></div>
+            <div id="importBarChart" style="padding:1rem"></div>
+          </div>
+          <div class="tcard" style="margin-bottom:1rem">
+            <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
+            <div class="tscroll"><table>
+              <thead><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
+              <tbody id="import-tbody"></tbody>
+            </table></div>
+          </div>
+          <div class="tcard" style="margin-bottom:1rem">
+            <div class="tc-head">
+              <div class="tc-title">🏦 13 Davlat Iqtisodiy Ko'rsatkichlari (World Bank)</div>
+              <div style="display:flex;gap:.5rem">
+                <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
+                <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
+              </div>
+            </div>
+            <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
+            <div id="wbData" style="display:none">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
+              <div class="tscroll"><table>
+                <thead><tr>
+                  <th>#</th><th>Davlat</th><th>YaIM/kishi ($)</th><th>Sanoat (%)</th>
+                  <th>O'rt. ish haqi ($)</th><th>Elektr ($/kWh)</th><th>Aholi (mln)</th><th>Navoiyga nisbat</th>
+                </tr></thead>
+                <tbody id="wb-tbody"></tbody>
+              </table></div>
+              <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
+            </div>
+            <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 13 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
+          </div>
+        </div>
+        <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
+      </div>
+
       <!-- Target countries -->
       <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
         <label class="form-label" style="margin-bottom:.4rem" id="finderCountriesLabel">🌍 Maqsad davlatlar (import qilayotgan kompaniyalar qidiriladi)</label>
@@ -3440,9 +3436,9 @@ function showPage(id){
   else if(id==='investor')renderInvestorCompanies();
   else if(id==='admin')renderAdminLists();
   else if(id==='products')renderProducts();
-  else if(id==='import'){populateProductSelects();prepareImportAnalysisPage();}
+  else if(id==='import'){populateProductSelects();}
   else if(id==='materialai'){renderInvestAiPage();}
-  else if(id==='finder')populateProductSelects();
+  else if(id==='finder'){populateProductSelects();updateFinderModeUI();handleImportProductChange();}
   else if(id==='ailetter')populateProductSelects();
   else if(id==='pipeline')renderPipeline();
   else if(id==='trade'){restoreLastTradeSnapshot();}
@@ -7678,14 +7674,28 @@ function formatBilingualProductName(p){
   return en + ' - ' + uz;
 }
 
+function getImportAnalysisProductSelect(){
+  return document.getElementById('finder-product-select') || document.getElementById('import-product-select');
+}
+
 function populateProductSelects(){
   var prods = DB.products||[];
+  var currentValues = {};
+  ['import-product-select','finder-product-select'].forEach(function(id){
+    var el = document.getElementById(id);
+    currentValues[id] = el ? String(el.value || '') : '';
+  });
   var opts = '<option value="">— Tanlang —</option>' + prods.map(function(p){
     return '<option value="'+p.id+'">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</option>';
   }).join('');
   ['import-product-select','finder-product-select'].forEach(function(id){
     var el = document.getElementById(id);
-    if(el) el.innerHTML = opts;
+    if(el){
+      el.innerHTML = opts;
+      if(currentValues[id] && prods.some(function(p){ return String(p.id) === currentValues[id]; })){
+        el.value = currentValues[id];
+      }
+    }
   });
   // ailetter company select
   var asel = document.getElementById('ailetter-company-select');
@@ -10685,7 +10695,7 @@ function getImportSnapshot(prod, hsCode){
 function restoreImportSnapshot(snapshot, quiet){
   if(!snapshot || !(snapshot.countries||[]).length) return false;
   initImportAnalysisComtradeOnly();
-  var sel = document.getElementById('import-product-select');
+  var sel = getImportAnalysisProductSelect();
   if(sel && snapshot.productId) sel.value = String(snapshot.productId);
   var prod = (DB.products||[]).find(function(p){ return String(p.id)===String(snapshot.productId); });
   if(!prod) return false;
@@ -10769,7 +10779,7 @@ function resetImportAnalysisUi(message){
 
 function handleImportProductChange(){
   initImportAnalysisComtradeOnly();
-  var sel = document.getElementById('import-product-select');
+  var sel = getImportAnalysisProductSelect();
   var prodId = sel ? sel.value : '';
   if(!prodId){
     resetImportAnalysisUi('Mahsulot tanlang va "Tahlil qilish" tugmasini bosing');
@@ -10797,7 +10807,7 @@ function prepareImportAnalysisPage(){
 async function runImportAnalysis(forceRefresh){
   initImportAnalysisComtradeOnly();
 
-  var sel = document.getElementById('import-product-select');
+  var sel = getImportAnalysisProductSelect();
   var prodId = sel ? sel.value : '';
   if(!prodId){ toast('Mahsulot tanlang','error'); return; }
 
@@ -10953,6 +10963,7 @@ function goToFinder(prodId, countryCode){
   showPage('finder');
   var sel = document.getElementById('finder-product-select');
   if(sel) sel.value = prodId;
+  if(typeof handleImportProductChange === 'function') handleImportProductChange();
 }
 
 /* ═══════════════════════════════════════
