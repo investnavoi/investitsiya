@@ -1653,6 +1653,37 @@ input[type="time"]{-webkit-appearance:none;}
             </div>
           </div>
           <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem;height:100%"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
+          <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
+            <div class="tcard" style="margin-bottom:1rem">
+              <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
+              <div class="tscroll"><table>
+                <thead><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
+                <tbody id="import-tbody"></tbody>
+              </table></div>
+            </div>
+            <div class="tcard" style="margin-bottom:1rem">
+              <div class="tc-head">
+                <div class="tc-title">🏦 13 Davlat Iqtisodiy Ko'rsatkichlari (World Bank)</div>
+                <div style="display:flex;gap:.5rem">
+                  <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
+                  <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
+                </div>
+              </div>
+              <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
+              <div id="wbData" style="display:none">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
+                <div class="tscroll"><table>
+                  <thead><tr>
+                    <th>#</th><th>Davlat</th><th>YaIM/kishi ($)</th><th>Sanoat (%)</th>
+                    <th>O'rt. ish haqi ($)</th><th>Elektr ($/kWh)</th><th>Aholi (mln)</th><th>Navoiyga nisbat</th>
+                  </tr></thead>
+                  <tbody id="wb-tbody"></tbody>
+                </table></div>
+                <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
+              </div>
+              <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 13 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
+            </div>
+          </div>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:1rem">
@@ -1694,37 +1725,6 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
       </div>
 
-      <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
-        <div class="tcard" style="margin-bottom:1rem">
-          <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
-          <div class="tscroll"><table>
-            <thead><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
-            <tbody id="import-tbody"></tbody>
-          </table></div>
-        </div>
-        <div class="tcard" style="margin-bottom:1rem">
-          <div class="tc-head">
-            <div class="tc-title">🏦 13 Davlat Iqtisodiy Ko'rsatkichlari (World Bank)</div>
-            <div style="display:flex;gap:.5rem">
-              <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
-              <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
-            </div>
-          </div>
-          <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
-          <div id="wbData" style="display:none">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
-            <div class="tscroll"><table>
-              <thead><tr>
-                <th>#</th><th>Davlat</th><th>YaIM/kishi ($)</th><th>Sanoat (%)</th>
-                <th>O'rt. ish haqi ($)</th><th>Elektr ($/kWh)</th><th>Aholi (mln)</th><th>Navoiyga nisbat</th>
-              </tr></thead>
-              <tbody id="wb-tbody"></tbody>
-            </table></div>
-            <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
-          </div>
-          <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 13 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
-        </div>
-      </div>
     </div>
 
     <!-- Progress -->
