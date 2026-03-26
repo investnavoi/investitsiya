@@ -1459,7 +1459,7 @@ input[type="time"]{-webkit-appearance:none;}
     <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem">
       <div class="form-group" style="flex:1;min-width:200px">
         <label class="form-label">Mahsulot tanlang</label>
-        <select class="form-input" id="import-product-select" onchange="runImportAnalysis()">
+        <select class="form-input" id="import-product-select" onchange="handleImportProductChange()">
           <option value="">— Tanlang —</option>
         </select>
       </div>
@@ -1584,7 +1584,7 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
       </div>
     </div>
-    <div id="importEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">📊</div><p>Yuqoridan mahsulot tanlang — import tahlili chiqadi</p></div>
+    <div id="importEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
   </div>
 </div>
 
@@ -1598,8 +1598,8 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group" style="flex:0 0 260px">
           <label class="form-label">Qidiruv rejimi</label>
           <select class="form-input" id="finder-mode" onchange="updateFinderModeUI()">
-            <option value="importers" selected>Mahsulotni shu 12 ta davlatda import qilayotgan kompaniyalar</option>
-            <option value="exporters">Mahsulotni shu 12 ta davlatga eksport qilayotgan top kompaniyalar</option>
+            <option value="importers" selected>Mahsulotni shu 13 ta davlatda import qilayotgan kompaniyalar</option>
+            <option value="exporters">Mahsulotni shu 13 ta davlatga eksport qilayotgan top kompaniyalar</option>
           </select>
         </div>
         <div class="form-group" style="flex:1;min-width:200px">
@@ -1621,18 +1621,19 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
         <label class="form-label" style="margin-bottom:.4rem" id="finderCountriesLabel">🌍 Maqsad davlatlar (import qilayotgan kompaniyalar qidiriladi)</label>
         <div id="finderCountries" style="display:flex;flex-wrap:wrap;gap:.4rem">
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Russia" checked> 🇷🇺 Rossiya</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kazakhstan" checked> 🇰🇿 Qozog'iston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kyrgyzstan" checked> 🇰🇬 Qirg'iziston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Tajikistan" checked> 🇹🇯 Tojikiston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Uzbekistan" checked> 🇺🇿 O'zbekiston</label>
           <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Turkmenistan" checked> 🇹🇲 Turkmaniston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Turkey" checked> 🇹🇷 Turkiya</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Tajikistan" checked> 🇹🇯 Tojikiston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kyrgyzstan" checked> 🇰🇬 Qirg'iziston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kazakhstan" checked> 🇰🇿 Qozog'iston</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Mongolia" checked> 🇲🇳 Mongoliya</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Russia" checked> 🇷🇺 Rossiya</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Azerbaijan" checked> 🇦🇿 Ozarbayjon</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Georgia" checked> 🇬🇪 Gruziya</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Armenia" checked> 🇦🇲 Armaniston</label>
           <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Iran" checked> 🇮🇷 Eron</label>
           <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Afghanistan" checked> 🇦🇫 Afg'oniston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Pakistan"> 🇵🇰 Pokiston</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Azerbaijan"> 🇦🇿 Ozarbayjon</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Georgia"> 🇬🇪 Gruziya</label>
-          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="China"> 🇨🇳 Xitoy</label>
+          <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Pakistan" checked> 🇵🇰 Pokiston</label>
         </div>
       </div>
       <div id="finderSourceScopeWrap" style="display:none;margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
@@ -3320,7 +3321,7 @@ function showPage(id){
   else if(id==='investor')renderInvestorCompanies();
   else if(id==='admin')renderAdminLists();
   else if(id==='products')renderProducts();
-  else if(id==='import'){populateProductSelects();initImportAnalysisComtradeOnly();restoreLastImportSnapshot();}
+  else if(id==='import'){populateProductSelects();prepareImportAnalysisPage();}
   else if(id==='finder')populateProductSelects();
   else if(id==='ailetter')populateProductSelects();
   else if(id==='pipeline')renderPipeline();
@@ -10416,6 +10417,35 @@ function restoreLastImportSnapshot(){
   return restoreImportSnapshot(snapshot, true);
 }
 
+function resetImportAnalysisUi(message){
+  var resultsEl = document.getElementById('importResults');
+  var emptyEl = document.getElementById('importEmpty');
+  var emptyText = emptyEl ? emptyEl.querySelector('p') : null;
+  if(resultsEl) resultsEl.style.display = 'none';
+  if(emptyEl) emptyEl.style.display = 'block';
+  if(emptyText) emptyText.textContent = message || 'Mahsulot tanlang va "Tahlil qilish" tugmasini bosing';
+
+  var ids = ['imp-k1','imp-k2','imp-k3','imp-k4'];
+  ids.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.textContent = '—';
+  });
+  var chartEl = document.getElementById('importBarChart');
+  if(chartEl) chartEl.innerHTML = '';
+  var tableEl = document.getElementById('import-tbody');
+  if(tableEl) tableEl.innerHTML = '';
+}
+
+function handleImportProductChange(){
+  initImportAnalysisComtradeOnly();
+  resetImportAnalysisUi('Mahsulot tanlandi. Endi "Tahlil qilish" tugmasini bosing');
+}
+
+function prepareImportAnalysisPage(){
+  initImportAnalysisComtradeOnly();
+  resetImportAnalysisUi('Mahsulot tanlang va "Tahlil qilish" tugmasini bosing');
+}
+
 async function runImportAnalysis(forceRefresh){
   initImportAnalysisComtradeOnly();
 
@@ -10582,6 +10612,21 @@ function goToFinder(prodId, countryCode){
 ═══════════════════════════════════════ */
 var _finderResults = [];
 var _finderMode = 'importers';
+var FINDER_TARGET_COUNTRY_META = {
+  'Uzbekistan': {flag:'🇺🇿', label:"O'zbekiston"},
+  'Turkmenistan': {flag:'🇹🇲', label:'Turkmaniston'},
+  'Tajikistan': {flag:'🇹🇯', label:'Tojikiston'},
+  'Kyrgyzstan': {flag:'🇰🇬', label:"Qirg'iziston"},
+  'Kazakhstan': {flag:'🇰🇿', label:"Qozog'iston"},
+  'Mongolia': {flag:'🇲🇳', label:'Mongoliya'},
+  'Russia': {flag:'🇷🇺', label:'Rossiya'},
+  'Azerbaijan': {flag:'🇦🇿', label:'Ozarbayjon'},
+  'Georgia': {flag:'🇬🇪', label:'Gruziya'},
+  'Armenia': {flag:'🇦🇲', label:'Armaniston'},
+  'Iran': {flag:'🇮🇷', label:'Eron'},
+  'Afghanistan': {flag:'🇦🇫', label:"Afg'oniston"},
+  'Pakistan': {flag:'🇵🇰', label:'Pokiston'}
+};
 var FINDER_SOURCE_REGIONS = {
   "Afrika": ['Algeria','Angola','Benin','Botswana','Burkina Faso','Burundi','Cabo Verde','Cameroon','Central African Republic','Chad','Comoros','Congo','DR Congo','Djibouti','Egypt','Equatorial Guinea','Eritrea','Eswatini','Ethiopia','Gabon','Gambia','Ghana','Guinea','Guinea-Bissau','Ivory Coast','Kenya','Lesotho','Liberia','Libya','Madagascar','Malawi','Mali','Mauritania','Mauritius','Morocco','Mozambique','Namibia','Niger','Nigeria','Rwanda','Sao Tome and Principe','Senegal','Seychelles','Sierra Leone','Somalia','South Africa','South Sudan','Sudan','Tanzania','Togo','Tunisia','Uganda','Zambia','Zimbabwe'],
   "Osiyo": ['Afghanistan','Armenia','Azerbaijan','Bahrain','Bangladesh','Bhutan','Brunei','Cambodia','China','Cyprus','Georgia','India','Indonesia','Iran','Iraq','Israel','Japan','Jordan','Kazakhstan','Kuwait','Kyrgyzstan','Laos','Lebanon','Malaysia','Maldives','Mongolia','Myanmar','Nepal','North Korea','Oman','Pakistan','Palestine','Philippines','Qatar','Saudi Arabia','Singapore','South Korea','Sri Lanka','Syria','Tajikistan','Thailand','Timor-Leste','Turkey','Turkmenistan','United Arab Emirates','Uzbekistan','Vietnam','Yemen'],
@@ -10592,6 +10637,18 @@ var FINDER_SOURCE_REGIONS = {
 };
 var _finderSourceContinents = [];
 var _finderSourceCountries = [];
+
+function getFinderCountryMeta(name){
+  return FINDER_TARGET_COUNTRY_META[name] || {flag:'🏳️', label:name};
+}
+
+function getFinderCountryLabel(name){
+  return getFinderCountryMeta(name).label;
+}
+
+function getFinderCountryFlag(name){
+  return getFinderCountryMeta(name).flag;
+}
 
 function getFinderSourceSelection(){
   var continents = _finderSourceContinents.slice();
@@ -10748,7 +10805,7 @@ async function runCompanyFinder(source){
       // Apollo proxy — keyword search with country
       document.getElementById('finderBar').style.width = '40%';
       for(var ci=0; ci<countries.length; ci++){
-        document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+countries[ci]+' ('+(ci+1)+'/'+countries.length+') — '+meta.resultWord+'...';
+        document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+getFinderCountryLabel(countries[ci])+' ('+(ci+1)+'/'+countries.length+') — '+meta.resultWord+'...';
         try {
           var keyword = prod.name_en + meta.apolloKeyword + countries[ci] + (sourceScope.hasFilter ? (' from ' + sourceScope.keywordHint) : '');
           var apResp = await fetch(APOLLO_PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:keyword,per_page:perCountry})});
@@ -10768,7 +10825,7 @@ async function runCompanyFinder(source){
         var batch = countries.slice(bi, bi+batchSize);
         var pct = 20 + (bi/countries.length)*70;
         document.getElementById('finderBar').style.width = pct+'%';
-        document.getElementById('finderProgressText').textContent = '🤖 '+batch.join(', ')+' — '+meta.resultWord+' qidirilmoqda... ('+(bi+batch.length)+'/'+countries.length+')';
+        document.getElementById('finderProgressText').textContent = '🤖 '+batch.map(getFinderCountryLabel).join(', ')+' — '+meta.resultWord+' qidirilmoqda... ('+(bi+batch.length)+'/'+countries.length+')';
 
         var prompt = 'You are a B2B trade intelligence expert. Return ONLY valid JSON array.\n'+
           'Find REAL companies that '+meta.promptVerb+' "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') for these countries: '+batch.join(', ')+'.\n'+
@@ -10833,7 +10890,6 @@ async function runCompanyFinder(source){
         countryGroups[r.davlat].push(r);
       });
       var countryNames = Object.keys(countryGroups);
-      var flagMap = {'Russia':'🇷🇺','Kazakhstan':'🇰🇿','Kyrgyzstan':'🇰🇬','Tajikistan':'🇹🇯','Turkmenistan':'🇹🇲','Turkey':'🇹🇷','Iran':'🇮🇷','Afghanistan':'🇦🇫','Pakistan':'🇵🇰','Azerbaijan':'🇦🇿','Georgia':'🇬🇪','China':'🇨🇳','Armenia':'🇦🇲','Mongolia':'🇲🇳'};
       var highScore = _finderResults.filter(function(r){return r.score>=80;}).length;
 
       document.getElementById('finderKpiGrid').style.display = 'grid';
@@ -10847,7 +10903,7 @@ async function runCompanyFinder(source){
       var tabsEl = document.getElementById('finderCountryTabs');
       tabsEl.innerHTML = '<div onclick="filterFinderByCountry(\'\')" style="flex:0 0 auto;padding:8px 14px;border-bottom:2px solid #4361EE;cursor:pointer;font-size:.7rem;font-weight:700;background:rgba(67,97,238,.08)">📋 Hammasi ('+_finderResults.length+')</div>';
       countryNames.forEach(function(cn){
-        tabsEl.innerHTML += '<div onclick="filterFinderByCountry(\''+cn+'\')" style="flex:0 0 auto;padding:8px 14px;border-bottom:2px solid transparent;cursor:pointer;font-size:.7rem;font-weight:600">'+(flagMap[cn]||'🏳️')+' '+cn+' ('+countryGroups[cn].length+')</div>';
+        tabsEl.innerHTML += '<div onclick="filterFinderByCountry(\''+cn+'\')" style="flex:0 0 auto;padding:8px 14px;border-bottom:2px solid transparent;cursor:pointer;font-size:.7rem;font-weight:600">'+getFinderCountryFlag(cn)+' '+getFinderCountryLabel(cn)+' ('+countryGroups[cn].length+')</div>';
       });
 
       document.getElementById('finderResultCard').style.display = 'block';
@@ -10871,11 +10927,10 @@ function renderFinderTable(results){
   var meta = getFinderModeMeta(_finderMode||'importers');
   tb.innerHTML = results.sort(function(a,b){return (b.score||0)-(a.score||0);}).map(function(r,i){
     var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
-    var flagMap = {'Russia':'🇷🇺','Kazakhstan':'🇰🇿','Kyrgyzstan':'🇰🇬','Tajikistan':'🇹🇯','Turkmenistan':'🇹🇲','Turkey':'🇹🇷','Iran':'🇮🇷','Afghanistan':'🇦🇫','Pakistan':'🇵🇰','Azerbaijan':'🇦🇿','Georgia':'🇬🇪','China':'🇨🇳'};
     return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>'+
       '<td>'+(i+1)+'</td>'+
       '<td><b>'+r.kompaniya+'</b><div style="font-size:.55rem;color:var(--text3)">'+(r.website||'')+'</div>'+(r.why?'<div style="font-size:.5rem;color:#4361EE;margin-top:2px">💡 '+r.why+'</div>':'')+'</td>'+
-      '<td>'+(flagMap[r.davlat]||'')+' '+r.davlat+'</td>'+
+      '<td>'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>'+
       '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
       '<td>'+r.rahbar+'<div style="font-size:.55rem;color:var(--text3)">'+(r.lavozim||'')+'</div></td>'+
       '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
