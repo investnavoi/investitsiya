@@ -220,15 +220,16 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .sidebar-logo{display:flex;align-items:center;gap:12px;padding:6px 10px;margin-bottom:10px;cursor:pointer;text-decoration:none;}
 .sidebar-logo-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#4361EE,#4CC9F0);display:flex;align-items:center;justify-content:center;font-size:0;flex-shrink:0;box-shadow:0 8px 20px rgba(67,97,238,.35);}
 .sidebar-logo-icon::before{content:"\1F4CA";font-size:19px;line-height:1;}
-.sidebar-logo-text{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;color:#fff;line-height:1.15;}
-.sidebar-logo-sub{font-size:.66rem;color:rgba(180,200,245,.66);margin-top:3px;}
+.sidebar-logo-text{font-family:'Sora',sans-serif;font-size:1.08rem;font-weight:800;color:#fff;line-height:1.15;letter-spacing:.01em;}
+.sidebar-logo-sub{font-size:.68rem;color:rgba(232,240,255,.82);margin-top:4px;font-weight:600;}
+.sidebar-logo-sub:empty{display:none;}
 .sidebar-divider{height:1px;background:rgba(255,255,255,.08);margin:8px 8px;}
-.sb-tab{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:rgba(220,232,255,.80);cursor:pointer;transition:all .2s;font-size:.92rem;font-weight:600;position:relative;border:none;background:none;width:100%;text-align:left;white-space:normal;line-height:1.25;min-height:50px;}
+.sb-tab{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:#EEF4FF;cursor:pointer;transition:all .2s;font-size:.96rem;font-weight:700;position:relative;border:none;background:none;width:100%;text-align:left;white-space:normal;line-height:1.28;min-height:50px;text-shadow:0 1px 1px rgba(0,0,0,.08);}
 .sb-tab:hover{background:rgba(255,255,255,.08);color:#fff;transform:translateX(2px);}
 .sb-tab.active{background:#4361EE;color:#fff;box-shadow:0 8px 20px rgba(67,97,238,.28);}
 .sb-tab.admin-tab.active{background:#7209B7;box-shadow:0 8px 20px rgba(114,9,183,.28);}
 .sb-tab-icon{font-size:0;width:24px;text-align:center;flex-shrink:0;line-height:1;}
-.sb-tab-icon::before{font-size:18px;line-height:1;}
+.sb-tab-icon::before{font-size:18px;line-height:1;color:#F6FAFF;}
 #tab-overview .sb-tab-icon::before{content:"\1F3E0";}
 #tab-investors .sb-tab-icon::before{content:"\1F30D";}
 #tab-local .sb-tab-icon::before{content:"\1F3E2";}
@@ -243,16 +244,16 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 #tab-trade .sb-tab-icon::before{content:"\1F310";}
 #tab-settings .sb-tab-icon::before{content:"\2699";}
 #tab-admin .sb-tab-icon::before{content:"\1F512";}
-.sb-tab-label{flex:1;line-height:1.25;}
+.sb-tab-label{flex:1;line-height:1.28;color:inherit;}
 .sb-tab .sb-badge{background:#EF233C;color:#fff;font-size:10px;font-weight:800;min-width:22px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0;box-shadow:0 4px 10px rgba(239,35,60,.28);}
 .sb-group{display:flex;flex-direction:column;gap:4px;}
-.sb-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;color:#fff;cursor:pointer;transition:all .2s;font-size:.95rem;font-weight:700;border:none;background:rgba(255,255,255,.06);width:100%;text-align:left;min-height:52px;}
+.sb-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;color:#F7FAFF;cursor:pointer;transition:all .2s;font-size:1rem;font-weight:800;border:none;background:rgba(255,255,255,.08);width:100%;text-align:left;min-height:52px;text-shadow:0 1px 1px rgba(0,0,0,.08);}
 .sb-group-head:hover{background:rgba(255,255,255,.10);}
 .sb-group-head.open{background:rgba(67,97,238,.18);box-shadow:inset 0 0 0 1px rgba(112,141,255,.18);}
 .sb-group-head-main{display:flex;align-items:center;gap:12px;min-width:0;}
 .sb-group-emoji{width:24px;flex-shrink:0;text-align:center;font-size:18px;line-height:1;}
 .sb-group-title{line-height:1.25;}
-.sb-group-caret{font-size:14px;color:rgba(220,232,255,.85);transition:transform .2s ease;flex-shrink:0;}
+.sb-group-caret{font-size:14px;color:#F0F5FF;transition:transform .2s ease;flex-shrink:0;}
 .sb-group-head.open .sb-group-caret{transform:rotate(180deg);}
 .sb-group-body{max-height:0;overflow:hidden;display:flex;flex-direction:column;gap:4px;transition:max-height .24s ease,padding .24s ease; padding-left:0;}
 .sb-group-body.open{max-height:260px;padding-top:4px;}
@@ -276,8 +277,8 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .tn-btn.green{background:linear-gradient(135deg,#059669,#06D6A0);border:none;box-shadow:0 3px 12px rgba(6,214,160,.35);}
 .tn-user{display:flex;align-items:center;gap:9px;}
 .tn-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#4361EE,#7209B7);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;box-shadow:0 2px 8px rgba(67,97,238,.4);}
-.tn-uname{font-size:.8rem;font-weight:700;color:var(--text);}
-.tn-urole{font-size:.63rem;color:var(--text3);}
+.tn-uname{font-size:.82rem;font-weight:800;color:var(--text);}
+.tn-urole{font-size:.66rem;color:var(--text2);font-weight:600;line-height:1.2;max-width:320px;white-space:normal;}
 .topbar .tn-date{color:var(--text2);background:var(--bg2);border-color:var(--border);}
 .topbar .lang-switcher{background:var(--bg2);border-color:var(--border);}
 .topbar .lang-btn{color:var(--text2);}
@@ -958,17 +959,17 @@ input[type="time"]{-webkit-appearance:none;}
   <div class="sidebar-logo" onclick="showPage('overview')">
     <div class="sidebar-logo-icon"></div>
     <div>
-      <div class="sidebar-logo-text">Navoiy</div>
-      <div class="sidebar-logo-sub">Investitsiya</div>
+      <div class="sidebar-logo-text">Navoi Invest AI</div>
+      <div class="sidebar-logo-sub"></div>
     </div>
   </div>
   <div class="sidebar-divider"></div>
-  <div class="sb-group open" id="sb-group-sections">
-    <button class="sb-group-head open" id="sb-group-head-sections" type="button" onclick="toggleSidebarGroup('sections')">
+  <div class="sb-group" id="sb-group-sections">
+    <button class="sb-group-head" id="sb-group-head-sections" type="button" onclick="toggleSidebarGroup('sections')">
       <span class="sb-group-head-main"><span class="sb-group-emoji">🗂</span><span class="sb-group-title">Bo'lim ma'lumotlari</span></span>
       <span class="sb-group-caret">▾</span>
     </button>
-    <div class="sb-group-body open" id="sb-group-body-sections">
+    <div class="sb-group-body" id="sb-group-body-sections">
       <button class="sb-tab sb-subtab active" id="tab-overview" onclick="showPage('overview')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_overview">Umumiy ma'lumotlar</span></button>
       <button class="sb-tab sb-subtab" id="tab-investors" onclick="showPage('investors')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investors">Investorlar tashriflari</span><span class="sb-badge" id="badge-investors">0</span></button>
       <button class="sb-tab sb-subtab" id="tab-local" onclick="showPage('local')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_local">Mahalliy tadbirkorlar</span><span class="sb-badge" id="badge-local">0</span></button>
@@ -1015,7 +1016,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="tn-avatar" id="navAvatar">B</div>
         <div>
           <div class="tn-uname" id="navUname">Bo'lim Xodimi</div>
-          <div class="tn-urole">Navoiy Investitsiya</div>
+          <div class="tn-urole">Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi</div>
         </div>
       </div>
     </div>
@@ -3318,7 +3319,6 @@ function setSidebarGroupState(groupId, isOpen){
   wrap.classList.toggle('open', !!isOpen);
   head.classList.toggle('open', !!isOpen);
   body.classList.toggle('open', !!isOpen);
-  try { localStorage.setItem('_sbgroup_'+groupId, isOpen ? '1' : '0'); } catch(e){}
 }
 
 function toggleSidebarGroup(groupId){
@@ -3328,13 +3328,7 @@ function toggleSidebarGroup(groupId){
 }
 
 function syncSidebarGroups(activePage){
-  Object.keys(SIDEBAR_GROUPS).forEach(function(groupId){
-    var containsActive = SIDEBAR_GROUPS[groupId].indexOf(activePage) !== -1;
-    var stored = null;
-    try { stored = localStorage.getItem('_sbgroup_'+groupId); } catch(e){}
-    var shouldOpen = containsActive || stored === null || stored === '1';
-    setSidebarGroupState(groupId, shouldOpen);
-  });
+  return;
 }
 
 function showPage(id){
@@ -3364,7 +3358,6 @@ function showPage(id){
   };
   const titleEl=document.getElementById('topbarTitle');
   if(titleEl) titleEl.textContent=titles[id]||id;
-  syncSidebarGroups(id);
   if(id==='overview')renderOverview();
   else if(id==='investors')renderInvestors();
   else if(id==='local')renderLocal();
