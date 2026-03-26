@@ -1595,6 +1595,13 @@ input[type="time"]{-webkit-appearance:none;}
 
     <div class="form-card" style="margin-bottom:1.2rem">
       <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:0 0 260px">
+          <label class="form-label">Qidiruv rejimi</label>
+          <select class="form-input" id="finder-mode" onchange="updateFinderModeUI()">
+            <option value="importers" selected>Mahsulotni shu 12 ta davlatda import qilayotgan kompaniyalar</option>
+            <option value="exporters">Mahsulotni shu 12 ta davlatga eksport qilayotgan top kompaniyalar</option>
+          </select>
+        </div>
         <div class="form-group" style="flex:1;min-width:200px">
           <label class="form-label">Mahsulot</label>
           <select class="form-input" id="finder-product-select"><option value="">— Tanlang —</option></select>
@@ -1612,7 +1619,7 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
       <!-- Target countries -->
       <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
-        <label class="form-label" style="margin-bottom:.4rem">🌍 Maqsad davlatlar (import qilayotgan kompaniyalar qidiriladi)</label>
+        <label class="form-label" style="margin-bottom:.4rem" id="finderCountriesLabel">🌍 Maqsad davlatlar (import qilayotgan kompaniyalar qidiriladi)</label>
         <div id="finderCountries" style="display:flex;flex-wrap:wrap;gap:.4rem">
           <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Russia" checked> 🇷🇺 Rossiya</label>
           <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="Kazakhstan" checked> 🇰🇿 Qozog'iston</label>
@@ -1656,7 +1663,7 @@ input[type="time"]{-webkit-appearance:none;}
         <!-- Country tabs -->
         <div id="finderCountryTabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto"></div>
         <div class="tscroll"><table>
-          <thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Shahar</th><th>Rahbar</th><th>Soha</th><th>Import hajmi</th><th>Score</th><th>Amal</th></tr></thead>
+          <thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Shahar</th><th>Rahbar</th><th>Soha</th><th id="finder-volume-head">Import hajmi</th><th>Score</th><th>Amal</th></tr></thead>
           <tbody id="finder-tbody"></tbody>
         </table></div>
       </div>
@@ -5185,6 +5192,7 @@ function renderAll(){
   if(isAdmin) renderAdminLists();
   if(typeof renderProducts==='function') renderProducts();
   if(typeof renderPipeline==='function') renderPipeline();
+  if(typeof updateFinderModeUI==='function') updateFinderModeUI();
   if(typeof loadSettings==='function') loadSettings();
   if(typeof updateTradeFirebaseCount==='function') updateTradeFirebaseCount();
   if(typeof renderEntrepreneurs==='function') renderEntrepreneurs();
@@ -10562,13 +10570,56 @@ function goToFinder(prodId, countryCode){
    M3: COMPANY FINDER
 ═══════════════════════════════════════ */
 var _finderResults = [];
+var _finderMode = 'importers';
+
+function getFinderModeMeta(mode){
+  if(mode === 'exporters'){
+    return {
+      mode: 'exporters',
+      countryLabel: '🌍 Maqsad davlatlar (shu davlatlarga eksport qilayotgan top kompaniyalar qidiriladi)',
+      volumeLabel: 'Eksport hajmi',
+      resultWord: 'eksportyorlari',
+      actionLabel: 'eksport qilayotgan kompaniyalar',
+      apolloKeyword: ' exporter supplier manufacturer to ',
+      promptRole: 'SELLERS / EXPORTERS / SUPPLIERS',
+      promptVerb: 'EXPORT',
+      promptVolumeField: 'export_volume_usd',
+      sourceLabel: 'Eksport'
+    };
+  }
+  return {
+    mode: 'importers',
+    countryLabel: '🌍 Maqsad davlatlar (import qilayotgan kompaniyalar qidiriladi)',
+    volumeLabel: 'Import hajmi',
+    resultWord: 'importyorlari',
+    actionLabel: 'import qilayotgan kompaniyalar',
+    apolloKeyword: ' importer buyer distributor in ',
+    promptRole: 'BUYERS / IMPORTERS',
+    promptVerb: 'IMPORT',
+    promptVolumeField: 'import_volume_usd',
+    sourceLabel: 'Import'
+  };
+}
+
+function updateFinderModeUI(){
+  var modeEl = document.getElementById('finder-mode');
+  var meta = getFinderModeMeta(modeEl ? modeEl.value : 'importers');
+  _finderMode = meta.mode;
+  var countriesLabel = document.getElementById('finderCountriesLabel');
+  if(countriesLabel) countriesLabel.textContent = meta.countryLabel;
+  var volHead = document.getElementById('finder-volume-head');
+  if(volHead) volHead.textContent = meta.volumeLabel;
+}
 
 async function runCompanyFinder(source){
+  updateFinderModeUI();
   var sel = document.getElementById('finder-product-select');
   var prodId = sel.value;
   if(!prodId){ toast('⚠️ Mahsulot tanlang','error'); return; }
   var prod = (DB.products||[]).find(function(p){return p.id==prodId;});
   if(!prod) return;
+  var meta = getFinderModeMeta(document.getElementById('finder-mode').value);
+  _finderMode = meta.mode;
   var perCountry = parseInt(document.getElementById('finder-count').value)||5;
 
   // Get selected countries
@@ -10581,7 +10632,7 @@ async function runCompanyFinder(source){
   document.getElementById('finderKpiGrid').style.display = 'none';
   document.getElementById('finderProgress').style.display = 'block';
   document.getElementById('finderBar').style.width = '10%';
-  document.getElementById('finderProgressText').textContent = countries.length+' ta davlatda "'+prod.name_en+'" importyorlari qidirilmoqda...';
+  document.getElementById('finderProgressText').textContent = countries.length+' ta davlatda "'+prod.name_en+'" '+meta.resultWord+' qidirilmoqda...';
 
   _finderResults = [];
 
@@ -10590,13 +10641,13 @@ async function runCompanyFinder(source){
       // Apollo proxy — keyword search with country
       document.getElementById('finderBar').style.width = '40%';
       for(var ci=0; ci<countries.length; ci++){
-        document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+countries[ci]+' ('+(ci+1)+'/'+countries.length+')...';
+        document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+countries[ci]+' ('+(ci+1)+'/'+countries.length+') — '+meta.resultWord+'...';
         try {
-          var apResp = await fetch(APOLLO_PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:prod.name_en+' importer '+countries[ci],per_page:perCountry})});
+          var apResp = await fetch(APOLLO_PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:prod.name_en + meta.apolloKeyword + countries[ci],per_page:perCountry})});
           if(apResp.ok){
             var apData = await apResp.json();
             (apData.people||[]).forEach(function(p,i){
-              _finderResults.push({id:'fc_'+Date.now()+'_'+_finderResults.length, kompaniya:p.organization?.name||'', rahbar:(p.first_name||'')+' '+(p.last_name||''), lavozim:p.title||'', email:p.email||'', telefon:p.phone_numbers?.[0]?.sanitized_number||'', davlat:countries[ci], shahar:p.city||'', soha:p.organization?.industry||'', linkedin:p.linkedin_url||'', website:p.organization?.website_url||'', import_volume:'', score:Math.floor(Math.random()*30)+70, manba:'Apollo'});
+              _finderResults.push({id:'fc_'+Date.now()+'_'+_finderResults.length, kompaniya:p.organization?.name||'', rahbar:(p.first_name||'')+' '+(p.last_name||''), lavozim:p.title||'', email:p.email||'', telefon:p.phone_numbers?.[0]?.sanitized_number||'', davlat:countries[ci], shahar:p.city||'', soha:p.organization?.industry||'', linkedin:p.linkedin_url||'', website:p.organization?.website_url||'', import_volume:'', score:Math.floor(Math.random()*30)+70, manba:'Apollo', finderMode:meta.mode});
             });
           }
         } catch(e){ console.log('Apollo '+countries[ci]+' error:', e); }
@@ -10609,21 +10660,21 @@ async function runCompanyFinder(source){
         var batch = countries.slice(bi, bi+batchSize);
         var pct = 20 + (bi/countries.length)*70;
         document.getElementById('finderBar').style.width = pct+'%';
-        document.getElementById('finderProgressText').textContent = '🤖 '+batch.join(', ')+' — importyorlar qidirilmoqda... ('+(bi+batch.length)+'/'+countries.length+')';
+        document.getElementById('finderProgressText').textContent = '🤖 '+batch.join(', ')+' — '+meta.resultWord+' qidirilmoqda... ('+(bi+batch.length)+'/'+countries.length+')';
 
         var prompt = 'You are a B2B trade intelligence expert. Return ONLY valid JSON array.\n'+
-          'Find REAL companies that IMPORT "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') into these countries: '+batch.join(', ')+'.\n'+
-          'For EACH country find '+perCountry+' companies that are BUYERS/IMPORTERS of this product.\n'+
-          'These should be construction companies, distributors, wholesalers, manufacturers who BUY this product from abroad.\n'+
+          'Find REAL companies that '+meta.promptVerb+' "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') for these countries: '+batch.join(', ')+'.\n'+
+          'For EACH country find '+perCountry+' companies that are '+meta.promptRole+' of this product.\n'+
+          'These should be real active companies relevant to cross-border trade of this product.\n'+
           'JSON format: [{"company":"Real Company Name","country":"Russia","city":"Moscow",'+
           '"contact_name":"Ivan Petrov","title":"Purchase Director",'+
           '"industry":"Construction Materials Distribution",'+
           '"website":"www.realsite.com","employees":200,'+
-          '"import_volume_usd":"$5M/year","import_share_pct":15,'+
-          '"products_imported":"granite slabs, marble tiles",'+
+          '"'+meta.promptVolumeField+'":"$5M/year","trade_share_pct":15,'+
+          '"products_traded":"granite slabs, marble tiles",'+
           '"score":85,"why":"Major distributor of stone products in Moscow region"}]\n'+
-          'Score 1-100: 90+ = direct importer of this exact product, 70-89 = imports similar products, 50-69 = potential buyer.\n'+
-          'IMPORTANT: Use REALISTIC company names from '+batch.join(', ')+'. Include import volume estimates.';
+          'Score 1-100: 90+ = direct '+(meta.mode==='exporters'?'exporter':'importer')+' of this exact product, 70-89 = trades similar products, 50-69 = potential lead.\n'+
+          'IMPORTANT: Use REALISTIC company names from '+batch.join(', ')+'. Include trade volume estimates.';
 
         var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.5,maxOutputTokens:4000}};
         var data = await callGemini(body);
@@ -10644,12 +10695,13 @@ async function runCompanyFinder(source){
             soha:c.industry||'',
             website:c.website||'',
             xodimlar:c.employees||'',
-            import_volume:c.import_volume_usd||'',
-            import_share:c.import_share_pct||'',
-            products_imported:c.products_imported||'',
+            import_volume:c.import_volume_usd||c.export_volume_usd||c.trade_volume_usd||'',
+            import_share:c.import_share_pct||c.trade_share_pct||'',
+            products_imported:c.products_imported||c.products_traded||'',
             why:c.why||'',
             score:c.score||60,
-            manba:'Gemini AI'
+            manba:'Gemini AI',
+            finderMode:meta.mode
           });
         });
       }
@@ -10705,7 +10757,9 @@ async function runCompanyFinder(source){
 }
 
 function renderFinderTable(results){
+  updateFinderModeUI();
   var tb = document.getElementById('finder-tbody');
+  var meta = getFinderModeMeta(_finderMode||'importers');
   tb.innerHTML = results.sort(function(a,b){return (b.score||0)-(a.score||0);}).map(function(r,i){
     var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
     var flagMap = {'Russia':'🇷🇺','Kazakhstan':'🇰🇿','Kyrgyzstan':'🇰🇬','Tajikistan':'🇹🇯','Turkmenistan':'🇹🇲','Turkey':'🇹🇷','Iran':'🇮🇷','Afghanistan':'🇦🇫','Pakistan':'🇵🇰','Azerbaijan':'🇦🇿','Georgia':'🇬🇪','China':'🇨🇳'};
@@ -10716,7 +10770,7 @@ function renderFinderTable(results){
       '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
       '<td>'+r.rahbar+'<div style="font-size:.55rem;color:var(--text3)">'+(r.lavozim||'')+'</div></td>'+
       '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
-      '<td style="font-size:.65rem;font-weight:700;color:#059669">'+(r.import_volume||'—')+'</td>'+
+      '<td style="font-size:.65rem;font-weight:700;color:#059669" title="'+meta.volumeLabel+'">'+(r.import_volume||'—')+'</td>'+
       '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
       '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat">📧</button></td></tr>';
   }).join('');
