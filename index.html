@@ -9619,12 +9619,37 @@ function saveEntPhone(id){
 }
 
 // Bitta tadbirkorga Telegram xabar yuborish
+function buildEntrepreneurTelegramMessage(ent, forumText){
+  var finalForum = String(forumText || ent.matchedForum || '').trim();
+  var lines = [];
+  lines.push('Hurmatli ' + (ent.name || 'hamkor') + ',');
+  if(finalForum){
+    lines.push(finalForum + ' tadbiri bo\'yicha Sizni ishtirok etishga taklif qilamiz.');
+  } else {
+    lines.push('Siz bilan hamkorlik va investitsiya imkoniyatlari bo\'yicha bog\'lanmoqdamiz.');
+  }
+  var meta = [];
+  if(ent.sector) meta.push('faoliyat yo\'nalishi: ' + ent.sector);
+  if(ent.district) meta.push('hudud: ' + ent.district);
+  if(ent.projectValue) meta.push('loyiha qiymati: $' + ent.projectValue + 'M');
+  if(meta.length){
+    lines.push('Ma\'lumot uchun, ' + meta.join(', ') + '.');
+  }
+  if(finalForum){
+    lines.push('Mazkur forum Sizning yo\'nalishingizga mos bo\'lishi mumkin. Ishtirokingizdan mamnun bo\'lamiz.');
+  } else {
+    lines.push('Hamkorlik imkoniyatlarini muhokama qilishdan mamnun bo\'lamiz.');
+  }
+  lines.push('Forum bo\'yicha qo\'shimcha savollar bo\'lsa Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi bosh mutaxassisi Shahzod Barnoqulovga (+998888901110) aloqaga chiqing.');
+  return lines.join('\n\n');
+}
+
 async function sendSingleTg(id){
   var ent = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
   if(!ent) return;
   if(!ent.phone){toast('⚠️ Telefon raqam yo\'q. Avval raqam qo\'shing.','error');editEntPhone(id);return;}
   if(_tgBatchRunning){toast('⏳ Hozir Telegram batch ishlayapti. Tugagach qayta urinib ko\'ring.','info');return;}
-  var msg = '🏭 Hurmatli '+ent.name+'!\n\n'+(ent.district?'📍 '+ent.district+'\n':'')+'📋 '+ent.sector+'\n'+(ent.projectValue?'💰 $'+ent.projectValue+'M\n':'')+(ent.matchedForum?'🗓 '+ent.matchedForum+'\n':'')+'\n✅ Navoiy viloyati Investitsiya boshqarmasi sizni hamkorlikka taklif qiladi!\n\n📞 Bog\'lanish: Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
+  var msg = buildEntrepreneurTelegramMessage(ent);
   toast('📲 '+ent.name+' ('+ent.phone+') ga xabar yuborilmoqda...');
   var result = await sendTgMessage(ent.phone, msg, ent.name);
   applyTgResultToEntrepreneur(ent, result);
@@ -9652,15 +9677,7 @@ async function sendTelegramToSelected(){
   if(!confirm(confirmMsg)) return;
   toast('📲 '+sendable.length+' ta tanlangan tadbirkorga Telegram yuborilmoqda...');
   var batch = await sendTelegramBatch(sendable, function(e){
-    var msg = '🏭 Hurmatli '+e.name+'!\n\n';
-    if(e.district) msg += '📍 '+e.district+'\n';
-    if(e.sector) msg += '📋 '+e.sector+'\n';
-    if(e.projectValue) msg += '💰 $'+e.projectValue+'M\n';
-    if(e.matchedForum) msg += '🗓 '+e.matchedForum+'\n';
-    msg += '\n✅ Navoiy viloyati Investitsiya boshqarmasi sizni hamkorlikka taklif qiladi!';
-    if(e.matchedForum) msg += '\nForumda ishtirok etishingizni tavsiya etamiz.';
-    msg += '\n\n📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
-    return msg;
+    return buildEntrepreneurTelegramMessage(e);
   }, {showWaitToasts:true});
   toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📲 Tayyor!', batch), batch.stopped?'error':'success');
   if(batch.message) toast(batch.message, batch.stopped?'error':'info');
@@ -9845,13 +9862,7 @@ async function autoMatchAndNotify(importedCount){
   // 3. TELEGRAM YUBORISH — telefonga to'g'ridan-to'g'ri
   toast('📨 '+readyWithPhone.length+' ta tadbirkorga Telegram xabar xavfsiz navbat bilan yuborilmoqda...');
   var batch = await sendTelegramBatch(readyWithPhone, function(e){
-    return '🏭 Hurmatli '+e.name+'!\n\n'+
-      (e.district?'📍 '+e.district+'\n':'')+
-      '📋 '+e.sector+'\n'+
-      (e.projectValue?'💰 $'+e.projectValue+' mln\n':'')+
-      '🗓 '+e.matchedForum+'\n\n'+
-      '✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n'+
-      '📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
+    return buildEntrepreneurTelegramMessage(e);
   }, {showWaitToasts:true});
   toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📨 Tayyor!', batch), batch.stopped?'error':'success');
   if(batch.message) toast(batch.message, batch.stopped?'error':'info');
@@ -9961,7 +9972,7 @@ async function sendTgForModalForum(){
   if(!confirm(confirmMsg)) return;
   toast('📲 '+sendable.length+' ta tadbirkorga xabar xavfsiz navbat bilan yuborilmoqda...');
   var batch = await sendTelegramBatch(sendable, function(e){
-    return '🔔 FORUM TAKLIFI\n\n👤 '+e.name+(e.district?'\n📍 '+e.district:'')+'\n🏭 '+e.sector+(e.projectValue?'\n💰 $'+e.projectValue+'M':'')+'\n🗓 '+_currentModalForum+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
+    return buildEntrepreneurTelegramMessage(e, _currentModalForum);
   }, {showWaitToasts:true});
   showForumEntrepreneurs(_currentModalForum);
   toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📲 Tayyor!', batch), batch.stopped?'error':'success');
@@ -10019,7 +10030,7 @@ async function sendTelegramToMatched(){
   if(!confirm(confirmMsg)) return;
   toast('📲 '+sendable.length+' ta tadbirkorga xabar yuborilmoqda...');
   var batch = await sendTelegramBatch(sendable, function(e){
-    return '🏭 Hurmatli '+e.name+'!\n\n'+(e.district?'📍 '+e.district+'\n':'')+'📋 '+e.sector+'\n'+(e.projectValue?'💰 $'+e.projectValue+'M\n':'')+'🗓 '+e.matchedForum+'\n\n✅ Sizning sohangizga mos tadbir yaqinlashmoqda. Ishtirok etishingizni tavsiya etamiz!\n\n📞 Navoiy viloyati Investitsiya boshqarmasi\n🌐 investnavoi.github.io';
+    return buildEntrepreneurTelegramMessage(e);
   }, {showWaitToasts:true});
   toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📲 Tayyor!', batch), batch.stopped?'error':'success');
   if(batch.message) toast(batch.message, batch.stopped?'error':'info');
@@ -10035,7 +10046,7 @@ async function sendTelegramForForum(forumNom, forumSana){
   toast('📲 "'+forumNom.slice(0,30)+'" — '+sendable.length+' ta tadbirkorga xavfsiz navbat bilan...');
   if(noPhoneCount) toast('ℹ️ Telefonsiz '+noPhoneCount+' ta tadbirkor o\'tkazib yuborildi.','info');
   var batch = await sendTelegramBatch(sendable, function(e){
-    return '🔔 FORUM TAKLIFI\n\n👤 '+e.name+(e.district?'\n📍 '+e.district:'')+'\n🏭 '+e.sector+(e.projectValue?'\n💰 $'+e.projectValue+'M':'')+'\n🗓 '+forumNom+(forumSana?' — '+forumSana:'')+'\n\n✅ Ishtirok etishingizni tavsiya etamiz!\n📞 Navoiy Investitsiya Boshqarmasi';
+    return buildEntrepreneurTelegramMessage(e, forumNom+(forumSana?' — '+forumSana:''));
   }, {showWaitToasts:true});
   toast(buildTgBatchToast(batch.stopped?'⏸ Telegram batch to\'xtadi:':'📲 Tayyor!', batch), batch.stopped?'error':'success');
   if(batch.message) toast(batch.message, batch.stopped?'error':'info');
