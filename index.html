@@ -7500,16 +7500,13 @@ function formatBilingualProductName(p){
   if(!p) return '—';
   var en = String(p.name_en || p.name || '').trim();
   var uz = String(p.name_uz || '').trim();
-  var hsFallback = '';
-  if(typeof translateHS === 'function'){
-    hsFallback = String(translateHS(p.hs_code, en) || '').trim();
-  }
-  if((!uz || uz.toLowerCase() === en.toLowerCase()) && hsFallback && hsFallback.toLowerCase() !== en.toLowerCase()){
-    uz = hsFallback;
+  var exactUz = resolveExactUzProductName(en, p.hs_code);
+  if((!uz || uz.toLowerCase() === en.toLowerCase()) && exactUz && exactUz.toLowerCase() !== en.toLowerCase()){
+    uz = exactUz;
   }
   if(!en && uz) return uz;
   if(!uz || uz.toLowerCase() === en.toLowerCase()) return en || '—';
-  return en + ' (' + uz + ')';
+  return en + ' - ' + uz;
 }
 
 function populateProductSelects(){
@@ -7543,6 +7540,67 @@ function filterProductsByRaw(rawId){
       return '<tr><td>'+(i+1)+'</td><td><b>'+formatBilingualProductName(p)+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:p.raw_name||'—')+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||'—').slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').slice(0,40)+'</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="background:#4361EE;color:#fff;border:none;margin-right:3px" title="Prezentatsiya">📊</button><button class="btn btn-danger btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
     }).join('');
   }
+}
+
+var PRODUCT_NAME_UZ_EXACT = [
+  [/^Granite,\s*Crude\/Roughly\s*Trimmed$/i, "Granit, xom yoki qo'pol ishlov berilgan"],
+  [/^Stone\s+Sets,\s*Curbstones,\s*Flagstones$/i, "Yo'lbop tosh to'plamlari, bordyur toshlari va yassi tosh plitalar"],
+  [/^Refractory\s+Bricks\s*\(>?\s*50%\s*SiO.?2\)$/i, "O'tga chidamli g'ishtlar (50% dan ortiq kremniy dioksidli)"],
+  [/^Silicon\s+Dioxide\s*\(Silica\)$/i, "Kremniy dioksidi (silika)"],
+  [/^Limestone\s+Flux\/Calcareous\s+Stone$/i, "Flyusbop ohaktosh yoki kalkerli tosh"],
+  [/^Quicklime\s*\(CaO\)$/i, "So'ndirilmagan ohak (CaO)"],
+  [/^Slaked\s+Lime\s*\(Ca\(OH\)₂\)$/i, "So'ndirilgan ohak (Ca(OH)₂)"],
+  [/^Slaked\s+Lime\s*\(Ca\(OH\)2\)$/i, "So'ndirilgan ohak (Ca(OH)₂)"],
+  [/^Portland\s+Cement$/i, "Portland sementi"],
+  [/^White\s+Portland\s+Cement$/i, "Oq portland sementi"],
+  [/^Other\s+Portland\s+Cement$/i, "Boshqa portland sementlari"],
+  [/^Aluminous\s+Cement$/i, "Aluminat sement"],
+  [/^Other\s+Hydraulic\s+Cements$/i, "Boshqa gidravlik sementlar"],
+  [/^Ceramic\s+Tiles$/i, "Keramik plitkalar"],
+  [/^Other\s+Ceramic\s+Tiles$/i, "Boshqa keramik plitkalar"],
+  [/^Ceramic\s+Sanitary\s+Ware$/i, "Keramik sanitariya buyumlari"],
+  [/^Glass\s+Containers\/Bottles$/i, "Shisha idishlar va butilkalar"],
+  [/^Float\s+Glass\s*\(Coated\)$/i, "Qoplamali float-shisha"],
+  [/^Float\s+Glass\s*\(Other\)$/i, "Boshqa float-shisha"],
+  [/^Animal\s+Feed\s+Preparations$/i, "Tayyor yem mahsulotlari"],
+  [/^Urea$/i, "Karbamid (urea)"],
+  [/^Ammonium\s+Sulphate$/i, "Ammoniy sulfat"],
+  [/^Anionic\s+Surfactants$/i, "Anion sirt-faol moddalar"],
+  [/^Other\s+Surface-Active\s+Agents$/i, "Boshqa sirt-faol moddalar"],
+  [/^Washing\s+Preparations\s*\(Retail\)$/i, "Chakana savdo uchun yuvish vositalari"],
+  [/^Washing\s+Preparations$/i, "Yuvish vositalari"],
+  [/^Petroleum\s+Coke\s*\(Calcined\)$/i, "Kalsinatsiyalangan neft koksi"],
+  [/^Non-Refractory\s+Mortars$/i, "O'tga chidamsiz qurilish qorishmalari"],
+  [/^Chemical\s+Preparations\s*\(NES\s*1\)$/i, "Kimyoviy aralashmalar (NES 1)"],
+  [/^Chemical\s+Preparations\s*\(NES\s*2\)$/i, "Kimyoviy aralashmalar (NES 2)"],
+  [/^Chemical\s+Preparations$/i, "Kimyoviy aralashmalar"],
+  [/^Plasterboard\s*\(Not\s+Decorated\)$/i, "Bezaksiz gipsokarton"],
+  [/^Other\s+Gypsum\s+Board\/Sheets$/i, "Boshqa gips plitalari va listlari"],
+  [/^Other\s+Gypsum\s+Articles$/i, "Boshqa gips buyumlari"],
+  [/^Paints\s*&\s*Varnishes\s*\(Acrylic\)$/i, "Akril bo'yoqlar va laklar"],
+  [/^Other\s+Paints\s*&\s*Varnishes$/i, "Boshqa bo'yoqlar va laklar"],
+  [/^Porcelain\s+Tableware$/i, "Chinni idish-tovoqlar"],
+  [/^Calcium\s+Carbonate\s*\(Precipitated\)$/i, "Cho'ktirilgan kaltsiy karbonat"],
+  [/^Sodium\s+Carbonate\s*\(Soda\s+Ash\)$/i, "Natriy karbonat (soda kuli)"],
+  [/^Sodium\s+Bicarbonate$/i, "Natriy gidrokarbonat"],
+  [/^Barium\s+Carbonate$/i, "Bariy karbonat"]
+];
+
+function translateHSUzOnly(hsCode){
+  if(!hsCode) return '';
+  hsCode = String(hsCode).replace(/\s+/g,'');
+  if(HS_UZ[hsCode]) return HS_UZ[hsCode];
+  if(hsCode.length>=4 && HS_UZ[hsCode.slice(0,4)]) return HS_UZ[hsCode.slice(0,4)];
+  if(hsCode.length>=2 && HS_UZ[hsCode.slice(0,2)]) return HS_UZ[hsCode.slice(0,2)];
+  return '';
+}
+
+function resolveExactUzProductName(enName, hsCode){
+  var en = String(enName||'').trim();
+  for(var i=0;i<PRODUCT_NAME_UZ_EXACT.length;i++){
+    if(PRODUCT_NAME_UZ_EXACT[i][0].test(en)) return PRODUCT_NAME_UZ_EXACT[i][1];
+  }
+  return translateHSUzOnly(hsCode);
 }
 
 function showAddRawModal(){
