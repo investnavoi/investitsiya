@@ -11152,6 +11152,24 @@ function parseAnthropicSseChunk(chunk, onText){
   }
 }
 
+function extractInvestAiErrorMessage(resp, errText){
+  var fallback = 'API error ' + (resp && resp.status ? resp.status : '');
+  if(!errText) return fallback;
+  try{
+    var errJson = JSON.parse(errText);
+    var detail = errJson.detail || '';
+    if(detail){
+      try{
+        var nested = JSON.parse(detail);
+        detail = (nested.error && nested.error.message) || nested.message || detail;
+      }catch(e){}
+    }
+    return detail || errJson.error || fallback;
+  }catch(e){
+    return errText || fallback;
+  }
+}
+
 async function analyzeInvestmentMaterial(){
   if(_investAiBusy) return;
   var input = document.getElementById('materialAiInput');
@@ -11180,11 +11198,7 @@ async function analyzeInvestmentMaterial(){
 
     if(!resp.ok){
       var errText = await resp.text();
-      var errMsg = errText;
-      try{
-        var errJson = JSON.parse(errText);
-        errMsg = errJson.error || errJson.detail || errText;
-      }catch(e){}
+      var errMsg = extractInvestAiErrorMessage(resp, errText);
       throw new Error(errMsg || ('API error ' + resp.status));
     }
 
