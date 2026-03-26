@@ -11192,104 +11192,818 @@ function extractInvestAiTaggedLines(markdown, regex){
     .map(function(line){ return [line]; });
 }
 
-function styleInvestAiSheet(ws){
-  if(!ws || !ws['!ref'] || !window.XLSX) return ws;
-  var range = XLSX.utils.decode_range(ws['!ref']);
-  for(var C = range.s.c; C <= range.e.c; C++){
-    var addr = XLSX.utils.encode_cell({r:0,c:C});
-    if(ws[addr]){
-      ws[addr].s = {
-        font:{bold:true,color:{rgb:'FFFFFF'},name:'Calibri',sz:12},
-        fill:{fgColor:{rgb:'1F3A66'}},
-        alignment:{horizontal:'center',vertical:'center',wrapText:true},
+function investAiNormalizeText(value){
+  var text = String(value || '').toLowerCase();
+  try { text = text.normalize('NFD').replace(/[\u0300-\u036f]/g,''); } catch(e){}
+  return text.replace(/['’`"]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+}
+
+function investAiParseHsCode(value){
+  return String(value || '').replace(/\D/g,'');
+}
+
+function investAiFmtUsd(value){
+  var num = Number(value || 0) || 0;
+  return '$' + Math.round(num).toLocaleString('en-US');
+}
+
+function investAiFmtShortUsd(value){
+  var num = Number(value || 0) || 0;
+  var abs = Math.abs(num);
+  if(abs >= 1e9) return '$' + (num / 1e9).toFixed(abs >= 10e9 ? 0 : 1) + 'B';
+  if(abs >= 1e6) return '$' + (num / 1e6).toFixed(abs >= 10e6 ? 0 : 1) + 'M';
+  if(abs >= 1e3) return '$' + (num / 1e3).toFixed(abs >= 10e3 ? 0 : 1) + 'K';
+  return '$' + Math.round(num).toLocaleString('en-US');
+}
+
+function investAiFmtPct(value){
+  if(value == null || isNaN(value)) return '—';
+  return (Number(value) * 100).toFixed(1) + '%';
+}
+
+function investAiFmtPercent(value){
+  if(value == null || isNaN(value)) return '—';
+  return Number(value).toFixed(1) + '%';
+}
+
+function investAiCalcCagr(series){
+  var years = ['2021','2022','2023','2024'];
+  var firstYear = null, lastYear = null, firstValue = 0, lastValue = 0;
+  years.forEach(function(year){
+    var value = Number((series || {})[year] || 0) || 0;
+    if(value > 0 && firstYear === null){
+      firstYear = Number(year);
+      firstValue = value;
+    }
+    if(value > 0){
+      lastYear = Number(year);
+      lastValue = value;
+    }
+  });
+  if(firstYear === null || lastYear === null || lastYear <= firstYear || firstValue <= 0 || lastValue <= 0) return null;
+  return Math.pow(lastValue / firstValue, 1 / (lastYear - firstYear)) - 1;
+}
+
+function investAiExpandImportSnapshotCountries(snapshot){
+  return (snapshot && snapshot.countries || []).map(function(c){
+    return {
+      code: c.c || c.code || '',
+      name: c.n || c.name || '',
+      flag: c.f || c.flag || '',
+      import_usd: Number(c.u || c.import_usd || 0) || 0,
+      trend_pct: typeof (c.t || c.trend_pct) === 'number' ? (c.t || c.trend_pct) : (c.t === 0 ? 0 : null),
+      volume_tons: Number(c.v || c.volume_tons || 0) || 0,
+      year_imports: c.y || c.year_imports || {},
+      year_statuses: c.s || c.year_statuses || {},
+      status: c.st || c.status || 'ok'
+    };
+  });
+}
+
+function investAiFindRawMaterial(material){
+  var needle = investAiNormalizeText(material);
+  var raws = DB.rawMaterials || [];
+  if(!needle) return null;
+  var scored = raws.map(function(raw){
+    var uz = investAiNormalizeText(raw.name_uz);
+    var en = investAiNormalizeText(raw.name_en);
+    var score = 0;
+    if(needle && (needle === uz || needle === en)) score = 100;
+    else if(needle && (uz.indexOf(needle) !== -1 || en.indexOf(needle) !== -1)) score = 80;
+    else if(needle && (needle.indexOf(uz) !== -1 || needle.indexOf(en) !== -1)) score = 70;
+    return { raw: raw, score: score };
+  }).filter(function(item){ return item.score > 0; })
+    .sort(function(a,b){ return b.score - a.score; });
+  return scored.length ? scored[0].raw : null;
+}
+
+function investAiFindProducts(material){
+  var needle = investAiNormalizeText(material);
+  var raw = investAiFindRawMaterial(material);
+  var prods = DB.products || [];
+  var out = [];
+  function pushUnique(product){
+    if(!product || !product.id) return;
+    if(out.some(function(item){ return String(item.id) === String(product.id); })) return;
+    out.push(product);
+  }
+  if(raw){
+    prods.forEach(function(prod){
+      if(String(prod.raw_id) === String(raw.id)) pushUnique(prod);
+      else {
+        var rawName = investAiNormalizeText(prod.raw_name);
+        if(rawName && (rawName === investAiNormalizeText(raw.name_uz) || rawName === investAiNormalizeText(raw.name_en))) pushUnique(prod);
+      }
+    });
+  }
+  prods.forEach(function(prod){
+    var haystack = [
+      prod.name_en,
+      prod.name_uz,
+      prod.raw_name,
+      prod.description,
+      prod.main_sector,
+      prod.usage
+    ].map(investAiNormalizeText).join(' ');
+    if(needle && haystack.indexOf(needle) !== -1) pushUnique(prod);
+  });
+  return { raw: raw, products: out };
+}
+
+function investAiInferCategory(product){
+  var text = investAiNormalizeText([
+    product.name_en,
+    product.name_uz,
+    product.main_sector,
+    product.usage,
+    product.description
+  ].join(' '));
+  if(/ceramic|tile|sanitary|porcelain|brick/.test(text)) return 'CERAMICS';
+  if(/paper|paint|rubber|filler|silica|silicon|coating|chemical/.test(text)) return 'FILLER';
+  if(/refractory|kiln|alumina|foundry/.test(text)) return 'REFRACTORIES';
+  if(/cement|lime|gypsum|mortar|board|plaster|construction/.test(text)) return 'CONSTRUCTION';
+  if(/ore|crude|roughly|stone|granite|marble|basalt|limestone|quartz|kaolin|clay|dolomite|phosphorite/.test(text)) return 'RAW';
+  return 'PROCESSING';
+}
+
+function investAiInferLevel(product){
+  var text = investAiNormalizeText([product.name_en, product.main_sector, product.usage].join(' '));
+  if(/ore|crude|roughly|stone|raw/.test(text)) return 'Raw';
+  if(/cement|lime|powder|board|tile|brick|chemical|plaster|glass/.test(text)) return 'Processed';
+  return 'Downstream';
+}
+
+function investAiInferCapital(product){
+  var text = investAiNormalizeText([product.name_en, product.main_sector, product.usage].join(' '));
+  if(/tile|brick|cement|glass|refractory|ceramic/.test(text)) return 'High';
+  if(/chemical|silica|filler|coating|board|plaster/.test(text)) return 'Medium';
+  return 'Low / Medium';
+}
+
+function investAiInferTechnology(product){
+  var text = investAiNormalizeText([product.name_en, product.main_sector, product.usage].join(' '));
+  if(/chemical|silica|coating|engineered|composite/.test(text)) return 'Advanced';
+  if(/tile|glass|cement|ceramic|board|plaster|refractory/.test(text)) return 'Industrial';
+  return 'Basic processing';
+}
+
+function investAiPickAnalysisYear(entries){
+  var years = ['2024','2023','2022','2021'];
+  for(var i=0;i<years.length;i++){
+    var year = years[i];
+    var total = (entries || []).reduce(function(sum, entry){
+      return sum + (Number((entry.totalsByYear || {})[year] || 0) || 0);
+    }, 0);
+    if(total > 0) return year;
+  }
+  return '2024';
+}
+
+function investAiInferPriority(entry){
+  var regionalDemand = Number(entry.analysisValue || 0) || 0;
+  var uzbImport = Number(entry.uzbValue || 0) || 0;
+  var level = String(entry.level || '');
+  if(regionalDemand >= 50000000 && uzbImport >= 1000000) return 'Priority A';
+  if(regionalDemand >= 15000000 && (uzbImport >= 250000 || /Processed|Downstream/.test(level))) return 'Priority B';
+  if(regionalDemand >= 5000000) return 'Priority C';
+  return 'Priority D';
+}
+
+function investAiInferFeasibility(priority){
+  if(priority === 'Priority A') return 'High';
+  if(priority === 'Priority B') return 'Medium / High';
+  if(priority === 'Priority C') return 'Medium';
+  return 'Low';
+}
+
+function investAiInferCompetitiveness(entry){
+  var regionalDemand = Number(entry.analysisValue || 0) || 0;
+  var cagr = typeof entry.cagr === 'number' ? entry.cagr : null;
+  if(regionalDemand >= 50000000 && cagr !== null && cagr >= 0.05) return 'Strong';
+  if(regionalDemand >= 15000000) return 'Moderate';
+  return 'Weak';
+}
+
+function investAiInferVerdict(priority, entry){
+  if(priority === 'Priority A') return 'Actively promote';
+  if(priority === 'Priority B') return 'Validate and target';
+  if(priority === 'Priority C') return 'Selective opportunity';
+  return (entry.level === 'Raw' ? 'Low value / verify' : 'Not a priority');
+}
+
+function investAiPriorityBadgeColor(priority){
+  if(priority === 'Priority A') return 'C6EFCE';
+  if(priority === 'Priority B') return 'DBEAFE';
+  if(priority === 'Priority C') return 'FFEB9C';
+  return 'E2E8F0';
+}
+
+function investAiBuildWorkbookContext(material, markdown){
+  var match = investAiFindProducts(material);
+  var raw = match.raw;
+  var products = match.products;
+  var sections = splitInvestAiSections(markdown);
+  var executiveSummaryRows = extractInvestAiBullets(markdown, 'Executive Summary');
+  var nextSteps = extractInvestAiBullets(markdown, 'Recommended Next Steps');
+  var investorTargets = extractInvestAiBullets(markdown, 'Recommended Investor Targets');
+  var verificationRows = extractInvestAiTaggedLines(markdown, /verified|verification|requires live trade verification|✓|△|⚠/i);
+  var riskRows = extractInvestAiTaggedLines(markdown, /risk|caveat|constraint|warning|⚠|gap/i);
+  var summaryLines = String(markdown || '').split(/\r?\n/).map(stripInvestAiMd).filter(Boolean);
+
+  var entries = products.map(function(product){
+    var hsDigits = investAiParseHsCode(product.hs_code);
+    var snapshot = getImportSnapshot(product, hsDigits.slice(0,4));
+    var expanded = investAiExpandImportSnapshotCountries(snapshot);
+    var countryMap = {};
+    TARGET_COUNTRIES.forEach(function(target){
+      var found = expanded.find(function(item){ return String(item.code) === String(target.code); }) || {
+        code: target.code,
+        name: target.name,
+        flag: target.flag || '',
+        import_usd: 0,
+        trend_pct: null,
+        volume_tons: 0,
+        year_imports: {},
+        year_statuses: {},
+        status: 'no_data'
+      };
+      var years = {
+        '2021': Number((found.year_imports || {})['2021'] || 0) || 0,
+        '2022': Number((found.year_imports || {})['2022'] || 0) || 0,
+        '2023': Number((found.year_imports || {})['2023'] || 0) || 0,
+        '2024': Number((found.year_imports || {})['2024'] || 0) || 0
+      };
+      countryMap[target.code] = {
+        code: target.code,
+        name: target.name,
+        years: years,
+        status: found.status || 'no_data',
+        volumeTons: Number(found.volume_tons || 0) || 0,
+        trendPct: typeof found.trend_pct === 'number' ? found.trend_pct : null
+      };
+    });
+
+    var totalsByYear = { '2021':0,'2022':0,'2023':0,'2024':0 };
+    Object.keys(countryMap).forEach(function(code){
+      var years = countryMap[code].years;
+      totalsByYear['2021'] += Number(years['2021'] || 0) || 0;
+      totalsByYear['2022'] += Number(years['2022'] || 0) || 0;
+      totalsByYear['2023'] += Number(years['2023'] || 0) || 0;
+      totalsByYear['2024'] += Number(years['2024'] || 0) || 0;
+    });
+
+    return {
+      product: product,
+      raw: raw,
+      hsCode: hsDigits.slice(0,6) || hsDigits.slice(0,4) || String(product.hs_code || ''),
+      displayName: typeof formatBilingualProductName === 'function' ? formatBilingualProductName(product) : (product.name_en || product.name_uz || '—'),
+      category: investAiInferCategory(product),
+      level: investAiInferLevel(product),
+      capital: investAiInferCapital(product),
+      technology: investAiInferTechnology(product),
+      endUse: product.main_sector || product.usage || product.import_info || 'Requires validation',
+      countryMap: countryMap,
+      totalsByYear: totalsByYear,
+      snapshotId: snapshot ? snapshot.id : '',
+      hasSnapshot: !!snapshot
+    };
+  }).filter(function(entry){
+    return entry.product && entry.hsCode;
+  });
+
+  var analysisYear = investAiPickAnalysisYear(entries);
+  entries.forEach(function(entry){
+    entry.analysisValue = Number((entry.totalsByYear || {})[analysisYear] || 0) || 0;
+    entry.uzbValue = Number((((entry.countryMap || {}).UZ || {}).years || {})[analysisYear] || 0) || 0;
+    entry.cagr = investAiCalcCagr(entry.totalsByYear);
+    var countries = Object.keys(entry.countryMap || {}).map(function(code){
+      return {
+        code: code,
+        name: entry.countryMap[code].name,
+        value: Number((entry.countryMap[code].years || {})[analysisYear] || 0) || 0
+      };
+    }).sort(function(a,b){ return (b.value || 0) - (a.value || 0); });
+    entry.topImporter = countries[0] || { code:'', name:'—', value:0 };
+    entry.priority = investAiInferPriority(entry);
+    entry.feasibility = investAiInferFeasibility(entry.priority);
+    entry.competitiveness = investAiInferCompetitiveness(entry);
+    entry.verdict = investAiInferVerdict(entry.priority, entry);
+  });
+
+  entries.sort(function(a,b){ return (b.analysisValue || 0) - (a.analysisValue || 0); });
+
+  var countryTotals = {};
+  TARGET_COUNTRIES.forEach(function(target){ countryTotals[target.code] = 0; });
+  entries.forEach(function(entry){
+    TARGET_COUNTRIES.forEach(function(target){
+      countryTotals[target.code] += Number((((entry.countryMap || {})[target.code] || {}).years || {})[analysisYear] || 0) || 0;
+    });
+  });
+  var topCountryCode = Object.keys(countryTotals).sort(function(a,b){ return (countryTotals[b] || 0) - (countryTotals[a] || 0); })[0] || 'UZ';
+  var topCountry = TARGET_COUNTRIES.find(function(target){ return target.code === topCountryCode; }) || { code: topCountryCode, name:'—' };
+
+  return {
+    material: material,
+    raw: raw,
+    products: products,
+    entries: entries,
+    sections: sections,
+    analysisYear: analysisYear,
+    totalRegionalDemand: entries.reduce(function(sum, entry){ return sum + (Number(entry.analysisValue || 0) || 0); }, 0),
+    totalUzbImports: entries.reduce(function(sum, entry){ return sum + (Number(entry.uzbValue || 0) || 0); }, 0),
+    priorityACount: entries.filter(function(entry){ return entry.priority === 'Priority A'; }).length,
+    countryCount: TARGET_COUNTRIES.length,
+    topCountry: topCountry,
+    topCountryValue: countryTotals[topCountryCode] || 0,
+    executiveSummaryRows: executiveSummaryRows,
+    nextSteps: nextSteps,
+    investorTargets: investorTargets,
+    verificationRows: verificationRows,
+    riskRows: riskRows,
+    headline: summaryLines[0] || material || 'Trade Analysis',
+    summaryLines: summaryLines
+  };
+}
+
+function investAiWorkbookStyles(){
+  function border(color, style){
+    return {
+      top:{style:style || 'thin',color:{rgb:color}},
+      bottom:{style:style || 'thin',color:{rgb:color}},
+      left:{style:style || 'thin',color:{rgb:color}},
+      right:{style:style || 'thin',color:{rgb:color}}
+    };
+  }
+  return {
+    title: {
+      font:{name:'Arial',sz:16,bold:true,color:{rgb:'FFFFFF'}},
+      fill:{fgColor:{rgb:'0C4A6E'}},
+      alignment:{horizontal:'center',vertical:'center',wrapText:true},
+      border:border('0C4A6E')
+    },
+    subtitle: {
+      font:{name:'Arial',sz:11,color:{rgb:'0F172A'}},
+      fill:{fgColor:{rgb:'F0F9FF'}},
+      alignment:{horizontal:'left',vertical:'center',wrapText:true},
+      border:border('CBD5E1')
+    },
+    section: {
+      font:{name:'Arial',sz:12,bold:true,color:{rgb:'FFFFFF'}},
+      fill:{fgColor:{rgb:'0369A1'}},
+      alignment:{horizontal:'left',vertical:'center',wrapText:true},
+      border:border('94A3B8')
+    },
+    metricHead: {
+      font:{name:'Arial',sz:10,bold:true,color:{rgb:'FFFFFF'}},
+      fill:{fgColor:{rgb:'0369A1'}},
+      alignment:{horizontal:'center',vertical:'center',wrapText:true},
+      border:border('94A3B8')
+    },
+    metricValue: {
+      font:{name:'Arial',sz:12,bold:true,color:{rgb:'0F172A'}},
+      fill:{fgColor:{rgb:'F0F9FF'}},
+      alignment:{horizontal:'center',vertical:'center',wrapText:true},
+      border:border('CBD5E1')
+    },
+    header: {
+      font:{name:'Arial',sz:10,bold:true,color:{rgb:'FFFFFF'}},
+      fill:{fgColor:{rgb:'0369A1'}},
+      alignment:{horizontal:'center',vertical:'center',wrapText:true},
+      border:border('94A3B8')
+    },
+    body: {
+      font:{name:'Arial',sz:10,color:{rgb:'0F172A'}},
+      fill:{fgColor:{rgb:'FFFFFF'}},
+      alignment:{horizontal:'left',vertical:'top',wrapText:true},
+      border:border('CBD5E1','hair')
+    },
+    alt: {
+      font:{name:'Arial',sz:10,color:{rgb:'0F172A'}},
+      fill:{fgColor:{rgb:'F8FAFC'}},
+      alignment:{horizontal:'left',vertical:'top',wrapText:true},
+      border:border('CBD5E1','hair')
+    },
+    note: {
+      font:{name:'Arial',sz:10,italic:true,color:{rgb:'475569'}},
+      fill:{fgColor:{rgb:'F2F2F4'}},
+      alignment:{horizontal:'left',vertical:'top',wrapText:true},
+      border:border('CBD5E1')
+    },
+    group: {
+      font:{name:'Arial',sz:11,bold:true,color:{rgb:'0F172A'}},
+      fill:{fgColor:{rgb:'DBEAFE'}},
+      alignment:{horizontal:'left',vertical:'center',wrapText:true},
+      border:border('94A3B8')
+    }
+  };
+}
+
+function investAiStyleRow(ws, rowIndex, colCount, style){
+  if(!ws || !window.XLSX) return;
+  for(var c=0;c<colCount;c++){
+    var ref = XLSX.utils.encode_cell({r:rowIndex,c:c});
+    if(ws[ref]) ws[ref].s = style;
+  }
+}
+
+function investAiStyleRowsAlternating(ws, startRow, endRow, colCount, styles){
+  for(var r=startRow;r<=endRow;r++){
+    investAiStyleRow(ws, r, colCount, (r % 2 === 0 ? styles.alt : styles.body));
+  }
+}
+
+function investAiMerge(ws, startRow, startCol, endRow, endCol){
+  if(!ws['!merges']) ws['!merges'] = [];
+  ws['!merges'].push({ s:{r:startRow,c:startCol}, e:{r:endRow,c:endCol} });
+}
+
+function investAiBuildExecutiveDashboardSheet(ctx, styles){
+  var rows = [];
+  rows.push(['NAVOI REGION — ' + String(ctx.material || '').toUpperCase() + ': TRADE ANALYSIS & INVESTMENT OPPORTUNITIES','','','','','','','','']);
+  rows.push(['Raw Material: ' + (ctx.material || '—') + ' — ' + ((ctx.raw && (ctx.raw.name_en || ctx.raw.name_uz)) || 'Mapped to Navoi product portfolio and regional demand analysis'),'','','','','','','','']);
+  rows.push([]);
+  rows.push(['Products','Regional Demand ' + ctx.analysisYear,'UZB Imports','Priority A','Countries','Top Market','','','']);
+  rows.push([
+    ctx.entries.length,
+    investAiFmtShortUsd(ctx.totalRegionalDemand),
+    investAiFmtShortUsd(ctx.totalUzbImports),
+    ctx.priorityACount,
+    ctx.countryCount,
+    ctx.topCountry.name + ' · ' + investAiFmtShortUsd(ctx.topCountryValue),
+    '','',''
+  ]);
+  rows.push([]);
+  rows.push(['Rank','HS Code','Product','Regional Demand ($)','UZB Imports ($)','Top Importer','Top Supplier','CAGR','Priority']);
+  (ctx.entries.length ? ctx.entries : [{
+    hsCode:'—', displayName:'No mapped products found for this material', analysisValue:0, uzbValue:0, topImporter:{name:'—'}, cagr:null, priority:'Priority D'
+  }]).slice(0,15).forEach(function(entry, idx){
+    rows.push([
+      idx + 1,
+      entry.hsCode || '—',
+      entry.displayName || '—',
+      investAiFmtUsd(entry.analysisValue || 0),
+      investAiFmtUsd(entry.uzbValue || 0),
+      (entry.topImporter && entry.topImporter.name) || '—',
+      entry.hasSnapshot ? 'Supplier-level customs data required' : 'No supplier data in cache',
+      investAiFmtPct(entry.cagr),
+      entry.priority || 'Priority D'
+    ]);
+  });
+  rows.push([]);
+  rows.push(['Executive Summary','','','','','','','','']);
+  var summaryLines = (ctx.executiveSummaryRows.length ? ctx.executiveSummaryRows.map(function(row){ return row[0]; }) : ctx.summaryLines.slice(0,6));
+  summaryLines.slice(0,6).forEach(function(line){
+    rows.push([line,'','','','','','','','']);
+  });
+  rows.push([]);
+  rows.push(['Verification Notes','','','','','','','','']);
+  (ctx.verificationRows.length ? ctx.verificationRows : [['△ Live supplier-level data not available in current workbook cache'],['⚠ Russia-related trade visibility may contain gaps due to sanctions and rerouting noise']]).slice(0,4).forEach(function(row){
+    rows.push([row[0],'','','','','','','','']);
+  });
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:8},{wch:12},{wch:42},{wch:18},{wch:18},{wch:16},{wch:20},{wch:10},{wch:12}];
+  investAiMerge(ws,0,0,0,8);
+  investAiMerge(ws,1,0,1,8);
+  investAiMerge(ws,10 + Math.min(ctx.entries.length || 1, 15),0,10 + Math.min(ctx.entries.length || 1, 15),8);
+  var summaryStart = 11 + Math.min(ctx.entries.length || 1, 15);
+  for(var s=0;s<summaryLines.slice(0,6).length;s++) investAiMerge(ws, summaryStart + s,0,summaryStart + s,8);
+  investAiMerge(ws, summaryStart + summaryLines.slice(0,6).length + 1,0,summaryStart + summaryLines.slice(0,6).length + 1,8);
+  var verificationStart = summaryStart + summaryLines.slice(0,6).length + 2;
+  var verificationCount = (ctx.verificationRows.length ? ctx.verificationRows : [['x'],['y']]).slice(0,4).length;
+  for(var v=0; v<verificationCount; v++) investAiMerge(ws, verificationStart + v,0,verificationStart + v,8);
+
+  investAiStyleRow(ws,0,9,styles.title);
+  investAiStyleRow(ws,1,9,styles.subtitle);
+  investAiStyleRow(ws,3,6,styles.metricHead);
+  investAiStyleRow(ws,4,6,styles.metricValue);
+  investAiStyleRow(ws,6,9,styles.header);
+  investAiStyleRowsAlternating(ws,7,7 + Math.min(ctx.entries.length || 1, 15) - 1,9,styles);
+  investAiStyleRow(ws,10 + Math.min(ctx.entries.length || 1, 15),9,styles.section);
+  for(var sr=summaryStart; sr<summaryStart + summaryLines.slice(0,6).length; sr++) investAiStyleRow(ws,sr,9,styles.body);
+  investAiStyleRow(ws,summaryStart + summaryLines.slice(0,6).length + 1,9,styles.section);
+  for(var vr=verificationStart; vr<verificationStart + verificationCount; vr++) investAiStyleRow(ws,vr,9,styles.note);
+  return { name:'Executive Dashboard', ws:ws };
+}
+
+function investAiBuildProductMapSheet(ctx, styles){
+  var rows = [];
+  rows.push(['PRODUCT MAP — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','']);
+  rows.push(['','','','','','','','','']);
+  rows.push(['#','Category','Product','HS Code','Level','Capital','Technology','End-Use','Feasibility']);
+  var lastCategory = '';
+  var count = 0;
+  (ctx.entries.length ? ctx.entries : []).forEach(function(entry){
+    if(entry.category !== lastCategory){
+      rows.push([entry.category,'','','','','','','','']);
+      lastCategory = entry.category;
+    }
+    count += 1;
+    rows.push([
+      count,
+      entry.category,
+      entry.displayName,
+      entry.hsCode || '—',
+      entry.level,
+      entry.capital,
+      entry.technology,
+      entry.endUse || 'Requires validation',
+      entry.feasibility
+    ]);
+  });
+  if(count === 0) rows.push(['1','RAW','No mapped Navoi product found','—','—','—','—','Requires product mapping','Low']);
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:6},{wch:15},{wch:38},{wch:12},{wch:12},{wch:14},{wch:16},{wch:28},{wch:12}];
+  investAiMerge(ws,0,0,0,8);
+  investAiStyleRow(ws,0,9,styles.title);
+  investAiStyleRow(ws,2,9,styles.header);
+  for(var r=3;r<rows.length;r++){
+    if(rows[r][1] === '' && rows[r][0]) investAiStyleRow(ws,r,9,styles.group);
+    else investAiStyleRow(ws,r,9,(r % 2 === 0 ? styles.alt : styles.body));
+  }
+  return { name:'Product Map', ws:ws };
+}
+
+function investAiBuildTradeDataSheet(ctx, styles){
+  var rows = [];
+  rows.push(['COMTRADE DATA — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','','']);
+  rows.push([]);
+  rows.push(['HS','Product','Country','2021 ($)','2022 ($)','2023 ($)','2024 ($)','CAGR','Trend','Quality']);
+  ctx.entries.forEach(function(entry){
+    TARGET_COUNTRIES.forEach(function(target){
+      var country = (entry.countryMap || {})[target.code];
+      if(!country) return;
+      var y2021 = Number((country.years || {})['2021'] || 0) || 0;
+      var y2022 = Number((country.years || {})['2022'] || 0) || 0;
+      var y2023 = Number((country.years || {})['2023'] || 0) || 0;
+      var y2024 = Number((country.years || {})['2024'] || 0) || 0;
+      if(!(y2021 || y2022 || y2023 || y2024 || country.status === 'rate_limited')) return;
+      var series = {'2021':y2021,'2022':y2022,'2023':y2023,'2024':y2024};
+      var cagr = investAiCalcCagr(series);
+      var trend = y2024 > y2023 ? 'Up' : (y2024 < y2023 ? 'Down' : 'Flat');
+      var quality = country.status === 'ok' ? 'Verified cache' : (country.status === 'rate_limited' ? 'Rate-limited / partial' : 'No data');
+      rows.push([
+        entry.hsCode || '—',
+        entry.displayName,
+        target.name,
+        investAiFmtUsd(y2021),
+        investAiFmtUsd(y2022),
+        investAiFmtUsd(y2023),
+        investAiFmtUsd(y2024),
+        investAiFmtPct(cagr),
+        trend,
+        quality
+      ]);
+    });
+  });
+  if(rows.length === 3) rows.push(['—','No trade snapshot found','—','$0','$0','$0','$0','—','Flat','No cached UN Comtrade data']);
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:10},{wch:36},{wch:18},{wch:13},{wch:13},{wch:13},{wch:13},{wch:10},{wch:10},{wch:20}];
+  investAiMerge(ws,0,0,0,9);
+  investAiStyleRow(ws,0,10,styles.title);
+  investAiStyleRow(ws,2,10,styles.header);
+  investAiStyleRowsAlternating(ws,3,rows.length - 1,10,styles);
+  return { name:'Trade Data', ws:ws };
+}
+
+function investAiBuildCountryMatrixSheet(ctx, styles){
+  var header = ['HS','Product'].concat(TARGET_COUNTRIES.map(function(target){ return target.name; })).concat(['TOTAL']);
+  var rows = [];
+  rows.push(['IMPORT MATRIX — ' + String(ctx.material || '').toUpperCase() + ' — ' + ctx.analysisYear + ' ($)']);
+  rows.push([]);
+  rows.push(header);
+  ctx.entries.forEach(function(entry){
+    var total = 0;
+    var row = [entry.hsCode || '—', entry.displayName];
+    TARGET_COUNTRIES.forEach(function(target){
+      var value = Number((((entry.countryMap || {})[target.code] || {}).years || {})[ctx.analysisYear] || 0) || 0;
+      total += value;
+      row.push(investAiFmtUsd(value));
+    });
+    row.push(investAiFmtUsd(total));
+    rows.push(row);
+  });
+  if(rows.length === 3){
+    var emptyRow = ['—','No cached country matrix'];
+    while(emptyRow.length < header.length) emptyRow.push('—');
+    rows.push(emptyRow);
+  }
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  var cols = [{wch:10},{wch:36}];
+  TARGET_COUNTRIES.forEach(function(){ cols.push({wch:14}); });
+  cols.push({wch:14});
+  ws['!cols'] = cols;
+  investAiMerge(ws,0,0,0,header.length - 1);
+  investAiStyleRow(ws,0,header.length,styles.title);
+  investAiStyleRow(ws,2,header.length,styles.header);
+  investAiStyleRowsAlternating(ws,3,rows.length - 1,header.length,styles);
+  return { name:'Country Matrix', ws:ws };
+}
+
+function investAiBuildSuppliersSheet(ctx, styles){
+  var rows = [];
+  rows.push(['SUPPLIER ANALYSIS — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','','']);
+  rows.push([]);
+  rows.push(['HS','Product','Import ($)','Supplier #1','Share','Supplier #2','Share','Supplier #3','Share','Notes']);
+  var groupedCountries = TARGET_COUNTRIES.slice().sort(function(a,b){
+    var aVal = ctx.entries.reduce(function(sum, entry){ return sum + (Number((((entry.countryMap || {})[a.code] || {}).years || {})[ctx.analysisYear] || 0) || 0); },0);
+    var bVal = ctx.entries.reduce(function(sum, entry){ return sum + (Number((((entry.countryMap || {})[b.code] || {}).years || {})[ctx.analysisYear] || 0) || 0); },0);
+    return bVal - aVal;
+  }).slice(0,5);
+  groupedCountries.forEach(function(target){
+    rows.push([target.name,'','','','','','','','','']);
+    ctx.entries.filter(function(entry){
+      return Number((((entry.countryMap || {})[target.code] || {}).years || {})[ctx.analysisYear] || 0) > 0;
+    }).slice(0,6).forEach(function(entry){
+      rows.push([
+        entry.hsCode || '—',
+        entry.displayName,
+        investAiFmtUsd((((entry.countryMap || {})[target.code] || {}).years || {})[ctx.analysisYear] || 0),
+        '—',
+        '—',
+        '—',
+        '—',
+        '—',
+        '—',
+        'Supplier-level customs data not available in current cache; verify with customs/BL sources'
+      ]);
+    });
+  });
+  if(rows.length === 3){
+    rows.push(['No supplier-level records in current dataset','','','','','','','','','Use importer/company lookup for supplier verification']);
+  }
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:10},{wch:34},{wch:14},{wch:18},{wch:8},{wch:18},{wch:8},{wch:18},{wch:8},{wch:34}];
+  investAiMerge(ws,0,0,0,9);
+  investAiStyleRow(ws,0,10,styles.title);
+  investAiStyleRow(ws,2,10,styles.header);
+  for(var r=3;r<rows.length;r++){
+    if(rows[r][0] && !rows[r][1] && !rows[r][2]) investAiStyleRow(ws,r,10,styles.group);
+    else investAiStyleRow(ws,r,10,(r % 2 === 0 ? styles.alt : styles.body));
+  }
+  return { name:'Suppliers', ws:ws };
+}
+
+function investAiBuildInvestmentPrioritySheet(ctx, styles){
+  var rows = [];
+  rows.push(['INVESTMENT MATRIX — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','','','']);
+  rows.push([]);
+  rows.push(['Pr.','HS','Product','Reg. Demand ($)','UZB Imp. ($)','Top Market','CAGR','Level','Capital','Compet.','Verdict']);
+  ctx.entries.forEach(function(entry){
+    rows.push([
+      entry.priority.replace('Priority ',''),
+      entry.hsCode || '—',
+      entry.displayName,
+      investAiFmtUsd(entry.analysisValue || 0),
+      investAiFmtUsd(entry.uzbValue || 0),
+      (entry.topImporter && entry.topImporter.name) || '—',
+      investAiFmtPct(entry.cagr),
+      entry.level,
+      entry.capital,
+      entry.competitiveness,
+      entry.verdict
+    ]);
+  });
+  if(rows.length === 3) rows.push(['D','—','No investment matrix rows available','$0','$0','—','—','—','—','Weak','Needs product mapping']);
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:6},{wch:10},{wch:36},{wch:15},{wch:15},{wch:16},{wch:10},{wch:12},{wch:12},{wch:12},{wch:18}];
+  investAiMerge(ws,0,0,0,10);
+  investAiStyleRow(ws,0,11,styles.title);
+  investAiStyleRow(ws,2,11,styles.header);
+  investAiStyleRowsAlternating(ws,3,rows.length - 1,11,styles);
+  for(var pr=3; pr<rows.length; pr++){
+    var badgeCol = 0;
+    var ref = XLSX.utils.encode_cell({r:pr,c:badgeCol});
+    if(ws[ref]){
+      var fill = investAiPriorityBadgeColor('Priority ' + String(rows[pr][0] || 'D'));
+      ws[ref].s = {
+        font:{name:'Arial',sz:10,bold:true,color:{rgb:'0F172A'}},
+        fill:{fgColor:{rgb:fill}},
+        alignment:{horizontal:'center',vertical:'center'},
         border:{
-          top:{style:'thin',color:{rgb:'D9E2F3'}},
-          bottom:{style:'thin',color:{rgb:'D9E2F3'}},
-          left:{style:'thin',color:{rgb:'D9E2F3'}},
-          right:{style:'thin',color:{rgb:'D9E2F3'}}
+          top:{style:'thin',color:{rgb:'94A3B8'}},
+          bottom:{style:'thin',color:{rgb:'94A3B8'}},
+          left:{style:'thin',color:{rgb:'94A3B8'}},
+          right:{style:'thin',color:{rgb:'94A3B8'}}
         }
       };
     }
   }
-  for(var R = range.s.r + 1; R <= range.e.r; R++){
-    for(var C2 = range.s.c; C2 <= range.e.c; C2++){
-      var cell = ws[XLSX.utils.encode_cell({r:R,c:C2})];
-      if(cell){
-        cell.s = {
-          font:{name:'Calibri',sz:11,color:{rgb:'1E293B'}},
-          alignment:{vertical:'top',wrapText:true},
-          fill:{fgColor:{rgb:(R % 2 === 0 ? 'F8FBFF' : 'FFFFFF')}},
-          border:{
-            top:{style:'thin',color:{rgb:'E2E8F0'}},
-            bottom:{style:'thin',color:{rgb:'E2E8F0'}},
-            left:{style:'thin',color:{rgb:'E2E8F0'}},
-            right:{style:'thin',color:{rgb:'E2E8F0'}}
-          }
-        };
-      }
-    }
+  return { name:'Investment Priority', ws:ws };
+}
+
+function investAiBuildImportSubUzSheet(ctx, styles){
+  var rows = [];
+  rows.push(['UZBEKISTAN IMPORT SUBSTITUTION — ' + String(ctx.material || '').toUpperCase(),'','','','','','','']);
+  rows.push([]);
+  rows.push(['HS','Product','2021 ($)','2022 ($)','2023 ($)','2024 ($)','CAGR','Potential']);
+  ctx.entries.forEach(function(entry){
+    var uz = ((entry.countryMap || {}).UZ || {}).years || {};
+    rows.push([
+      entry.hsCode || '—',
+      entry.displayName,
+      investAiFmtUsd(uz['2021'] || 0),
+      investAiFmtUsd(uz['2022'] || 0),
+      investAiFmtUsd(uz['2023'] || 0),
+      investAiFmtUsd(uz['2024'] || 0),
+      investAiFmtPct(investAiCalcCagr(uz)),
+      entry.priority === 'Priority A' ? 'High' : (entry.priority === 'Priority B' ? 'Medium' : 'Selective')
+    ]);
+  });
+  if(rows.length === 3) rows.push(['—','No Uzbekistan import history found','$0','$0','$0','$0','—','Verify later']);
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:10},{wch:36},{wch:13},{wch:13},{wch:13},{wch:13},{wch:10},{wch:14}];
+  investAiMerge(ws,0,0,0,7);
+  investAiStyleRow(ws,0,8,styles.title);
+  investAiStyleRow(ws,2,8,styles.header);
+  investAiStyleRowsAlternating(ws,3,rows.length - 1,8,styles);
+  return { name:'Import Sub. UZB', ws:ws };
+}
+
+function investAiBuildImportSubRegionalSheet(ctx, styles){
+  var rows = [];
+  rows.push(['REGIONAL IMPORT SUBSTITUTION — ' + String(ctx.material || '').toUpperCase(),'','','','','']);
+  rows.push([]);
+  rows.push(['Country','HS','Product',ctx.analysisYear + ' Import ($)','CAGR','Note']);
+  TARGET_COUNTRIES.forEach(function(target){
+    rows.push(['== ' + target.name + ' ===','','','','','']);
+    ctx.entries.filter(function(entry){
+      return Number((((entry.countryMap || {})[target.code] || {}).years || {})[ctx.analysisYear] || 0) > 0;
+    }).slice(0,10).forEach(function(entry){
+      rows.push([
+        target.name,
+        entry.hsCode || '—',
+        entry.displayName,
+        investAiFmtUsd((((entry.countryMap || {})[target.code] || {}).years || {})[ctx.analysisYear] || 0),
+        investAiFmtPct(entry.cagr),
+        entry.priority === 'Priority A' ? 'Strong candidate for outreach' : 'Needs validation'
+      ]);
+    });
+  });
+  if(rows.length === 3) rows.push(['Regional','—','No regional rows cached','$0','—','Use import analysis first']);
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:18},{wch:10},{wch:36},{wch:16},{wch:10},{wch:28}];
+  investAiMerge(ws,0,0,0,5);
+  investAiStyleRow(ws,0,6,styles.title);
+  investAiStyleRow(ws,2,6,styles.header);
+  for(var r=3;r<rows.length;r++){
+    if(/^==/.test(String(rows[r][0] || ''))) investAiStyleRow(ws,r,6,styles.group);
+    else investAiStyleRow(ws,r,6,(r % 2 === 0 ? styles.alt : styles.body));
   }
-  ws['!cols'] = [{wch:18},{wch:28},{wch:22},{wch:20},{wch:22},{wch:18}].slice(0, range.e.c + 1);
-  return ws;
+  return { name:'Import Sub. Regional', ws:ws };
+}
+
+function investAiBuildMethodologySheet(ctx, styles){
+  var today = new Date();
+  var rows = [];
+  rows.push(['METHODOLOGY & DATA QUALITY','']);
+  rows.push([]);
+  rows.push(['Data Source','UN Comtrade importSnapshots cache + AI narrative output']);
+  rows.push(['Periods','2021-2024']);
+  rows.push(['Classification','HS 4/6 digit mapped from Navoi product database']);
+  rows.push(['Cached Snapshots',String(ctx.entries.filter(function(entry){ return entry.hasSnapshot; }).length)]);
+  rows.push(['Products Considered',String(ctx.entries.length)]);
+  rows.push(['Top Market (' + ctx.analysisYear + ')',ctx.topCountry.name + ' — ' + investAiFmtUsd(ctx.topCountryValue)]);
+  rows.push(['Verification',ctx.verificationRows.length ? ctx.verificationRows.map(function(row){ return row[0]; }).slice(0,2).join(' | ') : '△ Requires live trade verification before investor outreach']);
+  rows.push(['Russia Caveat','Russia-related trade visibility may be incomplete due to sanctions effects, rerouting, mirror-data gaps, and classification noise.']);
+  rows.push(['Organization','Navoi Region Investment Department']);
+  rows.push(['Date',today.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})]);
+  rows.push([]);
+  rows.push(['Recommended Next Steps','']);
+  (ctx.nextSteps.length ? ctx.nextSteps : [['Verify HS code against customs practice'],['Refresh UN Comtrade data before investor outreach'],['Validate supplier data from customs or commercial datasets']]).slice(0,6).forEach(function(row){
+    rows.push([row[0],'']);
+  });
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:26},{wch:86}];
+  investAiMerge(ws,0,0,0,1);
+  investAiStyleRow(ws,0,2,styles.title);
+  for(var mr=2;mr<=10;mr++) investAiStyleRow(ws,mr,2,(mr % 2 === 0 ? styles.alt : styles.body));
+  investAiStyleRow(ws,12,2,styles.section);
+  for(var nr=13; nr<rows.length; nr++) investAiStyleRow(ws,nr,2,styles.note);
+  return { name:'Methodology', ws:ws };
 }
 
 function buildInvestAiWorkbookData(material, markdown){
-  var sections = splitInvestAiSections(markdown);
-  var createdAt = new Date();
-  var summaryLines = String(markdown || '').split(/\r?\n/).map(stripInvestAiMd).filter(Boolean);
-  var headline = summaryLines[0] || material || 'Report';
-  var priorities = extractInvestAiTaggedLines(markdown, /Priority\s+[A-D]/i);
-  var risks = extractInvestAiTaggedLines(markdown, /risk|caveat|constraint|warning|⚠|gap/i);
-  var verification = extractInvestAiTaggedLines(markdown, /verified|verification|requires live trade verification|✓|△|⚠/i);
-  var nextSteps = extractInvestAiBullets(markdown, 'Recommended Next Steps');
-  var investorTargets = extractInvestAiBullets(markdown, 'Recommended Investor Targets');
-  var businessDirection = extractInvestAiBullets(markdown, 'Recommended Business Direction');
-
+  var ctx = investAiBuildWorkbookContext(material, markdown);
+  var styles = investAiWorkbookStyles();
   return [
-    {
-      name:'Summary',
-      rows:[
-        ['Material','Generated at','Headline','Sections','Priorities found','Workbook'],
-        [material || '—', createdAt.toLocaleString(), headline, sections.length, priorities.length, 'AI Trade Analysis']
-      ]
-    },
-    {
-      name:'Executive Summary',
-      rows:[['Line']].concat(extractInvestAiBullets(markdown, 'Executive Summary').length ? extractInvestAiBullets(markdown, 'Executive Summary') : summaryLines.slice(0,12).map(function(line){ return [line]; }))
-    },
-    {
-      name:'Phase 0',
-      rows:[['Product Research & HS Code Mapping']].concat(linesToSheet((sections.find(function(s){ return /phase 0|hs code mapping/i.test(s.title); }) || {lines:[]}).lines))
-    },
-    {
-      name:'Phase 1',
-      rows:[['UN Comtrade Data Collection']].concat(linesToSheet((sections.find(function(s){ return /phase 1|comtrade/i.test(s.title); }) || {lines:[]}).lines))
-    },
-    {
-      name:'Phase 2',
-      rows:[['Data Processing & Analysis']].concat(linesToSheet((sections.find(function(s){ return /phase 2|analysis/i.test(s.title); }) || {lines:[]}).lines))
-    },
-    {
-      name:'Phase 3',
-      rows:[['Report Generation']].concat(linesToSheet((sections.find(function(s){ return /phase 3|report generation/i.test(s.title); }) || {lines:[]}).lines))
-    },
-    {
-      name:'Investor Targets',
-      rows:[['Recommended Investor Targets']].concat(investorTargets.length ? investorTargets : [['No dedicated list found in report']])
-    },
-    {
-      name:'Next Steps',
-      rows:[['Recommended Next Steps']].concat(nextSteps.length ? nextSteps : [['No dedicated next steps found in report']])
-    },
-    {
-      name:'Verification',
-      rows:[['Verification / Risks','Value']].concat(
-        (verification.length ? verification : [['Verification notes not explicitly found']]).map(function(row){ return [row[0], '']; })
-          .concat((risks.length ? risks : [['Risk notes not explicitly found']]).map(function(row){ return [row[0], '']; }))
-          .concat((businessDirection.length ? businessDirection : []).map(function(row){ return [row[0], 'Business direction']; }))
-          .concat((priorities.length ? priorities : []).map(function(row){ return [row[0], 'Priority']; }))
-      )
-    }
+    investAiBuildExecutiveDashboardSheet(ctx, styles),
+    investAiBuildProductMapSheet(ctx, styles),
+    investAiBuildTradeDataSheet(ctx, styles),
+    investAiBuildCountryMatrixSheet(ctx, styles),
+    investAiBuildSuppliersSheet(ctx, styles),
+    investAiBuildInvestmentPrioritySheet(ctx, styles),
+    investAiBuildImportSubUzSheet(ctx, styles),
+    investAiBuildImportSubRegionalSheet(ctx, styles),
+    investAiBuildMethodologySheet(ctx, styles)
   ];
 }
 
@@ -11307,15 +12021,13 @@ function exportInvestAiWorkbook(){
 
   var wb = XLSX.utils.book_new();
   buildInvestAiWorkbookData(material, markdown).forEach(function(sheet){
-    var ws = XLSX.utils.aoa_to_sheet(sheet.rows);
-    styleInvestAiSheet(ws);
-    XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0,31));
+    XLSX.utils.book_append_sheet(wb, sheet.ws, sheet.name.slice(0,31));
   });
 
   var fileSafe = material.replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().replace(/\s/g,'_') || 'Material';
   var dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
   XLSX.writeFile(wb, 'Navoi_' + fileSafe + '_Trade_Analysis_' + dateStr + '.xlsx');
-  toast('📥 Excel workbook yuklab olindi!');
+  toast('📥 Excel workbook namuna formatida yuklab olindi!');
 }
 
 function setInvestAiBusy(flag){
