@@ -220,11 +220,11 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .sidebar-logo{display:flex;align-items:center;gap:12px;padding:6px 10px;margin-bottom:10px;cursor:pointer;text-decoration:none;}
 .sidebar-logo-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#4361EE,#4CC9F0);display:flex;align-items:center;justify-content:center;font-size:0;flex-shrink:0;box-shadow:0 8px 20px rgba(67,97,238,.35);}
 .sidebar-logo-icon::before{content:"\1F4CA";font-size:19px;line-height:1;}
-.sidebar-logo-text{font-family:'Inter',sans-serif;font-size:1.08rem;font-weight:900;color:#FFFFFF;line-height:1.12;letter-spacing:0;text-shadow:none;}
+.sidebar-logo-text{font-family:'Inter',sans-serif;font-size:1.08rem;font-weight:900;color:#FFFFFF;line-height:1.1;letter-spacing:0;text-shadow:none;}
 .sidebar-logo-sub{font-size:.68rem;color:#EAF2FF;margin-top:4px;font-weight:700;text-shadow:none;}
 .sidebar-logo-sub:empty{display:none;}
 .sidebar-divider{height:1px;background:rgba(255,255,255,.08);margin:8px 8px;}
-.sb-tab{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:#F7FAFF;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;font-size:.98rem;font-weight:800;position:relative;border:none;background:none;width:100%;text-align:left;white-space:normal;line-height:1.2;min-height:50px;text-shadow:none;letter-spacing:0;-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto;text-rendering:auto;}
+.sb-tab{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:#FFFFFF;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;font-size:.98rem;font-weight:800;position:relative;border:none;background:none;width:100%;text-align:left;white-space:normal;line-height:1.18;min-height:50px;text-shadow:none;letter-spacing:0;-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto;text-rendering:geometricPrecision;}
 .sb-tab:hover{background:rgba(255,255,255,.08);color:#fff;transform:translateX(2px);}
 .sb-tab.active{background:#4361EE;color:#fff;box-shadow:0 8px 20px rgba(67,97,238,.28);}
 .sb-tab.admin-tab.active{background:#7209B7;box-shadow:0 8px 20px rgba(114,9,183,.28);}
@@ -247,7 +247,7 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .sb-tab-label{flex:1;line-height:1.28;color:inherit;}
 .sb-tab .sb-badge{background:#EF233C;color:#fff;font-size:10px;font-weight:800;min-width:22px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0;box-shadow:0 4px 10px rgba(239,35,60,.28);}
 .sb-group{display:flex;flex-direction:column;gap:4px;}
-.sb-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;color:#FFFFFF;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;font-size:1rem;font-weight:900;border:none;background:rgba(255,255,255,.08);width:100%;text-align:left;min-height:52px;text-shadow:none;letter-spacing:0;-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto;text-rendering:auto;}
+.sb-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;color:#FFFFFF;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;font-size:1rem;font-weight:900;border:none;background:rgba(255,255,255,.08);width:100%;text-align:left;min-height:52px;text-shadow:none;letter-spacing:0;-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto;text-rendering:geometricPrecision;}
 .sb-group-head:hover{background:rgba(255,255,255,.10);}
 .sb-group-head.open{background:rgba(67,97,238,.18);box-shadow:inset 0 0 0 1px rgba(112,141,255,.18);}
 .sb-group-head-main{display:flex;align-items:center;gap:12px;min-width:0;}
@@ -259,10 +259,11 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .sb-group-body.open{max-height:260px;padding-top:4px;}
 .sb-subtab{margin-left:12px;padding:11px 14px 11px 16px;font-size:.9rem;min-height:48px;background:rgba(255,255,255,.03);}
 .main-content{margin-left:252px;flex:1;min-height:100vh;}
-.topbar{background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:160;box-shadow:0 8px 24px rgba(20,35,63,.06);}
+.topbar{background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:12px 28px;display:grid;grid-template-columns:minmax(140px,1fr) auto;align-items:center;gap:1rem;position:sticky;top:0;z-index:160;box-shadow:0 8px 24px rgba(20,35,63,.06);}
 [data-theme="dark"] .topbar{background:rgba(24,36,67,.92);}
-.topbar-title{font-size:1.06rem;font-weight:800;color:#13264A;text-shadow:none;}
-.topbar-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;}
+.topbar-title{font-size:1.06rem;font-weight:800;color:#13264A;text-shadow:none;flex:1;min-width:0;}
+.topbar-controls{display:flex;align-items:center;gap:14px;flex-wrap:nowrap;justify-content:flex-end;flex-shrink:0;min-width:max-content;margin-left:auto;}
+.topbar-actions{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;flex-shrink:0;}
 .tn-controls{display:flex;align-items:center;gap:.9rem;}
 .tn-date{font-size:.74rem;color:rgba(220,230,255,.9);background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);padding:7px 14px;border-radius:20px;display:flex;align-items:center;gap:6px;font-weight:500;}
 .lang-switcher{display:flex;align-items:center;gap:3px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:3px;}
@@ -275,10 +276,11 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .tn-btn{font-size:.74rem;font-weight:600;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:8px 18px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .18s;}
 .tn-btn:hover{background:rgba(255,255,255,.2);}
 .tn-btn.green{background:linear-gradient(135deg,#059669,#06D6A0);border:none;box-shadow:0 3px 12px rgba(6,214,160,.35);}
-.tn-user{display:flex;align-items:center;gap:9px;}
+.tn-user{display:flex;align-items:center;gap:9px;flex-shrink:0;min-width:0;margin-left:4px;}
 .tn-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#4361EE,#7209B7);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;box-shadow:0 2px 8px rgba(67,97,238,.4);}
+.tn-user-text{display:flex;flex-direction:column;min-width:0;}
 .tn-uname{font-size:.84rem;font-weight:900;color:#10254A;text-shadow:none;}
-.tn-urole{font-size:.68rem;color:#4A5F84;font-weight:700;line-height:1.18;max-width:320px;white-space:normal;text-shadow:none;display:block;}
+.tn-urole{font-size:.68rem;color:#4A5F84;font-weight:700;line-height:1.18;max-width:240px;white-space:normal;text-shadow:none;display:block;}
 .topbar .tn-date{color:var(--text2);background:var(--bg2);border-color:var(--border);}
 .topbar .lang-switcher{background:var(--bg2);border-color:var(--border);}
 .topbar .lang-btn{color:var(--text2);}
@@ -994,27 +996,29 @@ input[type="time"]{-webkit-appearance:none;}
   <div class="topbar">
     <div class="topbar-title" id="topbarTitle">Umumiy ma'lumotlar</div>
     <div class="topbar-controls">
-      <div class="tn-date" id="tnDate"></div>
-      <div class="lang-switcher">
-        <button class="lang-btn active" onclick="setLang('uz')">UZ</button>
-        <button class="lang-btn" onclick="setLang('ru')">RU</button>
-        <button class="lang-btn" onclick="setLang('en')">EN</button>
-      </div>
-      <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
-        <div class="theme-toggle-knob" id="themeKnob">☀️</div>
-      </div>
-      <div style="position:relative" id="notifWrap">
-        <div class="notif-bell" onclick="toggleNotifPanel()" title="Email xabarnomalar">🔔<div class="notif-dot" id="notifDot"></div><div class="notif-count" id="notifCount">0</div></div>
-        <div class="notif-panel" id="notifPanel">
-          <div class="notif-panel-head"><span class="notif-panel-title">📧 Email Javoblar</span><div class="notif-panel-actions"><span id="gmailStatus" style="font-size:.6rem;color:rgba(200,215,255,.6)">Ulanmagan</span><button class="notif-gmail-btn" id="gmailConnectBtn" onclick="openGmailSetup()">Gmail ulash</button></div></div>
-          <div class="notif-list" id="notifList"><div class="notif-empty">Gmail'ga ulaning - javoblar shu yerda ko'rinadi</div></div>
-          <div class="notif-footer"><span style="font-size:.62rem;color:var(--text3)" id="notifLastCheck">Tekshirilmagan</span><div style="display:flex;gap:.4rem;align-items:center"><select id="pollIntervalSelect" onchange="changePollInterval()" style="font-size:.6rem;padding:2px 6px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer"><option value="30">30s</option><option value="60" selected>1 daq</option><option value="120">2 daq</option><option value="300">5 daq</option><option value="0">O'chiq</option></select><button class="btn btn-ghost btn-sm" onclick="forceRecheckGmail()" style="font-size:.6rem;padding:3px 8px" title="Tozalab qayta tekshirish">↻</button><button class="btn btn-ghost btn-sm" onclick="checkGmailReplies(true)" style="font-size:.6rem;padding:3px 8px">🔄</button></div></div>
+      <div class="topbar-actions">
+        <div class="tn-date" id="tnDate"></div>
+        <div class="lang-switcher">
+          <button class="lang-btn active" onclick="setLang('uz')">UZ</button>
+          <button class="lang-btn" onclick="setLang('ru')">RU</button>
+          <button class="lang-btn" onclick="setLang('en')">EN</button>
         </div>
+        <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+          <div class="theme-toggle-knob" id="themeKnob">☀️</div>
+        </div>
+        <div style="position:relative" id="notifWrap">
+          <div class="notif-bell" onclick="toggleNotifPanel()" title="Email xabarnomalar">🔔<div class="notif-dot" id="notifDot"></div><div class="notif-count" id="notifCount">0</div></div>
+          <div class="notif-panel" id="notifPanel">
+            <div class="notif-panel-head"><span class="notif-panel-title">📧 Email Javoblar</span><div class="notif-panel-actions"><span id="gmailStatus" style="font-size:.6rem;color:rgba(200,215,255,.6)">Ulanmagan</span><button class="notif-gmail-btn" id="gmailConnectBtn" onclick="openGmailSetup()">Gmail ulash</button></div></div>
+            <div class="notif-list" id="notifList"><div class="notif-empty">Gmail'ga ulaning - javoblar shu yerda ko'rinadi</div></div>
+            <div class="notif-footer"><span style="font-size:.62rem;color:var(--text3)" id="notifLastCheck">Tekshirilmagan</span><div style="display:flex;gap:.4rem;align-items:center"><select id="pollIntervalSelect" onchange="changePollInterval()" style="font-size:.6rem;padding:2px 6px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer"><option value="30">30s</option><option value="60" selected>1 daq</option><option value="120">2 daq</option><option value="300">5 daq</option><option value="0">O'chiq</option></select><button class="btn btn-ghost btn-sm" onclick="forceRecheckGmail()" style="font-size:.6rem;padding:3px 8px" title="Tozalab qayta tekshirish">↻</button><button class="btn btn-ghost btn-sm" onclick="checkGmailReplies(true)" style="font-size:.6rem;padding:3px 8px">🔄</button></div></div>
+          </div>
+        </div>
+        <button class="tn-btn green" onclick="window.print()">🖨 Chop etish</button>
       </div>
-      <button class="tn-btn green" onclick="window.print()">🖨 Chop etish</button>
       <div class="tn-user">
         <div class="tn-avatar" id="navAvatar">B</div>
-        <div>
+        <div class="tn-user-text">
           <div class="tn-uname" id="navUname">Bo'lim Xodimi</div>
           <div class="tn-urole">Navoiy viloyati Investitsiyalar,<br>sanoat va savdo boshqarmasi</div>
         </div>
