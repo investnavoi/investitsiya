@@ -1541,75 +1541,6 @@ input[type="time"]{-webkit-appearance:none;}
         <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 12 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
       </div>
 
-      <!-- TRANSPORT — 4 TAB: POYEZD, YUK MASHINA, HAVO, SEARATES -->
-      <div class="tcard" style="margin-top:1rem">
-        <div class="tc-head"><div class="tc-title">🚛 Transport Kalkulyator</div></div>
-        <div style="display:flex;gap:0;border-bottom:1px solid var(--border)">
-          <div onclick="showTransportTab('rail')" id="trTab-rail" style="flex:1;padding:10px;border-bottom:2px solid #4361EE;cursor:pointer;text-align:center;background:rgba(67,97,238,.08)"><div style="font-size:1.2rem">🚂</div><div style="font-size:.65rem;font-weight:700">Poyezd</div></div>
-          <div onclick="showTransportTab('truck')" id="trTab-truck" style="flex:1;padding:10px;border-bottom:2px solid transparent;cursor:pointer;text-align:center"><div style="font-size:1.2rem">🚛</div><div style="font-size:.65rem;font-weight:700">Yuk mashina</div></div>
-          <div onclick="showTransportTab('air')" id="trTab-air" style="flex:1;padding:10px;border-bottom:2px solid transparent;cursor:pointer;text-align:center"><div style="font-size:1.2rem">✈️</div><div style="font-size:.65rem;font-weight:700">Havo</div></div>
-          <div onclick="showTransportTab('widget')" id="trTab-widget" style="flex:1;padding:10px;border-bottom:2px solid transparent;cursor:pointer;text-align:center"><div style="font-size:1.2rem">🌐</div><div style="font-size:.65rem;font-weight:700">SeaRates</div></div>
-        </div>
-        <div id="trPanel-rail" style="padding:.8rem">
-          <div class="tscroll"><table><thead><tr><th>Marshrut</th><th>Masofa</th><th>20'</th><th>40'</th><th>Muddat</th></tr></thead><tbody>
-            <tr><td>🇺🇿 Navoiy→Toshkent</td><td>480km</td><td style="color:#059669;font-weight:700">$350</td><td style="color:#059669;font-weight:700">$500</td><td>1 kun</td></tr>
-            <tr><td>🇺🇿 Navoiy→Buxoro</td><td>120km</td><td style="color:#059669;font-weight:700">$150</td><td style="color:#059669;font-weight:700">$220</td><td>0.5 kun</td></tr>
-            <tr><td>🇺🇿 Toshkent→🇰🇿 Olma-ota</td><td>850km</td><td>$600</td><td>$900</td><td>2 kun</td></tr>
-            <tr><td>🇺🇿 Toshkent→🇷🇺 Moskva</td><td>3400km</td><td>$2,800</td><td>$4,200</td><td>12-15 kun</td></tr>
-            <tr><td>🇨🇳 Xi'an→🇺🇿 Toshkent</td><td>4500km</td><td>$3,200</td><td>$4,800</td><td>8-10 kun</td></tr>
-            <tr><td>🇩🇪 Hamburg→🇺🇿 Toshkent</td><td>6200km</td><td>$4,000</td><td>$5,500</td><td>14-18 kun</td></tr>
-            <tr><td>🇹🇷 Istanbul→🇺🇿 Toshkent</td><td>4800km</td><td>$3,500</td><td>$5,000</td><td>12-15 kun</td></tr>
-          </tbody></table></div>
-          <div style="font-size:.5rem;color:var(--text3);margin-top:4px">📊 Taxminiy narxlar — logistika kompaniyalardan aniq taklif oling</div>
-        </div>
-        <div id="trPanel-truck" style="padding:.8rem;display:none">
-          <div class="tscroll"><table><thead><tr><th>Marshrut</th><th>Masofa</th><th>$/tonna</th><th>FTL</th><th>Muddat</th></tr></thead><tbody>
-            <tr><td>🇺🇿 Navoiy→Toshkent</td><td>480km</td><td style="color:#059669;font-weight:700">$18</td><td style="color:#059669;font-weight:700">$350</td><td>8 soat</td></tr>
-            <tr><td>🇺🇿 Navoiy→Samarqand</td><td>300km</td><td style="color:#059669;font-weight:700">$12</td><td style="color:#059669;font-weight:700">$240</td><td>5 soat</td></tr>
-            <tr><td>🇺🇿 Toshkent→🇰🇿 Olma-ota</td><td>850km</td><td>$35</td><td>$700</td><td>1.5 kun</td></tr>
-            <tr><td>🇺🇿 Toshkent→🇰🇬 Bishkek</td><td>650km</td><td>$30</td><td>$600</td><td>1 kun</td></tr>
-            <tr><td>🇺🇿 Toshkent→🇹🇯 Dushanbe</td><td>600km</td><td>$35</td><td>$700</td><td>1.5 kun</td></tr>
-            <tr><td>🇺🇿 Termiz→🇦🇫 Mazori Sharif</td><td>80km</td><td>$40</td><td>$800</td><td>1 kun</td></tr>
-            <tr><td>🇮🇷 Bandar Abbas→🇺🇿 Toshkent</td><td>2800km</td><td>$60</td><td>$2,800</td><td>5-7 kun</td></tr>
-            <tr><td>🇹🇷 Istanbul→🇺🇿 Toshkent</td><td>4800km</td><td>$80</td><td>$4,500</td><td>8-10 kun</td></tr>
-          </tbody></table></div>
-          <div style="font-size:.5rem;color:var(--text3);margin-top:4px">📊 della-uz.com va logistika kompaniyalar asosida</div>
-        </div>
-        <div id="trPanel-air" style="padding:.8rem;display:none">
-          <div class="tscroll"><table><thead><tr><th>Marshrut</th><th>$/kg(100)</th><th>$/kg(500)</th><th>$/kg(1000)</th><th>Muddat</th></tr></thead><tbody>
-            <tr><td>🇩🇪 Frankfurt→🇺🇿 TAS</td><td>$2.50</td><td>$1.90</td><td>$1.70</td><td>1-2 kun</td></tr>
-            <tr><td>🇧🇪 Liege→🇺🇿 TAS</td><td>$2.00</td><td>$1.70</td><td>$1.50</td><td>1-2 kun</td></tr>
-            <tr><td>🇦🇪 Dubai→🇺🇿 TAS</td><td>$1.80</td><td>$1.50</td><td>$1.20</td><td>1 kun</td></tr>
-            <tr><td>🇹🇷 Istanbul→🇺🇿 TAS</td><td>$2.20</td><td>$1.80</td><td>$1.50</td><td>1 kun</td></tr>
-            <tr><td>🇨🇳 Shanghai→🇺🇿 TAS</td><td>$3.00</td><td>$2.50</td><td>$2.00</td><td>1-2 kun</td></tr>
-            <tr><td>🇷🇺 Moskva→🇺🇿 TAS</td><td>$1.50</td><td>$1.20</td><td>$1.00</td><td>4 soat</td></tr>
-          </tbody></table></div>
-          <div style="padding:.6rem;background:rgba(67,97,238,.05);border-radius:8px;margin-top:.6rem;font-size:.65rem">✈️ <b>Navoiy xalqaro aeroporti</b> — Markaziy Osiyodagi eng zamonaviy yuk terminali. Korean Air, Asiana yuk reyslar.</div>
-          <div style="font-size:.5rem;color:var(--text3);margin-top:4px">📊 aircgc.com, corp.uzairways.com asosida</div>
-        </div>
-        <div id="trPanel-widget" style="padding:.5rem;display:none">
-          <iframe src="https://www.searates.com/widget/logistics-explorer?from=Navoi,UZ&color=4361EE" width="100%" height="500" frameborder="0" style="border:none;border-radius:10px" allow="geolocation" loading="lazy"></iframe>
-          <div style="font-size:.5rem;color:var(--text3);text-align:right;margin-top:4px">📊 SeaRates.com — real vaqt (dengiz, havo, temir, avto)</div>
-        </div>
-      </div>
-
-      <!-- Navoiy vs Xorij solishtirma -->
-      <div class="tcard" style="margin-top:1rem">
-        <div class="tc-head"><div class="tc-title">🇺🇿 Navoiy vs Xorij — Solishtirma</div></div>
-        <div style="padding:1rem">
-          <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
-            <div class="form-group" style="flex:1;min-width:140px"><label class="form-label">Transport</label><select class="form-input" id="tr-mode"><option value="rail">🚂 Poyezd</option><option value="truck">🚛 Yuk mashina</option><option value="air">✈️ Havo</option></select></div>
-            <div class="form-group" style="flex:1;min-width:140px"><label class="form-label">Xorijdan narx ($)</label><input class="form-input" id="tr-intl-price" type="number" value="5500"></div>
-            <div class="form-group" style="flex:1;min-width:140px"><label class="form-label">Qayerga</label><select class="form-input" id="tr-to"><option value="tashkent">🇺🇿 Toshkent</option><option value="almaty">🇰🇿 Olma-ota</option><option value="bishkek">🇰🇬 Bishkek</option><option value="dushanbe">🇹🇯 Dushanbe</option><option value="kabul">🇦🇫 Kobul</option><option value="navoi">🇺🇿 Navoiy</option></select></div>
-            <div class="form-group" style="flex:0 0 100px"><label class="form-label">Yiliga</label><input class="form-input" id="tr-annual" type="number" value="100"></div>
-            <div class="form-group" style="flex:0 0 auto"><button class="btn btn-blue" onclick="calculateFreightCompare()">📊 Solishtirish</button></div>
-          </div>
-          <div id="freightResult" style="display:none">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem;margin-bottom:1rem" id="freightCards"></div>
-            <div id="freightCompare" style="padding:1rem;background:var(--bg2);border-radius:10px"></div>
-          </div>
-        </div>
-      </div>
     </div>
     <div id="importEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
   </div>
@@ -1725,7 +1656,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
         <div class="form-group" style="flex:1;min-width:200px">
           <label class="form-label">Kompaniya tanlang</label>
-          <select class="form-input" id="ailetter-company-select"><option value="">— Bazadan tanlang —</option></select>
+          <select class="form-input" id="ailetter-company-select" onchange="handleAiCompanyChange()"><option value="">— Bazadan tanlang —</option></select>
         </div>
         <div class="form-group" style="flex:0 0 120px">
           <label class="form-label">Xat tili</label>
@@ -1745,6 +1676,27 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="tc-head"><div class="tc-title" id="aiAnalysisTitle">📊 Iqtisodiy Tahlil</div></div>
       <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="aiAnalysisGrid"></div>
       <div id="aiAnalysisMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
+    </div>
+
+    <div id="aiTransportCard" class="tcard" style="display:none;margin-bottom:1rem">
+      <div class="tc-head"><div class="tc-title" id="aiTransportTitle">🚛 Transport kalkulyatori — 13 davlatga eksport</div></div>
+      <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem" id="aiTransportGrid"></div>
+      <div class="tscroll" style="padding:0 1rem 1rem">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Davlat</th>
+              <th>Kompaniya joylashgan davlatdan</th>
+              <th>Navoiydan</th>
+              <th>Tejamkorlik</th>
+              <th>Yo'nalish</th>
+            </tr>
+          </thead>
+          <tbody id="aiTransportTbody"></tbody>
+        </table>
+      </div>
+      <div id="aiTransportMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
     </div>
 
     <!-- Xat -->
@@ -11353,6 +11305,226 @@ function buildOfficialAnalysisLines(analysis){
   return lines;
 }
 
+var AI_TRANSPORT_TARGETS = [
+  { iso3:'UZB', code:'UZ', name:"O'zbekiston", lat:40.1039, lon:65.3686, navoiCost:180, navoiDays:1, navoiMode:'Mahalliy / avto' },
+  { iso3:'TKM', code:'TM', name:'Turkmaniston', lat:37.9601, lon:58.3261, navoiCost:900, navoiDays:2, navoiMode:'Avto' },
+  { iso3:'TJK', code:'TJ', name:'Tojikiston', lat:38.5598, lon:68.7870, navoiCost:800, navoiDays:2, navoiMode:'Avto' },
+  { iso3:'KGZ', code:'KG', name:"Qirg'iziston", lat:42.8746, lon:74.5698, navoiCost:1400, navoiDays:3, navoiMode:'Avto' },
+  { iso3:'KAZ', code:'KZ', name:"Qozog'iston", lat:43.2389, lon:76.8897, navoiCost:1200, navoiDays:2, navoiMode:'Avto + temir yo\'l' },
+  { iso3:'MNG', code:'MN', name:'Mongoliya', lat:47.8864, lon:106.9057, navoiCost:2600, navoiDays:6, navoiMode:'Temir yo\'l + avto' },
+  { iso3:'RUS', code:'RU', name:'Rossiya', lat:55.7558, lon:37.6173, navoiCost:2500, navoiDays:7, navoiMode:'Temir yo\'l + avto' },
+  { iso3:'AZE', code:'AZ', name:'Ozarbayjon', lat:40.4093, lon:49.8671, navoiCost:2200, navoiDays:5, navoiMode:'Avto + multimodal' },
+  { iso3:'GEO', code:'GE', name:'Gruziya', lat:41.7151, lon:44.8271, navoiCost:2400, navoiDays:6, navoiMode:'Avto + multimodal' },
+  { iso3:'ARM', code:'AM', name:'Armaniston', lat:40.1792, lon:44.4991, navoiCost:2500, navoiDays:6, navoiMode:'Avto + multimodal' },
+  { iso3:'IRN', code:'IR', name:'Eron', lat:35.6892, lon:51.3890, navoiCost:1500, navoiDays:4, navoiMode:'Avto + temir yo\'l' },
+  { iso3:'AFG', code:'AF', name:"Afg'oniston", lat:34.5553, lon:69.2075, navoiCost:1100, navoiDays:3, navoiMode:'Avto' },
+  { iso3:'PAK', code:'PK', name:'Pokiston', lat:31.5204, lon:74.3587, navoiCost:1800, navoiDays:5, navoiMode:'Avto + multimodal' }
+];
+
+var AI_TRANSPORT_HUBS = {
+  UZB:{name:'Navoi',lat:40.1039,lon:65.3686,profile:'regional'},
+  USA:{name:'New York',lat:40.7128,lon:-74.0060,profile:'americas'},
+  DEU:{name:'Frankfurt',lat:50.1109,lon:8.6821,profile:'europe'},
+  FRA:{name:'Paris',lat:48.8566,lon:2.3522,profile:'europe'},
+  ITA:{name:'Milan',lat:45.4642,lon:9.1900,profile:'europe'},
+  ESP:{name:'Madrid',lat:40.4168,lon:-3.7038,profile:'europe'},
+  GBR:{name:'London',lat:51.5072,lon:-0.1276,profile:'europe'},
+  NLD:{name:'Rotterdam',lat:51.9244,lon:4.4777,profile:'europe'},
+  BEL:{name:'Antwerp',lat:51.2194,lon:4.4025,profile:'europe'},
+  CHE:{name:'Zurich',lat:47.3769,lon:8.5417,profile:'europe'},
+  AUT:{name:'Vienna',lat:48.2082,lon:16.3738,profile:'europe'},
+  POL:{name:'Warsaw',lat:52.2297,lon:21.0122,profile:'europe'},
+  CZE:{name:'Prague',lat:50.0755,lon:14.4378,profile:'europe'},
+  TUR:{name:'Istanbul',lat:41.0082,lon:28.9784,profile:'middle'},
+  ARE:{name:'Dubai',lat:25.2048,lon:55.2708,profile:'middle'},
+  SAU:{name:'Riyadh',lat:24.7136,lon:46.6753,profile:'middle'},
+  QAT:{name:'Doha',lat:25.2854,lon:51.5310,profile:'middle'},
+  CHN:{name:'Xi\'an',lat:34.3416,lon:108.9398,profile:'eastAsia'},
+  JPN:{name:'Tokyo',lat:35.6762,lon:139.6503,profile:'eastAsia'},
+  KOR:{name:'Seoul',lat:37.5665,lon:126.9780,profile:'eastAsia'},
+  IND:{name:'Delhi',lat:28.6139,lon:77.2090,profile:'southAsia'},
+  CAN:{name:'Toronto',lat:43.6532,lon:-79.3832,profile:'americas'},
+  AUS:{name:'Sydney',lat:-33.8688,lon:151.2093,profile:'oceania'},
+  BRA:{name:'Sao Paulo',lat:-23.5505,lon:-46.6333,profile:'americas'},
+  MEX:{name:'Mexico City',lat:19.4326,lon:-99.1332,profile:'americas'},
+  SGP:{name:'Singapore',lat:1.3521,lon:103.8198,profile:'eastAsia'},
+  RUS:{name:'Moscow',lat:55.7558,lon:37.6173,profile:'europeAsia'},
+  KAZ:{name:'Almaty',lat:43.2389,lon:76.8897,profile:'regional'},
+  KGZ:{name:'Bishkek',lat:42.8746,lon:74.5698,profile:'regional'},
+  TJK:{name:'Dushanbe',lat:38.5598,lon:68.7870,profile:'regional'},
+  TKM:{name:'Ashgabat',lat:37.9601,lon:58.3261,profile:'regional'},
+  MNG:{name:'Ulaanbaatar',lat:47.8864,lon:106.9057,profile:'eastAsia'},
+  AZE:{name:'Baku',lat:40.4093,lon:49.8671,profile:'middle'},
+  GEO:{name:'Tbilisi',lat:41.7151,lon:44.8271,profile:'middle'},
+  ARM:{name:'Yerevan',lat:40.1792,lon:44.4991,profile:'middle'},
+  IRN:{name:'Tehran',lat:35.6892,lon:51.3890,profile:'middle'},
+  AFG:{name:'Kabul',lat:34.5553,lon:69.2075,profile:'regional'},
+  PAK:{name:'Lahore',lat:31.5204,lon:74.3587,profile:'southAsia'}
+};
+
+var AI_TRANSPORT_PROFILE_CFG = {
+  regional:{base:180,perKm:0.82,border:80,dayDiv:450,dayBase:1,mode:'Avto / temir yo\'l'},
+  middle:{base:320,perKm:0.90,border:140,dayDiv:550,dayBase:2,mode:'Avto + temir yo\'l'},
+  southAsia:{base:340,perKm:0.80,border:160,dayDiv:580,dayBase:2,mode:'Avto + multimodal'},
+  europe:{base:420,perKm:0.95,border:180,dayDiv:650,dayBase:3,mode:'Temir yo\'l + avto'},
+  europeAsia:{base:300,perKm:0.88,border:120,dayDiv:620,dayBase:2,mode:'Temir yo\'l + avto'},
+  eastAsia:{base:650,perKm:1.00,border:220,dayDiv:720,dayBase:4,mode:'Temir yo\'l + dengiz'},
+  americas:{base:1200,perKm:0.55,border:240,dayDiv:900,dayBase:8,mode:'Dengiz + avto'},
+  oceania:{base:1400,perKm:0.58,border:260,dayDiv:950,dayBase:9,mode:'Dengiz + avto'}
+};
+
+function aiFmtTransportUsd(value){
+  var num = Number(value);
+  if(!Number.isFinite(num)) return '—';
+  return '$' + Math.round(num).toLocaleString('en-US');
+}
+
+function aiTransportHaversineKm(lat1, lon1, lat2, lon2){
+  var toRad = Math.PI / 180;
+  var dLat = (lat2 - lat1) * toRad;
+  var dLon = (lon2 - lon1) * toRad;
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 6371 * c;
+}
+
+function getAiTransportHub(countryInfo){
+  var iso3 = String((countryInfo && countryInfo.iso3) || '').toUpperCase();
+  if(iso3 && AI_TRANSPORT_HUBS[iso3]) return Object.assign({iso3:iso3}, AI_TRANSPORT_HUBS[iso3]);
+  var display = String((countryInfo && countryInfo.display) || countryInfo || '').toLowerCase();
+  var foundKey = Object.keys(AI_TRANSPORT_HUBS).find(function(key){
+    var hub = AI_TRANSPORT_HUBS[key];
+    return hub && String(hub.name || '').toLowerCase() === display;
+  });
+  if(foundKey) return Object.assign({iso3:foundKey}, AI_TRANSPORT_HUBS[foundKey]);
+  return Object.assign({iso3:'UZB'}, AI_TRANSPORT_HUBS.UZB);
+}
+
+function estimateAiExportRoute(sourceHub, target){
+  var sameCountry = sourceHub.iso3 === target.iso3;
+  if(sameCountry){
+    return {
+      foreignCost: 240,
+      foreignDays: 1,
+      foreignMode: 'Mahalliy / ichki logistika'
+    };
+  }
+  var cfg = AI_TRANSPORT_PROFILE_CFG[sourceHub.profile] || AI_TRANSPORT_PROFILE_CFG.regional;
+  var km = aiTransportHaversineKm(sourceHub.lat, sourceHub.lon, target.lat, target.lon);
+  var border = cfg.border;
+  if(target.iso3 === 'AFG') border += 220;
+  if(target.iso3 === 'PAK') border += 180;
+  if(target.iso3 === 'MNG') border += 120;
+  if(target.iso3 === 'RUS') border += 90;
+  if(target.iso3 === 'IRN') border += 60;
+  var foreignCost = Math.round(cfg.base + (km * cfg.perKm) + border);
+  var foreignDays = Math.max(1, Math.round((km / cfg.dayDiv) + cfg.dayBase));
+  return {
+    foreignCost: foreignCost,
+    foreignDays: foreignDays,
+    foreignMode: cfg.mode
+  };
+}
+
+function buildAiTransportAnalysis(countryInfo){
+  var sourceHub = getAiTransportHub(countryInfo);
+  var routes = AI_TRANSPORT_TARGETS.map(function(target){
+    var estimate = estimateAiExportRoute(sourceHub, target);
+    var saving = estimate.foreignCost - target.navoiCost;
+    var savingPct = estimate.foreignCost > 0 ? Math.round((saving / estimate.foreignCost) * 100) : 0;
+    return {
+      code: target.code,
+      iso3: target.iso3,
+      name: target.name,
+      foreignCost: estimate.foreignCost,
+      foreignDays: estimate.foreignDays,
+      foreignMode: estimate.foreignMode,
+      navoiCost: target.navoiCost,
+      navoiDays: target.navoiDays,
+      navoiMode: target.navoiMode,
+      saving: saving,
+      savingPct: savingPct
+    };
+  });
+  var totalForeign = routes.reduce(function(sum, row){ return sum + row.foreignCost; }, 0);
+  var totalNavoi = routes.reduce(function(sum, row){ return sum + row.navoiCost; }, 0);
+  var totalSaving = totalForeign - totalNavoi;
+  var avgSaving = routes.length ? Math.round(totalSaving / routes.length) : 0;
+  var topSaving = routes.filter(function(row){ return row.saving > 0; }).sort(function(a, b){ return b.saving - a.saving; })[0] || null;
+  var fastestNavoi = routes.slice().sort(function(a, b){ return a.navoiDays - b.navoiDays; })[0] || null;
+  return {
+    sourceCountry: String((countryInfo && countryInfo.display) || sourceHub.name || 'Tanlangan davlat'),
+    sourceHub: sourceHub,
+    routes: routes,
+    totalForeign: totalForeign,
+    totalNavoi: totalNavoi,
+    totalSaving: totalSaving,
+    avgSaving: avgSaving,
+    topSaving: topSaving,
+    fastestNavoi: fastestNavoi
+  };
+}
+
+function renderAiTransportAnalysis(summary){
+  var card = document.getElementById('aiTransportCard');
+  var titleEl = document.getElementById('aiTransportTitle');
+  var gridEl = document.getElementById('aiTransportGrid');
+  var tbody = document.getElementById('aiTransportTbody');
+  var metaEl = document.getElementById('aiTransportMeta');
+  if(!card || !titleEl || !gridEl || !tbody || !metaEl || !summary) return;
+
+  titleEl.textContent = '🚛 Transport kalkulyatori — ' + summary.sourceCountry + ' vs Navoiy (13 davlat)';
+  gridEl.innerHTML =
+    buildAiMetricCard('🌍', summary.sourceCountry + 'dan jami', aiFmtTransportUsd(summary.totalForeign), '13 davlatga taxminiy 40ft konteyner narxi', '#2563EB') +
+    buildAiMetricCard('🇺🇿', 'Navoiydan jami', aiFmtTransportUsd(summary.totalNavoi), 'Huddi shu 13 davlatga eksport', '#059669') +
+    buildAiMetricCard('💰', 'O\'rtacha tejamkorlik', aiFmtTransportUsd(summary.avgSaving), 'Har bir bozor bo\'yicha o\'rtacha ustunlik', '#D97706') +
+    buildAiMetricCard('🎯', 'Eng kuchli bozor', (summary.topSaving ? summary.topSaving.name : '—'), summary.topSaving ? (aiFmtTransportUsd(summary.topSaving.saving) + ' (' + summary.topSaving.savingPct + '% arzon)') : '—', '#7C3AED');
+
+  tbody.innerHTML = summary.routes.map(function(row, idx){
+    var savingColor = row.saving >= 0 ? '#059669' : '#EF233C';
+    var savingPrefix = row.saving >= 0 ? '−' : '+';
+    return '<tr>' +
+      '<td>' + (idx + 1) + '</td>' +
+      '<td><b>' + row.name + '</b></td>' +
+      '<td style="font-weight:700;color:#2563EB">' + aiFmtTransportUsd(row.foreignCost) + '<div style="font-size:.58rem;color:var(--text3)">' + row.foreignMode + ' · ~' + row.foreignDays + ' kun</div></td>' +
+      '<td style="font-weight:700;color:#059669">' + aiFmtTransportUsd(row.navoiCost) + '<div style="font-size:.58rem;color:var(--text3)">' + row.navoiMode + ' · ~' + row.navoiDays + ' kun</div></td>' +
+      '<td style="font-weight:800;color:' + savingColor + '">' + savingPrefix + aiFmtTransportUsd(Math.abs(row.saving)).replace('$','') + '<div style="font-size:.58rem;color:' + savingColor + '">' + Math.abs(row.savingPct) + '%</div></td>' +
+      '<td style="font-size:.66rem;color:var(--text2)">' + summary.sourceHub.name + ' → ' + row.name + '<br>Navoiy → ' + row.name + '</td>' +
+    '</tr>';
+  }).join('');
+
+  metaEl.style.display = 'block';
+  metaEl.innerHTML = '<div style="padding-top:.3rem;border-top:1px dashed rgba(16,185,129,.28)"><strong>Logistika modeli:</strong><br>• Kompaniya joylashgan davlat uchun markaziy logistika hub: ' + escapeHtmlText(summary.sourceHub.name) + '.<br>• Narxlar 1 ta 40ft konteyner bo\'yicha taxminiy multimodal eksport modeli asosida hisoblandi.<br>• Navoiy narxlari ichki koridor benchmarklari, qolganlari esa masofa + koridor profili bo\'yicha modellashtirildi. Xat ichida ushbu qiymatlar logistika ustunligi sifatida ishlatiladi.</div>';
+  card.style.display = 'block';
+}
+
+function buildAiTransportPromptLines(summary){
+  if(!summary || !summary.routes || !summary.routes.length) return [];
+  var topRoutes = summary.routes.filter(function(route){ return route.saving > 0; }).sort(function(a, b){ return b.saving - a.saving; }).slice(0, 4);
+  var lines = [
+    'Transport comparison (estimated 40ft container export cost): from ' + summary.sourceCountry + ' to the 13 target markets total ' + aiFmtTransportUsd(summary.totalForeign) + ', while from Navoi total ' + aiFmtTransportUsd(summary.totalNavoi) + '.',
+    'Average logistics advantage from Navoi across the 13 target markets: ' + aiFmtTransportUsd(summary.avgSaving) + ' per market.',
+    'Fastest Navoi export market in this set: ' + ((summary.fastestNavoi && summary.fastestNavoi.name) || 'n/a') + ' in about ' + ((summary.fastestNavoi && summary.fastestNavoi.navoiDays) || 'n/a') + ' days.'
+  ];
+  topRoutes.forEach(function(route){
+    lines.push('For ' + route.name + ', exporting from ' + summary.sourceCountry + ' is about ' + aiFmtTransportUsd(route.foreignCost) + ' versus Navoi ' + aiFmtTransportUsd(route.navoiCost) + ', so Navoi is cheaper by ' + aiFmtTransportUsd(route.saving) + ' (' + route.savingPct + '%).');
+  });
+  return lines;
+}
+
+function handleAiCompanyChange(){
+  var analysisCard = document.getElementById('aiAnalysisCard');
+  var transportCard = document.getElementById('aiTransportCard');
+  var letterCard = document.getElementById('aiLetterCard');
+  var emptyCard = document.getElementById('aiLetterEmpty');
+  if(analysisCard) analysisCard.style.display = 'none';
+  if(transportCard) transportCard.style.display = 'none';
+  if(letterCard) letterCard.style.display = 'none';
+  if(emptyCard) emptyCard.style.display = 'block';
+}
+
 async function generateAiLetter(){
   var sel = document.getElementById('ailetter-company-select');
   var compId = sel.value;
@@ -11371,11 +11543,16 @@ async function generateAiLetter(){
     renderAiAnalysis(analysis);
     var officialLines = buildOfficialAnalysisLines(analysis);
     if(!officialLines.length) throw new Error('Rasmiy iqtisodiy ko\'rsatkichlar topilmadi');
+    var transportSummary = buildAiTransportAnalysis(analysis.country);
+    renderAiTransportAnalysis(transportSummary);
+    var transportLines = buildAiTransportPromptLines(transportSummary);
 
     var letterPrompt = 'Write a professional business letter in '+langName+'. From Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n'+
-      'Use ONLY the official data below. Do not invent any numbers. If one metric is unavailable, skip it naturally.\n'+
+      'Use ONLY the economic and logistics figures below. Do not invent any new numbers. If one metric is unavailable, skip it naturally.\n'+
       officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+      transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
       'Industry: '+(comp.soha||'Manufacturing')+'. Mention Navoi industrial advantages, workforce potential, infrastructure and investor support. Tone: professional, human, compelling.\n'+
+      'Explicitly mention that Navoi gives an export logistics advantage to 13 nearby markets when relevant.\n'+
       'IMPORTANT: First line = email subject ONLY. Second line = ===BODY===. Then letter body.\nExample:\nMarble Partnership in Navoi\n===BODY===\nDear Mr. Schmidt,\n...';
 
     var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:3000}};
