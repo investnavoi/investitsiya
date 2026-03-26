@@ -1635,6 +1635,16 @@ input[type="time"]{-webkit-appearance:none;}
           <label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border-radius:8px;font-size:.7rem;cursor:pointer;border:1px solid var(--border)"><input type="checkbox" class="fc-country" value="China"> 🇨🇳 Xitoy</label>
         </div>
       </div>
+      <div id="finderSourceScopeWrap" style="display:none;margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.45rem">
+          <label class="form-label" style="margin:0" id="finderSourceLabel">🌐 Eksportyor manbasi (qit'a yoki davlat bo'yicha)</label>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearFinderSourceFilters()">Tozalash</button>
+        </div>
+        <div id="finderSourceContinentChips" style="display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:.55rem"></div>
+        <input class="form-input" id="finderSourceSearch" type="text" placeholder="Davlat qidirish..." oninput="renderFinderSourceFilters()" style="margin-bottom:.55rem">
+        <div id="finderSourceSelected" style="font-size:.65rem;color:var(--text3);margin-bottom:.5rem"></div>
+        <div id="finderSourceCountriesList" style="max-height:220px;overflow:auto;padding:.3rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.55)"></div>
+      </div>
     </div>
 
     <!-- Progress -->
@@ -5193,6 +5203,7 @@ function renderAll(){
   if(typeof renderProducts==='function') renderProducts();
   if(typeof renderPipeline==='function') renderPipeline();
   if(typeof updateFinderModeUI==='function') updateFinderModeUI();
+  if(typeof renderFinderSourceFilters==='function') renderFinderSourceFilters();
   if(typeof loadSettings==='function') loadSettings();
   if(typeof updateTradeFirebaseCount==='function') updateTradeFirebaseCount();
   if(typeof renderEntrepreneurs==='function') renderEntrepreneurs();
@@ -10571,6 +10582,94 @@ function goToFinder(prodId, countryCode){
 ═══════════════════════════════════════ */
 var _finderResults = [];
 var _finderMode = 'importers';
+var FINDER_SOURCE_REGIONS = {
+  "Afrika": ['Algeria','Angola','Benin','Botswana','Burkina Faso','Burundi','Cabo Verde','Cameroon','Central African Republic','Chad','Comoros','Congo','DR Congo','Djibouti','Egypt','Equatorial Guinea','Eritrea','Eswatini','Ethiopia','Gabon','Gambia','Ghana','Guinea','Guinea-Bissau','Ivory Coast','Kenya','Lesotho','Liberia','Libya','Madagascar','Malawi','Mali','Mauritania','Mauritius','Morocco','Mozambique','Namibia','Niger','Nigeria','Rwanda','Sao Tome and Principe','Senegal','Seychelles','Sierra Leone','Somalia','South Africa','South Sudan','Sudan','Tanzania','Togo','Tunisia','Uganda','Zambia','Zimbabwe'],
+  "Osiyo": ['Afghanistan','Armenia','Azerbaijan','Bahrain','Bangladesh','Bhutan','Brunei','Cambodia','China','Cyprus','Georgia','India','Indonesia','Iran','Iraq','Israel','Japan','Jordan','Kazakhstan','Kuwait','Kyrgyzstan','Laos','Lebanon','Malaysia','Maldives','Mongolia','Myanmar','Nepal','North Korea','Oman','Pakistan','Palestine','Philippines','Qatar','Saudi Arabia','Singapore','South Korea','Sri Lanka','Syria','Tajikistan','Thailand','Timor-Leste','Turkey','Turkmenistan','United Arab Emirates','Uzbekistan','Vietnam','Yemen'],
+  "Yevropa": ['Albania','Andorra','Austria','Belarus','Belgium','Bosnia and Herzegovina','Bulgaria','Croatia','Czech Republic','Denmark','Estonia','Finland','France','Germany','Greece','Hungary','Iceland','Ireland','Italy','Kosovo','Latvia','Liechtenstein','Lithuania','Luxembourg','Malta','Moldova','Monaco','Montenegro','Netherlands','North Macedonia','Norway','Poland','Portugal','Romania','Russia','San Marino','Serbia','Slovakia','Slovenia','Spain','Sweden','Switzerland','Ukraine','United Kingdom','Vatican City'],
+  "Shimoliy Amerika": ['Antigua and Barbuda','Bahamas','Barbados','Belize','Canada','Costa Rica','Cuba','Dominica','Dominican Republic','El Salvador','Grenada','Guatemala','Haiti','Honduras','Jamaica','Mexico','Nicaragua','Panama','Saint Kitts and Nevis','Saint Lucia','Saint Vincent and the Grenadines','Trinidad and Tobago','United States'],
+  "Janubiy Amerika": ['Argentina','Bolivia','Brazil','Chile','Colombia','Ecuador','Guyana','Paraguay','Peru','Suriname','Uruguay','Venezuela'],
+  "Okeaniya": ['Australia','Fiji','Kiribati','Marshall Islands','Micronesia','Nauru','New Zealand','Palau','Papua New Guinea','Samoa','Solomon Islands','Tonga','Tuvalu','Vanuatu']
+};
+var _finderSourceContinents = [];
+var _finderSourceCountries = [];
+
+function getFinderSourceSelection(){
+  var continents = _finderSourceContinents.slice();
+  var countries = _finderSourceCountries.slice();
+  return {
+    continents: continents,
+    countries: countries,
+    hasFilter: !!(continents.length || countries.length),
+    summary: countries.length ? countries.join(', ') : continents.join(', '),
+    promptText: countries.length
+      ? ('Only include exporter companies headquartered in these countries: '+countries.join(', ')+'.')
+      : (continents.length ? ('Only include exporter companies headquartered in these continents/regions: '+continents.join(', ')+'.') : ''),
+    keywordHint: countries.length ? countries.slice(0,3).join(', ') : (continents[0] || '')
+  };
+}
+
+function clearFinderSourceFilters(){
+  _finderSourceContinents = [];
+  _finderSourceCountries = [];
+  var searchEl = document.getElementById('finderSourceSearch');
+  if(searchEl) searchEl.value = '';
+  renderFinderSourceFilters();
+}
+
+function toggleFinderSourceContinent(name){
+  var idx = _finderSourceContinents.indexOf(name);
+  if(idx >= 0) _finderSourceContinents.splice(idx,1);
+  else _finderSourceContinents.push(name);
+  renderFinderSourceFilters();
+}
+
+function toggleFinderSourceCountry(name){
+  var idx = _finderSourceCountries.indexOf(name);
+  if(idx >= 0) _finderSourceCountries.splice(idx,1);
+  else _finderSourceCountries.push(name);
+  renderFinderSourceFilters();
+}
+
+function renderFinderSourceFilters(){
+  var wrap = document.getElementById('finderSourceScopeWrap');
+  var chipsEl = document.getElementById('finderSourceContinentChips');
+  var countriesEl = document.getElementById('finderSourceCountriesList');
+  var selectedEl = document.getElementById('finderSourceSelected');
+  if(!wrap || !chipsEl || !countriesEl || !selectedEl) return;
+  var meta = getFinderModeMeta((document.getElementById('finder-mode')||{}).value || 'importers');
+  wrap.style.display = meta.mode === 'exporters' ? 'block' : 'none';
+  if(meta.mode !== 'exporters') return;
+
+  chipsEl.innerHTML = Object.keys(FINDER_SOURCE_REGIONS).map(function(cont){
+    var active = _finderSourceContinents.indexOf(cont) !== -1;
+    return '<button type="button" class="trade-subtab '+(active?'active':'')+'" onclick="toggleFinderSourceContinent(\''+cont.replace(/'/g,"\\'")+'\')">'+cont+'</button>';
+  }).join('');
+
+  var search = ((document.getElementById('finderSourceSearch')||{}).value || '').toLowerCase().trim();
+  var visibleContinents = _finderSourceContinents.length ? _finderSourceContinents.slice() : Object.keys(FINDER_SOURCE_REGIONS);
+  var html = '';
+  visibleContinents.forEach(function(cont){
+    var list = (FINDER_SOURCE_REGIONS[cont]||[]).filter(function(country){
+      return !search || country.toLowerCase().indexOf(search) !== -1;
+    });
+    if(!list.length) return;
+    html += '<div style="margin-bottom:.65rem"><div style="font-size:.68rem;font-weight:800;color:var(--text2);margin:.2rem 0 .35rem">'+cont+'</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:.38rem">';
+    html += list.map(function(country){
+      var checked = _finderSourceCountries.indexOf(country) !== -1;
+      return '<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:pointer;border:1px solid '+(checked?'rgba(67,97,238,.35)':'var(--border)')+'"><input type="checkbox" '+(checked?'checked':'')+' onchange="toggleFinderSourceCountry(\''+country.replace(/'/g,"\\'")+'\')"> '+country+'</label>';
+    }).join('');
+    html += '</div></div>';
+  });
+  countriesEl.innerHTML = html || '<div style="padding:.8rem;color:var(--text3);font-size:.7rem">Hech narsa topilmadi</div>';
+
+  var selection = getFinderSourceSelection();
+  if(selection.hasFilter){
+    selectedEl.textContent = 'Tanlangan manba: ' + selection.summary;
+  } else {
+    selectedEl.textContent = 'Filter qo\'yilmasa, eksportyorlar bo\'yicha manba cheklanmaydi.';
+  }
+}
 
 function getFinderModeMeta(mode){
   if(mode === 'exporters'){
@@ -10609,6 +10708,7 @@ function updateFinderModeUI(){
   if(countriesLabel) countriesLabel.textContent = meta.countryLabel;
   var volHead = document.getElementById('finder-volume-head');
   if(volHead) volHead.textContent = meta.volumeLabel;
+  renderFinderSourceFilters();
 }
 
 async function runCompanyFinder(source){
@@ -10620,6 +10720,7 @@ async function runCompanyFinder(source){
   if(!prod) return;
   var meta = getFinderModeMeta(document.getElementById('finder-mode').value);
   _finderMode = meta.mode;
+  var sourceScope = getFinderSourceSelection();
   var perCountry = parseInt(document.getElementById('finder-count').value)||5;
 
   // Get selected countries
@@ -10632,7 +10733,7 @@ async function runCompanyFinder(source){
   document.getElementById('finderKpiGrid').style.display = 'none';
   document.getElementById('finderProgress').style.display = 'block';
   document.getElementById('finderBar').style.width = '10%';
-  document.getElementById('finderProgressText').textContent = countries.length+' ta davlatda "'+prod.name_en+'" '+meta.resultWord+' qidirilmoqda...';
+  document.getElementById('finderProgressText').textContent = countries.length+' ta davlatda "'+prod.name_en+'" '+meta.resultWord+' qidirilmoqda...'+(sourceScope.hasFilter?' | Manba: '+sourceScope.summary:'');
 
   _finderResults = [];
 
@@ -10643,7 +10744,8 @@ async function runCompanyFinder(source){
       for(var ci=0; ci<countries.length; ci++){
         document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+countries[ci]+' ('+(ci+1)+'/'+countries.length+') — '+meta.resultWord+'...';
         try {
-          var apResp = await fetch(APOLLO_PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:prod.name_en + meta.apolloKeyword + countries[ci],per_page:perCountry})});
+          var keyword = prod.name_en + meta.apolloKeyword + countries[ci] + (sourceScope.hasFilter ? (' from ' + sourceScope.keywordHint) : '');
+          var apResp = await fetch(APOLLO_PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:keyword,per_page:perCountry})});
           if(apResp.ok){
             var apData = await apResp.json();
             (apData.people||[]).forEach(function(p,i){
@@ -10673,6 +10775,7 @@ async function runCompanyFinder(source){
           '"'+meta.promptVolumeField+'":"$5M/year","trade_share_pct":15,'+
           '"products_traded":"granite slabs, marble tiles",'+
           '"score":85,"why":"Major distributor of stone products in Moscow region"}]\n'+
+          (meta.mode==='exporters' && sourceScope.promptText ? (sourceScope.promptText+'\n') : '')+
           'Score 1-100: 90+ = direct '+(meta.mode==='exporters'?'exporter':'importer')+' of this exact product, 70-89 = trades similar products, 50-69 = potential lead.\n'+
           'IMPORTANT: Use REALISTIC company names from '+batch.join(', ')+'. Include trade volume estimates.';
 
