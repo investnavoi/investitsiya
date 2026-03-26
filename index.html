@@ -216,19 +216,19 @@ waitForDB();
 *{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
 body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top right,rgba(67,97,238,.10),transparent 22%),linear-gradient(180deg,#F5F8FF 0%,var(--bg) 28%,#E8F0FF 100%);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;display:flex;}
 /* ═══ SIDEBAR LAYOUT ═══ */
-.sidebar{width:210px;min-height:100vh;background:linear-gradient(180deg,var(--nav-bg) 0%,#1d2c4e 100%);display:flex;flex-direction:column;padding:12px 8px;gap:2px;position:fixed;top:0;left:0;z-index:220;box-shadow:12px 0 36px rgba(7,14,33,.18);overflow-y:auto;overflow-x:hidden;}
-.sidebar-logo{display:flex;align-items:center;gap:10px;padding:4px 8px;margin-bottom:8px;cursor:pointer;text-decoration:none;}
-.sidebar-logo-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#4361EE,#4CC9F0);display:flex;align-items:center;justify-content:center;font-size:0;flex-shrink:0;box-shadow:0 8px 20px rgba(67,97,238,.35);}
-.sidebar-logo-icon::before{content:"\1F4CA";font-size:16px;line-height:1;}
-.sidebar-logo-text{font-family:'Sora',sans-serif;font-size:.8rem;font-weight:700;color:#fff;line-height:1.2;}
-.sidebar-logo-sub{font-size:.55rem;color:rgba(180,200,245,.55);margin-top:1px;}
-.sidebar-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 8px;}
-.sb-tab{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:rgba(220,232,255,.76);cursor:pointer;transition:all .2s;font-size:.78rem;font-weight:500;position:relative;border:none;background:none;width:100%;text-align:left;white-space:nowrap;}
+.sidebar{width:252px;min-height:100vh;background:linear-gradient(180deg,var(--nav-bg) 0%,#1d2c4e 100%);display:flex;flex-direction:column;padding:16px 10px 18px;gap:4px;position:fixed;top:0;left:0;z-index:220;box-shadow:12px 0 36px rgba(7,14,33,.18);overflow-y:auto;overflow-x:hidden;}
+.sidebar-logo{display:flex;align-items:center;gap:12px;padding:6px 10px;margin-bottom:10px;cursor:pointer;text-decoration:none;}
+.sidebar-logo-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#4361EE,#4CC9F0);display:flex;align-items:center;justify-content:center;font-size:0;flex-shrink:0;box-shadow:0 8px 20px rgba(67,97,238,.35);}
+.sidebar-logo-icon::before{content:"\1F4CA";font-size:19px;line-height:1;}
+.sidebar-logo-text{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;color:#fff;line-height:1.15;}
+.sidebar-logo-sub{font-size:.66rem;color:rgba(180,200,245,.66);margin-top:3px;}
+.sidebar-divider{height:1px;background:rgba(255,255,255,.08);margin:8px 8px;}
+.sb-tab{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:rgba(220,232,255,.80);cursor:pointer;transition:all .2s;font-size:.92rem;font-weight:600;position:relative;border:none;background:none;width:100%;text-align:left;white-space:normal;line-height:1.25;min-height:50px;}
 .sb-tab:hover{background:rgba(255,255,255,.08);color:#fff;transform:translateX(2px);}
 .sb-tab.active{background:#4361EE;color:#fff;box-shadow:0 8px 20px rgba(67,97,238,.28);}
 .sb-tab.admin-tab.active{background:#7209B7;box-shadow:0 8px 20px rgba(114,9,183,.28);}
-.sb-tab-icon{font-size:0;width:22px;text-align:center;flex-shrink:0;line-height:1;}
-.sb-tab-icon::before{font-size:16px;line-height:1;}
+.sb-tab-icon{font-size:0;width:24px;text-align:center;flex-shrink:0;line-height:1;}
+.sb-tab-icon::before{font-size:18px;line-height:1;}
 #tab-overview .sb-tab-icon::before{content:"\1F3E0";}
 #tab-investors .sb-tab-icon::before{content:"\1F30D";}
 #tab-local .sb-tab-icon::before{content:"\1F3E2";}
@@ -243,9 +243,21 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 #tab-trade .sb-tab-icon::before{content:"\1F310";}
 #tab-settings .sb-tab-icon::before{content:"\2699";}
 #tab-admin .sb-tab-icon::before{content:"\1F512";}
-.sb-tab-label{flex:1;overflow:hidden;text-overflow:ellipsis;}
-.sb-tab .sb-badge{background:#EF233C;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;box-shadow:0 4px 10px rgba(239,35,60,.28);}
-.main-content{margin-left:210px;flex:1;min-height:100vh;}
+.sb-tab-label{flex:1;line-height:1.25;}
+.sb-tab .sb-badge{background:#EF233C;color:#fff;font-size:10px;font-weight:800;min-width:22px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0;box-shadow:0 4px 10px rgba(239,35,60,.28);}
+.sb-group{display:flex;flex-direction:column;gap:4px;}
+.sb-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;color:#fff;cursor:pointer;transition:all .2s;font-size:.95rem;font-weight:700;border:none;background:rgba(255,255,255,.06);width:100%;text-align:left;min-height:52px;}
+.sb-group-head:hover{background:rgba(255,255,255,.10);}
+.sb-group-head.open{background:rgba(67,97,238,.18);box-shadow:inset 0 0 0 1px rgba(112,141,255,.18);}
+.sb-group-head-main{display:flex;align-items:center;gap:12px;min-width:0;}
+.sb-group-emoji{width:24px;flex-shrink:0;text-align:center;font-size:18px;line-height:1;}
+.sb-group-title{line-height:1.25;}
+.sb-group-caret{font-size:14px;color:rgba(220,232,255,.85);transition:transform .2s ease;flex-shrink:0;}
+.sb-group-head.open .sb-group-caret{transform:rotate(180deg);}
+.sb-group-body{max-height:0;overflow:hidden;display:flex;flex-direction:column;gap:4px;transition:max-height .24s ease,padding .24s ease; padding-left:0;}
+.sb-group-body.open{max-height:260px;padding-top:4px;}
+.sb-subtab{margin-left:12px;padding:11px 14px 11px 16px;font-size:.9rem;min-height:48px;background:rgba(255,255,255,.03);}
+.main-content{margin-left:252px;flex:1;min-height:100vh;}
 .topbar{background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:160;box-shadow:0 8px 24px rgba(20,35,63,.06);}
 [data-theme="dark"] .topbar{background:rgba(24,36,67,.92);}
 .topbar-title{font-size:1.05rem;font-weight:700;color:var(--text);}
@@ -951,10 +963,18 @@ input[type="time"]{-webkit-appearance:none;}
     </div>
   </div>
   <div class="sidebar-divider"></div>
-  <button class="sb-tab active" id="tab-overview" onclick="showPage('overview')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_overview">Umumiy</span></button>
-  <button class="sb-tab" id="tab-investors" onclick="showPage('investors')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investors">Investorlar</span><span class="sb-badge" id="badge-investors">0</span></button>
-  <button class="sb-tab" id="tab-local" onclick="showPage('local')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_local">Tadbirkorlar</span><span class="sb-badge" id="badge-local">0</span></button>
-  <button class="sb-tab" id="tab-zoom" onclick="showPage('zoom')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_zoom">Zoom</span><span class="sb-badge" id="badge-zoom">0</span></button>
+  <div class="sb-group open" id="sb-group-sections">
+    <button class="sb-group-head open" id="sb-group-head-sections" type="button" onclick="toggleSidebarGroup('sections')">
+      <span class="sb-group-head-main"><span class="sb-group-emoji">🗂</span><span class="sb-group-title">Bo'lim ma'lumotlari</span></span>
+      <span class="sb-group-caret">▾</span>
+    </button>
+    <div class="sb-group-body open" id="sb-group-body-sections">
+      <button class="sb-tab sb-subtab active" id="tab-overview" onclick="showPage('overview')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_overview">Umumiy ma'lumotlar</span></button>
+      <button class="sb-tab sb-subtab" id="tab-investors" onclick="showPage('investors')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investors">Investorlar tashriflari</span><span class="sb-badge" id="badge-investors">0</span></button>
+      <button class="sb-tab sb-subtab" id="tab-local" onclick="showPage('local')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_local">Mahalliy tadbirkorlar</span><span class="sb-badge" id="badge-local">0</span></button>
+      <button class="sb-tab sb-subtab" id="tab-zoom" onclick="showPage('zoom')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_zoom">Zoom uchrashuvlar</span><span class="sb-badge" id="badge-zoom">0</span></button>
+    </div>
+  </div>
   <button class="sb-tab" id="tab-forums" onclick="showPage('forums')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_forums">Forumlar</span><span class="sb-badge" id="badge-forums">0</span></button>
   <button class="sb-tab" id="tab-investor" onclick="showPage('investor')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investorco">Investorlar bazasi</span><span class="sb-badge" id="badge-investorco">0</span></button>
   <div class="sidebar-divider"></div>
@@ -1598,8 +1618,8 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group" style="flex:0 0 260px">
           <label class="form-label">Qidiruv rejimi</label>
           <select class="form-input" id="finder-mode" onchange="updateFinderModeUI()">
-            <option value="importers" selected>Mahsulotni shu 13 ta davlatda import qilayotgan kompaniyalar</option>
-            <option value="exporters">Mahsulotni shu 13 ta davlatga eksport qilayotgan top kompaniyalar</option>
+            <option value="importers" selected>Importyor kompaniyalar</option>
+            <option value="exporters">Eksportyor kompaniyalar</option>
           </select>
         </div>
         <div class="form-group" style="flex:1;min-width:200px">
@@ -3286,6 +3306,37 @@ function initGroupedNav(){
   syncNavGroups(currentPage || 'overview');
 }
 
+var SIDEBAR_GROUPS = {
+  sections: ['overview','investors','local','zoom']
+};
+
+function setSidebarGroupState(groupId, isOpen){
+  var wrap = document.getElementById('sb-group-'+groupId);
+  var head = document.getElementById('sb-group-head-'+groupId);
+  var body = document.getElementById('sb-group-body-'+groupId);
+  if(!wrap || !head || !body) return;
+  wrap.classList.toggle('open', !!isOpen);
+  head.classList.toggle('open', !!isOpen);
+  body.classList.toggle('open', !!isOpen);
+  try { localStorage.setItem('_sbgroup_'+groupId, isOpen ? '1' : '0'); } catch(e){}
+}
+
+function toggleSidebarGroup(groupId){
+  var body = document.getElementById('sb-group-body-'+groupId);
+  if(!body) return;
+  setSidebarGroupState(groupId, !body.classList.contains('open'));
+}
+
+function syncSidebarGroups(activePage){
+  Object.keys(SIDEBAR_GROUPS).forEach(function(groupId){
+    var containsActive = SIDEBAR_GROUPS[groupId].indexOf(activePage) !== -1;
+    var stored = null;
+    try { stored = localStorage.getItem('_sbgroup_'+groupId); } catch(e){}
+    var shouldOpen = containsActive || stored === null || stored === '1';
+    setSidebarGroupState(groupId, shouldOpen);
+  });
+}
+
 function showPage(id){
   if(id==='admin'&&!isAdmin){openAdminOrLogin();return;}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -3313,6 +3364,7 @@ function showPage(id){
   };
   const titleEl=document.getElementById('topbarTitle');
   if(titleEl) titleEl.textContent=titles[id]||id;
+  syncSidebarGroups(id);
   if(id==='overview')renderOverview();
   else if(id==='investors')renderInvestors();
   else if(id==='local')renderLocal();
@@ -10738,10 +10790,10 @@ function getFinderModeMeta(mode){
   if(mode === 'exporters'){
     return {
       mode: 'exporters',
-      countryLabel: '🌍 Maqsad davlatlar (shu davlatlarga eksport qilayotgan top kompaniyalar qidiriladi)',
+      countryLabel: '🌍 Maqsad davlatlar (shu davlatlarga eksport qiluvchi eksportyor kompaniyalar qidiriladi)',
       volumeLabel: 'Eksport hajmi',
       resultWord: 'eksportyorlari',
-      actionLabel: 'eksport qilayotgan kompaniyalar',
+      actionLabel: 'eksportyor kompaniyalar',
       apolloKeyword: ' exporter supplier manufacturer to ',
       promptRole: 'SELLERS / EXPORTERS / SUPPLIERS',
       promptVerb: 'EXPORT',
@@ -10751,10 +10803,10 @@ function getFinderModeMeta(mode){
   }
   return {
     mode: 'importers',
-    countryLabel: '🌍 Maqsad davlatlar (import qilayotgan kompaniyalar qidiriladi)',
+    countryLabel: '🌍 Maqsad davlatlar (importyor kompaniyalar qidiriladi)',
     volumeLabel: 'Import hajmi',
     resultWord: 'importyorlari',
-    actionLabel: 'import qilayotgan kompaniyalar',
+    actionLabel: 'importyor kompaniyalar',
     apolloKeyword: ' importer buyer distributor in ',
     promptRole: 'BUYERS / IMPORTERS',
     promptVerb: 'IMPORT',
