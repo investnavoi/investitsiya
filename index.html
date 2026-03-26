@@ -11134,6 +11134,21 @@ function setInvestAiBusy(flag){
   if(input) input.disabled = _investAiBusy;
 }
 
+function extractGeminiStreamText(payload){
+  var texts = [];
+  var items = Array.isArray(payload) ? payload : [payload];
+  items.forEach(function(item){
+    var candidates = item && Array.isArray(item.candidates) ? item.candidates : [];
+    candidates.forEach(function(candidate){
+      var parts = (((candidate||{}).content||{}).parts)||[];
+      parts.forEach(function(part){
+        if(part && typeof part.text === 'string' && part.text) texts.push(part.text);
+      });
+    });
+  });
+  return texts.join('');
+}
+
 function parseAnthropicSseChunk(chunk, onText){
   var lines = String(chunk || '').split(/\r?\n/);
   var dataLines = [];
@@ -11147,8 +11162,13 @@ function parseAnthropicSseChunk(chunk, onText){
   try { payload = JSON.parse(dataStr); } catch(e){ return; }
   if(payload.type === 'content_block_delta' && payload.delta && payload.delta.text){
     onText(payload.delta.text);
+  } else if(payload.error && payload.error.message){
+    throw new Error(payload.error.message);
   } else if(payload.type === 'error'){
     throw new Error((payload.error && payload.error.message) || payload.message || 'Anthropic stream error');
+  } else {
+    var geminiTextDelta = extractGeminiStreamText(payload);
+    if(geminiTextDelta) onText(geminiTextDelta);
   }
 }
 
@@ -11164,7 +11184,8 @@ function extractInvestAiErrorMessage(resp, errText){
         detail = (nested.error && nested.error.message) || nested.message || detail;
       }catch(e){}
     }
-    return detail || errJson.error || fallback;
+    var top = (errJson.error && errJson.error.message) || errJson.error || '';
+    return detail || top || fallback;
   }catch(e){
     return errText || fallback;
   }
@@ -11193,7 +11214,7 @@ async function analyzeInvestmentMaterial(){
     var resp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ materialName: material })
+      body:JSON.stringify({ materialName: material, geminiKey: (typeof getGeminiKey === 'function' ? getGeminiKey() : '') })
     });
 
     if(!resp.ok){
