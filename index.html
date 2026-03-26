@@ -224,7 +224,7 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .sidebar-logo-sub{font-size:.68rem;color:#EAF2FF;margin-top:4px;font-weight:700;text-shadow:none;}
 .sidebar-logo-sub:empty{display:none;}
 .sidebar-divider{height:1px;background:rgba(255,255,255,.08);margin:8px 8px;}
-.sb-tab{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:#F7FAFF;cursor:pointer;transition:all .2s;font-size:.98rem;font-weight:800;position:relative;border:none;background:none;width:100%;text-align:left;white-space:normal;line-height:1.28;min-height:50px;text-shadow:none;}
+.sb-tab{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;color:#F7FAFF;cursor:pointer;transition:all .2s;font-family:'Sora',sans-serif;font-size:.97rem;font-weight:800;position:relative;border:none;background:none;width:100%;text-align:left;white-space:normal;line-height:1.24;min-height:50px;text-shadow:none;letter-spacing:0;}
 .sb-tab:hover{background:rgba(255,255,255,.08);color:#fff;transform:translateX(2px);}
 .sb-tab.active{background:#4361EE;color:#fff;box-shadow:0 8px 20px rgba(67,97,238,.28);}
 .sb-tab.admin-tab.active{background:#7209B7;box-shadow:0 8px 20px rgba(114,9,183,.28);}
@@ -247,12 +247,12 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .sb-tab-label{flex:1;line-height:1.28;color:inherit;}
 .sb-tab .sb-badge{background:#EF233C;color:#fff;font-size:10px;font-weight:800;min-width:22px;height:22px;border-radius:11px;display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0;box-shadow:0 4px 10px rgba(239,35,60,.28);}
 .sb-group{display:flex;flex-direction:column;gap:4px;}
-.sb-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;color:#FFFFFF;cursor:pointer;transition:all .2s;font-size:1rem;font-weight:900;border:none;background:rgba(255,255,255,.08);width:100%;text-align:left;min-height:52px;text-shadow:none;}
+.sb-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;color:#FFFFFF;cursor:pointer;transition:all .2s;font-family:'Sora',sans-serif;font-size:1rem;font-weight:900;border:none;background:rgba(255,255,255,.08);width:100%;text-align:left;min-height:52px;text-shadow:none;letter-spacing:0;}
 .sb-group-head:hover{background:rgba(255,255,255,.10);}
 .sb-group-head.open{background:rgba(67,97,238,.18);box-shadow:inset 0 0 0 1px rgba(112,141,255,.18);}
 .sb-group-head-main{display:flex;align-items:center;gap:12px;min-width:0;}
 .sb-group-emoji{width:24px;flex-shrink:0;text-align:center;font-size:18px;line-height:1;}
-.sb-group-title{line-height:1.25;}
+.sb-group-title{font-family:'Sora',sans-serif;line-height:1.22;}
 .sb-group-caret{font-size:14px;color:#F0F5FF;transition:transform .2s ease;flex-shrink:0;}
 .sb-group-head.open .sb-group-caret{transform:rotate(180deg);}
 .sb-group-body{max-height:0;overflow:hidden;display:flex;flex-direction:column;gap:4px;transition:max-height .24s ease,padding .24s ease; padding-left:0;}
@@ -8017,10 +8017,14 @@ function renderTradeSubTabs(countryName){
   var tabs = document.getElementById('tradeSubTabs');
   if(!tabs) return;
   var marketCount = (_tradeData||[]).length;
-  var navoiCount = buildNavoiProductRows().length;
+  var navoiRows = buildNavoiProductRows();
+  var navoiCount = navoiRows.length;
+  var navoiTotalValue = navoiRows.reduce(function(sum, row){
+    return sum + (Number(row.value)||0);
+  }, 0);
   var exportCount = (_tradeUzExportData||[]).length;
   tabs.innerHTML =
-    '<button class="trade-subtab '+(_tradeViewMode==='navoi'?'active':'')+'" onclick="setTradeViewMode(\'navoi\')">🏭 Navoiy viloyatida mavjud mahsulotlar ('+navoiCount+')</button>'+
+    '<button class="trade-subtab '+(_tradeViewMode==='navoi'?'active':'')+'" onclick="setTradeViewMode(\'navoi\')">🏭 Navoiy viloyatida ishlab chiqariladigan mahsulotlar ('+navoiCount+' | '+formatTradeMoney(navoiTotalValue)+')</button>'+
     '<button class="trade-subtab '+(_tradeViewMode==='uzexport'?'active':'')+'" onclick="setTradeViewMode(\'uzexport\')">🇺🇿 O\'zbekistondan '+(countryName||'shu davlatga')+' eksport bo\'lgan ('+exportCount+')</button>'+
     '<button class="trade-subtab '+(_tradeViewMode==='market'?'active':'')+'" onclick="setTradeViewMode(\'market\')">📋 Mahsulotlar ro\'yxati ('+marketCount+')</button>';
 }
@@ -8039,12 +8043,15 @@ function renderTradeListView(countryName, flowName, year){
   renderTradeSubTabs(countryName);
 
   if(_tradeViewMode === 'navoi'){
-    if(titleEl) titleEl.textContent = '🏭 Navoiy viloyatida mavjud mahsulotlar ro\'yxati';
+    var navoiTotalValue = data.reduce(function(sum, row){
+      return sum + (Number(row.value)||0);
+    }, 0);
+    if(titleEl) titleEl.textContent = '🏭 Navoiy viloyatida ishlab chiqariladigan mahsulotlar ro\'yxati';
     if(tariffCol) tariffCol.textContent = 'Tarif (%)';
     if(lastCol) lastCol.textContent = 'Navoiy mahsuloti';
-    if(noteEl) noteEl.textContent = 'Tanlangan davlatning '+year+'-yildagi importi ichidan Navoiyda mavjud mahsulotlar qoldirildi. Tarif ustuni WITS - UNCTAD TRAINS rasmiy ma\'lumotidan olinadi.'+((_tradeTariffMeta&&_tradeTariffMeta.isFallback)?(' Tarif ma\'lumoti '+_tradeTariffMeta.usedYear+' yildan olindi.'):'');
+    if(noteEl) noteEl.textContent = 'Tanlangan davlatning '+year+'-yildagi importi ichidan Navoiy viloyatida ishlab chiqariladigan mahsulotlar qoldirildi. Jami: '+data.length+' ta mahsulot, umumiy qiymat: '+formatTradeMoney(navoiTotalValue)+'. Tarif ustuni WITS - UNCTAD TRAINS rasmiy ma\'lumotidan olinadi.'+((_tradeTariffMeta&&_tradeTariffMeta.isFallback)?(' Tarif ma\'lumoti '+_tradeTariffMeta.usedYear+' yildan olindi.'):'');
     if(matchBtn) matchBtn.style.display = 'none';
-    document.getElementById('trade-count').textContent = data.length;
+    document.getElementById('trade-count').textContent = data.length+' | '+formatTradeMoney(navoiTotalValue);
     tb.innerHTML = data.length ? data.map(function(r,i){
       var valStr = r.value>=1e9?'$'+(r.value/1e9).toFixed(2)+'B':r.value>=1e6?'$'+(r.value/1e6).toFixed(1)+'M':'$'+(r.value/1e3).toFixed(0)+'K';
       var wStr = r.weight>=1e9?(r.weight/1e9).toFixed(0)+' Kt':r.weight>=1e6?(r.weight/1e6).toFixed(0)+' t':r.weight>=1e3?(r.weight/1e3).toFixed(0)+' kg':(r.weight||0)+' g';
