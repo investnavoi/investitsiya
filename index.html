@@ -1640,7 +1640,7 @@ input[type="time"]{-webkit-appearance:none;}
           <label class="form-label" style="margin:0" id="finderSourceLabel">🌐 Eksportyor manbasi (qit'a yoki davlat bo'yicha)</label>
           <button class="btn btn-ghost btn-sm" type="button" onclick="clearFinderSourceFilters()">Tozalash</button>
         </div>
-        <div id="finderSourceContinentChips" style="display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:.55rem"></div>
+        <div id="finderSourceContinentChips" style="display:grid;grid-template-columns:1fr;gap:.45rem;margin-bottom:.55rem"></div>
         <input class="form-input" id="finderSourceSearch" type="text" placeholder="Davlat qidirish..." oninput="renderFinderSourceFilters()" style="margin-bottom:.55rem">
         <div id="finderSourceSelected" style="font-size:.65rem;color:var(--text3);margin-bottom:.5rem"></div>
         <div id="finderSourceCountriesList" style="max-height:220px;overflow:auto;padding:.3rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.55)"></div>
@@ -10640,9 +10640,15 @@ function renderFinderSourceFilters(){
   wrap.style.display = meta.mode === 'exporters' ? 'block' : 'none';
   if(meta.mode !== 'exporters') return;
 
+  chipsEl.style.display = 'grid';
+  chipsEl.style.gridTemplateColumns = '1fr';
+  chipsEl.style.gap = '.45rem';
   chipsEl.innerHTML = Object.keys(FINDER_SOURCE_REGIONS).map(function(cont){
     var active = _finderSourceContinents.indexOf(cont) !== -1;
-    return '<button type="button" class="trade-subtab '+(active?'active':'')+'" onclick="toggleFinderSourceContinent(\''+cont.replace(/'/g,"\\'")+'\')">'+cont+'</button>';
+    return '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-radius:12px;border:1px solid '+(active?'rgba(67,97,238,.35)':'var(--border)')+';background:'+(active?'rgba(67,97,238,.10)':'rgba(255,255,255,.75)')+';cursor:pointer;font-size:.72rem;font-weight:700;color:var(--text)">'+
+      '<span style="display:flex;align-items:center;gap:8px"><input type="checkbox" '+(active?'checked':'')+' onchange="toggleFinderSourceContinent(\''+cont.replace(/'/g,"\\'")+'\')"> '+cont+'</span>'+
+      '<span style="font-size:.62rem;color:var(--text3)">'+(FINDER_SOURCE_REGIONS[cont]||[]).length+' ta davlat</span>'+
+    '</label>';
   }).join('');
 
   var search = ((document.getElementById('finderSourceSearch')||{}).value || '').toLowerCase().trim();
