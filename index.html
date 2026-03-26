@@ -1713,7 +1713,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: AI XATLAR (M4: AI Letter Gen) ===== -->
 <div class="page" id="page-ailetter">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">📧 AI Xat Generatori</div><div class="pg-sub">Gemini AI har bir kompaniyaga individual taklif xati yozadi</div></div>
+    <div class="pg-head"><div class="pg-title">📧 AI Xat Generatori</div><div class="pg-sub">Xat matni Gemini orqali yoziladi, iqtisodiy taqqoslash esa World Bank, ILOSTAT va IEA/EIA rasmiy API laridan olinadi</div></div>
     <div class="kpi-grid">
       <div class="kpi-card c1"><div class="kpi-icon">📧</div><div class="kpi-label">Yaratilgan xatlar</div><div class="kpi-val" id="ai-k1">0</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">📤</div><div class="kpi-label">Yuborilgan</div><div class="kpi-val" id="ai-k2">0</div></div>
@@ -1742,8 +1742,9 @@ input[type="time"]{-webkit-appearance:none;}
 
     <!-- Tahlil -->
     <div id="aiAnalysisCard" class="tcard" style="display:none;margin-bottom:1rem">
-      <div class="tc-head"><div class="tc-title">📊 Iqtisodiy Tahlil</div></div>
+      <div class="tc-head"><div class="tc-title" id="aiAnalysisTitle">📊 Iqtisodiy Tahlil</div></div>
       <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="aiAnalysisGrid"></div>
+      <div id="aiAnalysisMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
     </div>
 
     <!-- Xat -->
@@ -11162,54 +11163,219 @@ function aiLetterAll(){
 /* ═══════════════════════════════════════
    M4: AI LETTER GENERATOR
 ═══════════════════════════════════════ */
+var AI_COUNTRY_API_BASE = 'https://navoiy-api-proxy.vercel.app/api';
+var AI_COUNTRY_ANALYSIS_CACHE = {};
+
+function escapeHtmlText(text){
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getAiCompanyCountry(comp){
+  return String((comp && (comp.davlat || comp.country || comp.mamlakat)) || '').trim();
+}
+
+function getAiCountryCacheKey(countryName){
+  return String(countryName || '').trim().toLowerCase();
+}
+
+async function fetchOfficialAiCountryAnalysis(comp){
+  var countryName = getAiCompanyCountry(comp);
+  if(!countryName) throw new Error('Kompaniyaning joylashgan davlati ko\'rsatilmagan');
+  var cacheKey = getAiCountryCacheKey(countryName);
+  if(AI_COUNTRY_ANALYSIS_CACHE[cacheKey]) return AI_COUNTRY_ANALYSIS_CACHE[cacheKey];
+  var resp = await fetch(AI_COUNTRY_API_BASE + '/ai-country-analysis?country=' + encodeURIComponent(countryName));
+  var data = await resp.json().catch(function(){ return {}; });
+  if(!resp.ok || data.error) throw new Error(data.error || ('Rasmiy tahlil API xato berdi ('+resp.status+')'));
+  AI_COUNTRY_ANALYSIS_CACHE[cacheKey] = data;
+  return data;
+}
+
+function aiRound(value, digits){
+  var num = Number(value);
+  if(!Number.isFinite(num)) return null;
+  var p = Math.pow(10, digits || 0);
+  return Math.round(num * p) / p;
+}
+
+function aiFmtCompactUsd(value){
+  var num = Number(value);
+  if(!Number.isFinite(num)) return '—';
+  if(num >= 1e9) return '$' + aiRound(num / 1e9, 1) + 'B';
+  if(num >= 1e6) return '$' + aiRound(num / 1e6, 1) + 'M';
+  if(num >= 1e3) return '$' + aiRound(num / 1e3, 1) + 'K';
+  return '$' + aiRound(num, 0);
+}
+
+function aiFmtUsdExact(value){
+  var num = Number(value);
+  if(!Number.isFinite(num)) return '—';
+  if(num >= 1000) return '$' + aiRound(num, 0).toLocaleString('en-US');
+  if(num >= 100) return '$' + aiRound(num, 1);
+  return '$' + aiRound(num, 2);
+}
+
+function aiFmtWageValue(value, basisLabel){
+  var num = Number(value);
+  if(!Number.isFinite(num)) return '—';
+  var prefix = String(basisLabel || '').indexOf('PPP') !== -1 ? 'PPP$' : '$';
+  if(num >= 1000) return prefix + aiRound(num, 0).toLocaleString('en-US');
+  if(num >= 100) return prefix + aiRound(num, 1);
+  return prefix + aiRound(num, 2);
+}
+
+function aiFmtMwh(value){
+  var num = Number(value);
+  if(!Number.isFinite(num)) return '—';
+  return '$' + aiRound(num, 1) + '/MWh';
+}
+
+function aiFmtPct(value){
+  var num = Number(value);
+  if(!Number.isFinite(num)) return '—';
+  return aiRound(num, 1) + '%';
+}
+
+function aiRatioDirectionText(countryValue, uzValue, cheaperMode){
+  var c = Number(countryValue);
+  var u = Number(uzValue);
+  if(!(c > 0) || !(u > 0)) return 'Ma\'lumot yo\'q';
+  var ratio = c / u;
+  if(cheaperMode){
+    if(ratio >= 1.05) return aiRound(ratio, 1) + 'x arzon';
+    if(ratio <= 0.95) return aiRound(1/ratio, 1) + 'x qimmat';
+    return 'Deyarli teng';
+  }
+  if(ratio >= 1.05) return aiRound(ratio, 1) + 'x yuqori';
+  if(ratio <= 0.95) return aiRound(1/ratio, 1) + 'x past';
+  return 'Deyarli teng';
+}
+
+function buildAiMetricCard(icon, label, main, detail, accent){
+  return '<div style="padding:1rem;background:var(--bg2);border-radius:10px">' +
+    '<div style="font-size:1.5rem;margin-bottom:.5rem">' + icon + '</div>' +
+    '<div style="font-size:.7rem;color:var(--text3)">' + escapeHtmlText(label) + '</div>' +
+    '<div style="font-size:1.1rem;font-weight:800;color:' + (accent || '#059669') + '">' + escapeHtmlText(main) + '</div>' +
+    '<div style="font-size:.66rem;color:var(--text3)">' + detail + '</div>' +
+  '</div>';
+}
+
+function renderAiAnalysis(analysis){
+  var countryName = (analysis && analysis.country && analysis.country.display) || 'Tanlangan davlat';
+  var metrics = (analysis && analysis.metrics) || {};
+  var meta = [];
+  var grid = [];
+  var gdp = metrics.gdpPerCapita || {};
+  var industry = metrics.industryShare || {};
+  var wage = metrics.monthlyWage || {};
+  var electricity = metrics.electricityPrice || {};
+  var gas = metrics.naturalGasPrice || {};
+  var titleEl = document.getElementById('aiAnalysisTitle');
+  var metaEl = document.getElementById('aiAnalysisMeta');
+  if(titleEl) titleEl.textContent = '📊 Iqtisodiy Tahlil — ' + countryName + ' vs O\'zbekiston';
+
+  grid.push(buildAiMetricCard(
+    '📈',
+    'YaIM / kishi',
+    aiRatioDirectionText(gdp.country, gdp.uzbekistan, false),
+    escapeHtmlText(aiFmtCompactUsd(gdp.country) + ' → ' + aiFmtCompactUsd(gdp.uzbekistan)) + '<br><span style="font-size:.6rem">World Bank · ' + escapeHtmlText((gdp.countryYear||'—') + '/' + (gdp.uzbekistanYear||'—')) + '</span>',
+    '#2563EB'
+  ));
+
+  grid.push(buildAiMetricCard(
+    '🏭',
+    'Sanoat ulushi',
+    aiRatioDirectionText(industry.country, industry.uzbekistan, false),
+    escapeHtmlText(aiFmtPct(industry.country) + ' → ' + aiFmtPct(industry.uzbekistan)) + '<br><span style="font-size:.6rem">World Bank · ' + escapeHtmlText((industry.countryYear||'—') + '/' + (industry.uzbekistanYear||'—')) + '</span>',
+    '#F59E0B'
+  ));
+
+  grid.push(buildAiMetricCard(
+    '👷',
+    'Mehnat narxi (oylik)',
+    aiRatioDirectionText(wage.country, wage.uzbekistan, true),
+    escapeHtmlText(aiFmtWageValue(wage.country, wage.countryCurrencyBasis) + ' → ' + aiFmtWageValue(wage.uzbekistan, wage.uzbekistanCurrencyBasis)) + '<br><span style="font-size:.6rem">ILOSTAT · ' + escapeHtmlText((wage.countryYear||'—') + '/' + (wage.uzbekistanYear||'—')) + '</span>',
+    '#059669'
+  ));
+
+  grid.push(buildAiMetricCard(
+    '⚡',
+    'Elektr energiyasi',
+    aiRatioDirectionText(electricity.country, electricity.uzbekistan, true),
+    escapeHtmlText(aiFmtMwh(electricity.country) + ' → ' + aiFmtMwh(electricity.uzbekistan)) + '<br><span style="font-size:.6rem">' + escapeHtmlText(electricity.source || 'Official API') + ' · ' + escapeHtmlText((electricity.countryYear||'—') + '/' + (electricity.uzbekistanYear||'—')) + '</span>',
+    '#DC2626'
+  ));
+
+  meta.push('• YaIM / kishi: World Bank Open Data API (' + escapeHtmlText((gdp.countryYear||'—') + '/' + (gdp.uzbekistanYear||'—')) + ')');
+  meta.push('• Sanoat ulushi: World Bank Open Data API (' + escapeHtmlText((industry.countryYear||'—') + '/' + (industry.uzbekistanYear||'—')) + ')');
+  meta.push('• Mehnat narxi: ILOSTAT EAR_EMTA_SEX_CUR_NB_A (' + escapeHtmlText((wage.countryYear||'—') + '/' + (wage.uzbekistanYear||'—')) + ') · ' + escapeHtmlText((wage.countryCurrencyBasis||'—') + ' / ' + (wage.uzbekistanCurrencyBasis||'—')));
+  meta.push('• Elektr energiyasi: ' + escapeHtmlText(electricity.source || 'Official energy API') + ' (' + escapeHtmlText((electricity.countryYear||'—') + '/' + (electricity.uzbekistanYear||'—')) + ')');
+  if(Number.isFinite(Number(gas.country)) || Number.isFinite(Number(gas.uzbekistan))){
+    meta.push('• Tabiiy gaz: ' + escapeHtmlText(gas.source || 'IEA Prices API') + ' (' + escapeHtmlText((gas.countryYear||'—') + '/' + (gas.uzbekistanYear||'—')) + ') · ' + escapeHtmlText(aiFmtMwh(gas.country) + ' → ' + aiFmtMwh(gas.uzbekistan)));
+  }
+
+  document.getElementById('aiAnalysisCard').style.display = 'block';
+  document.getElementById('aiAnalysisGrid').innerHTML = grid.join('');
+  if(metaEl){
+    metaEl.style.display = 'block';
+    metaEl.innerHTML = '<div style="padding-top:.3rem;border-top:1px dashed rgba(59,130,246,.25)"><strong>Rasmiy manbalar:</strong><br>' + meta.join('<br>') + '</div>';
+  }
+}
+
+function buildOfficialAnalysisLines(analysis){
+  var countryName = (analysis && analysis.country && analysis.country.display) || 'Selected country';
+  var metrics = (analysis && analysis.metrics) || {};
+  var lines = [];
+
+  function pushMetric(label, metric, formatterCountry, formatterUz, sourceLabel){
+    if(!metric || !Number.isFinite(Number(metric.country)) || !Number.isFinite(Number(metric.uzbekistan))) return;
+    lines.push(
+      label + ': ' + countryName + ' ' + formatterCountry(metric.country) + ' (' + (metric.countryYear||'n/a') + ', ' + (sourceLabel||metric.source||'Official API') + ') vs Uzbekistan ' +
+      formatterUz(metric.uzbekistan) + ' (' + (metric.uzbekistanYear||'n/a') + ', ' + (sourceLabel||metric.source||'Official API') + ').'
+    );
+  }
+
+  pushMetric('GDP per capita', metrics.gdpPerCapita, aiFmtUsdExact, aiFmtUsdExact, 'World Bank');
+  pushMetric('Industry share of GDP', metrics.industryShare, aiFmtPct, aiFmtPct, 'World Bank');
+  pushMetric('Average monthly earnings', metrics.monthlyWage, function(value){
+    return aiFmtWageValue(value, metrics.monthlyWage && metrics.monthlyWage.countryCurrencyBasis);
+  }, function(value){
+    return aiFmtWageValue(value, metrics.monthlyWage && metrics.monthlyWage.uzbekistanCurrencyBasis);
+  }, 'ILOSTAT');
+  pushMetric('Industrial electricity price', metrics.electricityPrice, aiFmtMwh, aiFmtMwh, metrics.electricityPrice && metrics.electricityPrice.source);
+  if(metrics.naturalGasPrice && Number.isFinite(Number(metrics.naturalGasPrice.country)) && Number.isFinite(Number(metrics.naturalGasPrice.uzbekistan))){
+    pushMetric('Industrial natural gas price', metrics.naturalGasPrice, aiFmtMwh, aiFmtMwh, metrics.naturalGasPrice.source);
+  }
+  return lines;
+}
+
 async function generateAiLetter(){
   var sel = document.getElementById('ailetter-company-select');
   var compId = sel.value;
   if(!compId){ toast('⚠️ Kompaniya tanlang','error'); return; }
   var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(compId);});
   if(!comp){ toast('⚠️ Kompaniya topilmadi','error'); return; }
+  if(!getAiCompanyCountry(comp)){ toast('⚠️ Kompaniyaning joylashgan davlati ko\'rsatilmagan','error'); return; }
 
   var lang = document.getElementById('ailetter-lang').value;
   var langName = {en:'English',ru:'Russian',de:'German',zh:'Chinese',fr:'French',fa:'Persian'}[lang]||'English';
 
-  toast('🤖 AI tahlil va xat yozmoqda...');
-
-  // Settings
-  var s = DB.settings||{};
-  var uzElektr = s.elektr||0.03;
-  var uzGaz = s.gaz||0.01;
-  var uzMaosh = s.maosh||400;
+  toast('🤖 Rasmiy iqtisodiy tahlil va AI xat tayyorlanmoqda...');
 
   try {
-    // Step 1: Economic Analysis — FLAT JSON, no nesting
-    var analysisPrompt = 'Return ONLY a single line of raw JSON. No markdown. No explanation. No newlines inside JSON.\n'+
-      'Compare costs: company in '+(comp.davlat||'Europe')+' vs Navoi, Uzbekistan.\n'+
-      'Navoi: electricity $'+uzElektr+'/kWh, gas $'+uzGaz+'/kWh, wage $'+uzMaosh+'/mo, land FREE, tax 0% 7yr.\n'+
-      'JSON: {"t_abroad":6800,"t_navoi":1200,"t_save":82,"w_abroad":3500,"w_navoi":400,"w_ratio":"8.7x","e_abroad":0.35,"e_navoi":0.03,"e_ratio":"11x","saving":2400000,"roi":18}';
+    var analysis = await fetchOfficialAiCountryAnalysis(comp);
+    renderAiAnalysis(analysis);
+    var officialLines = buildOfficialAnalysisLines(analysis);
+    if(!officialLines.length) throw new Error('Rasmiy iqtisodiy ko\'rsatkichlar topilmadi');
 
-    var body1 = {contents:[{role:'user',parts:[{text:analysisPrompt}]}],generationConfig:{temperature:0.1,maxOutputTokens:500}};
-    var data1 = await callGemini(body1);
-    var a;
-    try {
-      a = safeParseJSON(geminiText(data1));
-    } catch(pe){
-      // Fallback — default values based on country
-      console.log('Analysis parse error, using defaults:', pe);
-      a = {t_abroad:6800,t_navoi:1200,t_save:82,w_abroad:3500,w_navoi:parseInt(uzMaosh),w_ratio:'8.7x',e_abroad:0.35,e_navoi:parseFloat(uzElektr),e_ratio:'11x',saving:2400000,roi:18};
-    }
-
-    // Show analysis cards
-    document.getElementById('aiAnalysisCard').style.display = 'block';
-    document.getElementById('aiAnalysisGrid').innerHTML =
-      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">🚛</div><div style="font-size:.7rem;color:var(--text3)">Transport</div><div style="font-size:1.1rem;font-weight:800;color:#059669">-'+(a.t_save||82)+'%</div><div style="font-size:.6rem;color:var(--text3)">$'+(a.t_abroad||6800)+' → $'+(a.t_navoi||1200)+'</div></div>'+
-      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">👷</div><div style="font-size:.7rem;color:var(--text3)">Mehnat</div><div style="font-size:1.1rem;font-weight:800;color:#059669">'+(a.w_ratio||'8.7x')+' arzon</div><div style="font-size:.6rem;color:var(--text3)">$'+(a.w_abroad||3500)+' → $'+(a.w_navoi||400)+'</div></div>'+
-      '<div style="padding:1rem;background:var(--bg2);border-radius:10px"><div style="font-size:1.5rem;margin-bottom:.5rem">⚡</div><div style="font-size:.7rem;color:var(--text3)">Energiya</div><div style="font-size:1.1rem;font-weight:800;color:#059669">'+(a.e_ratio||'11x')+' arzon</div><div style="font-size:.6rem;color:var(--text3)">$'+(a.e_abroad||0.35)+' → $'+(a.e_navoi||0.03)+'</div></div>'+
-      '<div style="padding:1rem;background:linear-gradient(135deg,rgba(5,150,105,.1),rgba(6,214,160,.1));border-radius:10px;border:1px solid rgba(5,150,105,.3)"><div style="font-size:1.5rem;margin-bottom:.5rem">💰</div><div style="font-size:.7rem;color:var(--text3)">Yillik tejamkorlik</div><div style="font-size:1.1rem;font-weight:800;color:#059669">$'+Math.round((a.saving||2400000)/1e6*10)/10+'M</div><div style="font-size:.6rem;color:var(--text3)">ROI: '+(a.roi||18)+' oy</div></div>';
-
-    // Step 2: Generate letter — plain text, no JSON
     var letterPrompt = 'Write a professional business letter in '+langName+'. From Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n'+
-      'Data: Transport -'+(a.t_save||82)+'%, Labor '+(a.w_ratio||'8.7x')+' cheaper, Energy '+(a.e_ratio||'11x')+' cheaper, Save $'+Math.round((a.saving||2400000)/1000)+'K/yr, ROI '+(a.roi||18)+' months. Navoi SEZ: 0% tax 7yr, free land.\n'+
-      'Industry: '+(comp.soha||'Manufacturing')+'. Tone: professional, human, compelling.\n'+
+      'Use ONLY the official data below. Do not invent any numbers. If one metric is unavailable, skip it naturally.\n'+
+      officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+      'Industry: '+(comp.soha||'Manufacturing')+'. Mention Navoi industrial advantages, workforce potential, infrastructure and investor support. Tone: professional, human, compelling.\n'+
       'IMPORTANT: First line = email subject ONLY. Second line = ===BODY===. Then letter body.\nExample:\nMarble Partnership in Navoi\n===BODY===\nDear Mr. Schmidt,\n...';
 
     var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:3000}};
@@ -11222,7 +11388,6 @@ async function generateAiLetter(){
       letterSubject = letterRaw.slice(0, sepIdx).trim().replace(/^Subject:\s*/i,'').replace(/\*\*/g,'');
       letterBody = letterRaw.slice(sepIdx + 10).trim();
     } else {
-      // Try first line as subject
       var lines = letterRaw.split('\n');
       if(lines.length > 3){
         letterSubject = lines[0].replace(/^Subject:\s*/i,'').replace(/\*\*/g,'').trim();
@@ -12030,4 +12195,3 @@ function removeTyping(){
 </div><!-- /main-content -->
 </body>
 </html>
-
