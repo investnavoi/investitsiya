@@ -10694,6 +10694,10 @@ function importProductsExcel(input){
       // AUTO-DETECT FORMAT by scanning first 10 rows
       for(var i=0;i<Math.min(10,rows.length);i++){
         var rowStr = rows[i].join('|').toLowerCase();
+        if(rowStr.indexOf('xomashyolar hs code')!==-1 && rowStr.indexOf('mahsulotlar hs code')!==-1 && rowStr.indexOf('xomashyolar')!==-1 && rowStr.indexOf('mahsulotlar')!==-1){
+          format = 'navoiyazot_headers';
+          break;
+        }
         if(rowStr.indexOf('raw material')!==-1 && rowStr.indexOf('product name')!==-1){
           format = 'english';
           break;
@@ -10706,7 +10710,91 @@ function importProductsExcel(input){
 
       console.log('📥 Excel format aniqlandi:', format, '| Sheet:', sheetName);
 
-      if(format === 'english'){
+      if(format === 'navoiyazot_headers'){
+        // ═══ FORMAT: NavoiyAzot paired columns ═══
+        // Headers: No. | Xomashyolar | Mahsulotlar | Xomashyolar HS code | Mahsulotlar HS code
+        var headerRowIdx = -1;
+        var headerMap = { rawName:-1, productName:-1, rawHs:-1, productHs:-1 };
+        for(var h=0; h<Math.min(10, rows.length); h++){
+          var hr = rows[h] || [];
+          for(var c=0; c<hr.length; c++){
+            var head = String(hr[c] || '').trim().toLowerCase();
+            if(head === 'xomashyolar') headerMap.rawName = c;
+            else if(head === 'mahsulotlar') headerMap.productName = c;
+            else if(head === 'xomashyolar hs code') headerMap.rawHs = c;
+            else if(head === 'mahsulotlar hs code') headerMap.productHs = c;
+          }
+          if(headerMap.rawName >= 0 && headerMap.productName >= 0){
+            headerRowIdx = h;
+            break;
+          }
+        }
+        if(headerRowIdx < 0) throw new Error('NavoiyAzot ustunlari topilmadi');
+
+        var rawMap = {};
+        var productMap = {};
+        var rawCounter = 0;
+        var productCounter = 0;
+
+        function azotKey(name, hs){
+          return String(name || '').trim().toLowerCase() + '|' + String(hs || '').replace(/\s+/g,'');
+        }
+
+        for(var r=headerRowIdx+1; r<rows.length; r++){
+          var row = rows[r] || [];
+          var rawName = String(row[headerMap.rawName] || '').trim();
+          var productName = String(row[headerMap.productName] || '').trim();
+          var rawHs = String(row[headerMap.rawHs] || '').replace(/\s+/g,'').trim();
+          var productHs = String(row[headerMap.productHs] || '').replace(/\s+/g,'').trim();
+
+          if(!rawName && !productName) continue;
+          if(rawName && /^xomashyolar$/i.test(rawName)) continue;
+          if(productName && /^mahsulotlar$/i.test(productName)) continue;
+
+          var rawRec = null;
+          if(rawName){
+            var rk = azotKey(rawName, rawHs);
+            rawRec = rawMap[rk];
+            if(!rawRec){
+              rawCounter++;
+              rawRec = {
+                id: 'rm_tmp_' + rawCounter,
+                name_uz: rawName,
+                name_en: rawName,
+                hs_code: rawHs,
+                location: 'Navoiy',
+                source: 'NavoiyAzot Excel'
+              };
+              rawMap[rk] = rawRec;
+              rawMaterials.push(rawRec);
+            }
+          }
+
+          if(productName){
+            var pk = azotKey(productName, productHs) + '|' + (rawRec ? rawRec.id : rawName);
+            if(!productMap[pk]){
+              productCounter++;
+              var linkedRaw = rawRec || rawMaterials.find(function(item){ return String(item.name_en || '').trim().toLowerCase() === rawName.toLowerCase(); }) || null;
+              productMap[pk] = {
+                id: 'pr_tmp_' + productCounter,
+                raw_id: linkedRaw ? linkedRaw.id : '',
+                raw_name: linkedRaw ? (linkedRaw.name_en || linkedRaw.name_uz || rawName) : rawName,
+                name_en: productName,
+                name_uz: productName,
+                hs_code: productHs,
+                processing_level: activeSection === 'azot' ? 'NavoiyAzot mahsuloti' : '',
+                price: '',
+                description: '',
+                usage: activeSection === 'azot' ? 'NavoiyAzot ishlab chiqarish zanjiri' : '',
+                import_info: '',
+                main_sector: activeSection === 'azot' ? 'Kimyo / NavoiyAzot' : '',
+                main_buyers: ''
+              };
+              products.push(productMap[pk]);
+            }
+          }
+        }
+      } else if(format === 'english'){
         // ═══ FORMAT: English (Master Product List) ═══
         // Headers: #, Raw Material, Product Name, HS Code, Processing Level, Raw Material #
         var currentRaw = null;
