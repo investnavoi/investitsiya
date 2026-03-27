@@ -13292,14 +13292,15 @@ function getFinderSourceSelection(){
   var continents = _finderSourceContinents.slice();
   var countries = _finderSourceCountries.slice();
   var effectiveCountries = [];
-  continents.forEach(function(cont){
-    (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(country){
-      if(effectiveCountries.indexOf(country) === -1) effectiveCountries.push(country);
+  if(countries.length){
+    effectiveCountries = countries.slice();
+  } else {
+    continents.forEach(function(cont){
+      (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(country){
+        if(effectiveCountries.indexOf(country) === -1) effectiveCountries.push(country);
+      });
     });
-  });
-  countries.forEach(function(country){
-    if(effectiveCountries.indexOf(country) === -1) effectiveCountries.push(country);
-  });
+  }
   var promptCountries = effectiveCountries.slice(0, 25);
   return {
     continents: continents,
