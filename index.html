@@ -316,8 +316,8 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .tn-user{display:flex;align-items:center;gap:9px;flex-shrink:0;min-width:0;margin-left:4px;}
 .tn-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#4361EE,#7209B7);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;box-shadow:0 2px 8px rgba(67,97,238,.4);}
 .tn-user-text{display:flex;flex-direction:column;min-width:0;}
-.tn-uname{font-size:.84rem;font-weight:900;color:#10254A;text-shadow:none;}
-.tn-urole{font-size:.68rem;color:#4A5F84;font-weight:700;line-height:1.18;max-width:240px;white-space:normal;text-shadow:none;display:block;}
+.tn-uname{display:none!important;font-size:.84rem;font-weight:900;color:#10254A;text-shadow:none;}
+.tn-urole{font-size:.76rem;color:#243B63;font-weight:900;line-height:1.22;max-width:260px;white-space:normal;text-shadow:none;display:block;}
 .topbar .tn-date{color:var(--text2);background:var(--bg2);border-color:var(--border);}
 .topbar .lang-switcher{background:var(--bg2);border-color:var(--border);}
 .topbar .lang-btn{color:var(--text2);}
@@ -464,7 +464,25 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .anx-cta-body{font-size:.75rem;color:var(--text2);line-height:1.65;margin-top:.35rem}
 .anx-running{display:inline-flex;align-items:center;gap:.45rem;font-size:.72rem;color:#4361EE;font-weight:800}
 .anx-running::before{content:'';width:8px;height:8px;border-radius:50%;background:#4361EE;box-shadow:0 0 0 0 rgba(67,97,238,.45);animation:pulse 1.5s infinite}
+.prod-ai-shell{margin:0 0 1rem 0;border:1px solid rgba(67,97,238,.14);border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(240,246,255,.98));box-shadow:0 18px 40px rgba(67,97,238,.10);overflow:hidden}
+.prod-ai-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem 1.05rem .9rem}
+.prod-ai-eyebrow{font-size:.63rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#4361EE}
+.prod-ai-title{font-family:'Sora',sans-serif;font-size:1rem;font-weight:900;color:#173260;line-height:1.25;margin-top:.18rem}
+.prod-ai-sub{font-size:.73rem;line-height:1.6;color:var(--text2);margin-top:.3rem}
+.prod-ai-pills{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.65rem}
+.prod-ai-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.34rem .6rem;border-radius:999px;background:rgba(67,97,238,.10);color:#244A87;font-size:.66rem;font-weight:800;border:1px solid rgba(67,97,238,.10)}
+.prod-ai-actions{display:flex;flex-direction:column;gap:.45rem;min-width:185px}
+.prod-ai-preview{padding:0 1.05rem .9rem;display:flex;flex-wrap:wrap;gap:.4rem}
+.prod-ai-preview-item{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .55rem;border-radius:999px;background:rgba(5,150,105,.10);border:1px solid rgba(5,150,105,.12);color:#047857;font-size:.66rem;font-weight:700}
+.prod-ai-preview-more{display:inline-flex;align-items:center;padding:.3rem .55rem;border-radius:999px;background:rgba(15,23,42,.06);color:var(--text2);font-size:.66rem;font-weight:700}
+.prod-ai-note{padding:0 1.05rem .9rem;font-size:.71rem;line-height:1.6;color:var(--text2)}
+.prod-ai-divider{height:1px;background:linear-gradient(90deg,rgba(67,97,238,.18),rgba(67,97,238,.03));margin:0 1.05rem}
+.prod-ai-empty{padding:.95rem 1.05rem 1rem;font-size:.72rem;color:var(--text3)}
+.prod-ai-inline-card{margin:.85rem 1.05rem 1rem}
+.prod-ai-inline-card .tc-head{padding:.85rem 1rem}
+.prod-ai-inline-card .tc-title{font-size:.82rem}
 @media (max-width:1100px){.anx-layout{grid-template-columns:1fr}}
+@media (max-width:860px){.prod-ai-head{flex-direction:column}.prod-ai-actions{width:100%;min-width:0}}
 @media (max-width:760px){.anx-progress{grid-template-columns:1fr}}
 .notif-footer{padding:.6rem 1.1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(1.3);}}
@@ -7694,6 +7712,11 @@ var PRODUCT_SECTION_STATE = {
 };
 var PRODUCT_ACTIVE_SECTION = 'build';
 var PRODUCT_SECTION_RAW_FILTER = '';
+var PRODUCT_AI_STATE = {
+  section: '',
+  rawId: '',
+  open: false
+};
 var PRODUCT_SECTION_LABELS = {
   build: "Qurilish-materiallari",
   azot: "Navoiyazot mahsulotlari",
@@ -7727,6 +7750,173 @@ function getSectionProducts(section){
   return (DB.products || []).filter(function(product){
     return normalizeProductSection(product.section) === section;
   });
+}
+
+function getSelectedProductAiRaw(){
+  if(!PRODUCT_AI_STATE.open || !PRODUCT_AI_STATE.rawId) return null;
+  return (DB.rawMaterials || []).find(function(raw){
+    return String(raw.id) === String(PRODUCT_AI_STATE.rawId);
+  }) || null;
+}
+
+function doesInvestAiMaterialMatchRaw(material, raw){
+  if(!material || !raw) return false;
+  var needle = investAiNormalizeText(material);
+  var uz = investAiNormalizeText(raw.name_uz);
+  var en = investAiNormalizeText(raw.name_en);
+  return needle === uz || needle === en || (!!uz && needle.indexOf(uz) !== -1) || (!!en && needle.indexOf(en) !== -1);
+}
+
+function getRawDisplayName(raw){
+  return raw ? (raw.name_uz || raw.name_en || '—') : '—';
+}
+
+function getRawAnalysisMaterialName(raw){
+  return raw ? (raw.name_en || raw.name_uz || '') : '';
+}
+
+function findInvestAiHistoryIndexForRaw(raw){
+  if(!raw) return -1;
+  var items = getInvestAiHistory();
+  for(var i=0;i<items.length;i++){
+    if(doesInvestAiMaterialMatchRaw(items[i].material, raw)) return i;
+  }
+  return -1;
+}
+
+function focusProductRawAnalysis(section, rawId){
+  PRODUCT_ACTIVE_SECTION = normalizeProductSection(section);
+  PRODUCT_SECTION_RAW_FILTER = rawId || '';
+  PRODUCT_AI_STATE.section = PRODUCT_ACTIVE_SECTION;
+  PRODUCT_AI_STATE.rawId = String(rawId || '');
+  PRODUCT_AI_STATE.open = !!rawId;
+  var raw = getSelectedProductAiRaw();
+  if(raw) fillInvestAiMaterial(getRawAnalysisMaterialName(raw));
+  renderInlineProductSection(PRODUCT_ACTIVE_SECTION);
+  setTimeout(function(){
+    var shell = document.getElementById('productRawAiShell');
+    if(shell) shell.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }, 30);
+}
+
+function closeProductRawAi(section){
+  if(section && normalizeProductSection(section) !== PRODUCT_ACTIVE_SECTION) return;
+  PRODUCT_AI_STATE.open = false;
+  PRODUCT_AI_STATE.rawId = '';
+  renderInlineProductSection(PRODUCT_ACTIVE_SECTION);
+}
+
+function openProductRawAiPage(){
+  var raw = getSelectedProductAiRaw();
+  if(!raw){ toast('⚠️ Avval xomashyoni tanlang','error'); return; }
+  fillInvestAiMaterial(getRawAnalysisMaterialName(raw));
+  showPage('materialai');
+  var idx = findInvestAiHistoryIndexForRaw(raw);
+  if(idx >= 0) loadInvestAiHistory(idx);
+}
+
+function loadProductRawAiHistory(){
+  var raw = getSelectedProductAiRaw();
+  var idx = findInvestAiHistoryIndexForRaw(raw);
+  if(idx < 0){
+    toast('⚠️ Bu xomashyo uchun saqlangan AI tahlil topilmadi','error');
+    return;
+  }
+  fillInvestAiMaterial(getRawAnalysisMaterialName(raw));
+  loadInvestAiHistory(idx);
+}
+
+function analyzeSelectedProductRaw(){
+  var raw = getSelectedProductAiRaw();
+  if(!raw){
+    toast('⚠️ Avval xomashyoni tanlang','error');
+    return;
+  }
+  fillInvestAiMaterial(getRawAnalysisMaterialName(raw));
+  analyzeInvestmentMaterial();
+}
+
+function renderProductRawAiBlock(section, sectionRaws, sectionProds){
+  section = normalizeProductSection(section);
+  if(!PRODUCT_AI_STATE.open || PRODUCT_AI_STATE.section !== section || !PRODUCT_AI_STATE.rawId) return '';
+  var raw = sectionRaws.find(function(item){ return String(item.id) === String(PRODUCT_AI_STATE.rawId); });
+  if(!raw) return '';
+  var rawName = getRawDisplayName(raw);
+  var relatedProducts = sectionProds.filter(function(product){
+    return String(product.raw_id) === String(raw.id);
+  });
+  var hsCodes = relatedProducts.map(function(product){
+    return String(product.hs_code || '').trim();
+  }).filter(Boolean).filter(function(code, idx, arr){ return arr.indexOf(code) === idx; });
+  var historyIdx = findInvestAiHistoryIndexForRaw(raw);
+  var historyBadge = historyIdx >= 0 ? '<span class="prod-ai-pill">🕘 Saqlangan tahlil mavjud</span>' : '<span class="prod-ai-pill">✨ Yangi AI tahlil tayyorlash mumkin</span>';
+  var preview = relatedProducts.slice(0,6).map(function(product){
+    return '<span class="prod-ai-preview-item">📦 '+escapeHtmlText(product.name_uz || product.name_en || '—')+'</span>';
+  }).join('');
+  if(relatedProducts.length > 6){
+    preview += '<span class="prod-ai-preview-more">+'+(relatedProducts.length - 6)+' ta mahsulot</span>';
+  }
+  return '' +
+    '<div class="prod-ai-shell" id="productRawAiShell">' +
+      '<div class="prod-ai-head">' +
+        '<div>' +
+          '<div class="prod-ai-eyebrow">AI Invest Lens</div>' +
+          '<div class="prod-ai-title">⛏️ '+escapeHtmlText(rawName)+'</div>' +
+          '<div class="prod-ai-sub">'+escapeHtmlText(getProductSectionLabel(section))+' bo‘limidagi ushbu xomashyoga tegishli mahsulotlar, TN VED kodlar va UN Comtrade asosidagi investitsiya tahlili shu yerda ishlaydi.</div>' +
+          '<div class="prod-ai-pills">' +
+            '<span class="prod-ai-pill">📦 '+relatedProducts.length+' ta mahsulot</span>' +
+            '<span class="prod-ai-pill">🔢 '+hsCodes.length+' ta HS kod</span>' +
+            '<span class="prod-ai-pill">🧭 '+escapeHtmlText(getProductSectionLabel(section))+'</span>' +
+            historyBadge +
+          '</div>' +
+        '</div>' +
+        '<div class="prod-ai-actions">' +
+          '<button class="btn btn-blue btn-sm" id="productRawAiAnalyzeBtn" onclick="analyzeSelectedProductRaw()">🧠 Shu xomashyoni tahlil qilish</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="loadProductRawAiHistory()">🕘 Oxirgi tahlilni ochish</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="openProductRawAiPage()">↗ To‘liq AI sahifada ochish</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="closeProductRawAi(\''+section+'\')">✕ Yopish</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="prod-ai-preview">'+(preview || '<span class="prod-ai-preview-more">Mahsulotlar hali kiritilmagan</span>')+'</div>' +
+      '<div class="prod-ai-note">Kreativ yondashuv sifatida bu panel xomashyodan boshlab investitsiya tahlilini shu joyning o‘zida ochadi. AI natija tayyor bo‘lgach, shu yerning o‘zida ko‘rasiz va kerak bo‘lsa to‘liq AI Invest Tahlili sahifasiga o‘tasiz.</div>' +
+      '<div class="prod-ai-divider"></div>' +
+      '<div class="tcard prod-ai-inline-card" id="productRawAiProgressCard" style="display:none">' +
+        '<div class="tc-head"><div class="tc-title">⏳ Tahlil bosqichlari</div><div class="anx-running">AI tahlil ishlayapti...</div></div>' +
+        '<div class="anx-progress" id="productRawAiProgress"></div>' +
+      '</div>' +
+      '<div class="tcard prod-ai-inline-card" id="productRawAiOutputCard" style="display:none">' +
+        '<div class="tc-head"><div class="tc-title">📄 Xomashyo bo‘yicha AI hisobot</div><div style="font-size:.72rem;color:var(--text3)" id="productRawAiOutputMeta">—</div></div>' +
+        '<div class="anx-output-wrap"><div class="anx-output" id="productRawAiOutput"><p>Mahsulot tahlilini boshlash uchun yuqoridagi tugmani bosing.</p></div></div>' +
+      '</div>' +
+      '<div class="tcard prod-ai-inline-card" id="productRawAiExcelNotice" style="display:none">' +
+        '<div class="anx-cta-card">' +
+          '<div class="anx-cta-title">📘 To‘liq Excel workbook mavjud</div>' +
+          '<div class="anx-cta-body">UN Comtrade asosidagi AI tahlil yakunlangach, shu xomashyo uchun workbook yuklab olishingiz mumkin.</div>' +
+          '<div style="margin-top:.85rem"><button class="btn btn-green btn-sm" id="productRawAiExportBtn" onclick="exportInvestAiWorkbook()">📥 Excel yuklab olish</button></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function syncProductRawAiPanelState(section){
+  section = normalizeProductSection(section);
+  if(!PRODUCT_AI_STATE.open || PRODUCT_AI_STATE.section !== section) return;
+  var raw = getSelectedProductAiRaw();
+  if(!raw) return;
+  var analyzeBtn = document.getElementById('productRawAiAnalyzeBtn');
+  if(analyzeBtn){
+    analyzeBtn.disabled = _investAiBusy;
+    analyzeBtn.textContent = _investAiBusy ? '⏳ AI tahlil qilinmoqda...' : '🧠 Shu xomashyoni tahlil qilish';
+  }
+  if(doesInvestAiMaterialMatchRaw(_investAiCurrentMaterial, raw) && _investAiMarkdown){
+    renderInvestAiProgressInto('productRawAiProgress', 'productRawAiProgressCard', _investAiBusy ? Math.max(_investAiPhase,0) : 3, !_investAiBusy);
+    renderInvestAiMarkdownInto('productRawAiOutput', _investAiMarkdown);
+    updateInvestAiOutputMetaInto('productRawAiOutputMeta', _investAiCurrentMaterial, new Date().toISOString());
+    var outputCard = document.getElementById('productRawAiOutputCard');
+    var notice = document.getElementById('productRawAiExcelNotice');
+    if(outputCard) outputCard.style.display = 'block';
+    if(notice) notice.style.display = _investAiBusy ? 'none' : 'block';
+  }
 }
 
 function syncProductSections(rms, prods){
@@ -7804,8 +7994,14 @@ function renderInlineProductSection(section){
   var chipsHtml = sectionRaws.length ? '<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem"><div onclick="filterProductsByRaw(\'\')" style="padding:8px 14px;background:var(--accent);color:#fff;border-radius:10px;cursor:pointer;font-size:.75rem;font-weight:700">📦 Hammasi ('+sectionProds.length+')</div>' + sectionRaws.map(function(r){
     var cnt = sectionProds.filter(function(p){ return p.raw_id == r.id; }).length;
     var isActive = PRODUCT_ACTIVE_SECTION === section && String(PRODUCT_SECTION_RAW_FILTER || '') === String(r.id);
-    return '<div style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:'+(isActive ? 'rgba(67,97,238,.12)' : 'var(--bg2)')+';border:1px solid '+(isActive ? 'var(--accent)' : 'var(--border)')+';border-radius:10px;font-size:.75rem;font-weight:600;transition:all .15s"><span onclick="filterProductsByRaw(\''+r.id+'\')" style="cursor:pointer">⛏️ '+(r.name_uz||r.name_en||'—')+' <span style="font-size:.58rem;color:var(--text3)">('+cnt+')</span></span><span onclick="event.stopPropagation();deleteRawMaterial(\''+r.id+'\')" style="cursor:pointer;color:var(--text3);font-size:.65rem;margin-left:4px;padding:2px" title="O\'chirish">&times;</span></div>';
+    var hasHistory = findInvestAiHistoryIndexForRaw(r) >= 0;
+    return '<div style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:'+(isActive ? 'rgba(67,97,238,.12)' : 'var(--bg2)')+';border:1px solid '+(isActive ? 'var(--accent)' : 'var(--border)')+';border-radius:10px;font-size:.75rem;font-weight:600;transition:all .15s">' +
+      '<span onclick="focusProductRawAnalysis(\''+section+'\',\''+r.id+'\')" style="cursor:pointer">⛏️ '+escapeHtmlText(r.name_uz||r.name_en||'—')+' <span style="font-size:.58rem;color:var(--text3)">('+cnt+')</span></span>' +
+      (hasHistory ? '<span title="Saqlangan AI tahlil mavjud" onclick="event.stopPropagation();focusProductRawAnalysis(\''+section+'\',\''+r.id+'\')" style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:999px;background:rgba(5,150,105,.14);color:#047857;font-size:.62rem;font-weight:900;cursor:pointer">AI</span>' : '') +
+      '<span onclick="event.stopPropagation();deleteRawMaterial(\''+r.id+'\')" style="cursor:pointer;color:var(--text3);font-size:.65rem;margin-left:4px;padding:2px" title="O\'chirish">&times;</span>' +
+    '</div>';
   }).join('') + '</div>' : '<div style="font-size:.78rem;color:var(--text3);margin-bottom:1rem">Bu bo\'limda hali xomashyo yo\'q.</div>';
+  var aiPanelHtml = renderProductRawAiBlock(section, sectionRaws, sectionProds);
 
   var rowsHtml = filteredProds.length ? filteredProds.map(function(p,i){
     var rm = sectionRaws.find(function(r){ return r.id == p.raw_id; });
@@ -7821,6 +8017,7 @@ function renderInlineProductSection(section){
       '<button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;border:none">📎 PPTX Template</button>' +
     '</div>' +
     chipsHtml +
+    aiPanelHtml +
     '<div id="prodDropZone-'+section+'" style="margin:0 0 1rem 0;padding:'+(sectionProds.length > 0 ? '.6rem' : '1.5rem')+';border:2px dashed var(--border);border-radius:14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg)" ondragover="event.preventDefault();this.style.borderColor=\'#059669\';this.style.background=\'rgba(5,150,105,.05)\'" ondragleave="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--bg)\'" ondrop="event.preventDefault();this.style.borderColor=\'var(--border)\';this.style.background=\'var(--bg)\';importProductsExcel({files:event.dataTransfer.files})" onclick="var fi=this.querySelector(\'input[type=file]\');if(fi)fi.click()">' +
       (sectionProds.length > 0
         ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap"><span style="font-size:.7rem;color:var(--text3)">📊 Excel faylni shu yerga tashlang yoki</span><label style="font-size:.7rem;color:#059669;font-weight:700;cursor:pointer;text-decoration:underline">tanlang<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)"></label></div>'
@@ -7828,6 +8025,7 @@ function renderInlineProductSection(section){
     '</div>' +
     '<div class="tscroll"><table><thead><tr><th>#</th><th>Mahsulot</th><th>Xomashyo</th><th>HS Kod</th><th>Soha</th><th>Import</th><th>Amal</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>' +
     '<div style="padding:.8rem 0 0 0;font-size:.72rem;color:var(--text3)">Jami mahsulotlar: '+filteredProds.length+'</div>';
+  syncProductRawAiPanelState(section);
 }
 
 function formatBilingualProductName(p){
@@ -7934,6 +8132,10 @@ document.addEventListener('click', function(e){
 
 function filterProductsByRaw(rawId){
   PRODUCT_SECTION_RAW_FILTER = rawId || '';
+  if(!rawId){
+    PRODUCT_AI_STATE.open = false;
+    PRODUCT_AI_STATE.rawId = '';
+  }
   renderInlineProductSection(PRODUCT_ACTIVE_SECTION);
 }
 
