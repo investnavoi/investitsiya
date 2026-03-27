@@ -7739,6 +7739,7 @@ function formatBilingualProductName(p){
 }
 
 var _finderRawExpandedId = '';
+var _finderProductPickerOpen = false;
 
 function getFinderRawMaterials(){
   var raws = (DB.rawMaterials || []).slice();
@@ -7766,17 +7767,31 @@ function toggleFinderRaw(rawId){
   renderFinderProductPicker();
 }
 
+function setFinderProductPickerOpen(open){
+  _finderProductPickerOpen = !!open;
+  var wrap = document.getElementById('finderRawPicker');
+  var caret = document.getElementById('finderProductSelectedCaret');
+  if(wrap) wrap.style.display = _finderProductPickerOpen ? 'block' : 'none';
+  if(caret) caret.textContent = _finderProductPickerOpen ? '▲' : '▼';
+}
+
+function toggleFinderProductPicker(event){
+  if(event) event.stopPropagation();
+  setFinderProductPickerOpen(!_finderProductPickerOpen);
+}
+
 function selectFinderProduct(prodId, rawId){
   var sel = document.getElementById('finder-product-select');
   if(sel) sel.value = String(prodId || '');
   _finderRawExpandedId = String(rawId || '');
+  setFinderProductPickerOpen(false);
   renderFinderProductPicker();
   if(typeof handleImportProductChange === 'function') handleImportProductChange();
 }
 
 function renderFinderProductPicker(){
   var wrap = document.getElementById('finderRawPicker');
-  var selectedEl = document.getElementById('finderProductSelected');
+  var selectedEl = document.getElementById('finderProductSelectedText');
   var sel = document.getElementById('finder-product-select');
   if(!wrap || !selectedEl || !sel) return;
 
@@ -7805,24 +7820,24 @@ function renderFinderProductPicker(){
     var isSelectedRaw = selectedProd && String(selectedProd.raw_id || '') === rawId;
     var sectionLabel = getProductSectionLabel(raw.section);
     var productsHtml = isOpen ? (
-      '<div style="margin-top:.55rem;padding:.65rem .7rem .2rem .7rem;border-top:1px dashed rgba(67,97,238,.25)">' +
+      '<div style="margin-top:.1rem;padding:.45rem .5rem .1rem .5rem;border-top:1px dashed rgba(67,97,238,.18)">' +
         (products.length ? products.map(function(prod){
           var active = String(prod.id) === selectedProdId;
-          return '<button type="button" onclick="selectFinderProduct(\''+String(prod.id).replace(/'/g,"\\'")+'\',\''+rawId.replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;align-items:flex-start;justify-content:space-between;gap:.7rem;margin:0 0 .45rem 0;padding:.62rem .72rem;border:'+(active ? '1px solid #4361EE' : '1px solid rgba(67,97,238,.15)')+';border-radius:12px;background:'+(active ? 'linear-gradient(135deg,rgba(67,97,238,.12),rgba(76,201,240,.10))' : 'rgba(255,255,255,.88)')+';cursor:pointer;text-align:left">' +
-            '<span style="display:block;min-width:0"><span style="display:block;font-size:.74rem;font-weight:700;color:var(--text)">'+formatBilingualProductName(prod)+'</span><span style="display:block;font-size:.6rem;color:var(--text3);margin-top:2px">HS: '+(prod.hs_code || '—')+'</span></span>' +
-            '<span style="flex:0 0 auto;font-size:.58rem;font-weight:700;color:'+(active ? '#4361EE' : 'var(--text3)')+'">'+(active ? 'Tanlangan' : 'Tanlash')+'</span>' +
+          return '<button type="button" onclick="selectFinderProduct(\''+String(prod.id).replace(/'/g,"\\'")+'\',\''+rawId.replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;align-items:flex-start;justify-content:space-between;gap:.6rem;margin:0 0 .32rem 0;padding:.48rem .58rem;border:'+(active ? '1px solid #4361EE' : '1px solid rgba(67,97,238,.12)')+';border-radius:10px;background:'+(active ? 'linear-gradient(135deg,rgba(67,97,238,.12),rgba(76,201,240,.09))' : 'rgba(255,255,255,.9)')+';cursor:pointer;text-align:left">' +
+            '<span style="display:block;min-width:0"><span style="display:block;font-size:.68rem;font-weight:700;color:var(--text)">'+formatBilingualProductName(prod)+'</span><span style="display:block;font-size:.56rem;color:var(--text3);margin-top:1px">HS: '+(prod.hs_code || '—')+'</span></span>' +
+            '<span style="flex:0 0 auto;font-size:.54rem;font-weight:700;color:'+(active ? '#4361EE' : 'var(--text3)')+'">'+(active ? 'Tanlangan' : 'Tanlash')+'</span>' +
           '</button>';
         }).join('') : '<div style="font-size:.72rem;color:var(--text3);padding:.2rem 0 .5rem 0">Bu xomashyoga mahsulot kiritilmagan.</div>') +
       '</div>'
     ) : '';
 
-    return '<div style="margin-bottom:.55rem;border:1px solid '+(isOpen ? 'rgba(67,97,238,.35)' : 'rgba(15,23,42,.08)')+';border-radius:14px;background:'+(isOpen ? 'rgba(67,97,238,.05)' : 'rgba(255,255,255,.78)')+';overflow:hidden">' +
-      '<button type="button" onclick="toggleFinderRaw(\''+rawId.replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;align-items:center;justify-content:space-between;gap:.7rem;padding:.78rem .9rem;border:none;background:transparent;cursor:pointer;text-align:left">' +
+    return '<div style="margin-bottom:.35rem;border:1px solid '+(isOpen ? 'rgba(67,97,238,.28)' : 'rgba(15,23,42,.08)')+';border-radius:12px;background:'+(isOpen ? 'rgba(67,97,238,.04)' : 'rgba(255,255,255,.82)')+';overflow:hidden">' +
+      '<button type="button" onclick="toggleFinderRaw(\''+rawId.replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;align-items:center;justify-content:space-between;gap:.55rem;padding:.58rem .72rem;border:none;background:transparent;cursor:pointer;text-align:left">' +
         '<span style="display:flex;align-items:flex-start;gap:.65rem;min-width:0">' +
-          '<span style="font-size:1rem;line-height:1">⛏️</span>' +
-          '<span style="display:block;min-width:0"><span style="display:block;font-size:.8rem;font-weight:800;color:var(--text)">'+(raw.name_uz || raw.name_en || 'Xomashyo')+'</span><span style="display:block;font-size:.6rem;color:var(--text3);margin-top:2px">'+sectionLabel+' • '+products.length+' ta mahsulot'+(isSelectedRaw ? ' • tanlangan' : '')+'</span></span>' +
+          '<span style="font-size:.92rem;line-height:1">⛏️</span>' +
+          '<span style="display:block;min-width:0"><span style="display:block;font-size:.74rem;font-weight:800;color:var(--text)">'+(raw.name_uz || raw.name_en || 'Xomashyo')+'</span><span style="display:block;font-size:.57rem;color:var(--text3);margin-top:1px">'+products.length+' ta mahsulot'+(isSelectedRaw ? ' • tanlangan' : '')+'</span></span>' +
         '</span>' +
-        '<span style="flex:0 0 auto;font-size:.8rem;font-weight:800;color:#4361EE">'+(isOpen ? '−' : '+')+'</span>' +
+        '<span style="flex:0 0 auto;font-size:.72rem;font-weight:800;color:#4361EE">'+(isOpen ? '−' : '+')+'</span>' +
       '</button>' +
       productsHtml +
     '</div>';
@@ -7831,6 +7846,14 @@ function renderFinderProductPicker(){
 
 window.toggleFinderRaw = toggleFinderRaw;
 window.selectFinderProduct = selectFinderProduct;
+window.toggleFinderProductPicker = toggleFinderProductPicker;
+
+document.addEventListener('click', function(event){
+  var wrap = document.getElementById('finderProductPickerWrap');
+  if(!wrap) return;
+  if(wrap.contains(event.target)) return;
+  if(_finderProductPickerOpen) setFinderProductPickerOpen(false);
+});
 
 function getImportAnalysisProductSelect(){
   return document.getElementById('finder-product-select') || document.getElementById('import-product-select');
