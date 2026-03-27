@@ -4138,6 +4138,9 @@ const APOLLO_PROXY = 'https://navoiy-api-proxy.vercel.app/api/apollo-search';
 let _apoPage = 1;
 let _apoResults = [];
 let _apoSelected = new Set();
+function getApolloApiKey(){
+  return (window._apiKeys && window._apiKeys.apollo) || '';
+}
 
 function openApolloSearch(){
   document.getElementById('apolloModal').classList.add('open');
@@ -4179,7 +4182,8 @@ async function apolloSearch(page){
 
   var body = {
     page: _apoPage,
-    per_page: 25
+    per_page: 25,
+    api_key: getApolloApiKey()
   };
   if(titles.length) body.person_titles = titles;
   if(locations.length) body.person_locations = locations;
@@ -4415,6 +4419,7 @@ async function apolloAutoImport(){
       var body = {
         page: 1,
         per_page: 25,
+        api_key: getApolloApiKey(),
         person_titles: search.titles,
         person_locations: search.locations
       };
@@ -13443,11 +13448,15 @@ function mapApolloPersonToFinderResult(p, country, meta){
 }
 
 async function apolloFinderSearchCountry(prod, country, perCountry, meta, sourceScope){
+  var apolloKey = getApolloApiKey();
+  if(!apolloKey){
+    throw new Error('Apollo API key topilmadi. Sozlamalar sahifasiga kiriting.');
+  }
   var keywords = getApolloFinderKeywords(prod, meta, sourceScope, country);
   var attempts = [
-    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), person_titles:meta.apolloTitles, organization_locations:[country], q_keywords:keywords },
-    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), person_titles:meta.apolloTitles, person_locations:[country], q_keywords:keywords },
-    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), person_titles:meta.apolloFallbackTitles, organization_locations:[country] }
+    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloTitles, organization_locations:[country], q_keywords:keywords },
+    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloTitles, person_locations:[country], q_keywords:keywords },
+    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloFallbackTitles, organization_locations:[country] }
   ];
 
   var found = [];
@@ -13458,7 +13467,16 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify(attempts[ai])
       });
-      if(!apResp.ok) continue;
+      if(!apResp.ok){
+        var errText = '';
+        try {
+          var errJson = await apResp.json();
+          errText = errJson.error || errJson.message || JSON.stringify(errJson);
+        } catch(_e){
+          try { errText = await apResp.text(); } catch(_e2){}
+        }
+        throw new Error(errText || ('Apollo xato: '+apResp.status));
+      }
       var apData = await apResp.json();
       var people = Array.isArray(apData.people) ? apData.people : [];
       people.forEach(function(p){
@@ -13468,6 +13486,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       if(found.length >= perCountry) break;
     } catch(e) {
       console.log('Apollo '+country+' attempt '+(ai+1)+' error:', e);
+      if(/api key topilmadi|unauthorized|forbidden|credit|permission|access/i.test(String((e&&e.message)||''))){
+        throw e;
+      }
     }
   }
   var seen = new Set();
