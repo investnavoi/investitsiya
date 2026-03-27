@@ -5035,6 +5035,10 @@ function openCompanyReply(email){
   openReplyDrawer(replies[0]);
 }
 
+if(typeof _investorAiTargetId === 'undefined') var _investorAiTargetId = null;
+if(typeof _investorAiOpen === 'undefined') var _investorAiOpen = false;
+if(typeof _investorAiWorkspaceEl === 'undefined') var _investorAiWorkspaceEl = null;
+
 function renderInvestorCompanies(){
   const co=DB.investorCompanies||[];
   const total=co.reduce((s,r)=>s+(parseFloat(r.summa)||0),0);
@@ -5051,7 +5055,7 @@ function renderInvestorCompanies(){
     return;
   }
   tb.innerHTML=co.map((r,i)=>{
-    var isAiOpen = _investorAiOpen && String(_investorAiTargetId||'') === String(r.id);
+    var isAiOpen = (typeof _investorAiOpen !== 'undefined' && _investorAiOpen) && String((typeof _investorAiTargetId !== 'undefined' ? _investorAiTargetId : '')||'') === String(r.id);
     var rowHtml = `
     <tr id="investor-row-${r.id}">
       <td>${isAdmin?`<input type="checkbox" class="ic-check" data-id="${r.id}" onchange="updateSelectedCount()">`:''}</td>
@@ -7916,7 +7920,33 @@ function syncProductRawAiPanelState(section){
     var notice = document.getElementById('productRawAiExcelNotice');
     if(outputCard) outputCard.style.display = 'block';
     if(notice) notice.style.display = _investAiBusy ? 'none' : 'block';
+    return;
   }
+  var historyIdx = findInvestAiHistoryIndexForRaw(raw);
+  var items = getInvestAiHistory();
+  var cached = historyIdx >= 0 ? items[historyIdx] : null;
+  var outputCard = document.getElementById('productRawAiOutputCard');
+  var notice = document.getElementById('productRawAiExcelNotice');
+  var progressCard = document.getElementById('productRawAiProgressCard');
+  if(progressCard) progressCard.style.display = 'none';
+  if(cached && cached.markdown){
+    renderInvestAiMarkdownInto('productRawAiOutput', cached.markdown);
+    updateInvestAiOutputMetaInto('productRawAiOutputMeta', cached.material || getRawAnalysisMaterialName(raw), cached.savedAt || new Date().toISOString());
+    if(outputCard) outputCard.style.display = 'block';
+    if(notice) notice.style.display = 'block';
+  } else {
+    if(outputCard) outputCard.style.display = 'block';
+    renderInvestAiMarkdownInto('productRawAiOutput', '');
+    updateInvestAiOutputMetaInto('productRawAiOutputMeta', getRawAnalysisMaterialName(raw), new Date().toISOString());
+    if(notice) notice.style.display = 'none';
+  }
+}
+
+function shouldMirrorInvestAiToProductPanel(material){
+  var shell = document.getElementById('productRawAiShell');
+  var raw = getSelectedProductAiRaw();
+  if(!shell || !raw) return false;
+  return doesInvestAiMaterialMatchRaw(material || _investAiCurrentMaterial, raw);
 }
 
 function syncProductSections(rms, prods){
@@ -11788,9 +11818,9 @@ function loadInvestAiHistory(idx){
   toast(investAiT('toastHistory'));
 }
 
-function renderInvestAiProgress(activeIdx, forceDone){
-  var wrap = document.getElementById('materialAiProgress');
-  var card = document.getElementById('materialAiProgressCard');
+function renderInvestAiProgressInto(wrapId, cardId, activeIdx, forceDone){
+  var wrap = document.getElementById(wrapId);
+  var card = document.getElementById(cardId);
   if(!wrap || !card) return;
   card.style.display = 'block';
   wrap.innerHTML = INVEST_AI_PHASES.map(function(step, idx){
@@ -11803,6 +11833,13 @@ function renderInvestAiProgress(activeIdx, forceDone){
       '<div class="anx-step-status">'+escapeHtmlText(status)+'</div>'+
     '</div>';
   }).join('');
+}
+
+function renderInvestAiProgress(activeIdx, forceDone){
+  renderInvestAiProgressInto('materialAiProgress', 'materialAiProgressCard', activeIdx, forceDone);
+  if(shouldMirrorInvestAiToProductPanel()){
+    renderInvestAiProgressInto('productRawAiProgress', 'productRawAiProgressCard', activeIdx, forceDone);
+  }
 }
 
 function inferInvestAiPhase(markdown){
@@ -11826,8 +11863,8 @@ function decorateInvestAiHtml(html){
     .replace(/(\$[0-9][0-9,]*(?:\.\d+)?(?:\s?(?:million|billion|M|B|K))?)/g, '<strong class="anx-money">$1</strong>');
 }
 
-function renderInvestAiMarkdown(markdown){
-  var output = document.getElementById('materialAiOutput');
+function renderInvestAiMarkdownInto(outputId, markdown){
+  var output = document.getElementById(outputId);
   if(!output) return;
   var source = String(markdown || '');
   if(!source.trim()){
@@ -11838,12 +11875,26 @@ function renderInvestAiMarkdown(markdown){
   output.innerHTML = decorateInvestAiHtml(html);
 }
 
-function updateInvestAiOutputMeta(material, dateValue){
-  var meta = document.getElementById('materialAiOutputMeta');
+function renderInvestAiMarkdown(markdown){
+  renderInvestAiMarkdownInto('materialAiOutput', markdown);
+  if(shouldMirrorInvestAiToProductPanel()){
+    renderInvestAiMarkdownInto('productRawAiOutput', markdown);
+  }
+}
+
+function updateInvestAiOutputMetaInto(metaId, material, dateValue){
+  var meta = document.getElementById(metaId);
   if(!meta) return;
   var date = dateValue ? new Date(dateValue) : new Date();
   var stamp = isNaN(date.getTime()) ? '' : date.toLocaleString();
   meta.textContent = investAiT('outputMeta').replace('{material}', material || '—').replace('{time}', stamp || '—');
+}
+
+function updateInvestAiOutputMeta(material, dateValue){
+  updateInvestAiOutputMetaInto('materialAiOutputMeta', material, dateValue);
+  if(shouldMirrorInvestAiToProductPanel(material)){
+    updateInvestAiOutputMetaInto('productRawAiOutputMeta', material, dateValue);
+  }
 }
 
 function stripInvestAiMd(line){
@@ -12898,11 +12949,18 @@ function setInvestAiBusy(flag){
   _investAiBusy = !!flag;
   var btn = document.getElementById('materialAiAnalyzeBtn');
   var input = document.getElementById('materialAiInput');
+  var inlineBtn = document.getElementById('productRawAiAnalyzeBtn');
   if(btn){
     btn.disabled = _investAiBusy;
     btn.textContent = _investAiBusy ? investAiT('analyzing') : investAiT('analyze');
     btn.style.opacity = _investAiBusy ? '.75' : '1';
     btn.style.cursor = _investAiBusy ? 'not-allowed' : 'pointer';
+  }
+  if(inlineBtn){
+    inlineBtn.disabled = _investAiBusy;
+    inlineBtn.textContent = _investAiBusy ? '⏳ AI tahlil qilinmoqda...' : '🧠 Shu xomashyoni tahlil qilish';
+    inlineBtn.style.opacity = _investAiBusy ? '.75' : '1';
+    inlineBtn.style.cursor = _investAiBusy ? 'not-allowed' : 'pointer';
   }
   if(input) input.disabled = _investAiBusy;
 }
@@ -12979,8 +13037,14 @@ async function analyzeInvestmentMaterial(){
   updateInvestAiOutputMeta(material, new Date().toISOString());
   var outputCard = document.getElementById('materialAiOutputCard');
   var notice = document.getElementById('materialAiExcelNotice');
+  var inlineOutputCard = document.getElementById('productRawAiOutputCard');
+  var inlineNotice = document.getElementById('productRawAiExcelNotice');
   if(outputCard) outputCard.style.display = 'block';
   if(notice) notice.style.display = 'none';
+  if(shouldMirrorInvestAiToProductPanel(material)){
+    if(inlineOutputCard) inlineOutputCard.style.display = 'block';
+    if(inlineNotice) inlineNotice.style.display = 'none';
+  }
   renderInvestAiMarkdown('');
   toast(investAiT('toastStream'));
 
@@ -13044,6 +13108,7 @@ async function analyzeInvestmentMaterial(){
 
     renderInvestAiProgress(3, true);
     if(notice) notice.style.display = 'block';
+    if(shouldMirrorInvestAiToProductPanel(material) && inlineNotice) inlineNotice.style.display = 'block';
     updateInvestAiOutputMeta(material, new Date().toISOString());
     saveInvestAiHistory(material, _investAiMarkdown, _investAiTradeContext);
     renderInvestAiHistory();
