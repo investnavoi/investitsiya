@@ -13430,6 +13430,42 @@ function getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountri
   return Array.from(new Set(parts.filter(Boolean).map(function(x){ return String(x).trim(); }).filter(Boolean))).join(' ');
 }
 
+function getApolloPreferredKeywords(prod){
+  var text = [
+    prod && prod.name_en,
+    prod && prod.name_uz,
+    prod && prod.raw_name,
+    prod && prod.description,
+    prod && prod.usage,
+    prod && prod.main_sector
+  ].filter(Boolean).join(' ');
+  var normalized = apolloNormalizeText(text);
+  var keywords = [];
+
+  function pushAll(arr){
+    arr.forEach(function(v){
+      v = String(v || '').trim();
+      if(v && keywords.indexOf(v) === -1) keywords.push(v);
+    });
+  }
+
+  if(prod && prod.name_en) pushAll([prod.name_en]);
+  if(prod && prod.name_uz && prod.name_uz !== prod.name_en) pushAll([prod.name_uz]);
+  if(prod && prod.raw_name) pushAll([prod.raw_name]);
+
+  if(/superphosphate/.test(normalized)) pushAll(['superphosphate','phosphate fertilizer','phosphate','fertilizer','agrochemical']);
+  if(/phosph|fertili/.test(normalized)) pushAll(['phosphate','fertilizer','fertiliser','agrochemical','crop nutrition']);
+  if(/cement|clinker/.test(normalized)) pushAll(['cement','clinker','construction materials','building materials']);
+  if(/gypsum|plaster/.test(normalized)) pushAll(['gypsum','plaster','drywall','board']);
+  if(/granite|marble|basalt|limestone|dolomite|stone/.test(normalized)) pushAll(['stone','granite','marble','basalt','limestone','quarry','building materials']);
+  if(/kaolin|clay|bentonite/.test(normalized)) pushAll(['kaolin','clay','bentonite','industrial minerals','ceramics']);
+  if(/silica|quartz|feldspar/.test(normalized)) pushAll(['silica','quartz','feldspar','glass','ceramics']);
+  if(/lime|quicklime|slaked lime|cao|caoh/.test(normalized)) pushAll(['lime','quicklime','hydrated lime','construction materials']);
+  if(/sulfur|sulphur|acid/.test(normalized)) pushAll(['sulfur','sulphur','acid','chemical']);
+
+  return keywords.slice(0, 8);
+}
+
 function dedupeFinderResults(){
   var seen = new Set();
   _finderResults = (_finderResults || []).filter(function(r){
@@ -13442,18 +13478,21 @@ function dedupeFinderResults(){
 }
 
 function mapApolloPersonToFinderResult(p, country, meta){
+  var org = p.organization || {};
   return {
     id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-    kompaniya:(p.organization && p.organization.name) || p.organization_name || '',
+    kompaniya:org.name || p.organization_name || '',
     rahbar:((p.first_name||'')+' '+(p.last_name||'')).trim(),
     lavozim:p.title||'',
     email:p.email||'',
     telefon:'',
     davlat:country,
     shahar:'',
-    soha:(p.organization && (p.organization.industry || p.organization.industry_tag)) || '',
+    soha:org.industry || org.industry_tag || org.primary_industry || '',
     linkedin:'',
     website:'',
+    description:org.short_description || org.organization_headline || org.headline || '',
+    keywords:Array.isArray(org.keywords) ? org.keywords.join(' ') : (org.keywords || ''),
     import_volume:'',
     score:Math.floor(Math.random()*20)+75,
     manba:'Apollo',
@@ -13491,9 +13530,11 @@ function mapApolloOrganizationToFinderResult(org, country, meta){
     telefon:'',
     davlat:country || org.country || org.organization_country || org.country_name || '',
     shahar:'',
-    soha:org.industry || org.industry_tag || org.primary_industry || '',
+    soha:org.industry || org.industry_tag || org.primary_industry || org.organization_industry || '',
     linkedin:'',
     website:'',
+    description:org.short_description || org.organization_headline || org.headline || org.seo_description || '',
+    keywords:Array.isArray(org.keywords) ? org.keywords.join(' ') : (org.keywords || org.search_keywords || ''),
     import_volume:'',
     score:Math.floor(Math.random()*10)+82,
     manba:'Apollo Org',
@@ -13540,7 +13581,30 @@ function getApolloProductSignals(prod){
   return { tokens: tokens };
 }
 
+function isApolloObviousMismatch(entity, prod){
+  var productText = apolloNormalizeText([
+    prod && prod.name_en,
+    prod && prod.name_uz,
+    prod && prod.raw_name
+  ].filter(Boolean).join(' '));
+  var entityText = apolloNormalizeText([
+    entity.kompaniya,
+    entity.soha,
+    entity.description,
+    entity.keywords,
+    entity.lavozim
+  ].filter(Boolean).join(' '));
+  if(!productText || !entityText) return false;
+  if(/phosph|superphosphate|fertili|cement|clinker|gypsum|stone|granite|marble|basalt|limestone|dolomite|kaolin|clay|bentonite|silica|quartz|lime|sulfur|acid/.test(productText)){
+    if(/huawei|alibaba|xiaomi|tencent|baidu|jd com|bytedance|telecom|telecommunications|consumer electronics|smartphone|mobile devices|internet|e commerce|cloud computing|software|semiconductors/.test(entityText)){
+      return true;
+    }
+  }
+  return false;
+}
+
 function isApolloEntityRelevant(entity, prod){
+  if(isApolloObviousMismatch(entity, prod)) return false;
   var signals = getApolloProductSignals(prod);
   if(!signals.tokens.length) return true;
   var text = apolloNormalizeText([
@@ -13555,7 +13619,10 @@ function isApolloEntityRelevant(entity, prod){
     entity.summary
   ].filter(Boolean).join(' '));
   if(!text) return false;
-  return signals.tokens.some(function(token){ return text.indexOf(token) !== -1; });
+  var hits = signals.tokens.filter(function(token){ return text.indexOf(token) !== -1; });
+  if(hits.length) return true;
+  if(/fertili|agrochemical|chemical|construction materials|building materials|industrial minerals|minerals|quarry|mining|ceramic|glass|lime|gypsum|cement|stone|phosphate/.test(text)) return true;
+  return false;
 }
 
 function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, prod){
@@ -13595,6 +13662,9 @@ function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, pro
 
 function finalizeApolloFinderResults(found, prod, perCountry){
   var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
+  if(!filtered.length){
+    filtered = found.filter(function(item){ return !isApolloObviousMismatch(item, prod); });
+  }
   var seen = new Set();
   return filtered.filter(function(item){
     var key = [apolloCompanyKey(item.kompaniya), apolloNormalizeText(item.davlat)].join('|');
@@ -13643,18 +13713,22 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     throw new Error('Apollo API key topilmadi. Sozlamalar sahifasiga kiriting.');
   }
   var keywords = getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries);
+  var preferredKeywords = getApolloPreferredKeywords(prod);
+  var primaryKeyword = preferredKeywords[0] || ((prod && prod.name_en) || keywords);
+  var secondaryKeyword = preferredKeywords[1] || primaryKeyword;
+  var broadKeyword = preferredKeywords[2] || secondaryKeyword;
   var targetHint = (meta.mode === 'exporters' && Array.isArray(targetCountries) && targetCountries.length)
     ? targetCountries.slice(0,6).join(', ')
     : '';
   var orgAttempts = [
-    { search_type:'organizations', page:1, per_page:Math.max(perCountry*3, 15), api_key:apolloKey, organization_locations:[country], q_keywords:keywords, q_organization_keyword:keywords },
-    { search_type:'organizations', page:1, per_page:Math.max(perCountry*3, 15), api_key:apolloKey, organization_locations:[country], q_organization_keyword:(prod && prod.name_en) || keywords, q_keywords:targetHint },
-    { search_type:'organizations', page:1, per_page:Math.max(perCountry*3, 15), api_key:apolloKey, organization_locations:[country], q_keywords:((meta.mode === 'exporters' ? 'export supplier manufacturer ' : 'import buyer distributor ') + ((prod && prod.name_en) || '') + ' ' + targetHint).trim() }
+    { search_type:'organizations', page:1, per_page:Math.max(perCountry*4, 20), api_key:apolloKey, organization_locations:[country], q_keywords:primaryKeyword },
+    { search_type:'organizations', page:1, per_page:Math.max(perCountry*4, 20), api_key:apolloKey, organization_locations:[country], q_keywords:(secondaryKeyword + ' ' + (meta.mode === 'exporters' ? 'export supplier manufacturer' : 'import buyer distributor')).trim() },
+    { search_type:'organizations', page:1, per_page:Math.max(perCountry*4, 20), api_key:apolloKey, organization_locations:[country], q_keywords:(broadKeyword + ' ' + targetHint).trim() }
   ];
   var peopleAttempts = [
-    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloTitles, organization_locations:[country], q_keywords:keywords },
-    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloTitles, person_locations:[country], q_keywords:(keywords + ' ' + targetHint).trim() },
-    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloFallbackTitles, organization_locations:[country], q_keywords:(((prod && prod.name_en) || keywords) + ' ' + targetHint).trim() }
+    { search_type:'people', page:1, per_page:Math.max(perCountry*3, 12), api_key:apolloKey, person_titles:meta.apolloTitles, organization_locations:[country], q_keywords:primaryKeyword },
+    { search_type:'people', page:1, per_page:Math.max(perCountry*3, 12), api_key:apolloKey, person_titles:meta.apolloTitles, person_locations:[country], q_keywords:(secondaryKeyword + ' ' + targetHint).trim() },
+    { search_type:'people', page:1, per_page:Math.max(perCountry*3, 12), api_key:apolloKey, person_titles:meta.apolloFallbackTitles, organization_locations:[country], q_keywords:(broadKeyword + ' ' + (meta.mode === 'exporters' ? 'export' : 'import')).trim() }
   ];
 
   var found = [];
@@ -13710,6 +13784,10 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   return finalizeApolloFinderResults(found, prod, perCountry);
 }
 
+function apolloIsFatalError(err){
+  return /api key topilmadi|unauthorized|forbidden|credit|permission|access/i.test(String((err&&err.message)||''));
+}
+
 function updateFinderModeUI(){
   var modeEl = document.getElementById('finder-mode');
   var meta = getFinderModeMeta(modeEl ? modeEl.value : 'importers');
@@ -13755,6 +13833,7 @@ async function runCompanyFinder(source){
       // Apollo proxy — organization search first, then people fallback
       document.getElementById('finderBar').style.width = '40%';
       var apolloFatalError = null;
+      var apolloSoftErrors = [];
       for(var ci=0; ci<searchCountries.length; ci++){
         document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+getFinderCountryLabel(searchCountries[ci])+' ('+(ci+1)+'/'+searchCountries.length+') — '+meta.resultWord+'...'+(meta.mode === 'exporters' ? (' | Maqsad: '+targetCountries.slice(0,4).map(getFinderCountryLabel).join(', ')+(targetCountries.length>4?'...':'')) : '');
         try {
@@ -13762,13 +13841,20 @@ async function runCompanyFinder(source){
           countryResults.forEach(function(item){ _finderResults.push(item); });
         } catch(e){
           console.log('Apollo '+searchCountries[ci]+' error:', e);
-          apolloFatalError = e;
-          break;
+          if(apolloIsFatalError(e)){
+            apolloFatalError = e;
+            break;
+          }
+          apolloSoftErrors.push(getFinderCountryLabel(searchCountries[ci]) + ': ' + ((e && e.message) || 'xato'));
+          continue;
         }
         document.getElementById('finderBar').style.width = (40+ci/searchCountries.length*50)+'%';
       }
       if(apolloFatalError) throw apolloFatalError;
       dedupeFinderResults();
+      if(!_finderResults.length && apolloSoftErrors.length){
+        throw new Error('Apollo qidiruvi natija qaytarmadi. Ayrim davlatlarda xatolar bo‘ldi: ' + apolloSoftErrors.slice(0,3).join(' | '));
+      }
     } else {
       // Gemini AI — country-by-country search for importers
       var batchSize = Math.min(searchCountries.length, 4); // Process 4 countries at a time
