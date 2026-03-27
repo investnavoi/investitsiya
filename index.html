@@ -14732,7 +14732,10 @@ function buildAiTransportAnalysis(countryInfo){
   var totalForeign = routes.reduce(function(sum, row){ return sum + row.foreignCost; }, 0);
   var totalNavoi = routes.reduce(function(sum, row){ return sum + row.navoiCost; }, 0);
   var totalSaving = totalForeign - totalNavoi;
+  var avgForeign = routes.length ? Math.round(totalForeign / routes.length) : 0;
+  var avgNavoi = routes.length ? Math.round(totalNavoi / routes.length) : 0;
   var avgSaving = routes.length ? Math.round(totalSaving / routes.length) : 0;
+  var avgSavingPct = avgForeign > 0 ? Math.round((avgSaving / avgForeign) * 100) : 0;
   var topSaving = routes.filter(function(row){ return row.saving > 0; }).sort(function(a, b){ return b.saving - a.saving; })[0] || null;
   var fastestNavoi = routes.slice().sort(function(a, b){ return a.navoiDays - b.navoiDays; })[0] || null;
   return {
@@ -14742,7 +14745,10 @@ function buildAiTransportAnalysis(countryInfo){
     totalForeign: totalForeign,
     totalNavoi: totalNavoi,
     totalSaving: totalSaving,
+    avgForeign: avgForeign,
+    avgNavoi: avgNavoi,
     avgSaving: avgSaving,
+    avgSavingPct: avgSavingPct,
     topSaving: topSaving,
     fastestNavoi: fastestNavoi
   };
@@ -14759,9 +14765,9 @@ function renderAiTransportAnalysis(summary, scope){
 
   titleEl.textContent = '🚛 Transport kalkulyatori — ' + summary.sourceCountry + ' vs Navoiy (13 davlat)';
   gridEl.innerHTML =
-    buildAiMetricCard('🌍', summary.sourceCountry + 'dan jami', aiFmtTransportUsd(summary.totalForeign), '13 davlatga taxminiy 40ft konteyner narxi', '#2563EB') +
-    buildAiMetricCard('🇺🇿', 'Navoiydan jami', aiFmtTransportUsd(summary.totalNavoi), 'Huddi shu 13 davlatga eksport', '#059669') +
-    buildAiMetricCard('💰', 'O\'rtacha tejamkorlik', aiFmtTransportUsd(summary.avgSaving), 'Har bir bozor bo\'yicha o\'rtacha ustunlik', '#D97706') +
+    buildAiMetricCard('🌍', summary.sourceCountry + 'dan o\'rtacha', aiFmtTransportUsd(summary.avgForeign), '13 ta davlatga eksport xarajatining o\'rtachasi', '#2563EB') +
+    buildAiMetricCard('🇺🇿', 'Navoiydan o\'rtacha', aiFmtTransportUsd(summary.avgNavoi), 'Navoiydan 13 ta davlatga eksport xarajatining o\'rtachasi', '#059669') +
+    buildAiMetricCard('💰', 'O\'rtacha tejamkorlik', aiFmtTransportUsd(summary.avgSaving) + ' (' + summary.avgSavingPct + '%)', 'Har bir bozor bo\'yicha o\'rtacha ustunlik', '#D97706') +
     buildAiMetricCard('🎯', 'Eng kuchli bozor', (summary.topSaving ? summary.topSaving.name : '—'), summary.topSaving ? (aiFmtTransportUsd(summary.topSaving.saving) + ' (' + summary.topSaving.savingPct + '% arzon)') : '—', '#7C3AED');
 
   tbody.innerHTML = summary.routes.map(function(row, idx){
@@ -14786,8 +14792,8 @@ function buildAiTransportPromptLines(summary){
   if(!summary || !summary.routes || !summary.routes.length) return [];
   var topRoutes = summary.routes.filter(function(route){ return route.saving > 0; }).sort(function(a, b){ return b.saving - a.saving; }).slice(0, 4);
   var lines = [
-    'Transport comparison (estimated 40ft container export cost): from ' + summary.sourceCountry + ' to the 13 target markets total ' + aiFmtTransportUsd(summary.totalForeign) + ', while from Navoi total ' + aiFmtTransportUsd(summary.totalNavoi) + '.',
-    'Average logistics advantage from Navoi across the 13 target markets: ' + aiFmtTransportUsd(summary.avgSaving) + ' per market.',
+    'Transport comparison (estimated 40ft container export cost): average from ' + summary.sourceCountry + ' to the 13 target markets is ' + aiFmtTransportUsd(summary.avgForeign) + ', while average from Navoi is ' + aiFmtTransportUsd(summary.avgNavoi) + '.',
+    'Average logistics advantage from Navoi across the 13 target markets: ' + aiFmtTransportUsd(summary.avgSaving) + ' (' + summary.avgSavingPct + '%) per market.',
     'Fastest Navoi export market in this set: ' + ((summary.fastestNavoi && summary.fastestNavoi.name) || 'n/a') + ' in about ' + ((summary.fastestNavoi && summary.fastestNavoi.navoiDays) || 'n/a') + ' days.'
   ];
   topRoutes.forEach(function(route){
