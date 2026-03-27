@@ -1424,6 +1424,74 @@ input[type="time"]{-webkit-appearance:none;}
         </table>
       </div>
     </div>
+
+    <div id="investorAiWorkspace" class="tcard" style="display:none;margin-top:1rem">
+      <div class="tc-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
+        <div>
+          <div class="tc-title">📧 Investor uchun AI tahlil va xat</div>
+          <div id="invAiCompanyMeta" style="font-size:.72rem;color:var(--text3);margin-top:3px">Investor tanlang</div>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="margin:0;min-width:120px">
+            <label class="form-label">Xat tili</label>
+            <select class="form-input" id="invAiLang">
+              <option value="en">English</option><option value="ru">Русский</option><option value="de">Deutsch</option>
+              <option value="zh">中文</option><option value="fr">Français</option><option value="fa">فارسی</option>
+            </select>
+          </div>
+          <button class="btn btn-blue" type="button" onclick="generateInvestorAiLetter()">🤖 AI Xat Yozish</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="closeInvestorAiWorkspace()">✕ Yopish</button>
+        </div>
+      </div>
+
+      <div id="invAiAnalysisCard" class="tcard" style="display:none;margin:1rem">
+        <div class="tc-head"><div class="tc-title" id="invAiAnalysisTitle">📊 Iqtisodiy Tahlil</div></div>
+        <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="invAiAnalysisGrid"></div>
+        <div id="invAiAnalysisMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
+      </div>
+
+      <div id="invAiTransportCard" class="tcard" style="display:none;margin:0 1rem 1rem 1rem">
+        <div class="tc-head"><div class="tc-title" id="invAiTransportTitle">🚛 Transport kalkulyatori — 13 davlatga eksport</div></div>
+        <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem" id="invAiTransportGrid"></div>
+        <div class="tscroll" style="padding:0 1rem 1rem">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Davlat</th>
+                <th>Kompaniya joylashgan davlatdan</th>
+                <th>Navoiydan</th>
+                <th>Tejamkorlik</th>
+                <th>Yo'nalish</th>
+              </tr>
+            </thead>
+            <tbody id="invAiTransportTbody"></tbody>
+          </table>
+        </div>
+        <div id="invAiTransportMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
+      </div>
+
+      <div id="invAiLetterCard" class="tcard" style="display:none;margin:0 1rem 1rem 1rem">
+        <div class="tc-head">
+          <div class="tc-title">✉️ Taklif Xati</div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-blue btn-sm" onclick="sendInvestorAiLetter()">📧 Yuborish</button>
+            <button class="btn btn-sm" onclick="scheduleInvestorAiLetter()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">📅 Rejalashtirish</button>
+          </div>
+        </div>
+        <div style="padding:1rem">
+          <div style="margin-bottom:.8rem">
+            <label class="form-label">Mavzu</label>
+            <input class="form-input" id="invAiLetterSubject" style="font-weight:700">
+          </div>
+          <div>
+            <label class="form-label">Xat matni</label>
+            <textarea class="form-input" id="invAiLetterBody" style="min-height:350px;font-size:.8rem;line-height:1.7;font-family:inherit"></textarea>
+          </div>
+        </div>
+      </div>
+      <div id="invAiLetterEmpty" class="tc-empty" style="padding:2.5rem;margin:1rem"><div class="tc-empty-icon">📧</div><p>Investor tanlang va “AI Xat Yozish” tugmasini bosing</p></div>
+    </div>
   </div>
 </div>
 
@@ -4962,7 +5030,7 @@ function renderInvestorCompanies(){
     <tr>
       <td>${isAdmin?`<input type="checkbox" class="ic-check" data-id="${r.id}" onchange="updateSelectedCount()">`:''}</td>
       <td>${i+1}</td>
-      <td><b>${r.kompaniya}</b></td>
+      <td><button type="button" onclick="openInvestorAiWorkspace('${r.id}')" style="padding:0;border:none;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left"><b style="color:var(--text)">${r.kompaniya}</b></button></td>
       <td>${r.rahbar}${r.lavozim?'<div style="font-size:.6rem;color:var(--text3)">'+r.lavozim+'</div>':''}</td>
       <td>${r.soha}</td>
       <td style="font-size:.7rem;color:#4361EE">${r.email||'<span style="color:var(--text3)">—</span>'}</td>
@@ -4970,6 +5038,7 @@ function renderInvestorCompanies(){
       <td>${getEmailStatusBadge(r)}</td>
       <td>
         ${isAdmin?`<div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="openInvestorAiWorkspace('${r.id}')" title="AI xat va tahlil" style="background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none">🤖</button>
           ${r.email?`<button class="btn btn-blue btn-sm" onclick="openEmailModal('${r.id}')" title="Xabar yuborish">📧</button>`:''}
           ${r.email?`<button class="btn btn-sm" onclick="openScheduleModal('${r.id}')" title="Email rejalashtirish" style="background:${r.emailSchedule?.active?'linear-gradient(135deg,#059669,#06D6A0)':'var(--bg2)'};color:${r.emailSchedule?.active?'#fff':'var(--text2)'};border:1px solid var(--border)">📅${r.emailSchedule?.active?' ✓':''}</button>`:''}
           <button class="btn btn-danger btn-sm" onclick="deleteRecord('investorCompanies','${r.id}')">🗑</button>
@@ -13157,21 +13226,18 @@ function goToAiLetter(idx){
     DB.investorCompanies.push(comp);
     if(typeof fbSave==='function') fbSave('investorCompanies',comp);
   }
-  showPage('ailetter');
+  showPage('investor');
   setTimeout(function(){
-    var sel = document.getElementById('ailetter-company-select');
-    populateProductSelects();
-    if(sel){
-      var opt = Array.from(sel.options).find(function(o){return o.textContent.indexOf(comp.kompaniya)!==-1;});
-      if(opt) sel.value = opt.value;
-    }
+    renderInvestorCompanies();
+    var targetId = exists ? exists.id : comp.id;
+    openInvestorAiWorkspace(targetId);
   },300);
 }
 
 function aiLetterAll(){
   saveFinderResults();
-  showPage('ailetter');
-  toast('📧 AI Xatlar sahifasiga o\'ting — bazadan kompaniya tanlang');
+  showPage('investor');
+  toast('📧 Investorlar bazasidan kompaniya tanlang va AI tugmasini bosing');
 }
 
 /* ═══════════════════════════════════════
@@ -13278,7 +13344,103 @@ function buildAiMetricCard(icon, label, main, detail, accent){
   '</div>';
 }
 
-function renderAiAnalysis(analysis){
+var _investorAiTargetId = null;
+
+function getAiScopeDom(scope){
+  if(scope === 'investor'){
+    return {
+      workspace: document.getElementById('investorAiWorkspace'),
+      companyMeta: document.getElementById('invAiCompanyMeta'),
+      lang: document.getElementById('invAiLang'),
+      analysisCard: document.getElementById('invAiAnalysisCard'),
+      analysisTitle: document.getElementById('invAiAnalysisTitle'),
+      analysisGrid: document.getElementById('invAiAnalysisGrid'),
+      analysisMeta: document.getElementById('invAiAnalysisMeta'),
+      transportCard: document.getElementById('invAiTransportCard'),
+      transportTitle: document.getElementById('invAiTransportTitle'),
+      transportGrid: document.getElementById('invAiTransportGrid'),
+      transportTbody: document.getElementById('invAiTransportTbody'),
+      transportMeta: document.getElementById('invAiTransportMeta'),
+      letterCard: document.getElementById('invAiLetterCard'),
+      letterSubject: document.getElementById('invAiLetterSubject'),
+      letterBody: document.getElementById('invAiLetterBody'),
+      emptyCard: document.getElementById('invAiLetterEmpty')
+    };
+  }
+  return {
+    workspace: document.getElementById('page-ailetter'),
+    companyMeta: null,
+    lang: document.getElementById('ailetter-lang'),
+    analysisCard: document.getElementById('aiAnalysisCard'),
+    analysisTitle: document.getElementById('aiAnalysisTitle'),
+    analysisGrid: document.getElementById('aiAnalysisGrid'),
+    analysisMeta: document.getElementById('aiAnalysisMeta'),
+    transportCard: document.getElementById('aiTransportCard'),
+    transportTitle: document.getElementById('aiTransportTitle'),
+    transportGrid: document.getElementById('aiTransportGrid'),
+    transportTbody: document.getElementById('aiTransportTbody'),
+    transportMeta: document.getElementById('aiTransportMeta'),
+    letterCard: document.getElementById('aiLetterCard'),
+    letterSubject: document.getElementById('aiLetterSubject'),
+    letterBody: document.getElementById('aiLetterBody'),
+    emptyCard: document.getElementById('aiLetterEmpty')
+  };
+}
+
+function resetAiScope(scope, emptyText){
+  var dom = getAiScopeDom(scope);
+  if(dom.analysisCard) dom.analysisCard.style.display = 'none';
+  if(dom.transportCard) dom.transportCard.style.display = 'none';
+  if(dom.letterCard) dom.letterCard.style.display = 'none';
+  if(dom.emptyCard){
+    dom.emptyCard.style.display = 'block';
+    if(emptyText){
+      var p = dom.emptyCard.querySelector('p');
+      if(p) p.textContent = emptyText;
+    }
+  }
+}
+
+function setInvestorAiMeta(comp){
+  var dom = getAiScopeDom('investor');
+  if(!dom.companyMeta) return;
+  if(!comp){
+    dom.companyMeta.textContent = 'Investor tanlang';
+    return;
+  }
+  dom.companyMeta.innerHTML =
+    '<b>' + escapeHtmlText(comp.kompaniya || '—') + '</b>' +
+    (comp.rahbar ? ' — ' + escapeHtmlText(comp.rahbar) : '') +
+    (comp.davlat ? ' (' + escapeHtmlText(comp.davlat) + ')' : '');
+}
+
+function openInvestorAiWorkspace(id){
+  var comp = (DB.investorCompanies || []).find(function(item){ return String(item.id) === String(id); });
+  if(!comp){
+    toast('⚠️ Investor topilmadi','error');
+    return;
+  }
+  _investorAiTargetId = String(comp.id);
+  var dom = getAiScopeDom('investor');
+  if(dom.workspace) dom.workspace.style.display = 'block';
+  setInvestorAiMeta(comp);
+  resetAiScope('investor', 'Investor tanlandi. Endi “AI Xat Yozish” tugmasini bosing');
+  if(dom.workspace && typeof dom.workspace.scrollIntoView === 'function'){
+    dom.workspace.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+}
+
+function closeInvestorAiWorkspace(){
+  _investorAiTargetId = null;
+  var dom = getAiScopeDom('investor');
+  if(dom.workspace) dom.workspace.style.display = 'none';
+}
+
+window.openInvestorAiWorkspace = openInvestorAiWorkspace;
+window.closeInvestorAiWorkspace = closeInvestorAiWorkspace;
+
+function renderAiAnalysis(analysis, scope){
+  var dom = getAiScopeDom(scope);
   var countryName = (analysis && analysis.country && analysis.country.display) || 'Tanlangan davlat';
   var metrics = (analysis && analysis.metrics) || {};
   var meta = [];
@@ -13288,8 +13450,8 @@ function renderAiAnalysis(analysis){
   var wage = metrics.monthlyWage || {};
   var electricity = metrics.electricityPrice || {};
   var gas = metrics.naturalGasPrice || {};
-  var titleEl = document.getElementById('aiAnalysisTitle');
-  var metaEl = document.getElementById('aiAnalysisMeta');
+  var titleEl = dom.analysisTitle;
+  var metaEl = dom.analysisMeta;
   if(titleEl) titleEl.textContent = '📊 Iqtisodiy Tahlil — ' + countryName + ' vs O\'zbekiston';
 
   grid.push(buildAiMetricCard(
@@ -13332,8 +13494,8 @@ function renderAiAnalysis(analysis){
     meta.push('• Tabiiy gaz: ' + escapeHtmlText(gas.source || 'IEA Prices API') + ' (' + escapeHtmlText((gas.countryYear||'—') + '/' + (gas.uzbekistanYear||'—')) + ') · ' + escapeHtmlText(aiFmtMwh(gas.country) + ' → ' + aiFmtMwh(gas.uzbekistan)));
   }
 
-  document.getElementById('aiAnalysisCard').style.display = 'block';
-  document.getElementById('aiAnalysisGrid').innerHTML = grid.join('');
+  if(dom.analysisCard) dom.analysisCard.style.display = 'block';
+  if(dom.analysisGrid) dom.analysisGrid.innerHTML = grid.join('');
   if(metaEl){
     metaEl.style.display = 'block';
     metaEl.innerHTML = '<div style="padding-top:.3rem;border-top:1px dashed rgba(59,130,246,.25)"><strong>Rasmiy manbalar:</strong><br>' + meta.join('<br>') + '</div>';
@@ -13529,12 +13691,13 @@ function buildAiTransportAnalysis(countryInfo){
   };
 }
 
-function renderAiTransportAnalysis(summary){
-  var card = document.getElementById('aiTransportCard');
-  var titleEl = document.getElementById('aiTransportTitle');
-  var gridEl = document.getElementById('aiTransportGrid');
-  var tbody = document.getElementById('aiTransportTbody');
-  var metaEl = document.getElementById('aiTransportMeta');
+function renderAiTransportAnalysis(summary, scope){
+  var dom = getAiScopeDom(scope);
+  var card = dom.transportCard;
+  var titleEl = dom.transportTitle;
+  var gridEl = dom.transportGrid;
+  var tbody = dom.transportTbody;
+  var metaEl = dom.transportMeta;
   if(!card || !titleEl || !gridEl || !tbody || !metaEl || !summary) return;
 
   titleEl.textContent = '🚛 Transport kalkulyatori — ' + summary.sourceCountry + ' vs Navoiy (13 davlat)';
@@ -13577,36 +13740,31 @@ function buildAiTransportPromptLines(summary){
 }
 
 function handleAiCompanyChange(){
-  var analysisCard = document.getElementById('aiAnalysisCard');
-  var transportCard = document.getElementById('aiTransportCard');
-  var letterCard = document.getElementById('aiLetterCard');
-  var emptyCard = document.getElementById('aiLetterEmpty');
-  if(analysisCard) analysisCard.style.display = 'none';
-  if(transportCard) transportCard.style.display = 'none';
-  if(letterCard) letterCard.style.display = 'none';
-  if(emptyCard) emptyCard.style.display = 'block';
+  resetAiScope('page', 'Kompaniya tanlang va "AI Xat Yozish" bosing');
 }
 
-async function generateAiLetter(){
-  var sel = document.getElementById('ailetter-company-select');
-  var compId = sel.value;
+async function generateAiLetterForScope(scope){
+  var dom = getAiScopeDom(scope);
+  var compId = scope === 'investor'
+    ? _investorAiTargetId
+    : ((document.getElementById('ailetter-company-select')||{}).value || '');
   if(!compId){ toast('⚠️ Kompaniya tanlang','error'); return; }
   var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(compId);});
   if(!comp){ toast('⚠️ Kompaniya topilmadi','error'); return; }
   if(!getAiCompanyCountry(comp)){ toast('⚠️ Kompaniyaning joylashgan davlati ko\'rsatilmagan','error'); return; }
 
-  var lang = document.getElementById('ailetter-lang').value;
+  var lang = dom.lang ? dom.lang.value : 'en';
   var langName = {en:'English',ru:'Russian',de:'German',zh:'Chinese',fr:'French',fa:'Persian'}[lang]||'English';
 
   toast('🤖 Rasmiy iqtisodiy tahlil va AI xat tayyorlanmoqda...');
 
   try {
     var analysis = await fetchOfficialAiCountryAnalysis(comp);
-    renderAiAnalysis(analysis);
+    renderAiAnalysis(analysis, scope);
     var officialLines = buildOfficialAnalysisLines(analysis);
     if(!officialLines.length) throw new Error('Rasmiy iqtisodiy ko\'rsatkichlar topilmadi');
     var transportSummary = buildAiTransportAnalysis(analysis.country);
-    renderAiTransportAnalysis(transportSummary);
+    renderAiTransportAnalysis(transportSummary, scope);
     var transportLines = buildAiTransportPromptLines(transportSummary);
 
     var letterPrompt = 'Write a professional business letter in '+langName+'. From Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n'+
@@ -13634,10 +13792,10 @@ async function generateAiLetter(){
       }
     }
 
-    document.getElementById('aiLetterSubject').value = letterSubject;
-    document.getElementById('aiLetterBody').value = letterBody;
-    document.getElementById('aiLetterCard').style.display = 'block';
-    document.getElementById('aiLetterEmpty').style.display = 'none';
+    if(dom.letterSubject) dom.letterSubject.value = letterSubject;
+    if(dom.letterBody) dom.letterBody.value = letterBody;
+    if(dom.letterCard) dom.letterCard.style.display = 'block';
+    if(dom.emptyCard) dom.emptyCard.style.display = 'none';
 
     toast('✅ AI xat tayyor! Ko\'rib chiqing va yuborishingiz mumkin.');
 
@@ -13647,13 +13805,23 @@ async function generateAiLetter(){
   }
 }
 
-function sendAiLetter(){
-  var sel = document.getElementById('ailetter-company-select');
-  var compId = sel.value;
+async function generateAiLetter(){
+  return generateAiLetterForScope('page');
+}
+
+async function generateInvestorAiLetter(){
+  return generateAiLetterForScope('investor');
+}
+
+function sendAiLetterForScope(scope){
+  var dom = getAiScopeDom(scope);
+  var compId = scope === 'investor'
+    ? _investorAiTargetId
+    : ((document.getElementById('ailetter-company-select')||{}).value || '');
   var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(compId);});
   if(!comp||!comp.email){ toast('⚠️ Kompaniyaning email manzili yo\'q','error'); return; }
-  var subject = document.getElementById('aiLetterSubject').value;
-  var body = document.getElementById('aiLetterBody').value;
+  var subject = dom.letterSubject ? dom.letterSubject.value : '';
+  var body = dom.letterBody ? dom.letterBody.value : '';
   // Use existing email system
   openEmailModal(comp.id);
   setTimeout(function(){
@@ -13664,8 +13832,21 @@ function sendAiLetter(){
   },500);
 }
 
+function sendAiLetter(){
+  return sendAiLetterForScope('page');
+}
+
+function sendInvestorAiLetter(){
+  return sendAiLetterForScope('investor');
+}
+
 function scheduleAiLetter(){
   toast('📅 Rejalashtirish funksiyasi — "Investorlar bazasi" sahifasidan foydalaning');
+}
+
+function scheduleInvestorAiLetter(){
+  if(!_investorAiTargetId){ toast('⚠️ Investor tanlang','error'); return; }
+  openScheduleModal(_investorAiTargetId);
 }
 
 /* ═══════════════════════════════════════
@@ -14137,11 +14318,10 @@ function setPipelineStage(id, stage){
 }
 
 function goToAiLetterById(id){
-  showPage('ailetter');
+  showPage('investor');
   setTimeout(function(){
-    populateProductSelects();
-    var sel = document.getElementById('ailetter-company-select');
-    if(sel) sel.value = id;
+    renderInvestorCompanies();
+    openInvestorAiWorkspace(id);
   },300);
 }
 
