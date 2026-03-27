@@ -1107,10 +1107,10 @@ input[type="time"]{-webkit-appearance:none;}
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-label">Outreach</div>
   <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
-  <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Company Finder</span></button>
+  <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Kompaniya qidiruvi</span></button>
   <button class="sb-tab" id="tab-investor" onclick="showPage('investor')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investorco">Investorlar bazasi</span><span class="sb-badge" id="badge-investorco">0</span></button>
   <button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Pipeline</span></button>
-  <button class="sb-tab" id="tab-trade" onclick="showPage('trade')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Global Trade</span></button>
+  <button class="sb-tab" id="tab-trade" onclick="showPage('trade')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Jahon tashqi savdosi</span></button>
   <button class="sb-tab" id="tab-forums" onclick="showPage('forums')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_forums">Forumlar</span><span class="sb-badge" id="badge-forums">0</span></button>
   <div class="sidebar-divider"></div>
   <button class="sb-tab" id="tab-settings" onclick="showPage('settings')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Sozlamalar</span></button>
@@ -1675,13 +1675,13 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: IMPORT TAHLILI (M2: Analysis Engine) ===== -->
 <div class="page" id="page-import">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">📊 Import Tahlili</div><div class="pg-sub">Mahsulot tahlili endi Company Finder bo'limiga ko'chirildi</div></div>
+    <div class="pg-head"><div class="pg-title">📊 Import Tahlili</div><div class="pg-sub">Mahsulot tahlili endi Kompaniya qidiruvi bo'limiga ko'chirildi</div></div>
     <div class="tcard">
       <div class="tc-head"><div class="tc-title">ℹ️ Tahlil funksiyasi ko'chirildi</div></div>
       <div class="tc-empty" style="padding:3rem">
         <div class="tc-empty-icon">🔍</div>
-        <p>Mahsulot tahlili endi Company Finder ichida ko'rsatiladi. Avval mahsulot tahlil qilinadi, keyin pastda maqsad davlatlar va kompaniya qidirish funksiyalari ishlaydi.</p>
-        <button class="btn btn-blue" type="button" onclick="showPage('finder')">Company Finder ga o'tish</button>
+        <p>Mahsulot tahlili endi Kompaniya qidiruvi ichida ko'rsatiladi. Avval mahsulot tahlil qilinadi, keyin pastda maqsad davlatlar va kompaniya qidirish funksiyalari ishlaydi.</p>
+        <button class="btn btn-blue" type="button" onclick="showPage('finder')">Kompaniya qidiruviga o'tish</button>
       </div>
     </div>
   </div>
@@ -1752,9 +1752,29 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: COMPANY FINDER (M3) ===== -->
 <div class="page" id="page-finder">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">🔍 Company Finder</div><div class="pg-sub">Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish</div></div>
+    <div class="pg-head"><div class="pg-title">🔍 Kompaniya qidiruvi</div><div class="pg-sub">Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish</div></div>
 
     <div class="form-card" style="margin-bottom:1.2rem">
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+        <div class="form-group" style="flex:0 0 320px;margin:0">
+          <label class="form-label">Qo'shimcha filtrlar</label>
+          <div style="display:flex;flex-direction:column;gap:.45rem;padding:.85rem 1rem;border:1px solid var(--border);border-radius:14px;background:rgba(67,97,238,.04)">
+            <label style="display:flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;color:var(--text);cursor:pointer">
+              <input type="checkbox" id="finder-filter-top100">
+              <span>Top 100 talik kompaniyalar</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;color:var(--text);cursor:pointer">
+              <input type="checkbox" id="finder-filter-expansion">
+              <span>Kengayish istagida bo'lgan</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;color:var(--text);cursor:pointer">
+              <input type="checkbox" id="finder-filter-target13">
+              <span>13 ta davlatga eksportyorlar</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
       <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
         <div class="form-group" style="flex:0 0 260px">
           <label class="form-label">Qidiruv rejimi</label>
@@ -3574,9 +3594,9 @@ function showPage(id){
     investor:'Investorlar bazasi',
     products:'Mahsulotlar',
     import:'Import Tahlili',
-    finder:'Company Finder',
+    finder:'Kompaniya qidiruvi',
     pipeline:'Pipeline',
-    trade:'Global Trade',
+    trade:'Jahon tashqi savdosi',
     settings:'Sozlamalar',
     admin:'Admin Panel'
   };
@@ -13298,6 +13318,17 @@ function getFinderCountryFlag(name){
   return getFinderCountryMeta(name).flag;
 }
 
+function getFinderStrategyFilters(){
+  var top100El = document.getElementById('finder-filter-top100');
+  var expansionEl = document.getElementById('finder-filter-expansion');
+  var target13El = document.getElementById('finder-filter-target13');
+  return {
+    top100: !!(top100El && top100El.checked),
+    expansion: !!(expansionEl && expansionEl.checked),
+    target13: !!(target13El && target13El.checked)
+  };
+}
+
 function toggleFinderTargetCountry(name){
   var idx = _finderTargetCountries.indexOf(name);
   if(idx >= 0) _finderTargetCountries.splice(idx,1);
@@ -13549,6 +13580,7 @@ function mapApolloPersonToFinderResult(p, country, meta){
     website:'',
     description:org.short_description || org.organization_headline || org.headline || '',
     keywords:Array.isArray(org.keywords) ? org.keywords.join(' ') : (org.keywords || ''),
+    xodimlar:Number(org.estimated_num_employees || org.num_employees || org.employee_count || 0) || 0,
     import_volume:'',
     score:Math.floor(Math.random()*20)+75,
     manba:'Apollo',
@@ -13588,9 +13620,10 @@ function mapApolloOrganizationToFinderResult(org, country, meta){
     shahar:'',
     soha:org.industry || org.industry_tag || org.primary_industry || org.organization_industry || '',
     linkedin:'',
-    website:'',
+    website:apolloAbsoluteUrl(org.website_url || org.website || org.organization_website || ''),
     description:org.short_description || org.organization_headline || org.headline || org.seo_description || '',
     keywords:Array.isArray(org.keywords) ? org.keywords.join(' ') : (org.keywords || org.search_keywords || ''),
+    xodimlar:Number(org.estimated_num_employees || org.num_employees || org.employee_count || 0) || 0,
     import_volume:'',
     score:Math.floor(Math.random()*10)+82,
     manba:'Apollo Org',
@@ -13741,12 +13774,60 @@ function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, pro
   return found;
 }
 
-function finalizeApolloFinderResults(found, prod, perCountry){
+function finderMatchesExpansionSignal(item){
+  var text = apolloNormalizeText([
+    item.kompaniya,
+    item.rahbar,
+    item.lavozim,
+    item.soha,
+    item.description,
+    item.keywords
+  ].filter(Boolean).join(' '));
+  return /export|international|global|business development|sales manager|commercial|regional|growth|expansion|new market|market development|export manager|trade/.test(text);
+}
+
+function finderMatchesTop100Signal(item){
+  var employees = Number(item.xodimlar || 0) || 0;
+  if(employees >= 100) return true;
+  var text = apolloNormalizeText([
+    item.kompaniya,
+    item.soha,
+    item.description,
+    item.keywords
+  ].filter(Boolean).join(' '));
+  return /group|holdings|international|global|leading|top|largest|major manufacturer|major supplier/.test(text);
+}
+
+function finderMatchesTarget13Signal(item, meta){
+  var text = apolloNormalizeText([
+    item.lavozim,
+    item.description,
+    item.keywords,
+    item.soha,
+    item.why
+  ].filter(Boolean).join(' '));
+  if(meta && meta.mode === 'exporters'){
+    return /export|supplier|manufacturer|international|trade|global/.test(text);
+  }
+  return true;
+}
+
+function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
   var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
   if(!filtered.length){
     filtered = found.filter(function(item){
       return !isApolloObviousMismatch(item, prod) && String(item.soha || '').trim();
     });
+  }
+  strategy = strategy || {top100:false, expansion:false, target13:false};
+  if(strategy.top100){
+    filtered = filtered.filter(function(item){ return finderMatchesTop100Signal(item); });
+  }
+  if(strategy.expansion){
+    filtered = filtered.filter(function(item){ return finderMatchesExpansionSignal(item); });
+  }
+  if(strategy.target13){
+    filtered = filtered.filter(function(item){ return finderMatchesTarget13Signal(item, meta); });
   }
   var seen = new Set();
   return filtered.filter(function(item){
@@ -13790,7 +13871,7 @@ async function apolloRequestJson(payload){
   return json || {};
 }
 
-async function apolloFinderSearchCountry(prod, country, perCountry, meta, sourceScope, targetCountries){
+async function apolloFinderSearchCountry(prod, country, perCountry, meta, sourceScope, targetCountries, strategy){
   var apolloKey = getApolloApiKey();
   if(!apolloKey){
     throw new Error('Apollo API key topilmadi. Sozlamalar sahifasiga kiriting.');
@@ -13829,7 +13910,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       });
       mergeApolloPeopleIntoCompanies(found, personResults, country, meta, prod);
       found = found.filter(function(item){ return String(item.kompaniya || '').trim(); });
-      found = finalizeApolloFinderResults(found, prod, Math.max(perCountry * 3, 15));
+      found = finalizeApolloFinderResults(found, prod, Math.max(perCountry * 3, 15), strategy, meta);
       if(found.length >= perCountry && !apolloNeedContactCoverage(found, perCountry)) break;
     } catch(e2) {
       lastError = e2;
@@ -13850,7 +13931,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
           found.push(mapApolloOrganizationToFinderResult(org, country, meta));
         });
         found = found.filter(function(item){ return String(item.kompaniya || '').trim(); });
-        found = finalizeApolloFinderResults(found, prod, Math.max(perCountry * 2, 8));
+        found = finalizeApolloFinderResults(found, prod, Math.max(perCountry * 2, 8), strategy, meta);
         if(found.length >= perCountry) break;
       } catch(e) {
         lastError = e;
@@ -13865,7 +13946,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   if(!found.length && !hadSuccess && lastError){
     throw lastError;
   }
-  return finalizeApolloFinderResults(found, prod, perCountry);
+  return finalizeApolloFinderResults(found, prod, perCountry, strategy, meta);
 }
 
 function apolloIsFatalError(err){
@@ -13895,6 +13976,7 @@ async function runCompanyFinder(source){
   _finderMode = meta.mode;
   var sourceScope = getFinderSourceSelection();
   var perCountry = parseInt(document.getElementById('finder-count').value)||5;
+  var strategy = getFinderStrategyFilters();
 
   // Get selected target countries
   var targetCountries = (_finderTargetCountries || []).slice();
@@ -13929,7 +14011,7 @@ async function runCompanyFinder(source){
       for(var ci=0; ci<searchCountries.length; ci++){
         document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+getFinderCountryLabel(searchCountries[ci])+' ('+(ci+1)+'/'+searchCountries.length+') — '+meta.resultWord+'...'+(meta.mode === 'exporters' ? (' | Maqsad: '+targetCountries.slice(0,4).map(getFinderCountryLabel).join(', ')+(targetCountries.length>4?'...':'')) : '');
         try {
-          var countryResults = await apolloFinderSearchCountry(prod, searchCountries[ci], perCountry, meta, sourceScope, targetCountries);
+          var countryResults = await apolloFinderSearchCountry(prod, searchCountries[ci], perCountry, meta, sourceScope, targetCountries, strategy);
           countryResults.forEach(function(item){ _finderResults.push(item); });
         } catch(e){
           console.log('Apollo '+searchCountries[ci]+' error:', e);
@@ -13963,6 +14045,9 @@ async function runCompanyFinder(source){
             'These companies should export or be capable of exporting "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') to one or more of these destination countries: '+targetCountries.join(', ')+'.\n'+
             'For EACH source country find '+perCountry+' real exporter companies.\n'+
             'Do NOT return importer companies from the destination countries.\n'+
+            (strategy.top100 ? 'Prioritize top 100 or market-leading companies in this sector.\n' : '')+
+            (strategy.expansion ? 'Prioritize companies showing expansion intent, growth, new market development, or international business development.\n' : '')+
+            (strategy.target13 ? 'Only include exporters that appear capable of serving the 13 selected target markets; exclude generic exporters without clear regional fit.\n' : '')+
             'JSON format: [{"company":"Real Company Name","country":"Germany","city":"Hamburg",'+
             '"contact_name":"Anna Schmidt","title":"Export Director",'+
             '"industry":"Construction Materials Manufacturing",'+
@@ -13978,6 +14063,8 @@ async function runCompanyFinder(source){
             'Find REAL companies that '+meta.promptVerb+' "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') for these countries: '+batch.join(', ')+'.\n'+
             'For EACH country find '+perCountry+' companies that are '+meta.promptRole+' of this product.\n'+
             'These should be real active companies relevant to cross-border trade of this product.\n'+
+            (strategy.top100 ? 'Prioritize top 100 or market-leading companies in this sector.\n' : '')+
+            (strategy.expansion ? 'Prioritize companies showing expansion intent, growth, new market development, or active sourcing scale-up.\n' : '')+
             'JSON format: [{"company":"Real Company Name","country":"Russia","city":"Moscow",'+
             '"contact_name":"Ivan Petrov","title":"Purchase Director",'+
             '"industry":"Construction Materials Distribution",'+
