@@ -5051,7 +5051,7 @@ function renderInvestorCompanies(){
   const tb=document.getElementById('ic-tbody');
   if(!co.length){
     tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
-    mountInvestorAiWorkspace();
+    if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
     return;
   }
   tb.innerHTML=co.map((r,i)=>{
@@ -5090,7 +5090,7 @@ function renderInvestorCompanies(){
   const bulkSchedBtn = document.getElementById('bulkSchedBtn');
   if(bulkSchedBtn) bulkSchedBtn.style.display = isAdmin ? 'inline-flex' : 'none';
   if(checkAll) checkAll.style.display = isAdmin ? 'inline-block' : 'none';
-  mountInvestorAiWorkspace();
+  if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
 }
 
 function toggleAllCheckboxes(el){
@@ -8120,6 +8120,32 @@ function populateProductSelects(){
     asel.innerHTML = '<option value="">— Bazadan tanlang —</option>' + co.map(function(c){
       return '<option value="'+c.id+'">'+c.kompaniya+' — '+(c.rahbar||'?')+' ('+(c.davlat||'?')+')</option>';
     }).join('');
+  }
+
+  renderFinderProductPicker();
+}
+
+function renderFinderProductPicker(){
+  var hidden = document.getElementById('finder-product-select');
+  var display = document.getElementById('finder-select-display');
+  var dd = document.getElementById('finder-dropdown');
+  if(!hidden || !display) return;
+  var pid = String(hidden.value || '');
+  if(!pid){
+    display.textContent = '— Tanlang —';
+    if(dd) dd.querySelectorAll('.csd-item').forEach(function(item){ item.classList.remove('selected'); });
+    return;
+  }
+  var product = (DB.products || []).find(function(p){ return String(p.id) === pid; });
+  if(product){
+    display.textContent = formatBilingualProductName(product) + (product.hs_code ? ' (' + product.hs_code + ')' : '');
+    if(dd){
+      dd.querySelectorAll('.csd-item').forEach(function(item){
+        item.classList.toggle('selected', String(item.getAttribute('data-pid') || '') === pid);
+      });
+    }
+  } else {
+    display.textContent = '— Tanlang —';
   }
 }
 
