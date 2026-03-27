@@ -1068,6 +1068,9 @@ input[type="time"]{-webkit-appearance:none;}
 .csd-group-head .csd-count{font-size:10px;color:var(--text3);background:var(--bg);padding:1px 6px;border-radius:8px;margin-left:4px;}
 .csd-group-items{display:none;border-bottom:1px solid var(--border);}
 .csd-group-items.open{display:block;}
+.csd-section-items{background:var(--card);}
+.csd-raw-head{padding-left:22px;font-size:.78rem;font-weight:700;background:rgba(67,97,238,.03);position:static;}
+.csd-raw-items .csd-item{padding-left:42px;}
 .csd-item{padding:8px 14px 8px 28px;font-size:.78rem;color:var(--text2);cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(0,0,0,.03);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .csd-item:hover{background:rgba(67,97,238,.06);color:var(--text);}
 .csd-item:last-child{border-bottom:none;}
@@ -8072,33 +8075,50 @@ function populateProductSelects(){
   var dd = document.getElementById('finder-dropdown');
   if(dd){
     var html = '';
-    // 1. Xomashyolar bo'yicha guruhlash
-    raws.forEach(function(raw){
-      var rawProds = prods.filter(function(p){ return String(p.raw_id) === String(raw.id); });
-      if(rawProds.length > 0){
+    ['build','azot','other'].forEach(function(section){
+      var sectionRaws = getSectionRawMaterials(section);
+      var sectionProds = getSectionProducts(section);
+      var sectionLabel = getProductSectionLabel(section);
+      var sectionIcon = getProductSectionIcon(section);
+      var sectionCount = sectionProds.length || 0;
+      html += '<div class="csd-group csd-group-section" data-section="'+section+'">';
+      html += '<div class="csd-group-head csd-section-head" onclick="toggleCsdGroup(this)"><span>'+sectionIcon+' '+escapeHtmlText(sectionLabel)+'</span><span class="csd-count">'+sectionCount+'</span><span class="csd-caret">▾</span></div>';
+      html += '<div class="csd-group-items csd-section-items">';
+
+      sectionRaws.forEach(function(raw){
+        var rawProds = sectionProds.filter(function(p){ return String(p.raw_id || '') === String(raw.id); });
         var rawName = raw.name_uz || raw.name_en || 'Nomsiz';
-        html += '<div class="csd-group" data-rawid="'+raw.id+'">';
-        html += '<div class="csd-group-head" onclick="toggleCsdGroup(this)"><span>⛏ '+rawName+'</span><span class="csd-count">'+rawProds.length+'</span><span class="csd-caret">▾</span></div>';
-        html += '<div class="csd-group-items">';
-        rawProds.forEach(function(p){
-          html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</div>';
+        html += '<div class="csd-group csd-group-raw" data-rawid="'+raw.id+'">';
+        html += '<div class="csd-group-head csd-raw-head" onclick="toggleCsdGroup(this)"><span>⛏ '+escapeHtmlText(rawName)+'</span><span class="csd-count">'+rawProds.length+'</span><span class="csd-caret">▾</span></div>';
+        html += '<div class="csd-group-items csd-raw-items">';
+        if(rawProds.length){
+          rawProds.forEach(function(p){
+            html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+'</div>';
+          });
+        } else {
+          html += '<div class="csd-item" style="cursor:default;color:var(--text3)">Mahsulot topilmadi</div>';
+        }
+        html += '</div></div>';
+      });
+
+      var orphans = sectionProds.filter(function(p){
+        return !p.raw_id || !sectionRaws.some(function(r){ return String(r.id) === String(p.raw_id); });
+      });
+      if(orphans.length){
+        html += '<div class="csd-group csd-group-raw">';
+        html += '<div class="csd-group-head csd-raw-head" onclick="toggleCsdGroup(this)"><span>📦 Boshqa mahsulotlar</span><span class="csd-count">'+orphans.length+'</span><span class="csd-caret">▾</span></div>';
+        html += '<div class="csd-group-items csd-raw-items">';
+        orphans.forEach(function(p){
+          html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+'</div>';
         });
         html += '</div></div>';
       }
-    });
-    // 2. Xomashyosi yo'q mahsulotlar
-    var orphans = prods.filter(function(p){
-      return !p.raw_id || !raws.some(function(r){ return String(r.id) === String(p.raw_id); });
-    });
-    if(orphans.length > 0){
-      html += '<div class="csd-group">';
-      html += '<div class="csd-group-head" onclick="toggleCsdGroup(this)"><span>📦 Boshqa mahsulotlar</span><span class="csd-count">'+orphans.length+'</span><span class="csd-caret">▾</span></div>';
-      html += '<div class="csd-group-items">';
-      orphans.forEach(function(p){
-        html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</div>';
-      });
+
+      if(!sectionRaws.length && !orphans.length){
+        html += '<div class="csd-item" style="cursor:default;color:var(--text3)">Bu bo‘limda hozircha ma’lumot yo‘q</div>';
+      }
       html += '</div></div>';
-    }
+    });
     dd.innerHTML = html;
   }
 
