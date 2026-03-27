@@ -1101,16 +1101,14 @@ input[type="time"]{-webkit-appearance:none;}
       <button class="sb-tab sb-subtab" id="tab-zoom" onclick="showPage('zoom')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_zoom">Zoom uchrashuvlar</span><span class="sb-badge" id="badge-zoom">0</span></button>
     </div>
   </div>
-  <button class="sb-tab" id="tab-forums" onclick="showPage('forums')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_forums">Forumlar</span><span class="sb-badge" id="badge-forums">0</span></button>
-  <button class="sb-tab" id="tab-investor" onclick="showPage('investor')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investorco">Investorlar bazasi</span><span class="sb-badge" id="badge-investorco">0</span></button>
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-label">Outreach</div>
   <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
-  <button class="sb-tab" id="tab-materialai" onclick="showPage('materialai')"><span class="sb-tab-icon"></span><span class="sb-tab-label" id="materialAiNavLabel">AI Invest Tahlil</span></button>
   <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Company Finder</span></button>
-  <button class="sb-tab" id="tab-ailetter" onclick="showPage('ailetter')"><span class="sb-tab-icon"></span><span class="sb-tab-label">AI Xatlar</span></button>
+  <button class="sb-tab" id="tab-investor" onclick="showPage('investor')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investorco">Investorlar bazasi</span><span class="sb-badge" id="badge-investorco">0</span></button>
   <button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Pipeline</span></button>
   <button class="sb-tab" id="tab-trade" onclick="showPage('trade')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Global Trade</span></button>
+  <button class="sb-tab" id="tab-forums" onclick="showPage('forums')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_forums">Forumlar</span><span class="sb-badge" id="badge-forums">0</span></button>
   <div class="sidebar-divider"></div>
   <button class="sb-tab" id="tab-settings" onclick="showPage('settings')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Sozlamalar</span></button>
   <button class="sb-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()"><span class="sb-tab-icon"></span><span class="sb-tab-label" id="adminTabLabel" data-i18n="nav_login">Admin</span></button>
@@ -3568,6 +3566,8 @@ function syncSidebarGroups(activePage){
 
 function showPage(id){
   if(id==='import') id='finder';
+  if(id==='materialai') id='products';
+  if(id==='ailetter') id='investor';
   if(id==='admin'&&!isAdmin){openAdminOrLogin();return;}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tn-tab, .sb-tab').forEach(t=>t.classList.remove('active'));
@@ -3585,9 +3585,7 @@ function showPage(id){
     investor:'Investorlar bazasi',
     products:'Mahsulotlar',
     import:'Import Tahlili',
-    materialai:'AI Invest Tahlil',
     finder:'Company Finder',
-    ailetter:'AI Xatlar',
     pipeline:'Pipeline',
     trade:'Global Trade',
     settings:'Sozlamalar',
