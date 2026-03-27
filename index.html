@@ -13815,16 +13815,24 @@ async function runCompanyFinder(source){
   var targetCountries = [];
   document.querySelectorAll('.fc-country:checked').forEach(function(cb){targetCountries.push(cb.value);});
   if(!targetCountries.length){ toast('⚠️ Kamida bitta davlat tanlang','error'); return; }
-  var searchCountries = (meta.mode === 'exporters' && sourceScope.effectiveCountries && sourceScope.effectiveCountries.length)
-    ? sourceScope.effectiveCountries.slice()
+  var searchCountries = meta.mode === 'exporters'
+    ? (sourceScope.effectiveCountries || []).slice()
     : targetCountries.slice();
+  if(meta.mode === 'exporters' && !searchCountries.length){
+    toast('⚠️ Eksportyor kompaniyalar uchun avval "Eksportyor manbasi" bo‘limidan qit\'a yoki davlat tanlang','error');
+    return;
+  }
 
   document.getElementById('finderEmpty').style.display = 'none';
   document.getElementById('finderResultCard').style.display = 'none';
   document.getElementById('finderKpiGrid').style.display = 'none';
   document.getElementById('finderProgress').style.display = 'block';
   document.getElementById('finderBar').style.width = '10%';
-  document.getElementById('finderProgressText').textContent = searchCountries.length+' ta davlatda "'+prod.name_en+'" '+meta.resultWord+' qidirilmoqda...'+(sourceScope.hasFilter?' | Manba: '+sourceScope.summary:'');
+      document.getElementById('finderProgressText').textContent =
+        (meta.mode === 'exporters'
+          ? ('Manba: '+searchCountries.map(getFinderCountryLabel).slice(0,5).join(', ')+(searchCountries.length>5?'...':'')+' | Maqsad: '+targetCountries.map(getFinderCountryLabel).slice(0,4).join(', ')+(targetCountries.length>4?'...':''))
+          : (searchCountries.length+' ta davlatda "'+prod.name_en+'" '+meta.resultWord+' qidirilmoqda...')
+        ) + (sourceScope.hasFilter && meta.mode !== 'exporters' ? (' | Manba: '+sourceScope.summary) : '');
 
   _finderResults = [];
 
