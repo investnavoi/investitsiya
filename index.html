@@ -13283,7 +13283,8 @@ var FINDER_SOURCE_REGIONS = {
 var _finderSourceContinents = [];
 var _finderSourceCountries = [];
 var FINDER_ALWAYS_TARGET_COUNTRIES = ['Uzbekistan','Turkmenistan','Tajikistan','Kyrgyzstan','Kazakhstan','Mongolia','Russia','Azerbaijan','Georgia','Armenia','Iran','Afghanistan','Pakistan'];
-var _finderExtraTargetCountries = [];
+var _finderTargetCountries = FINDER_ALWAYS_TARGET_COUNTRIES.slice();
+var _finderTargetOpenGroups = {};
 
 function getFinderCountryMeta(name){
   return FINDER_TARGET_COUNTRY_META[name] || {flag:'🏳️', label:name};
@@ -13298,10 +13299,14 @@ function getFinderCountryFlag(name){
 }
 
 function toggleFinderTargetCountry(name){
-  if(FINDER_ALWAYS_TARGET_COUNTRIES.indexOf(name) !== -1) return;
-  var idx = _finderExtraTargetCountries.indexOf(name);
-  if(idx >= 0) _finderExtraTargetCountries.splice(idx,1);
-  else _finderExtraTargetCountries.push(name);
+  var idx = _finderTargetCountries.indexOf(name);
+  if(idx >= 0) _finderTargetCountries.splice(idx,1);
+  else _finderTargetCountries.push(name);
+  renderFinderTargetFilters();
+}
+
+function toggleFinderTargetGroup(name){
+  _finderTargetOpenGroups[name] = !_finderTargetOpenGroups[name];
   renderFinderTargetFilters();
 }
 
@@ -13319,13 +13324,19 @@ function renderFinderTargetFilters(){
   });
   wrap.innerHTML = groups.map(function(group, idx){
     var isCore = idx === 0;
-    return '<div style="border:1px solid var(--border);border-radius:12px;padding:.65rem .75rem;background:'+(isCore?'rgba(67,97,238,.07)':'rgba(255,255,255,.45)')+'">'+
-      '<div style="font-size:.72rem;font-weight:800;color:var(--text);margin-bottom:.45rem">'+(isCore?'🎯 ':'🌐 ')+group.name+'</div>'+
-      '<div style="display:flex;flex-wrap:wrap;gap:.38rem">'+
+    var isOpen = !!_finderTargetOpenGroups[group.name];
+    var selectedCount = group.countries.filter(function(country){
+      return _finderTargetCountries.indexOf(country) !== -1;
+    }).length;
+    return '<div style="border:1px solid var(--border);border-radius:12px;background:'+(isCore?'rgba(67,97,238,.07)':'rgba(255,255,255,.45)')+';overflow:hidden">'+
+      '<button type="button" onclick="toggleFinderTargetGroup(\''+group.name.replace(/'/g,"\\'")+'\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:.72rem .8rem;background:transparent;border:none;cursor:pointer;color:var(--text)">'+
+        '<span style="font-size:.72rem;font-weight:800;color:var(--text)">'+(isCore?'🎯 ':'🌐 ')+group.name+'</span>'+
+        '<span style="display:flex;align-items:center;gap:8px"><span style="font-size:.62rem;color:var(--text3)">'+selectedCount+'/'+group.countries.length+'</span><span style="font-size:10px;color:var(--text3);transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+';transition:transform .18s">▾</span></span>'+
+      '</button>'+
+      '<div style="display:'+(isOpen?'flex':'none')+';flex-wrap:wrap;gap:.38rem;padding:0 .8rem .75rem">'+
         group.countries.map(function(country){
-          var checked = (isCore || _finderExtraTargetCountries.indexOf(country) !== -1) ? ' checked' : '';
-          var disabled = isCore ? ' disabled' : '';
-          return '<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(isCore?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:'+(isCore?'default':'pointer')+';border:1px solid '+(isCore?'rgba(67,97,238,.35)':'var(--border)')+'"><input type="checkbox" class="fc-country" value="'+country+'"'+checked+disabled+(isCore?'':' onchange="toggleFinderTargetCountry(\''+country.replace(/'/g,"\\'")+'\')"')+'> '+getFinderCountryFlag(country)+' '+getFinderCountryLabel(country)+'</label>';
+          var checked = _finderTargetCountries.indexOf(country) !== -1 ? ' checked' : '';
+          return '<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:pointer;border:1px solid '+(checked?'rgba(67,97,238,.35)':'var(--border)')+'"><input type="checkbox" class="fc-country" value="'+country+'"'+checked+' onchange="toggleFinderTargetCountry(\''+country.replace(/'/g,"\\'")+'\')"> '+getFinderCountryFlag(country)+' '+getFinderCountryLabel(country)+'</label>';
         }).join('')+
       '</div>'+
     '</div>';
@@ -13885,9 +13896,8 @@ async function runCompanyFinder(source){
   var sourceScope = getFinderSourceSelection();
   var perCountry = parseInt(document.getElementById('finder-count').value)||5;
 
-  // Get selected countries
-  var targetCountries = [];
-  document.querySelectorAll('.fc-country:checked').forEach(function(cb){targetCountries.push(cb.value);});
+  // Get selected target countries
+  var targetCountries = (_finderTargetCountries || []).slice();
   if(!targetCountries.length){ toast('⚠️ Kamida bitta davlat tanlang','error'); return; }
   var searchCountries = meta.mode === 'exporters'
     ? (sourceScope.effectiveCountries || []).slice()
