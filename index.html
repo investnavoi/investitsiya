@@ -1036,6 +1036,23 @@ input[type="time"]{-webkit-appearance:none;}
 .chat-send:hover{transform:scale(1.05)}
 .chat-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
 @media(max-width:600px){.chat-panel{left:.5rem;right:.5rem;bottom:4.5rem;width:auto;height:calc(100vh - 6rem)}.chat-fab{left:.8rem;bottom:.8rem;width:48px;height:48px;font-size:20px}}
+/* ═══ CUSTOM COLLAPSIBLE SELECT ═══ */
+.custom-select-wrap{position:relative;width:100%;}
+.custom-select-display{cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:38px;user-select:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:28px!important;background:var(--card)!important;color:var(--text);}
+.custom-select-display::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3);pointer-events:none;}
+.custom-select-dropdown{display:none;position:absolute;top:100%;left:0;right:0;max-height:350px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:0 0 10px 10px;box-shadow:0 12px 32px rgba(0,0,0,.15);z-index:999;margin-top:-1px;}
+.custom-select-dropdown.open{display:block;}
+.csd-group-head{display:flex;align-items:center;gap:8px;padding:9px 14px;font-weight:700;font-size:.82rem;color:var(--text);cursor:pointer;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;user-select:none;transition:background .15s;}
+.csd-group-head:hover{background:var(--border);}
+.csd-group-head .csd-caret{font-size:10px;color:var(--text3);transition:transform .2s;margin-left:auto;}
+.csd-group-head.open .csd-caret{transform:rotate(180deg);}
+.csd-group-head .csd-count{font-size:10px;color:var(--text3);background:var(--bg);padding:1px 6px;border-radius:8px;margin-left:4px;}
+.csd-group-items{display:none;border-bottom:1px solid var(--border);}
+.csd-group-items.open{display:block;}
+.csd-item{padding:8px 14px 8px 28px;font-size:.78rem;color:var(--text2);cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(0,0,0,.03);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.csd-item:hover{background:rgba(67,97,238,.06);color:var(--text);}
+.csd-item:last-child{border-bottom:none;}
+.csd-item.selected{background:rgba(67,97,238,.1);color:var(--blue);font-weight:600;}
 </style>
 </head>
 <body>
@@ -1657,7 +1674,11 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
         <div class="form-group" style="flex:1;min-width:200px">
           <label class="form-label">Mahsulot</label>
-          <select class="form-input" id="finder-product-select" onchange="handleImportProductChange()"><option value="">— Tanlang —</option></select>
+          <div class="custom-select-wrap" id="finder-select-wrap">
+            <div class="custom-select-display form-input" id="finder-select-display" onclick="toggleFinderDropdown()">— Tanlang —</div>
+            <input type="hidden" id="finder-product-select" value="">
+            <div class="custom-select-dropdown" id="finder-dropdown"></div>
+          </div>
         </div>
         <div class="form-group" style="flex:0 0 120px">
           <label class="form-label">Har davlatdan</label>
@@ -7738,49 +7759,41 @@ function getImportAnalysisProductSelect(){
 function populateProductSelects(){
   var prods = DB.products||[];
   var raws = DB.rawMaterials||[];
-  var currentValues = {};
-  ['import-product-select','finder-product-select'].forEach(function(id){
-    var el = document.getElementById(id);
-    currentValues[id] = el ? String(el.value || '') : '';
-  });
 
-  // Xomashyolar bo'yicha guruhlash
-  var opts = '<option value="">— Tanlang —</option>';
-
-  // 1. Xomashyolari bor mahsulotlarni guruhlab ko'rsatish
-  raws.forEach(function(raw){
-    var rawProds = prods.filter(function(p){ return String(p.raw_id) === String(raw.id); });
-    if(rawProds.length > 0){
-      var rawName = raw.name_uz || raw.name_en || 'Nomsiz';
-      opts += '<optgroup label="⛏ '+rawName+'">';
-      rawProds.forEach(function(p){
-        opts += '<option value="'+p.id+'">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</option>';
-      });
-      opts += '</optgroup>';
-    }
-  });
-
-  // 2. Xomashyosi yo'q mahsulotlar (agar bor bo'lsa)
-  var orphanProds = prods.filter(function(p){
-    return !p.raw_id || !raws.some(function(r){ return String(r.id) === String(p.raw_id); });
-  });
-  if(orphanProds.length > 0){
-    opts += '<optgroup label="📦 Boshqa mahsulotlar">';
-    orphanProds.forEach(function(p){
-      opts += '<option value="'+p.id+'">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</option>';
+  // ═══ Custom collapsible dropdown uchun ═══
+  var dd = document.getElementById('finder-dropdown');
+  if(dd){
+    var html = '';
+    // 1. Xomashyolar bo'yicha guruhlash
+    raws.forEach(function(raw){
+      var rawProds = prods.filter(function(p){ return String(p.raw_id) === String(raw.id); });
+      if(rawProds.length > 0){
+        var rawName = raw.name_uz || raw.name_en || 'Nomsiz';
+        html += '<div class="csd-group" data-rawid="'+raw.id+'">';
+        html += '<div class="csd-group-head" onclick="toggleCsdGroup(this)"><span>⛏ '+rawName+'</span><span class="csd-count">'+rawProds.length+'</span><span class="csd-caret">▾</span></div>';
+        html += '<div class="csd-group-items">';
+        rawProds.forEach(function(p){
+          html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</div>';
+        });
+        html += '</div></div>';
+      }
     });
-    opts += '</optgroup>';
+    // 2. Xomashyosi yo'q mahsulotlar
+    var orphans = prods.filter(function(p){
+      return !p.raw_id || !raws.some(function(r){ return String(r.id) === String(p.raw_id); });
+    });
+    if(orphans.length > 0){
+      html += '<div class="csd-group">';
+      html += '<div class="csd-group-head" onclick="toggleCsdGroup(this)"><span>📦 Boshqa mahsulotlar</span><span class="csd-count">'+orphans.length+'</span><span class="csd-caret">▾</span></div>';
+      html += '<div class="csd-group-items">';
+      orphans.forEach(function(p){
+        html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</div>';
+      });
+      html += '</div></div>';
+    }
+    dd.innerHTML = html;
   }
 
-  ['import-product-select','finder-product-select'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(el){
-      el.innerHTML = opts;
-      if(currentValues[id] && prods.some(function(p){ return String(p.id) === currentValues[id]; })){
-        el.value = currentValues[id];
-      }
-    }
-  });
   // ailetter company select
   var asel = document.getElementById('ailetter-company-select');
   if(asel){
@@ -7790,6 +7803,43 @@ function populateProductSelects(){
     }).join('');
   }
 }
+
+function toggleFinderDropdown(){
+  var dd = document.getElementById('finder-dropdown');
+  if(dd) dd.classList.toggle('open');
+}
+
+function toggleCsdGroup(head){
+  head.classList.toggle('open');
+  var items = head.nextElementSibling;
+  if(items) items.classList.toggle('open');
+}
+
+function selectCsdItem(el, pid){
+  // Hidden input'ga qiymat yozish
+  var hidden = document.getElementById('finder-product-select');
+  if(hidden) hidden.value = pid;
+  // Display'ni yangilash
+  var display = document.getElementById('finder-select-display');
+  if(display) display.textContent = el.textContent;
+  // Tanlangan elementni belgilash
+  var dd = document.getElementById('finder-dropdown');
+  if(dd) dd.querySelectorAll('.csd-item').forEach(function(i){i.classList.remove('selected');});
+  el.classList.add('selected');
+  // Dropdown'ni yopish
+  if(dd) dd.classList.remove('open');
+  // handleImportProductChange chaqirish
+  if(typeof handleImportProductChange === 'function') handleImportProductChange();
+}
+
+// Click tashqarida dropdown yopish
+document.addEventListener('click', function(e){
+  var wrap = document.getElementById('finder-select-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    var dd = document.getElementById('finder-dropdown');
+    if(dd) dd.classList.remove('open');
+  }
+});
 
 function filterProductsByRaw(rawId){
   PRODUCT_SECTION_RAW_FILTER = rawId || '';
@@ -11190,6 +11240,12 @@ function goToFinder(prodId, countryCode){
   showPage('finder');
   var sel = document.getElementById('finder-product-select');
   if(sel) sel.value = prodId;
+  // Custom dropdown display yangilash
+  var prod = (DB.products||[]).find(function(p){return p.id==prodId;});
+  if(prod){
+    var display = document.getElementById('finder-select-display');
+    if(display) display.textContent = formatBilingualProductName(prod) + (prod.hs_code?' ('+prod.hs_code+')':'');
+  }
   if(typeof handleImportProductChange === 'function') handleImportProductChange();
 }
 
