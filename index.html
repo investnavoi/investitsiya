@@ -1493,6 +1493,26 @@ input[type="time"]{-webkit-appearance:none;}
         <div id="invAiTransportMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
       </div>
 
+      <div id="invAiTariffCard" class="tcard" style="display:none;margin:0 1rem 1rem 1rem">
+        <div class="tc-head"><div class="tc-title" id="invAiTariffTitle">🛃 Bojxona tarifi — mahsulot bo'yicha 13 davlat</div></div>
+        <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem" id="invAiTariffGrid"></div>
+        <div class="tscroll" style="padding:0 1rem 1rem">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Davlat</th>
+                <th>Kompaniya davlati tarifi</th>
+                <th>O'zbekiston tarifi</th>
+                <th>Farq</th>
+              </tr>
+            </thead>
+            <tbody id="invAiTariffTbody"></tbody>
+          </table>
+        </div>
+        <div id="invAiTariffMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
+      </div>
+
       <div id="invAiLetterCard" class="tcard" style="display:none;margin:0 1rem 1rem 1rem">
         <div class="tc-head">
           <div class="tc-title">✉️ Taklif Xati</div>
@@ -14200,14 +14220,20 @@ function saveFinderResults(){
   if(!DB.investorCompanies) DB.investorCompanies = [];
   var finderSel = document.getElementById('finder-product-select');
   var currentProd = (DB.products||[]).find(function(p){ return String(p.id) === String((finderSel||{}).value || ''); });
-  var productLabel = currentProd ? (currentProd.name_en + (currentProd.name_uz ? (' - ' + currentProd.name_uz) : '')) : '';
+  var productLabel = currentProd ? formatBilingualProductName(currentProd) : '';
+  var productHs = currentProd ? String(currentProd.hs_code || '').replace(/\D/g,'').slice(0,6) : '';
+  var productId = currentProd ? String(currentProd.id || '') : '';
   var added = 0;
   _finderResults.forEach(function(r){
-    var exists = DB.investorCompanies.some(function(e){return e.kompaniya===r.kompaniya && e.rahbar===r.rahbar;});
+    var exists = DB.investorCompanies.find(function(e){return e.kompaniya===r.kompaniya && e.rahbar===r.rahbar;});
     if(!exists){
       var rec = Object.assign({id:nextId(DB.investorCompanies)},r,{
         mahsulotNomi: r.mahsulotNomi || productLabel || r.soha || '',
         soha: r.mahsulotNomi || productLabel || r.soha || '',
+        productId: r.productId || productId || '',
+        mahsulotProductId: r.mahsulotProductId || productId || '',
+        mahsulotHs: r.mahsulotHs || r.hsCode || productHs || '',
+        productHs: r.productHs || r.hsCode || productHs || '',
         holat:'Yangi',
         sana:new Date().toISOString().slice(0,10),
         emailSent:false
@@ -14215,6 +14241,27 @@ function saveFinderResults(){
       DB.investorCompanies.push(rec);
       if(typeof fbSave==='function') fbSave('investorCompanies',rec);
       added++;
+    } else {
+      var changed = false;
+      if((productLabel || r.mahsulotNomi) && !exists.mahsulotNomi){
+        exists.mahsulotNomi = r.mahsulotNomi || productLabel || exists.soha || '';
+        changed = true;
+      }
+      if((productLabel || r.soha) && (!exists.soha || exists.soha === exists.mahsulotNomi)){
+        exists.soha = exists.mahsulotNomi || r.soha || productLabel || exists.soha || '';
+        changed = true;
+      }
+      if((productId || r.productId) && !exists.productId){
+        exists.productId = r.productId || productId || '';
+        exists.mahsulotProductId = exists.mahsulotProductId || exists.productId;
+        changed = true;
+      }
+      if((productHs || r.mahsulotHs || r.hsCode) && !exists.mahsulotHs){
+        exists.mahsulotHs = r.mahsulotHs || r.hsCode || productHs || '';
+        exists.productHs = exists.productHs || exists.mahsulotHs;
+        changed = true;
+      }
+      if(changed && typeof fbSave==='function') fbSave('investorCompanies', exists);
     }
   });
   toast('✅ '+added+' ta kompaniya bazaga saqlandi!');
@@ -14227,7 +14274,9 @@ function goToAiLetter(idx){
   if(!comp) return;
   var finderSel = document.getElementById('finder-product-select');
   var currentProd = (DB.products||[]).find(function(p){ return String(p.id) === String((finderSel||{}).value || ''); });
-  var productLabel = currentProd ? (currentProd.name_en + (currentProd.name_uz ? (' - ' + currentProd.name_uz) : '')) : '';
+  var productLabel = currentProd ? formatBilingualProductName(currentProd) : '';
+  var productHs = currentProd ? String(currentProd.hs_code || '').replace(/\D/g,'').slice(0,6) : '';
+  var productId = currentProd ? String(currentProd.id || '') : '';
   // Save to DB first
   if(!DB.investorCompanies) DB.investorCompanies = [];
   var exists = DB.investorCompanies.find(function(e){return e.kompaniya===comp.kompaniya;});
@@ -14235,10 +14284,22 @@ function goToAiLetter(idx){
     comp.id = nextId(DB.investorCompanies);
     comp.mahsulotNomi = comp.mahsulotNomi || productLabel || comp.soha || '';
     comp.soha = comp.mahsulotNomi || productLabel || comp.soha || '';
+    comp.productId = comp.productId || productId || '';
+    comp.mahsulotProductId = comp.mahsulotProductId || comp.productId || '';
+    comp.mahsulotHs = comp.mahsulotHs || comp.hsCode || productHs || '';
+    comp.productHs = comp.productHs || comp.mahsulotHs || '';
     comp.holat = 'Yangi';
     comp.sana = new Date().toISOString().slice(0,10);
     DB.investorCompanies.push(comp);
     if(typeof fbSave==='function') fbSave('investorCompanies',comp);
+  } else {
+    exists.mahsulotNomi = exists.mahsulotNomi || comp.mahsulotNomi || productLabel || exists.soha || '';
+    exists.soha = exists.soha || exists.mahsulotNomi || comp.soha || productLabel || '';
+    exists.productId = exists.productId || comp.productId || productId || '';
+    exists.mahsulotProductId = exists.mahsulotProductId || exists.productId || productId || '';
+    exists.mahsulotHs = exists.mahsulotHs || comp.mahsulotHs || comp.hsCode || productHs || '';
+    exists.productHs = exists.productHs || exists.mahsulotHs || '';
+    if(typeof fbSave==='function') fbSave('investorCompanies',exists);
   }
   showPage('investor');
   setTimeout(function(){
@@ -14259,6 +14320,7 @@ function aiLetterAll(){
 ═══════════════════════════════════════ */
 var AI_COUNTRY_API_BASE = 'https://navoiy-api-proxy.vercel.app/api';
 var AI_COUNTRY_ANALYSIS_CACHE = {};
+var AI_PRODUCT_TARIFF_CACHE = {};
 
 function escapeHtmlText(text){
   return String(text || '')
@@ -14277,6 +14339,53 @@ function getAiCountryCacheKey(countryName){
   return String(countryName || '').trim().toLowerCase();
 }
 
+function getAiProductCacheKey(sourceIso3, hsCode){
+  return [String(sourceIso3 || '').trim().toUpperCase(), String(hsCode || '').replace(/\D/g,'').slice(0,6)].join('|');
+}
+
+function normalizeAiLookupText(value){
+  return String(value || '')
+    .toLowerCase()
+    .replace(/['’`"]/g,'')
+    .replace(/[^a-z0-9а-яёўқғҳөү\s]+/gi,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+function getAiCompanyProductInfo(comp){
+  if(!comp) return null;
+  var rawHs = String(comp.mahsulotHs || comp.hsCode || comp.productHs || '').replace(/\D/g,'');
+  var productId = String(comp.productId || comp.mahsulotProductId || '').trim();
+  var productName = String(comp.mahsulotNomi || comp.soha || comp.productName || '').trim();
+  var product = null;
+  if(productId){
+    product = (DB.products || []).find(function(item){ return String(item.id || '') === productId; }) || null;
+  }
+  if(!product && rawHs){
+    product = (DB.products || []).find(function(item){
+      var itemHs = String(item.hs_code || '').replace(/\D/g,'');
+      return itemHs && (itemHs.slice(0,6) === rawHs.slice(0,6) || itemHs.slice(0,4) === rawHs.slice(0,4));
+    }) || null;
+  }
+  if(!product && productName){
+    var needle = normalizeAiLookupText(productName);
+    product = (DB.products || []).find(function(item){
+      var hay = normalizeAiLookupText((item.name_en || '') + ' ' + (item.name_uz || ''));
+      return hay && (hay === needle || hay.indexOf(needle) !== -1 || needle.indexOf(hay) !== -1);
+    }) || null;
+  }
+  var hsCode = rawHs || String((product && product.hs_code) || '').replace(/\D/g,'');
+  var displayName = product
+    ? formatBilingualProductName(product)
+    : (productName || '—');
+  return {
+    product: product,
+    productId: product ? String(product.id || '') : productId,
+    hsCode: hsCode ? hsCode.slice(0,6) : '',
+    displayName: displayName
+  };
+}
+
 async function fetchOfficialAiCountryAnalysis(comp){
   var countryName = getAiCompanyCountry(comp);
   if(!countryName) throw new Error('Kompaniyaning joylashgan davlati ko\'rsatilmagan');
@@ -14286,6 +14395,22 @@ async function fetchOfficialAiCountryAnalysis(comp){
   var data = await resp.json().catch(function(){ return {}; });
   if(!resp.ok || data.error) throw new Error(data.error || ('Rasmiy tahlil API xato berdi ('+resp.status+')'));
   AI_COUNTRY_ANALYSIS_CACHE[cacheKey] = data;
+  return data;
+}
+
+async function fetchOfficialAiTariffSummary(comp, analysis){
+  var sourceIso3 = String((((analysis || {}).country || {}).iso3) || '').trim().toUpperCase();
+  var productInfo = getAiCompanyProductInfo(comp);
+  if(!sourceIso3) throw new Error('Kompaniya davlati aniqlanmadi');
+  if(!productInfo || !productInfo.hsCode || productInfo.hsCode.length < 2) throw new Error('Mahsulotning HS kodi topilmadi');
+  var cacheKey = getAiProductCacheKey(sourceIso3, productInfo.hsCode);
+  if(AI_PRODUCT_TARIFF_CACHE[cacheKey]) return AI_PRODUCT_TARIFF_CACHE[cacheKey];
+  var url = AI_COUNTRY_API_BASE + '/ai-country-analysis?mode=tariff&source=' + encodeURIComponent(sourceIso3) + '&hs=' + encodeURIComponent(productInfo.hsCode) + '&productName=' + encodeURIComponent(productInfo.displayName);
+  var resp = await fetch(url);
+  var data = await resp.json().catch(function(){ return {}; });
+  if(!resp.ok || data.error) throw new Error(data.error || ('Tarif tahlil API xato berdi (' + resp.status + ')'));
+  data.productInfo = productInfo;
+  AI_PRODUCT_TARIFF_CACHE[cacheKey] = data;
   return data;
 }
 
@@ -14377,6 +14502,11 @@ function getAiScopeDom(scope){
       transportGrid: document.getElementById('invAiTransportGrid'),
       transportTbody: document.getElementById('invAiTransportTbody'),
       transportMeta: document.getElementById('invAiTransportMeta'),
+      tariffCard: document.getElementById('invAiTariffCard'),
+      tariffTitle: document.getElementById('invAiTariffTitle'),
+      tariffGrid: document.getElementById('invAiTariffGrid'),
+      tariffTbody: document.getElementById('invAiTariffTbody'),
+      tariffMeta: document.getElementById('invAiTariffMeta'),
       letterCard: document.getElementById('invAiLetterCard'),
       letterSubject: document.getElementById('invAiLetterSubject'),
       letterBody: document.getElementById('invAiLetterBody'),
@@ -14396,6 +14526,11 @@ function getAiScopeDom(scope){
     transportGrid: document.getElementById('aiTransportGrid'),
     transportTbody: document.getElementById('aiTransportTbody'),
     transportMeta: document.getElementById('aiTransportMeta'),
+    tariffCard: null,
+    tariffTitle: null,
+    tariffGrid: null,
+    tariffTbody: null,
+    tariffMeta: null,
     letterCard: document.getElementById('aiLetterCard'),
     letterSubject: document.getElementById('aiLetterSubject'),
     letterBody: document.getElementById('aiLetterBody'),
@@ -14429,6 +14564,7 @@ function resetAiScope(scope, emptyText){
   var dom = getAiScopeDom(scope);
   if(dom.analysisCard) dom.analysisCard.style.display = 'none';
   if(dom.transportCard) dom.transportCard.style.display = 'none';
+  if(dom.tariffCard) dom.tariffCard.style.display = 'none';
   if(dom.letterCard) dom.letterCard.style.display = 'none';
   if(dom.emptyCard){
     dom.emptyCard.style.display = 'block';
@@ -14470,10 +14606,11 @@ function openInvestorAiWorkspace(id){
     resetAiScope('investor', 'Investor tanlandi. Endi “AI Xat Yozish” tugmasini bosing');
   }
   renderInvestorCompanies();
-  if(comp.aiLetterData && comp.aiLetterData.analysis && comp.aiLetterData.transportSummary){
+  if(comp.aiLetterData && comp.aiLetterData.analysis){
     hydrateAiScope('investor', comp, {
       analysis: comp.aiLetterData.analysis,
       transportSummary: comp.aiLetterData.transportSummary,
+      tariffSummary: comp.aiLetterData.tariffSummary || null,
       letterSubject: comp.aiLetterData.subject || '',
       letterBody: comp.aiLetterData.body || '',
       lang: comp.aiLetterData.lang || 'en',
@@ -14504,6 +14641,7 @@ function renderAiAnalysis(analysis, scope){
   var grid = [];
   var gdp = metrics.gdpPerCapita || {};
   var industry = metrics.industryShare || {};
+  var tax = metrics.totalTaxRate || {};
   var wage = metrics.monthlyWage || {};
   var electricity = metrics.electricityPrice || {};
   var gas = metrics.naturalGasPrice || {};
@@ -14528,6 +14666,14 @@ function renderAiAnalysis(analysis, scope){
   ));
 
   grid.push(buildAiMetricCard(
+    '🧾',
+    'Soliq yuklamasi (% foyda)',
+    aiRatioDirectionText(tax.country, tax.uzbekistan, true),
+    escapeHtmlText(aiFmtPct(tax.country) + ' → ' + aiFmtPct(tax.uzbekistan)) + '<br><span style="font-size:.6rem">World Bank · ' + escapeHtmlText((tax.countryYear||'—') + '/' + (tax.uzbekistanYear||'—')) + '</span>',
+    '#7C3AED'
+  ));
+
+  grid.push(buildAiMetricCard(
     '👷',
     'Mehnat narxi (oylik)',
     aiRatioDirectionText(wage.country, wage.uzbekistan, true),
@@ -14545,6 +14691,7 @@ function renderAiAnalysis(analysis, scope){
 
   meta.push('• YaIM / kishi: World Bank Open Data API (' + escapeHtmlText((gdp.countryYear||'—') + '/' + (gdp.uzbekistanYear||'—')) + ')');
   meta.push('• Sanoat ulushi: World Bank Open Data API (' + escapeHtmlText((industry.countryYear||'—') + '/' + (industry.uzbekistanYear||'—')) + ')');
+  meta.push('• Soliq yuklamasi: World Bank Open Data API / IC.TAX.TOTL.CP.ZS (' + escapeHtmlText((tax.countryYear||'—') + '/' + (tax.uzbekistanYear||'—')) + ')');
   meta.push('• Mehnat narxi: ILOSTAT EAR_EMTA_SEX_CUR_NB_A (' + escapeHtmlText((wage.countryYear||'—') + '/' + (wage.uzbekistanYear||'—')) + ') · ' + escapeHtmlText((wage.countryCurrencyBasis||'—') + ' / ' + (wage.uzbekistanCurrencyBasis||'—')));
   meta.push('• Elektr energiyasi: ' + escapeHtmlText(electricity.source || 'Official energy API') + ' (' + escapeHtmlText((electricity.countryYear||'—') + '/' + (electricity.uzbekistanYear||'—')) + ')');
   if(Number.isFinite(Number(gas.country)) || Number.isFinite(Number(gas.uzbekistan))){
@@ -14574,6 +14721,7 @@ function buildOfficialAnalysisLines(analysis){
 
   pushMetric('GDP per capita', metrics.gdpPerCapita, aiFmtUsdExact, aiFmtUsdExact, 'World Bank');
   pushMetric('Industry share of GDP', metrics.industryShare, aiFmtPct, aiFmtPct, 'World Bank');
+  pushMetric('Total tax and contribution rate (% of profit)', metrics.totalTaxRate, aiFmtPct, aiFmtPct, 'World Bank');
   pushMetric('Average monthly earnings', metrics.monthlyWage, function(value){
     return aiFmtWageValue(value, metrics.monthlyWage && metrics.monthlyWage.countryCurrencyBasis);
   }, function(value){
@@ -14802,6 +14950,73 @@ function buildAiTransportPromptLines(summary){
   return lines;
 }
 
+function renderAiTariffAnalysis(summary, scope){
+  var dom = getAiScopeDom(scope);
+  var card = dom.tariffCard;
+  var titleEl = dom.tariffTitle;
+  var gridEl = dom.tariffGrid;
+  var tbody = dom.tariffTbody;
+  var metaEl = dom.tariffMeta;
+  if(!card || !titleEl || !gridEl || !tbody || !metaEl || !summary) return;
+
+  var productName = ((summary.productInfo || {}).displayName) || summary.productName || 'Tanlangan mahsulot';
+  titleEl.textContent = '🛃 Bojxona tarifi — ' + productName;
+  gridEl.innerHTML =
+    buildAiMetricCard('🌍', 'Kompaniya davlatidan o\'rtacha', aiFmtPct(summary.avgSourceRate), '13 ta davlat bo\'yicha o\'rtacha bojxona tarifi', '#2563EB') +
+    buildAiMetricCard('🇺🇿', 'O\'zbekistondan o\'rtacha', aiFmtPct(summary.avgUzRate), 'Xuddi shu mahsulot bo\'yicha O\'zbekiston tarifi', '#059669') +
+    buildAiMetricCard('📉', 'O\'rtacha tarif ustunligi', Number.isFinite(Number(summary.avgDiff)) ? (aiFmtPct(summary.avgDiff) + (Number.isFinite(Number(summary.avgDiffPct)) ? ' (' + summary.avgDiffPct + '%)' : '')) : '—', 'Musbat farq = O\'zbekiston tarifi pastroq', '#D97706') +
+    buildAiMetricCard('🎯', 'Eng qulay bozor', summary.bestAdvantage ? summary.bestAdvantage.targetName : '—', summary.bestAdvantage ? (aiFmtPct(summary.bestAdvantage.diff) + ' (' + summary.bestAdvantage.diffPct + '%)') : '—', '#7C3AED');
+
+  tbody.innerHTML = (summary.routes || []).map(function(row, idx){
+    var diffNum = Number(row.diff);
+    var diffColor = Number.isFinite(diffNum) ? (diffNum >= 0 ? '#059669' : '#EF233C') : 'var(--text3)';
+    var diffText = Number.isFinite(diffNum)
+      ? (aiFmtPct(diffNum) + (Number.isFinite(Number(row.diffPct)) ? '<div style="font-size:.58rem;color:' + diffColor + '">' + row.diffPct + '%</div>' : ''))
+      : '<span style="color:var(--text3)">—</span>';
+    var sourceText = Number.isFinite(Number(row.sourceRate))
+      ? (aiFmtPct(row.sourceRate) + '<div style="font-size:.58rem;color:var(--text3)">' + (row.sourceType || '—') + ' · ' + (row.sourceYear || '—') + '</div>')
+      : '<span style="color:var(--text3)">—</span>';
+    var uzText = Number.isFinite(Number(row.uzRate))
+      ? (aiFmtPct(row.uzRate) + '<div style="font-size:.58rem;color:var(--text3)">' + (row.uzType || '—') + ' · ' + (row.uzYear || '—') + '</div>')
+      : '<span style="color:var(--text3)">—</span>';
+    return '<tr>' +
+      '<td>' + (idx + 1) + '</td>' +
+      '<td><b>' + row.targetName + '</b></td>' +
+      '<td style="font-weight:700;color:#2563EB">' + sourceText + '</td>' +
+      '<td style="font-weight:700;color:#059669">' + uzText + '</td>' +
+      '<td style="font-weight:800;color:' + diffColor + '">' + diffText + '</td>' +
+    '</tr>';
+  }).join('');
+
+  metaEl.style.display = 'block';
+  metaEl.innerHTML =
+    '<div style="padding-top:.3rem;border-top:1px dashed rgba(124,58,237,.25)">' +
+      '<strong>Rasmiy tarif manbasi:</strong><br>' +
+      '• WITS - UNCTAD TRAINS API ishlatildi.<br>' +
+      '• Reporter = maqsad import bozori, partner = kompaniya davlati yoki O\'zbekiston.<br>' +
+      '• Mahsulot HS kodi: ' + escapeHtmlText(String(summary.hsCode || '—')) + '.<br>' +
+      '• Musbat farq O\'zbekiston uchun pastroq bojxona tarifini bildiradi.' +
+    '</div>';
+  card.style.display = 'block';
+}
+
+function buildAiTariffPromptLines(summary){
+  if(!summary || !summary.routes || !summary.routes.length) return [];
+  var productName = ((summary.productInfo || {}).displayName) || summary.productName || 'selected product';
+  var lines = [
+    'Official tariff comparison for ' + productName + ' (HS ' + (summary.hsCode || 'n/a') + ') across the 13 target markets: average tariff from the company country is ' + aiFmtPct(summary.avgSourceRate) + ', while average tariff from Uzbekistan is ' + aiFmtPct(summary.avgUzRate) + '.',
+    'Average tariff advantage for Uzbekistan across comparable markets: ' + (Number.isFinite(Number(summary.avgDiff)) ? (aiFmtPct(summary.avgDiff) + (Number.isFinite(Number(summary.avgDiffPct)) ? ' (' + summary.avgDiffPct + '%)' : '')) : 'n/a') + '.'
+  ];
+  (summary.routes || []).filter(function(row){
+    return Number.isFinite(Number(row.diff)) && row.diff > 0;
+  }).sort(function(a, b){
+    return Number(b.diff || 0) - Number(a.diff || 0);
+  }).slice(0, 4).forEach(function(row){
+    lines.push('For ' + row.targetName + ', tariff from the company country is ' + aiFmtPct(row.sourceRate) + ' versus Uzbekistan ' + aiFmtPct(row.uzRate) + ', so Uzbekistan is lower by ' + aiFmtPct(row.diff) + (Number.isFinite(Number(row.diffPct)) ? ' (' + row.diffPct + '%).' : '.'));
+  });
+  return lines;
+}
+
 function handleAiCompanyChange(){
   resetAiScope('page', 'Kompaniya tanlang va "AI Xat Yozish" bosing');
 }
@@ -14817,13 +15032,27 @@ async function buildAiLetterPackage(comp, lang){
   if(!officialLines.length) throw new Error('Rasmiy iqtisodiy ko\'rsatkichlar topilmadi');
   var transportSummary = buildAiTransportAnalysis(analysis.country);
   var transportLines = buildAiTransportPromptLines(transportSummary);
+  var productInfo = getAiCompanyProductInfo(comp);
+  var tariffSummary = null;
+  var tariffLines = [];
+  try{
+    tariffSummary = await fetchOfficialAiTariffSummary(comp, analysis);
+    tariffLines = buildAiTariffPromptLines(tariffSummary);
+  }catch(err){
+    console.warn('AI tariff analysis skipped:', err && err.message ? err.message : err);
+  }
+  var productLabel = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || 'selected product';
+  var industryLabel = comp.mahsulotNomi || comp.soha || productLabel || 'Manufacturing';
 
   var letterPrompt = 'Write a professional business letter in '+langName+'. From Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n'+
     'Use ONLY the economic and logistics figures below. Do not invent any new numbers. If one metric is unavailable, skip it naturally.\n'+
     officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
     transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-    'Industry: '+(comp.soha||'Manufacturing')+'. Mention Navoi industrial advantages, workforce potential, infrastructure and investor support. Tone: professional, human, compelling.\n'+
+    tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+    'Selected product: ' + productLabel + '.\n' +
+    'Industry / product line: '+industryLabel+'. Mention Navoi industrial advantages, workforce potential, infrastructure and investor support. Tone: professional, human, compelling.\n'+
     'Explicitly mention that Navoi gives an export logistics advantage to 13 nearby markets when relevant.\n'+
+    (tariffLines.length ? 'If tariff comparison favors Uzbekistan for some markets, naturally mention that customs access is also stronger for those destinations.\n' : '') +
     'IMPORTANT: First line = email subject ONLY. Second line = ===BODY===. Then letter body.\nExample:\nMarble Partnership in Navoi\n===BODY===\nDear Mr. Schmidt,\n...';
 
   var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:3000}};
@@ -14846,8 +15075,11 @@ async function buildAiLetterPackage(comp, lang){
   return {
     analysis: analysis,
     transportSummary: transportSummary,
+    tariffSummary: tariffSummary,
+    productInfo: productInfo,
     officialLines: officialLines,
     transportLines: transportLines,
+    tariffLines: tariffLines,
     letterSubject: letterSubject,
     letterBody: letterBody,
     lang: lang,
@@ -14863,7 +15095,8 @@ function saveAiLetterPackage(comp, payload){
     subject: payload.letterSubject,
     body: payload.letterBody,
     analysis: payload.analysis,
-    transportSummary: payload.transportSummary
+    transportSummary: payload.transportSummary,
+    tariffSummary: payload.tariffSummary || null
   };
   if(!Array.isArray(DB.aiLetters)) DB.aiLetters = [];
   DB.aiLetters.unshift({
@@ -14884,6 +15117,11 @@ function hydrateAiScope(scope, comp, payload){
   if(scope === 'investor') setInvestorAiMeta(comp);
   renderAiAnalysis(payload.analysis, scope);
   renderAiTransportAnalysis(payload.transportSummary, scope);
+  if(payload.tariffSummary){
+    renderAiTariffAnalysis(payload.tariffSummary, scope);
+  }else if(dom.tariffCard){
+    dom.tariffCard.style.display = 'none';
+  }
   if(dom.letterSubject) dom.letterSubject.value = payload.letterSubject || '';
   if(dom.letterBody) dom.letterBody.value = payload.letterBody || '';
   if(dom.letterCard) dom.letterCard.style.display = 'block';
