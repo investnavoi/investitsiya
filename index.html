@@ -7731,137 +7731,47 @@ function formatBilingualProductName(p){
   return en + ' - ' + uz;
 }
 
-var _finderRawExpandedId = '';
-var _finderProductPickerOpen = false;
-
-function getFinderRawMaterials(){
-  var raws = (DB.rawMaterials || []).slice();
-  var prods = DB.products || [];
-  return raws.filter(function(raw){
-    return prods.some(function(prod){
-      return String(prod.raw_id) === String(raw.id);
-    });
-  }).sort(function(a,b){
-    return String(a.name_uz || a.name_en || '').localeCompare(String(b.name_uz || b.name_en || ''));
-  });
-}
-
-function getFinderProductsByRaw(rawId){
-  return (DB.products || []).filter(function(prod){
-    return String(prod.raw_id) === String(rawId);
-  }).sort(function(a,b){
-    return String(a.name_uz || a.name_en || '').localeCompare(String(b.name_uz || b.name_en || ''));
-  });
-}
-
-function toggleFinderRaw(rawId){
-  rawId = String(rawId || '');
-  _finderRawExpandedId = _finderRawExpandedId === rawId ? '' : rawId;
-  renderFinderProductPicker();
-}
-
-function setFinderProductPickerOpen(open){
-  _finderProductPickerOpen = !!open;
-  var wrap = document.getElementById('finderRawPicker');
-  var caret = document.getElementById('finderProductSelectedCaret');
-  if(wrap) wrap.style.display = _finderProductPickerOpen ? 'block' : 'none';
-  if(caret) caret.textContent = _finderProductPickerOpen ? '▲' : '▼';
-}
-
-function toggleFinderProductPicker(event){
-  if(event) event.stopPropagation();
-  setFinderProductPickerOpen(!_finderProductPickerOpen);
-}
-
-function selectFinderProduct(prodId, rawId){
-  var sel = document.getElementById('finder-product-select');
-  if(sel) sel.value = String(prodId || '');
-  _finderRawExpandedId = String(rawId || '');
-  setFinderProductPickerOpen(false);
-  renderFinderProductPicker();
-  if(typeof handleImportProductChange === 'function') handleImportProductChange();
-}
-
-function renderFinderProductPicker(){
-  var wrap = document.getElementById('finderRawPicker');
-  var selectedEl = document.getElementById('finderProductSelectedText');
-  var sel = document.getElementById('finder-product-select');
-  if(!wrap || !selectedEl || !sel) return;
-
-  var selectedProdId = String(sel.value || '');
-  var selectedProd = (DB.products || []).find(function(prod){
-    return String(prod.id) === selectedProdId;
-  });
-  var expandedRawId = _finderRawExpandedId || (selectedProd ? String(selectedProd.raw_id || '') : '');
-  var raws = getFinderRawMaterials();
-
-  if(selectedProd){
-    selectedEl.textContent = '📦 ' + formatBilingualProductName(selectedProd) + (selectedProd.hs_code ? ' (' + selectedProd.hs_code + ')' : '');
-  } else {
-    selectedEl.textContent = '⛏️ Xomashyo tanlang, so\'ng mahsulotni bosing';
-  }
-
-  if(!raws.length){
-    wrap.innerHTML = '<div style="font-size:.76rem;color:var(--text3)">Hozircha Company Finder uchun xomashyo va mahsulotlar topilmadi.</div>';
-    return;
-  }
-
-  wrap.innerHTML = raws.map(function(raw){
-    var rawId = String(raw.id || '');
-    var products = getFinderProductsByRaw(rawId);
-    var isOpen = expandedRawId === rawId;
-    var isSelectedRaw = selectedProd && String(selectedProd.raw_id || '') === rawId;
-    var sectionLabel = getProductSectionLabel(raw.section);
-    var productsHtml = isOpen ? (
-      '<div style="margin-top:.1rem;padding:.45rem .5rem .1rem .5rem;border-top:1px dashed rgba(67,97,238,.18)">' +
-        (products.length ? products.map(function(prod){
-          var active = String(prod.id) === selectedProdId;
-          return '<button type="button" onclick="selectFinderProduct(\''+String(prod.id).replace(/'/g,"\\'")+'\',\''+rawId.replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;align-items:flex-start;justify-content:space-between;gap:.6rem;margin:0 0 .32rem 0;padding:.48rem .58rem;border:'+(active ? '1px solid #4361EE' : '1px solid rgba(67,97,238,.12)')+';border-radius:10px;background:'+(active ? 'linear-gradient(135deg,rgba(67,97,238,.12),rgba(76,201,240,.09))' : 'rgba(255,255,255,.9)')+';cursor:pointer;text-align:left">' +
-            '<span style="display:block;min-width:0"><span style="display:block;font-size:.68rem;font-weight:700;color:var(--text)">'+formatBilingualProductName(prod)+'</span><span style="display:block;font-size:.56rem;color:var(--text3);margin-top:1px">HS: '+(prod.hs_code || '—')+'</span></span>' +
-            '<span style="flex:0 0 auto;font-size:.54rem;font-weight:700;color:'+(active ? '#4361EE' : 'var(--text3)')+'">'+(active ? 'Tanlangan' : 'Tanlash')+'</span>' +
-          '</button>';
-        }).join('') : '<div style="font-size:.72rem;color:var(--text3);padding:.2rem 0 .5rem 0">Bu xomashyoga mahsulot kiritilmagan.</div>') +
-      '</div>'
-    ) : '';
-
-    return '<div style="margin-bottom:.35rem;border:1px solid '+(isOpen ? 'rgba(67,97,238,.28)' : 'rgba(15,23,42,.08)')+';border-radius:12px;background:'+(isOpen ? 'rgba(67,97,238,.04)' : 'rgba(255,255,255,.82)')+';overflow:hidden">' +
-      '<button type="button" onclick="toggleFinderRaw(\''+rawId.replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;align-items:center;justify-content:space-between;gap:.55rem;padding:.58rem .72rem;border:none;background:transparent;cursor:pointer;text-align:left">' +
-        '<span style="display:flex;align-items:flex-start;gap:.65rem;min-width:0">' +
-          '<span style="font-size:.92rem;line-height:1">⛏️</span>' +
-          '<span style="display:block;min-width:0"><span style="display:block;font-size:.74rem;font-weight:800;color:var(--text)">'+(raw.name_uz || raw.name_en || 'Xomashyo')+'</span><span style="display:block;font-size:.57rem;color:var(--text3);margin-top:1px">'+products.length+' ta mahsulot'+(isSelectedRaw ? ' • tanlangan' : '')+'</span></span>' +
-        '</span>' +
-        '<span style="flex:0 0 auto;font-size:.72rem;font-weight:800;color:#4361EE">'+(isOpen ? '−' : '+')+'</span>' +
-      '</button>' +
-      productsHtml +
-    '</div>';
-  }).join('');
-}
-
-window.toggleFinderRaw = toggleFinderRaw;
-window.selectFinderProduct = selectFinderProduct;
-window.toggleFinderProductPicker = toggleFinderProductPicker;
-
-document.addEventListener('click', function(event){
-  var wrap = document.getElementById('finderProductPickerWrap');
-  if(!wrap) return;
-  if(wrap.contains(event.target)) return;
-  if(_finderProductPickerOpen) setFinderProductPickerOpen(false);
-});
-
 function getImportAnalysisProductSelect(){
   return document.getElementById('finder-product-select') || document.getElementById('import-product-select');
 }
 
 function populateProductSelects(){
   var prods = DB.products||[];
+  var raws = DB.rawMaterials||[];
   var currentValues = {};
   ['import-product-select','finder-product-select'].forEach(function(id){
     var el = document.getElementById(id);
     currentValues[id] = el ? String(el.value || '') : '';
   });
-  var opts = '<option value="">— Tanlang —</option>' + prods.map(function(p){
-    return '<option value="'+p.id+'">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</option>';
-  }).join('');
+
+  // Xomashyolar bo'yicha guruhlash
+  var opts = '<option value="">— Tanlang —</option>';
+
+  // 1. Xomashyolari bor mahsulotlarni guruhlab ko'rsatish
+  raws.forEach(function(raw){
+    var rawProds = prods.filter(function(p){ return String(p.raw_id) === String(raw.id); });
+    if(rawProds.length > 0){
+      var rawName = raw.name_uz || raw.name_en || 'Nomsiz';
+      opts += '<optgroup label="⛏ '+rawName+'">';
+      rawProds.forEach(function(p){
+        opts += '<option value="'+p.id+'">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</option>';
+      });
+      opts += '</optgroup>';
+    }
+  });
+
+  // 2. Xomashyosi yo'q mahsulotlar (agar bor bo'lsa)
+  var orphanProds = prods.filter(function(p){
+    return !p.raw_id || !raws.some(function(r){ return String(r.id) === String(p.raw_id); });
+  });
+  if(orphanProds.length > 0){
+    opts += '<optgroup label="📦 Boshqa mahsulotlar">';
+    orphanProds.forEach(function(p){
+      opts += '<option value="'+p.id+'">'+formatBilingualProductName(p)+(p.hs_code?' ('+p.hs_code+')':'')+'</option>';
+    });
+    opts += '</optgroup>';
+  }
+
   ['import-product-select','finder-product-select'].forEach(function(id){
     var el = document.getElementById(id);
     if(el){
@@ -7871,7 +7781,6 @@ function populateProductSelects(){
       }
     }
   });
-  renderFinderProductPicker();
   // ailetter company select
   var asel = document.getElementById('ailetter-company-select');
   if(asel){
