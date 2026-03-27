@@ -2613,7 +2613,7 @@ Vercel Environment Variables:<br>
         </div>
         <div class="tscroll">
           <table>
-            <thead><tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Lavozim</th><th>Soha</th><th>Davlat</th><th>Email</th><th>LinkedIn</th><th>Manba</th><th>Amal</th></tr></thead>
+            <thead><tr><th>#</th><th>Kompaniya</th><th>Rahbar</th><th>Lavozim</th><th>Mahsulot nomi</th><th>Davlat</th><th>Email</th><th>LinkedIn</th><th>Manba</th><th>Amal</th></tr></thead>
             <tbody id="admin-ic-list"></tbody>
           </table>
         </div>
@@ -5278,7 +5278,7 @@ function renderAdminLists(){
         <td><b>${r.kompaniya||'—'}</b></td>
         <td>${r.rahbar||'—'}</td>
         <td style="font-size:.65rem">${r.lavozim||'—'}</td>
-        <td style="font-size:.65rem">${r.soha||'—'}</td>
+        <td style="font-size:.65rem">${r.mahsulotNomi||r.soha||'—'}</td>
         <td style="font-size:.65rem">${r.davlat||'—'}</td>
         <td style="font-size:.65rem">${r.email ? (r.emailStatus==='verified'?'<span style="color:#059669">✅ '+r.email+'</span>':r.email) : '—'}</td>
         <td>${r.linkedin?'<a href="'+(r.linkedin.startsWith('http')?r.linkedin:'https://'+r.linkedin)+'" target="_blank" rel="noopener" style="color:#0A66C2;font-size:.62rem;text-decoration:none" title="'+r.linkedin+'">🔗 Ochish</a>':'—'}</td>
@@ -13582,6 +13582,25 @@ function getApolloProductSignals(prod){
   return { tokens: tokens };
 }
 
+function getApolloStrictCategorySignals(prod){
+  var normalized = apolloNormalizeText([
+    prod && prod.name_en,
+    prod && prod.name_uz,
+    prod && prod.raw_name,
+    prod && prod.description,
+    prod && prod.usage,
+    prod && prod.main_sector
+  ].filter(Boolean).join(' '));
+  if(/tile|ceramic|porcelain|sanitary/.test(normalized)) return ['tile','tiles','ceramic','porcelain','sanitary ware','building materials','construction materials'];
+  if(/granite|marble|basalt|limestone|dolomite|stone|slab|flagstone|curbstone/.test(normalized)) return ['stone','granite','marble','basalt','limestone','dolomite','quarry','slab','tiles','building materials','construction materials'];
+  if(/cement|clinker|concrete|lime|quicklime|slaked lime/.test(normalized)) return ['cement','clinker','concrete','lime','quicklime','hydrated lime','building materials','construction materials'];
+  if(/gypsum|plaster|board|drywall/.test(normalized)) return ['gypsum','plaster','drywall','board','building materials','construction materials'];
+  if(/phosph|superphosphate|fertili/.test(normalized)) return ['phosphate','superphosphate','fertilizer','fertiliser','agrochemical','crop nutrition','chemical'];
+  if(/kaolin|clay|bentonite|silica|quartz|feldspar/.test(normalized)) return ['kaolin','clay','bentonite','silica','quartz','feldspar','industrial minerals','ceramic','glass','mining'];
+  if(/sulfur|sulphur|acid/.test(normalized)) return ['sulfur','sulphur','acid','chemical'];
+  return [];
+}
+
 function isApolloObviousMismatch(entity, prod){
   var productText = apolloNormalizeText([
     prod && prod.name_en,
@@ -13596,6 +13615,9 @@ function isApolloObviousMismatch(entity, prod){
     entity.lavozim
   ].filter(Boolean).join(' '));
   if(!productText || !entityText) return false;
+  if(/linkedin|daily|news|media|review|journal|magazine|newspaper|times|press|broadcast|television|tv|radio|university|college|school|academy|research institute|government|ministry|embassy|consulate|association|foundation|ngo|nonprofit|blog|portal/.test(entityText)){
+    return true;
+  }
   if(/phosph|superphosphate|fertili|cement|clinker|gypsum|stone|granite|marble|basalt|limestone|dolomite|kaolin|clay|bentonite|silica|quartz|lime|sulfur|acid/.test(productText)){
     if(/huawei|alibaba|xiaomi|tencent|baidu|jd com|bytedance|telecom|telecommunications|consumer electronics|smartphone|mobile devices|internet|e commerce|cloud computing|software|semiconductors/.test(entityText)){
       return true;
@@ -13607,6 +13629,7 @@ function isApolloObviousMismatch(entity, prod){
 function isApolloEntityRelevant(entity, prod){
   if(isApolloObviousMismatch(entity, prod)) return false;
   var signals = getApolloProductSignals(prod);
+  var strictSignals = getApolloStrictCategorySignals(prod);
   if(!signals.tokens.length) return true;
   var text = apolloNormalizeText([
     entity.kompaniya,
@@ -13621,9 +13644,11 @@ function isApolloEntityRelevant(entity, prod){
   ].filter(Boolean).join(' '));
   if(!text) return false;
   var hits = signals.tokens.filter(function(token){ return text.indexOf(token) !== -1; });
-  if(hits.length) return true;
-  if(/fertili|agrochemical|chemical|construction materials|building materials|industrial minerals|minerals|quarry|mining|ceramic|glass|lime|gypsum|cement|stone|phosphate/.test(text)) return true;
-  return false;
+  var strictHits = strictSignals.filter(function(token){ return text.indexOf(apolloNormalizeText(token)) !== -1; });
+  if(strictSignals.length){
+    return strictHits.length > 0;
+  }
+  return hits.length > 0;
 }
 
 function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, prod){
@@ -13664,7 +13689,9 @@ function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, pro
 function finalizeApolloFinderResults(found, prod, perCountry){
   var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
   if(!filtered.length){
-    filtered = found.filter(function(item){ return !isApolloObviousMismatch(item, prod); });
+    filtered = found.filter(function(item){
+      return !isApolloObviousMismatch(item, prod) && String(item.soha || '').trim();
+    });
   }
   var seen = new Set();
   return filtered.filter(function(item){
@@ -13997,7 +14024,7 @@ function renderFinderTable(results){
       '<td>'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>'+
       '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
       '<td>'+(r.rahbar||'—')+'<div style="font-size:.55rem;color:var(--text3)">'+(r.lavozim||'')+'</div>'+(r.email?'<div style="font-size:.58rem;color:#4361EE;margin-top:2px">'+r.email+'</div>':'')+'</td>'+
-      '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
+      '<td style="font-size:.65rem">'+(r.mahsulotNomi||r.soha||'—')+'</td>'+
       '<td style="font-size:.65rem;font-weight:700;color:#059669" title="'+meta.volumeLabel+'">'+(r.import_volume||'—')+'</td>'+
       '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
       '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat">📧</button></td></tr>';
@@ -14029,11 +14056,20 @@ function filterFinderByCountry(country){
 function saveFinderResults(){
   if(!_finderResults.length){ toast('⚠️ Natija yo\'q','error'); return; }
   if(!DB.investorCompanies) DB.investorCompanies = [];
+  var finderSel = document.getElementById('finder-product-select');
+  var currentProd = (DB.products||[]).find(function(p){ return String(p.id) === String((finderSel||{}).value || ''); });
+  var productLabel = currentProd ? (currentProd.name_en + (currentProd.name_uz ? (' - ' + currentProd.name_uz) : '')) : '';
   var added = 0;
   _finderResults.forEach(function(r){
     var exists = DB.investorCompanies.some(function(e){return e.kompaniya===r.kompaniya && e.rahbar===r.rahbar;});
     if(!exists){
-      var rec = Object.assign({id:nextId(DB.investorCompanies)},r,{holat:'Yangi',sana:new Date().toISOString().slice(0,10),emailSent:false});
+      var rec = Object.assign({id:nextId(DB.investorCompanies)},r,{
+        mahsulotNomi: r.mahsulotNomi || productLabel || r.soha || '',
+        soha: r.mahsulotNomi || productLabel || r.soha || '',
+        holat:'Yangi',
+        sana:new Date().toISOString().slice(0,10),
+        emailSent:false
+      });
       DB.investorCompanies.push(rec);
       if(typeof fbSave==='function') fbSave('investorCompanies',rec);
       added++;
@@ -14047,11 +14083,16 @@ function saveFinderResults(){
 function goToAiLetter(idx){
   var comp = _finderResults[idx];
   if(!comp) return;
+  var finderSel = document.getElementById('finder-product-select');
+  var currentProd = (DB.products||[]).find(function(p){ return String(p.id) === String((finderSel||{}).value || ''); });
+  var productLabel = currentProd ? (currentProd.name_en + (currentProd.name_uz ? (' - ' + currentProd.name_uz) : '')) : '';
   // Save to DB first
   if(!DB.investorCompanies) DB.investorCompanies = [];
   var exists = DB.investorCompanies.find(function(e){return e.kompaniya===comp.kompaniya;});
   if(!exists){
     comp.id = nextId(DB.investorCompanies);
+    comp.mahsulotNomi = comp.mahsulotNomi || productLabel || comp.soha || '';
+    comp.soha = comp.mahsulotNomi || productLabel || comp.soha || '';
     comp.holat = 'Yangi';
     comp.sana = new Date().toISOString().slice(0,10);
     DB.investorCompanies.push(comp);
