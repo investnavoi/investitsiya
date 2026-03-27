@@ -1381,6 +1381,9 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="tc-title" data-i18n="ic_table_title">Kompaniyalar ro'yxati</div>
         <div style="display:flex;gap:.6rem;align-items:center">
           <span id="selectedCount" style="font-size:.7rem;color:var(--text3)">0 ta tanlangan</span>
+          <button class="btn btn-sm" onclick="generateBulkAiLetters()" id="bulkAiBtn" style="display:none;background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none">
+            🤖 AI xat yozish
+          </button>
           <button class="btn btn-blue btn-sm" onclick="sendBulkEmail()" id="bulkSendBtn" style="display:none">
             <span data-i18n="btn_bulk_send">📧 Tanlanganlarga yuborish</span>
           </button>
@@ -5058,8 +5061,10 @@ function renderInvestorCompanies(){
   updateSelectedCount();
   // Show/hide admin-only controls
   const bulkBtn = document.getElementById('bulkSendBtn');
+  const bulkAiBtn = document.getElementById('bulkAiBtn');
   const checkAll = document.getElementById('checkAll');
   if(bulkBtn) bulkBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  if(bulkAiBtn) bulkAiBtn.style.display = isAdmin ? 'inline-flex' : 'none';
   const bulkSchedBtn = document.getElementById('bulkSchedBtn');
   if(bulkSchedBtn) bulkSchedBtn.style.display = isAdmin ? 'inline-flex' : 'none';
   if(checkAll) checkAll.style.display = isAdmin ? 'inline-block' : 'none';
@@ -5075,6 +5080,12 @@ function updateSelectedCount(){
   const n = document.querySelectorAll('.ic-check:checked').length;
   const el = document.getElementById('selectedCount');
   if(el) el.textContent = n ? `${n} ta tanlangan` : '0 ta tanlangan';
+  const bulkAiBtn = document.getElementById('bulkAiBtn');
+  if(bulkAiBtn) bulkAiBtn.disabled = !n;
+  const bulkSendBtn = document.getElementById('bulkSendBtn');
+  if(bulkSendBtn) bulkSendBtn.disabled = !n;
+  const bulkSchedBtn = document.getElementById('bulkSchedBtn');
+  if(bulkSchedBtn) bulkSchedBtn.disabled = !n;
 }
 
 function getSelectedIds(){
@@ -13467,6 +13478,18 @@ function openInvestorAiWorkspace(id){
     resetAiScope('investor', 'Investor tanlandi. Endi “AI Xat Yozish” tugmasini bosing');
   }
   renderInvestorCompanies();
+  if(comp.aiLetterData && comp.aiLetterData.analysis && comp.aiLetterData.transportSummary){
+    hydrateAiScope('investor', comp, {
+      analysis: comp.aiLetterData.analysis,
+      transportSummary: comp.aiLetterData.transportSummary,
+      letterSubject: comp.aiLetterData.subject || '',
+      letterBody: comp.aiLetterData.body || '',
+      lang: comp.aiLetterData.lang || 'en',
+      generatedAt: comp.aiLetterData.generatedAt || ''
+    });
+    var dom = getAiScopeDom('investor');
+    if(dom.lang && comp.aiLetterData.lang) dom.lang.value = comp.aiLetterData.lang;
+  }
   var mount = document.getElementById('investorAiRowMount');
   if(mount && typeof mount.scrollIntoView === 'function'){
     mount.scrollIntoView({behavior:'smooth', block:'nearest'});
@@ -13785,6 +13808,90 @@ function handleAiCompanyChange(){
   resetAiScope('page', 'Kompaniya tanlang va "AI Xat Yozish" bosing');
 }
 
+function getAiLangName(lang){
+  return {en:'English',ru:'Russian',de:'German',zh:'Chinese',fr:'French',fa:'Persian'}[lang]||'English';
+}
+
+async function buildAiLetterPackage(comp, lang){
+  var langName = getAiLangName(lang);
+  var analysis = await fetchOfficialAiCountryAnalysis(comp);
+  var officialLines = buildOfficialAnalysisLines(analysis);
+  if(!officialLines.length) throw new Error('Rasmiy iqtisodiy ko\'rsatkichlar topilmadi');
+  var transportSummary = buildAiTransportAnalysis(analysis.country);
+  var transportLines = buildAiTransportPromptLines(transportSummary);
+
+  var letterPrompt = 'Write a professional business letter in '+langName+'. From Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n'+
+    'Use ONLY the economic and logistics figures below. Do not invent any new numbers. If one metric is unavailable, skip it naturally.\n'+
+    officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+    transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+    'Industry: '+(comp.soha||'Manufacturing')+'. Mention Navoi industrial advantages, workforce potential, infrastructure and investor support. Tone: professional, human, compelling.\n'+
+    'Explicitly mention that Navoi gives an export logistics advantage to 13 nearby markets when relevant.\n'+
+    'IMPORTANT: First line = email subject ONLY. Second line = ===BODY===. Then letter body.\nExample:\nMarble Partnership in Navoi\n===BODY===\nDear Mr. Schmidt,\n...';
+
+  var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:3000}};
+  var data2 = await callGemini(body2);
+  var letterRaw = geminiText(data2);
+  var letterSubject = 'Investment Opportunity in Navoi, Uzbekistan';
+  var letterBody = letterRaw;
+  var sepIdx = letterRaw.indexOf('===BODY===');
+  if(sepIdx > 0){
+    letterSubject = letterRaw.slice(0, sepIdx).trim().replace(/^Subject:\s*/i,'').replace(/\*\*/g,'');
+    letterBody = letterRaw.slice(sepIdx + 10).trim();
+  } else {
+    var lines = letterRaw.split('\n');
+    if(lines.length > 3){
+      letterSubject = lines[0].replace(/^Subject:\s*/i,'').replace(/\*\*/g,'').trim();
+      letterBody = lines.slice(1).join('\n').trim();
+    }
+  }
+
+  return {
+    analysis: analysis,
+    transportSummary: transportSummary,
+    officialLines: officialLines,
+    transportLines: transportLines,
+    letterSubject: letterSubject,
+    letterBody: letterBody,
+    lang: lang,
+    generatedAt: new Date().toISOString()
+  };
+}
+
+function saveAiLetterPackage(comp, payload){
+  if(!comp || !payload) return;
+  comp.aiLetterData = {
+    lang: payload.lang,
+    generatedAt: payload.generatedAt,
+    subject: payload.letterSubject,
+    body: payload.letterBody,
+    analysis: payload.analysis,
+    transportSummary: payload.transportSummary
+  };
+  if(!Array.isArray(DB.aiLetters)) DB.aiLetters = [];
+  DB.aiLetters.unshift({
+    id: 'ail_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    companyId: comp.id,
+    company: comp.kompaniya || '',
+    country: getAiCompanyCountry(comp),
+    subject: payload.letterSubject,
+    lang: payload.lang,
+    createdAt: payload.generatedAt
+  });
+  DB.aiLetters = DB.aiLetters.slice(0, 200);
+  if(typeof fbSave==='function') fbSave('investorCompanies', comp);
+}
+
+function hydrateAiScope(scope, comp, payload){
+  var dom = getAiScopeDom(scope);
+  if(scope === 'investor') setInvestorAiMeta(comp);
+  renderAiAnalysis(payload.analysis, scope);
+  renderAiTransportAnalysis(payload.transportSummary, scope);
+  if(dom.letterSubject) dom.letterSubject.value = payload.letterSubject || '';
+  if(dom.letterBody) dom.letterBody.value = payload.letterBody || '';
+  if(dom.letterCard) dom.letterCard.style.display = 'block';
+  if(dom.emptyCard) dom.emptyCard.style.display = 'none';
+}
+
 async function generateAiLetterForScope(scope){
   var dom = getAiScopeDom(scope);
   var compId = scope === 'investor'
@@ -13796,48 +13903,13 @@ async function generateAiLetterForScope(scope){
   if(!getAiCompanyCountry(comp)){ toast('⚠️ Kompaniyaning joylashgan davlati ko\'rsatilmagan','error'); return; }
 
   var lang = dom.lang ? dom.lang.value : 'en';
-  var langName = {en:'English',ru:'Russian',de:'German',zh:'Chinese',fr:'French',fa:'Persian'}[lang]||'English';
 
   toast('🤖 Rasmiy iqtisodiy tahlil va AI xat tayyorlanmoqda...');
 
   try {
-    var analysis = await fetchOfficialAiCountryAnalysis(comp);
-    renderAiAnalysis(analysis, scope);
-    var officialLines = buildOfficialAnalysisLines(analysis);
-    if(!officialLines.length) throw new Error('Rasmiy iqtisodiy ko\'rsatkichlar topilmadi');
-    var transportSummary = buildAiTransportAnalysis(analysis.country);
-    renderAiTransportAnalysis(transportSummary, scope);
-    var transportLines = buildAiTransportPromptLines(transportSummary);
-
-    var letterPrompt = 'Write a professional business letter in '+langName+'. From Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n'+
-      'Use ONLY the economic and logistics figures below. Do not invent any new numbers. If one metric is unavailable, skip it naturally.\n'+
-      officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-      transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-      'Industry: '+(comp.soha||'Manufacturing')+'. Mention Navoi industrial advantages, workforce potential, infrastructure and investor support. Tone: professional, human, compelling.\n'+
-      'Explicitly mention that Navoi gives an export logistics advantage to 13 nearby markets when relevant.\n'+
-      'IMPORTANT: First line = email subject ONLY. Second line = ===BODY===. Then letter body.\nExample:\nMarble Partnership in Navoi\n===BODY===\nDear Mr. Schmidt,\n...';
-
-    var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:3000}};
-    var data2 = await callGemini(body2);
-    var letterRaw = geminiText(data2);
-    var letterSubject = 'Investment Opportunity in Navoi, Uzbekistan';
-    var letterBody = letterRaw;
-    var sepIdx = letterRaw.indexOf('===BODY===');
-    if(sepIdx > 0){
-      letterSubject = letterRaw.slice(0, sepIdx).trim().replace(/^Subject:\s*/i,'').replace(/\*\*/g,'');
-      letterBody = letterRaw.slice(sepIdx + 10).trim();
-    } else {
-      var lines = letterRaw.split('\n');
-      if(lines.length > 3){
-        letterSubject = lines[0].replace(/^Subject:\s*/i,'').replace(/\*\*/g,'').trim();
-        letterBody = lines.slice(1).join('\n').trim();
-      }
-    }
-
-    if(dom.letterSubject) dom.letterSubject.value = letterSubject;
-    if(dom.letterBody) dom.letterBody.value = letterBody;
-    if(dom.letterCard) dom.letterCard.style.display = 'block';
-    if(dom.emptyCard) dom.emptyCard.style.display = 'none';
+    var payload = await buildAiLetterPackage(comp, lang);
+    saveAiLetterPackage(comp, payload);
+    hydrateAiScope(scope, comp, payload);
 
     toast('✅ AI xat tayyor! Ko\'rib chiqing va yuborishingiz mumkin.');
 
@@ -13853,6 +13925,58 @@ async function generateAiLetter(){
 
 async function generateInvestorAiLetter(){
   return generateAiLetterForScope('investor');
+}
+
+async function generateBulkAiLetters(){
+  if(!isAdmin){toast('⚠️ AI xat yozish uchun admin sifatida kiring!','error');openAdminOrLogin();return;}
+  var ids = getSelectedIds();
+  if(!ids.length){ toast('⚠️ Avval kompaniyalarni tanlang!','error'); return; }
+
+  var companies = ids.map(function(id){
+    return (DB.investorCompanies||[]).find(function(c){ return String(c.id) === String(id); });
+  }).filter(Boolean);
+  if(!companies.length){ toast('⚠️ Tanlangan kompaniyalar topilmadi','error'); return; }
+
+  var langEl = document.getElementById('invAiLang');
+  var lang = langEl ? langEl.value : 'en';
+  var btn = document.getElementById('bulkAiBtn');
+  var originalText = btn ? btn.textContent : '';
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = '⏳ AI xatlar yozilmoqda...';
+  }
+
+  var ok = 0, failed = 0, firstOkId = null;
+  try{
+    for(var i=0;i<companies.length;i++){
+      var comp = companies[i];
+      if(!getAiCompanyCountry(comp)){
+        failed++;
+        continue;
+      }
+      if(btn) btn.textContent = '⏳ ' + (i+1) + '/' + companies.length + ' — ' + (comp.kompaniya || 'Kompaniya');
+      try{
+        var payload = await buildAiLetterPackage(comp, lang);
+        saveAiLetterPackage(comp, payload);
+        if(!firstOkId) firstOkId = comp.id;
+        ok++;
+      }catch(err){
+        console.error('Bulk AI letter error for', comp && comp.kompaniya, err);
+        failed++;
+      }
+    }
+    renderInvestorCompanies();
+    if(firstOkId){
+      openInvestorAiWorkspace(firstOkId);
+    }
+    toast('✅ AI xatlar tayyorlandi: ' + ok + ' ta' + (failed ? (', xato: ' + failed + ' ta') : ''), ok ? 'success' : 'error');
+  }finally{
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = originalText || '🤖 AI xat yozish';
+    }
+    updateSelectedCount();
+  }
 }
 
 function sendAiLetterForScope(scope){
