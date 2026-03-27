@@ -1655,16 +1655,9 @@ input[type="time"]{-webkit-appearance:none;}
             <option value="exporters">Eksportyor kompaniyalar</option>
           </select>
         </div>
-        <div class="form-group" style="flex:1;min-width:300px">
-          <label class="form-label">Xomashyo va mahsulot</label>
-          <select class="form-input" id="finder-product-select" onchange="handleImportProductChange()" style="display:none"><option value="">— Tanlang —</option></select>
-          <div id="finderProductPickerWrap" style="position:relative">
-            <button type="button" id="finderProductSelected" onclick="toggleFinderProductPicker(event)" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;width:100%;padding:.78rem .95rem;border:1px solid rgba(67,97,238,.28);border-radius:14px;background:rgba(255,255,255,.84);font-size:.8rem;font-weight:700;color:var(--text);text-align:left;cursor:pointer">
-              <span id="finderProductSelectedText">⛏️ Xomashyo tanlang, so'ng mahsulotni bosing</span>
-              <span id="finderProductSelectedCaret" style="flex:0 0 auto;color:#4361EE;font-size:.72rem">▼</span>
-            </button>
-            <div id="finderRawPicker" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;max-height:300px;overflow:auto;padding:.45rem;border:1px solid rgba(67,97,238,.2);border-radius:14px;background:#fff;box-shadow:0 14px 32px rgba(15,23,42,.16);z-index:30"></div>
-          </div>
+        <div class="form-group" style="flex:1;min-width:200px">
+          <label class="form-label">Mahsulot</label>
+          <select class="form-input" id="finder-product-select" onchange="handleImportProductChange()"><option value="">— Tanlang —</option></select>
         </div>
         <div class="form-group" style="flex:0 0 120px">
           <label class="form-label">Har davlatdan</label>
