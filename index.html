@@ -13448,12 +13448,12 @@ function mapApolloPersonToFinderResult(p, country, meta){
     rahbar:((p.first_name||'')+' '+(p.last_name||'')).trim(),
     lavozim:p.title||'',
     email:p.email||'',
-    telefon:(p.phone_numbers && p.phone_numbers[0] && (p.phone_numbers[0].sanitized_number || p.phone_numbers[0].raw_number)) || p.phone_number || p.sanitized_phone || '',
+    telefon:'',
     davlat:country,
-    shahar:p.city||'',
+    shahar:'',
     soha:(p.organization && (p.organization.industry || p.organization.industry_tag)) || '',
-    linkedin:p.linkedin_url||'',
-    website:(p.organization && p.organization.website_url) || '',
+    linkedin:'',
+    website:'',
     import_volume:'',
     score:Math.floor(Math.random()*20)+75,
     manba:'Apollo',
@@ -13482,19 +13482,18 @@ function apolloAbsoluteUrl(url){
 }
 
 function mapApolloOrganizationToFinderResult(org, country, meta){
-  var website = apolloAbsoluteUrl(org.website_url || org.organization_website_url || org.website || org.domain);
   return {
     id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
     kompaniya:org.name || org.organization_name || org.account_name || '',
-    rahbar:org.account_owner_name || org.primary_contact_name || '',
+    rahbar:'',
     lavozim:meta.mode === 'exporters' ? 'Exportyor kompaniya' : 'Importyor kompaniya',
-    email:org.email || '',
-    telefon:org.phone || org.phone_number || org.sanitized_phone || '',
+    email:'',
+    telefon:'',
     davlat:country || org.country || org.organization_country || org.country_name || '',
-    shahar:org.city || org.organization_city || '',
+    shahar:'',
     soha:org.industry || org.industry_tag || org.primary_industry || '',
-    linkedin:org.linkedin_url || org.organization_linkedin_url || '',
-    website:website,
+    linkedin:'',
+    website:'',
     import_volume:'',
     score:Math.floor(Math.random()*10)+82,
     manba:'Apollo Org',
@@ -13503,49 +13502,139 @@ function mapApolloOrganizationToFinderResult(org, country, meta){
   };
 }
 
-function mergeApolloOrganizationDetails(item, info){
-  var org = (info && (info.organization || info.account || info)) || {};
-  if(!org || typeof org !== 'object') return item;
-  item.kompaniya = item.kompaniya || org.name || org.organization_name || org.account_name || '';
-  item.rahbar = item.rahbar || org.account_owner_name || org.primary_contact_name || '';
-  item.email = item.email || org.email || '';
-  item.telefon = item.telefon || org.phone || org.phone_number || org.sanitized_phone || '';
-  item.shahar = item.shahar || org.city || org.organization_city || '';
-  item.davlat = item.davlat || org.country || org.organization_country || org.country_name || '';
-  item.soha = item.soha || org.industry || org.industry_tag || org.primary_industry || '';
-  item.linkedin = item.linkedin || org.linkedin_url || org.organization_linkedin_url || '';
-  item.website = item.website || apolloAbsoluteUrl(org.website_url || org.organization_website_url || org.website || org.domain);
-  return item;
+function apolloNormalizeText(value){
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
 }
 
-async function apolloLoadOrganizationInfo(orgId, apolloKey){
-  if(!orgId || !apolloKey) return null;
-  try {
-    var resp = await fetch(APOLLO_PROXY, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        operation:'organization_info',
-        organization_id:orgId,
-        api_key:apolloKey
-      })
+function apolloCompanyKey(name){
+  return apolloNormalizeText(name || '').replace(/\b(co|company|corp|corporation|ltd|llc|inc|group|holding|holdings|limited|plc|sa|ag|gmbh|pte|pty)\b/g,'').replace(/\s+/g,' ').trim();
+}
+
+function getApolloProductSignals(prod){
+  var text = [
+    prod && prod.name_en,
+    prod && prod.name_uz,
+    prod && prod.raw_name,
+    prod && prod.description,
+    prod && prod.usage,
+    prod && prod.main_sector
+  ].filter(Boolean).join(' ');
+  var normalized = apolloNormalizeText(text);
+  var tokens = Array.from(new Set(normalized.split(' ').filter(function(t){
+    return t && t.length >= 4 && ['other','with','used','than','that','into','from','basis','including','retail','water','products','product'].indexOf(t) === -1;
+  })));
+
+  function pushAll(arr){
+    arr.forEach(function(v){
+      if(tokens.indexOf(v) === -1) tokens.push(v);
     });
-    if(!resp.ok){
-      var txt = '';
-      try {
-        var j = await resp.json();
-        txt = j.error || j.message || JSON.stringify(j);
-      } catch(_e){
-        try { txt = await resp.text(); } catch(_e2){}
-      }
-      console.log('Apollo organization info error:', txt || resp.status);
-      return null;
-    }
-    return await resp.json();
-  } catch(err){
-    console.log('Apollo organization info network error:', err);
-    return null;
   }
+
+  if(/phosph|superphosphate|fertili/.test(normalized)) pushAll(['phosphate','phosphor','fertilizer','fertiliser','agrochemical','agriculture','crop','nutrition','chemical']);
+  if(/cement|clinker|concrete/.test(normalized)) pushAll(['cement','clinker','construction','building','concrete']);
+  if(/gypsum|plaster/.test(normalized)) pushAll(['gypsum','plaster','drywall','board','construction']);
+  if(/granite|marble|basalt|limestone|dolomite|stone|slab|tile/.test(normalized)) pushAll(['stone','quarry','mining','ceramic','tile','marble','granite','limestone','basalt','construction']);
+  if(/kaolin|clay|bentonite|silica|quartz|feldspar/.test(normalized)) pushAll(['mineral','ceramic','glass','silica','quartz','kaolin','clay','bentonite']);
+  if(/sulfur|sulphur|acid/.test(normalized)) pushAll(['sulfur','sulphur','chemical','acid']);
+
+  return { tokens: tokens };
+}
+
+function isApolloEntityRelevant(entity, prod){
+  var signals = getApolloProductSignals(prod);
+  if(!signals.tokens.length) return true;
+  var text = apolloNormalizeText([
+    entity.kompaniya,
+    entity.soha,
+    entity.rahbar,
+    entity.lavozim,
+    entity.email,
+    entity.products_imported,
+    entity.description,
+    entity.keywords,
+    entity.summary
+  ].filter(Boolean).join(' '));
+  if(!text) return false;
+  return signals.tokens.some(function(token){ return text.indexOf(token) !== -1; });
+}
+
+function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, prod){
+  peopleResults.forEach(function(item){
+    if(!isApolloEntityRelevant(item, prod)) return;
+    var personKey = apolloCompanyKey(item.kompaniya);
+    var existing = found.find(function(row){
+      return apolloCompanyKey(row.kompaniya) === personKey && apolloNormalizeText(row.davlat) === apolloNormalizeText(country);
+    });
+    if(existing){
+      existing.email = existing.email || item.email || '';
+      existing.rahbar = existing.rahbar || item.rahbar || '';
+      existing.lavozim = existing.lavozim || item.lavozim || (meta.mode === 'exporters' ? 'Eksport bo‘yicha kontakt' : 'Import bo‘yicha kontakt');
+      existing.soha = existing.soha || item.soha || '';
+    } else if(item.email || item.kompaniya){
+      found.push({
+        id:item.id,
+        kompaniya:item.kompaniya,
+        rahbar:item.rahbar || '',
+        lavozim:item.lavozim || (meta.mode === 'exporters' ? 'Eksport bo‘yicha kontakt' : 'Import bo‘yicha kontakt'),
+        email:item.email || '',
+        telefon:'',
+        davlat:country,
+        shahar:'',
+        soha:item.soha || '',
+        linkedin:'',
+        website:'',
+        import_volume:'',
+        score:item.score || 76,
+        manba:'Apollo',
+        finderMode:meta.mode
+      });
+    }
+  });
+  return found;
+}
+
+function finalizeApolloFinderResults(found, prod, perCountry){
+  var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
+  var seen = new Set();
+  return filtered.filter(function(item){
+    var key = [apolloCompanyKey(item.kompaniya), apolloNormalizeText(item.davlat)].join('|');
+    if(!apolloCompanyKey(item.kompaniya)) return false;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, perCountry);
+}
+
+function apolloNeedContactCoverage(found, perCountry){
+  var top = (found || []).slice(0, perCountry);
+  if(!top.length) return true;
+  var withContact = top.filter(function(item){
+    return String(item.rahbar || '').trim() || String(item.email || '').trim();
+  }).length;
+  return withContact < Math.min(top.length, Math.max(1, Math.ceil(perCountry * 0.7)));
+}
+
+async function apolloRequestJson(payload){
+  var resp = await fetch(APOLLO_PROXY,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+  var json = null;
+  var text = '';
+  try {
+    json = await resp.json();
+  } catch(_e){
+    try { text = await resp.text(); } catch(_e2){}
+  }
+  if(!resp.ok){
+    var errText = (json && (json.error || json.message || json.detail)) || text || ('Apollo xato: ' + resp.status);
+    if(/access token is invalid/i.test(errText || '')){
+      errText = 'Apollo API key noto‘g‘ri yoki eskirgan. Sozlamalar sahifasida yangilang.';
+    }
+    throw new Error(errText || ('Apollo xato: ' + resp.status));
+  }
+  return json || {};
 }
 
 async function apolloFinderSearchCountry(prod, country, perCountry, meta, sourceScope, targetCountries){
@@ -13574,31 +13663,14 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
 
   for(var oi=0; oi<orgAttempts.length; oi++){
     try {
-      var apResp = await fetch(APOLLO_PROXY,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(orgAttempts[oi])
-      });
-      if(!apResp.ok){
-        var errText = '';
-        try {
-          var errJson = await apResp.json();
-          errText = errJson.error || errJson.message || JSON.stringify(errJson);
-        } catch(_e){
-          try { errText = await apResp.text(); } catch(_e2){}
-        }
-        if(/access token is invalid/i.test(errText || '')){
-          errText = 'Apollo API key noto‘g‘ri yoki eskirgan. Sozlamalar sahifasida yangilang.';
-        }
-        throw new Error(errText || ('Apollo xato: '+apResp.status));
-      }
-      var apData = await apResp.json();
+      var apData = await apolloRequestJson(orgAttempts[oi]);
       hadSuccess = true;
       var orgs = normalizeApolloArray(apData, ['organizations','accounts','companies']);
       orgs.forEach(function(org){
         found.push(mapApolloOrganizationToFinderResult(org, country, meta));
       });
       found = found.filter(function(item){ return String(item.kompaniya || '').trim(); });
+      found = finalizeApolloFinderResults(found, prod, Math.max(perCountry * 3, 15));
       if(found.length >= perCountry) break;
     } catch(e) {
       lastError = e;
@@ -13609,41 +13681,19 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     }
   }
 
-  for(var fi=0; fi<Math.min(found.length, perCountry); fi++){
-    if(!found[fi].apolloOrgId) continue;
-    var detail = await apolloLoadOrganizationInfo(found[fi].apolloOrgId, apolloKey);
-    if(detail) mergeApolloOrganizationDetails(found[fi], detail);
-  }
-
-  if(found.length < perCountry){
+  if(found.length < perCountry || apolloNeedContactCoverage(found, perCountry)){
     for(var ai=0; ai<peopleAttempts.length; ai++){
       try {
-        var ppResp = await fetch(APOLLO_PROXY,{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify(peopleAttempts[ai])
-        });
-        if(!ppResp.ok){
-          var pErrText = '';
-          try {
-            var pErrJson = await ppResp.json();
-            pErrText = pErrJson.error || pErrJson.message || JSON.stringify(pErrJson);
-          } catch(_e3){
-            try { pErrText = await ppResp.text(); } catch(_e4){}
-          }
-          if(/access token is invalid/i.test(pErrText || '')){
-            pErrText = 'Apollo API key noto‘g‘ri yoki eskirgan. Sozlamalar sahifasida yangilang.';
-          }
-          throw new Error(pErrText || ('Apollo xato: '+ppResp.status));
-        }
-        var ppData = await ppResp.json();
+        var ppData = await apolloRequestJson(peopleAttempts[ai]);
         hadSuccess = true;
         var people = normalizeApolloArray(ppData, ['people','contacts']);
-        people.forEach(function(p){
-          found.push(mapApolloPersonToFinderResult(p, country, meta));
+        var personResults = people.map(function(p){
+          return mapApolloPersonToFinderResult(p, country, meta);
         });
+        mergeApolloPeopleIntoCompanies(found, personResults, country, meta, prod);
         found = found.filter(function(item){ return String(item.kompaniya || '').trim(); });
-        if(found.length >= perCountry) break;
+        found = finalizeApolloFinderResults(found, prod, Math.max(perCountry * 3, 15));
+        if(found.length >= perCountry && !apolloNeedContactCoverage(found, perCountry)) break;
       } catch(e2) {
         lastError = e2;
         console.log('Apollo '+country+' people attempt '+(ai+1)+' error:', e2);
@@ -13657,14 +13707,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   if(!found.length && !hadSuccess && lastError){
     throw lastError;
   }
-
-  var seen = new Set();
-  return found.filter(function(item){
-    var key = [item.kompaniya || '', item.davlat || ''].join('|').toLowerCase();
-    if(seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, perCountry);
+  return finalizeApolloFinderResults(found, prod, perCountry);
 }
 
 function updateFinderModeUI(){
@@ -13855,10 +13898,10 @@ function renderFinderTable(results){
     var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
     return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>'+
       '<td>'+(i+1)+'</td>'+
-      '<td><b>'+r.kompaniya+'</b><div style="font-size:.55rem;color:var(--text3)">'+(r.website||'')+'</div>'+(r.why?'<div style="font-size:.5rem;color:#4361EE;margin-top:2px">💡 '+r.why+'</div>':'')+'</td>'+
+      '<td><b>'+r.kompaniya+'</b>'+(r.website?'<div style="font-size:.55rem;color:var(--text3)">'+r.website+'</div>':'')+(r.why?'<div style="font-size:.5rem;color:#4361EE;margin-top:2px">💡 '+r.why+'</div>':'')+'</td>'+
       '<td>'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>'+
       '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
-      '<td>'+r.rahbar+'<div style="font-size:.55rem;color:var(--text3)">'+(r.lavozim||'')+'</div></td>'+
+      '<td>'+(r.rahbar||'—')+'<div style="font-size:.55rem;color:var(--text3)">'+(r.lavozim||'')+'</div>'+(r.email?'<div style="font-size:.58rem;color:#4361EE;margin-top:2px">'+r.email+'</div>':'')+'</td>'+
       '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
       '<td style="font-size:.65rem;font-weight:700;color:#059669" title="'+meta.volumeLabel+'">'+(r.import_volume||'—')+'</td>'+
       '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
