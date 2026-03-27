@@ -13748,59 +13748,60 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var targetHint = (meta.mode === 'exporters' && Array.isArray(targetCountries) && targetCountries.length)
     ? targetCountries.slice(0,6).join(', ')
     : '';
-  var orgAttempts = [
-    { search_type:'organizations', page:1, per_page:Math.max(perCountry*4, 20), api_key:apolloKey, organization_locations:[country], q_keywords:primaryKeyword },
-    { search_type:'organizations', page:1, per_page:Math.max(perCountry*4, 20), api_key:apolloKey, organization_locations:[country], q_keywords:(secondaryKeyword + ' ' + (meta.mode === 'exporters' ? 'export supplier manufacturer' : 'import buyer distributor')).trim() },
-    { search_type:'organizations', page:1, per_page:Math.max(perCountry*4, 20), api_key:apolloKey, organization_locations:[country], q_keywords:(broadKeyword + ' ' + targetHint).trim() }
-  ];
+  // Credit-saving flow:
+  // 1) People API Search first
+  // 2) Only if still empty, one narrow Organization Search attempt
   var peopleAttempts = [
-    { search_type:'people', page:1, per_page:Math.max(perCountry*3, 12), api_key:apolloKey, person_titles:meta.apolloTitles, organization_locations:[country], q_keywords:primaryKeyword },
-    { search_type:'people', page:1, per_page:Math.max(perCountry*3, 12), api_key:apolloKey, person_titles:meta.apolloTitles, person_locations:[country], q_keywords:(secondaryKeyword + ' ' + targetHint).trim() },
-    { search_type:'people', page:1, per_page:Math.max(perCountry*3, 12), api_key:apolloKey, person_titles:meta.apolloFallbackTitles, organization_locations:[country], q_keywords:(broadKeyword + ' ' + (meta.mode === 'exporters' ? 'export' : 'import')).trim() }
+    { search_type:'people', page:1, per_page:Math.max(perCountry*4, 12), api_key:apolloKey, person_titles:meta.apolloTitles, organization_locations:[country], q_keywords:primaryKeyword },
+    { search_type:'people', page:1, per_page:Math.max(perCountry*4, 12), api_key:apolloKey, person_titles:meta.apolloTitles, person_locations:[country], q_keywords:(secondaryKeyword + ' ' + targetHint).trim() },
+    { search_type:'people', page:1, per_page:Math.max(perCountry*4, 12), api_key:apolloKey, person_titles:meta.apolloFallbackTitles, organization_locations:[country], q_keywords:(broadKeyword + ' ' + (meta.mode === 'exporters' ? 'export supplier manufacturer' : 'import buyer distributor')).trim() }
+  ];
+  var orgAttempts = [
+    { search_type:'organizations', page:1, per_page:Math.max(perCountry*2, 8), api_key:apolloKey, organization_locations:[country], q_keywords:(primaryKeyword + ' ' + (meta.mode === 'exporters' ? 'export supplier manufacturer' : 'import buyer distributor')).trim() }
   ];
 
   var found = [];
   var lastError = null;
   var hadSuccess = false;
 
-  for(var oi=0; oi<orgAttempts.length; oi++){
+  for(var ai=0; ai<peopleAttempts.length; ai++){
     try {
-      var apData = await apolloRequestJson(orgAttempts[oi]);
+      var ppData = await apolloRequestJson(peopleAttempts[ai]);
       hadSuccess = true;
-      var orgs = normalizeApolloArray(apData, ['organizations','accounts','companies']);
-      orgs.forEach(function(org){
-        found.push(mapApolloOrganizationToFinderResult(org, country, meta));
+      var people = normalizeApolloArray(ppData, ['people','contacts']);
+      var personResults = people.map(function(p){
+        return mapApolloPersonToFinderResult(p, country, meta);
       });
+      mergeApolloPeopleIntoCompanies(found, personResults, country, meta, prod);
       found = found.filter(function(item){ return String(item.kompaniya || '').trim(); });
       found = finalizeApolloFinderResults(found, prod, Math.max(perCountry * 3, 15));
-      if(found.length >= perCountry) break;
-    } catch(e) {
-      lastError = e;
-      console.log('Apollo '+country+' organization attempt '+(oi+1)+' error:', e);
-      if(/api key topilmadi|unauthorized|forbidden|credit|permission|access/i.test(String((e&&e.message)||''))){
-        throw e;
+      if(found.length >= perCountry && !apolloNeedContactCoverage(found, perCountry)) break;
+    } catch(e2) {
+      lastError = e2;
+      console.log('Apollo '+country+' people attempt '+(ai+1)+' error:', e2);
+      if(/api key topilmadi|unauthorized|forbidden|credit|permission|access/i.test(String((e2&&e2.message)||''))){
+        throw e2;
       }
     }
   }
 
-  if(found.length < perCountry || apolloNeedContactCoverage(found, perCountry)){
-    for(var ai=0; ai<peopleAttempts.length; ai++){
+  if(!found.length){
+    for(var oi=0; oi<orgAttempts.length; oi++){
       try {
-        var ppData = await apolloRequestJson(peopleAttempts[ai]);
+        var apData = await apolloRequestJson(orgAttempts[oi]);
         hadSuccess = true;
-        var people = normalizeApolloArray(ppData, ['people','contacts']);
-        var personResults = people.map(function(p){
-          return mapApolloPersonToFinderResult(p, country, meta);
+        var orgs = normalizeApolloArray(apData, ['organizations','accounts','companies']);
+        orgs.forEach(function(org){
+          found.push(mapApolloOrganizationToFinderResult(org, country, meta));
         });
-        mergeApolloPeopleIntoCompanies(found, personResults, country, meta, prod);
         found = found.filter(function(item){ return String(item.kompaniya || '').trim(); });
-        found = finalizeApolloFinderResults(found, prod, Math.max(perCountry * 3, 15));
-        if(found.length >= perCountry && !apolloNeedContactCoverage(found, perCountry)) break;
-      } catch(e2) {
-        lastError = e2;
-        console.log('Apollo '+country+' people attempt '+(ai+1)+' error:', e2);
-        if(/api key topilmadi|unauthorized|forbidden|credit|permission|access/i.test(String((e2&&e2.message)||''))){
-          throw e2;
+        found = finalizeApolloFinderResults(found, prod, Math.max(perCountry * 2, 8));
+        if(found.length >= perCountry) break;
+      } catch(e) {
+        lastError = e;
+        console.log('Apollo '+country+' organization attempt '+(oi+1)+' error:', e);
+        if(/api key topilmadi|unauthorized|forbidden|credit|permission|access/i.test(String((e&&e.message)||''))){
+          throw e;
         }
       }
     }
