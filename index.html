@@ -13291,15 +13291,26 @@ function getFinderCountryFlag(name){
 function getFinderSourceSelection(){
   var continents = _finderSourceContinents.slice();
   var countries = _finderSourceCountries.slice();
+  var effectiveCountries = [];
+  continents.forEach(function(cont){
+    (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(country){
+      if(effectiveCountries.indexOf(country) === -1) effectiveCountries.push(country);
+    });
+  });
+  countries.forEach(function(country){
+    if(effectiveCountries.indexOf(country) === -1) effectiveCountries.push(country);
+  });
+  var promptCountries = effectiveCountries.slice(0, 25);
   return {
     continents: continents,
     countries: countries,
+    effectiveCountries: effectiveCountries,
     hasFilter: !!(continents.length || countries.length),
     summary: countries.length ? countries.join(', ') : continents.join(', '),
-    promptText: countries.length
-      ? ('Only include exporter companies headquartered in these countries: '+countries.join(', ')+'.')
-      : (continents.length ? ('Only include exporter companies headquartered in these continents/regions: '+continents.join(', ')+'.') : ''),
-    keywordHint: countries.length ? countries.slice(0,3).join(', ') : (continents[0] || '')
+    promptText: effectiveCountries.length
+      ? ('Only include exporter companies headquartered in these source countries: ' + promptCountries.join(', ') + (effectiveCountries.length > promptCountries.length ? (' and ' + (effectiveCountries.length - promptCountries.length) + ' more') : '') + '.')
+      : '',
+    keywordHint: countries.length ? countries.slice(0,3).join(', ') : (effectiveCountries[0] || continents[0] || '')
   };
 }
 
@@ -13405,13 +13416,16 @@ function getFinderModeMeta(mode){
   };
 }
 
-function getApolloFinderKeywords(prod, meta, sourceScope, country){
+function getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries){
   var parts = [];
   if(prod && prod.name_en) parts.push(prod.name_en);
   if(prod && prod.name_uz && prod.name_uz !== prod.name_en) parts.push(prod.name_uz);
   if(prod && prod.raw_name) parts.push(prod.raw_name);
   parts.push(meta && meta.mode === 'exporters' ? 'export supplier manufacturer' : 'import buyer distributor');
   if(country) parts.push(country);
+  if(meta && meta.mode === 'exporters' && Array.isArray(targetCountries) && targetCountries.length){
+    parts.push('exports to ' + targetCountries.slice(0,5).join(' '));
+  }
   if(sourceScope && sourceScope.hasFilter && sourceScope.keywordHint) parts.push(sourceScope.keywordHint);
   return Array.from(new Set(parts.filter(Boolean).map(function(x){ return String(x).trim(); }).filter(Boolean))).join(' ');
 }
@@ -13447,25 +13461,123 @@ function mapApolloPersonToFinderResult(p, country, meta){
   };
 }
 
-async function apolloFinderSearchCountry(prod, country, perCountry, meta, sourceScope){
+function normalizeApolloArray(data, keys){
+  data = data || {};
+  for(var i=0; i<keys.length; i++){
+    var val = data[keys[i]];
+    if(Array.isArray(val)) return val;
+    if(val && Array.isArray(val.entries)) return val.entries;
+    if(val && Array.isArray(val.results)) return val.results;
+  }
+  if(Array.isArray(data.results)) return data.results;
+  return [];
+}
+
+function apolloAbsoluteUrl(url){
+  url = String(url || '').trim();
+  if(!url) return '';
+  if(/^https?:\/\//i.test(url)) return url;
+  if(url.indexOf('.') !== -1) return 'https://' + url.replace(/^\/+/, '');
+  return '';
+}
+
+function mapApolloOrganizationToFinderResult(org, country, meta){
+  var website = apolloAbsoluteUrl(org.website_url || org.organization_website_url || org.website || org.domain);
+  return {
+    id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    kompaniya:org.name || org.organization_name || org.account_name || '',
+    rahbar:org.account_owner_name || org.primary_contact_name || '',
+    lavozim:meta.mode === 'exporters' ? 'Exportyor kompaniya' : 'Importyor kompaniya',
+    email:org.email || '',
+    telefon:org.phone || org.phone_number || org.sanitized_phone || '',
+    davlat:country || org.country || org.organization_country || org.country_name || '',
+    shahar:org.city || org.organization_city || '',
+    soha:org.industry || org.industry_tag || org.primary_industry || '',
+    linkedin:org.linkedin_url || org.organization_linkedin_url || '',
+    website:website,
+    import_volume:'',
+    score:Math.floor(Math.random()*10)+82,
+    manba:'Apollo Org',
+    finderMode:meta.mode,
+    apolloOrgId:org.id || org.organization_id || org.account_id || ''
+  };
+}
+
+function mergeApolloOrganizationDetails(item, info){
+  var org = (info && (info.organization || info.account || info)) || {};
+  if(!org || typeof org !== 'object') return item;
+  item.kompaniya = item.kompaniya || org.name || org.organization_name || org.account_name || '';
+  item.rahbar = item.rahbar || org.account_owner_name || org.primary_contact_name || '';
+  item.email = item.email || org.email || '';
+  item.telefon = item.telefon || org.phone || org.phone_number || org.sanitized_phone || '';
+  item.shahar = item.shahar || org.city || org.organization_city || '';
+  item.davlat = item.davlat || org.country || org.organization_country || org.country_name || '';
+  item.soha = item.soha || org.industry || org.industry_tag || org.primary_industry || '';
+  item.linkedin = item.linkedin || org.linkedin_url || org.organization_linkedin_url || '';
+  item.website = item.website || apolloAbsoluteUrl(org.website_url || org.organization_website_url || org.website || org.domain);
+  return item;
+}
+
+async function apolloLoadOrganizationInfo(orgId, apolloKey){
+  if(!orgId || !apolloKey) return null;
+  try {
+    var resp = await fetch(APOLLO_PROXY, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        operation:'organization_info',
+        organization_id:orgId,
+        api_key:apolloKey
+      })
+    });
+    if(!resp.ok){
+      var txt = '';
+      try {
+        var j = await resp.json();
+        txt = j.error || j.message || JSON.stringify(j);
+      } catch(_e){
+        try { txt = await resp.text(); } catch(_e2){}
+      }
+      console.log('Apollo organization info error:', txt || resp.status);
+      return null;
+    }
+    return await resp.json();
+  } catch(err){
+    console.log('Apollo organization info network error:', err);
+    return null;
+  }
+}
+
+async function apolloFinderSearchCountry(prod, country, perCountry, meta, sourceScope, targetCountries){
   var apolloKey = getApolloApiKey();
   if(!apolloKey){
     throw new Error('Apollo API key topilmadi. Sozlamalar sahifasiga kiriting.');
   }
-  var keywords = getApolloFinderKeywords(prod, meta, sourceScope, country);
-  var attempts = [
+  var keywords = getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries);
+  var targetHint = (meta.mode === 'exporters' && Array.isArray(targetCountries) && targetCountries.length)
+    ? targetCountries.slice(0,6).join(', ')
+    : '';
+  var orgAttempts = [
+    { search_type:'organizations', page:1, per_page:Math.max(perCountry*3, 15), api_key:apolloKey, organization_locations:[country], q_keywords:keywords, q_organization_keyword:keywords },
+    { search_type:'organizations', page:1, per_page:Math.max(perCountry*3, 15), api_key:apolloKey, organization_locations:[country], q_organization_keyword:(prod && prod.name_en) || keywords, q_keywords:targetHint },
+    { search_type:'organizations', page:1, per_page:Math.max(perCountry*3, 15), api_key:apolloKey, organization_locations:[country], q_keywords:((meta.mode === 'exporters' ? 'export supplier manufacturer ' : 'import buyer distributor ') + ((prod && prod.name_en) || '') + ' ' + targetHint).trim() }
+  ];
+  var peopleAttempts = [
     { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloTitles, organization_locations:[country], q_keywords:keywords },
-    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloTitles, person_locations:[country], q_keywords:keywords },
-    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloFallbackTitles, organization_locations:[country] }
+    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloTitles, person_locations:[country], q_keywords:(keywords + ' ' + targetHint).trim() },
+    { search_type:'people', page:1, per_page:Math.max(perCountry*2, 10), api_key:apolloKey, person_titles:meta.apolloFallbackTitles, organization_locations:[country], q_keywords:(((prod && prod.name_en) || keywords) + ' ' + targetHint).trim() }
   ];
 
   var found = [];
-  for(var ai=0; ai<attempts.length; ai++){
+  var lastError = null;
+  var hadSuccess = false;
+
+  for(var oi=0; oi<orgAttempts.length; oi++){
     try {
       var apResp = await fetch(APOLLO_PROXY,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(attempts[ai])
+        body:JSON.stringify(orgAttempts[oi])
       });
       if(!apResp.ok){
         var errText = '';
@@ -13478,22 +13590,71 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         throw new Error(errText || ('Apollo xato: '+apResp.status));
       }
       var apData = await apResp.json();
-      var people = Array.isArray(apData.people) ? apData.people : [];
-      people.forEach(function(p){
-        found.push(mapApolloPersonToFinderResult(p, country, meta));
+      hadSuccess = true;
+      var orgs = normalizeApolloArray(apData, ['organizations','accounts','companies']);
+      orgs.forEach(function(org){
+        found.push(mapApolloOrganizationToFinderResult(org, country, meta));
       });
       found = found.filter(function(item){ return String(item.kompaniya || '').trim(); });
       if(found.length >= perCountry) break;
     } catch(e) {
-      console.log('Apollo '+country+' attempt '+(ai+1)+' error:', e);
+      lastError = e;
+      console.log('Apollo '+country+' organization attempt '+(oi+1)+' error:', e);
       if(/api key topilmadi|unauthorized|forbidden|credit|permission|access/i.test(String((e&&e.message)||''))){
         throw e;
       }
     }
   }
+
+  for(var fi=0; fi<Math.min(found.length, perCountry); fi++){
+    if(!found[fi].apolloOrgId) continue;
+    var detail = await apolloLoadOrganizationInfo(found[fi].apolloOrgId, apolloKey);
+    if(detail) mergeApolloOrganizationDetails(found[fi], detail);
+  }
+
+  if(found.length < perCountry){
+    for(var ai=0; ai<peopleAttempts.length; ai++){
+      try {
+        var ppResp = await fetch(APOLLO_PROXY,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(peopleAttempts[ai])
+        });
+        if(!ppResp.ok){
+          var pErrText = '';
+          try {
+            var pErrJson = await ppResp.json();
+            pErrText = pErrJson.error || pErrJson.message || JSON.stringify(pErrJson);
+          } catch(_e3){
+            try { pErrText = await ppResp.text(); } catch(_e4){}
+          }
+          throw new Error(pErrText || ('Apollo xato: '+ppResp.status));
+        }
+        var ppData = await ppResp.json();
+        hadSuccess = true;
+        var people = normalizeApolloArray(ppData, ['people','contacts']);
+        people.forEach(function(p){
+          found.push(mapApolloPersonToFinderResult(p, country, meta));
+        });
+        found = found.filter(function(item){ return String(item.kompaniya || '').trim(); });
+        if(found.length >= perCountry) break;
+      } catch(e2) {
+        lastError = e2;
+        console.log('Apollo '+country+' people attempt '+(ai+1)+' error:', e2);
+        if(/api key topilmadi|unauthorized|forbidden|credit|permission|access/i.test(String((e2&&e2.message)||''))){
+          throw e2;
+        }
+      }
+    }
+  }
+
+  if(!found.length && !hadSuccess && lastError){
+    throw lastError;
+  }
+
   var seen = new Set();
   return found.filter(function(item){
-    var key = [item.kompaniya || '', item.rahbar || '', item.davlat || ''].join('|').toLowerCase();
+    var key = [item.kompaniya || '', item.davlat || ''].join('|').toLowerCase();
     if(seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -13524,55 +13685,82 @@ async function runCompanyFinder(source){
   var perCountry = parseInt(document.getElementById('finder-count').value)||5;
 
   // Get selected countries
-  var countries = [];
-  document.querySelectorAll('.fc-country:checked').forEach(function(cb){countries.push(cb.value);});
-  if(!countries.length){ toast('⚠️ Kamida bitta davlat tanlang','error'); return; }
+  var targetCountries = [];
+  document.querySelectorAll('.fc-country:checked').forEach(function(cb){targetCountries.push(cb.value);});
+  if(!targetCountries.length){ toast('⚠️ Kamida bitta davlat tanlang','error'); return; }
+  var searchCountries = (meta.mode === 'exporters' && sourceScope.effectiveCountries && sourceScope.effectiveCountries.length)
+    ? sourceScope.effectiveCountries.slice()
+    : targetCountries.slice();
 
   document.getElementById('finderEmpty').style.display = 'none';
   document.getElementById('finderResultCard').style.display = 'none';
   document.getElementById('finderKpiGrid').style.display = 'none';
   document.getElementById('finderProgress').style.display = 'block';
   document.getElementById('finderBar').style.width = '10%';
-  document.getElementById('finderProgressText').textContent = countries.length+' ta davlatda "'+prod.name_en+'" '+meta.resultWord+' qidirilmoqda...'+(sourceScope.hasFilter?' | Manba: '+sourceScope.summary:'');
+  document.getElementById('finderProgressText').textContent = searchCountries.length+' ta davlatda "'+prod.name_en+'" '+meta.resultWord+' qidirilmoqda...'+(sourceScope.hasFilter?' | Manba: '+sourceScope.summary:'');
 
   _finderResults = [];
 
   try {
     if(source==='apollo'){
-      // Apollo proxy — official people search + fallback filters
+      // Apollo proxy — organization search first, then people fallback
       document.getElementById('finderBar').style.width = '40%';
-      for(var ci=0; ci<countries.length; ci++){
-        document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+getFinderCountryLabel(countries[ci])+' ('+(ci+1)+'/'+countries.length+') — '+meta.resultWord+'...';
+      var apolloFatalError = null;
+      for(var ci=0; ci<searchCountries.length; ci++){
+        document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+getFinderCountryLabel(searchCountries[ci])+' ('+(ci+1)+'/'+searchCountries.length+') — '+meta.resultWord+'...'+(meta.mode === 'exporters' ? (' | Maqsad: '+targetCountries.slice(0,4).map(getFinderCountryLabel).join(', ')+(targetCountries.length>4?'...':'')) : '');
         try {
-          var countryResults = await apolloFinderSearchCountry(prod, countries[ci], perCountry, meta, sourceScope);
+          var countryResults = await apolloFinderSearchCountry(prod, searchCountries[ci], perCountry, meta, sourceScope, targetCountries);
           countryResults.forEach(function(item){ _finderResults.push(item); });
-        } catch(e){ console.log('Apollo '+countries[ci]+' error:', e); }
-        document.getElementById('finderBar').style.width = (40+ci/countries.length*50)+'%';
+        } catch(e){
+          console.log('Apollo '+searchCountries[ci]+' error:', e);
+          apolloFatalError = e;
+          break;
+        }
+        document.getElementById('finderBar').style.width = (40+ci/searchCountries.length*50)+'%';
       }
+      if(apolloFatalError) throw apolloFatalError;
       dedupeFinderResults();
     } else {
       // Gemini AI — country-by-country search for importers
-      var batchSize = Math.min(countries.length, 4); // Process 4 countries at a time
-      for(var bi=0; bi<countries.length; bi+=batchSize){
-        var batch = countries.slice(bi, bi+batchSize);
-        var pct = 20 + (bi/countries.length)*70;
+      var batchSize = Math.min(searchCountries.length, 4); // Process 4 countries at a time
+      for(var bi=0; bi<searchCountries.length; bi+=batchSize){
+        var batch = searchCountries.slice(bi, bi+batchSize);
+        var pct = 20 + (bi/searchCountries.length)*70;
         document.getElementById('finderBar').style.width = pct+'%';
-        document.getElementById('finderProgressText').textContent = '🤖 '+batch.map(getFinderCountryLabel).join(', ')+' — '+meta.resultWord+' qidirilmoqda... ('+(bi+batch.length)+'/'+countries.length+')';
+        document.getElementById('finderProgressText').textContent = '🤖 '+batch.map(getFinderCountryLabel).join(', ')+' — '+meta.resultWord+' qidirilmoqda... ('+(bi+batch.length)+'/'+searchCountries.length+')';
 
-        var prompt = 'You are a B2B trade intelligence expert. Return ONLY valid JSON array.\n'+
-          'Find REAL companies that '+meta.promptVerb+' "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') for these countries: '+batch.join(', ')+'.\n'+
-          'For EACH country find '+perCountry+' companies that are '+meta.promptRole+' of this product.\n'+
-          'These should be real active companies relevant to cross-border trade of this product.\n'+
-          'JSON format: [{"company":"Real Company Name","country":"Russia","city":"Moscow",'+
-          '"contact_name":"Ivan Petrov","title":"Purchase Director",'+
-          '"industry":"Construction Materials Distribution",'+
-          '"website":"www.realsite.com","employees":200,'+
-          '"'+meta.promptVolumeField+'":"$5M/year","trade_share_pct":15,'+
-          '"products_traded":"granite slabs, marble tiles",'+
-          '"score":85,"why":"Major distributor of stone products in Moscow region"}]\n'+
-          (meta.mode==='exporters' && sourceScope.promptText ? (sourceScope.promptText+'\n') : '')+
-          'Score 1-100: 90+ = direct '+(meta.mode==='exporters'?'exporter':'importer')+' of this exact product, 70-89 = trades similar products, 50-69 = potential lead.\n'+
-          'IMPORTANT: Use REALISTIC company names from '+batch.join(', ')+'. Include trade volume estimates.';
+        var prompt;
+        if(meta.mode === 'exporters'){
+          prompt = 'You are a B2B trade intelligence expert. Return ONLY valid JSON array.\n'+
+            'Find REAL exporter / supplier / manufacturer companies headquartered in these source countries: '+batch.join(', ')+'.\n'+
+            'These companies should export or be capable of exporting "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') to one or more of these destination countries: '+targetCountries.join(', ')+'.\n'+
+            'For EACH source country find '+perCountry+' real exporter companies.\n'+
+            'Do NOT return importer companies from the destination countries.\n'+
+            'JSON format: [{"company":"Real Company Name","country":"Germany","city":"Hamburg",'+
+            '"contact_name":"Anna Schmidt","title":"Export Director",'+
+            '"industry":"Construction Materials Manufacturing",'+
+            '"website":"www.realsite.com","employees":200,'+
+            '"'+meta.promptVolumeField+'":"$5M/year","trade_share_pct":15,'+
+            '"products_traded":"granite slabs, marble tiles",'+
+            '"score":85,"why":"Exports stone products to Central Asia and Caucasus"}]\n'+
+            (sourceScope.promptText ? (sourceScope.promptText+'\n') : '')+
+            'Score 1-100: 90+ = direct exporter/manufacturer of this exact product, 70-89 = strong supplier/exporter of similar products, 50-69 = potential lead.\n'+
+            'IMPORTANT: The "country" field must be the exporter company source country, not the destination market.';
+        } else {
+          prompt = 'You are a B2B trade intelligence expert. Return ONLY valid JSON array.\n'+
+            'Find REAL companies that '+meta.promptVerb+' "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') for these countries: '+batch.join(', ')+'.\n'+
+            'For EACH country find '+perCountry+' companies that are '+meta.promptRole+' of this product.\n'+
+            'These should be real active companies relevant to cross-border trade of this product.\n'+
+            'JSON format: [{"company":"Real Company Name","country":"Russia","city":"Moscow",'+
+            '"contact_name":"Ivan Petrov","title":"Purchase Director",'+
+            '"industry":"Construction Materials Distribution",'+
+            '"website":"www.realsite.com","employees":200,'+
+            '"'+meta.promptVolumeField+'":"$5M/year","trade_share_pct":15,'+
+            '"products_traded":"granite slabs, marble tiles",'+
+            '"score":85,"why":"Major distributor of stone products in Moscow region"}]\n'+
+            'Score 1-100: 90+ = direct importer of this exact product, 70-89 = trades similar products, 50-69 = potential lead.\n'+
+            'IMPORTANT: Use REALISTIC company names from '+batch.join(', ')+'. Include trade volume estimates.';
+        }
 
         var body = {contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.5,maxOutputTokens:4000}};
         var data = await callGemini(body);
