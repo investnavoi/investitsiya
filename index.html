@@ -1425,6 +1425,7 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
     </div>
 
+    <div id="investorAiDock">
     <div id="investorAiWorkspace" class="tcard" style="display:none;margin-top:1rem">
       <div class="tc-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
         <div>
@@ -1491,6 +1492,7 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
       </div>
       <div id="invAiLetterEmpty" class="tc-empty" style="padding:2.5rem;margin:1rem"><div class="tc-empty-icon">📧</div><p>Investor tanlang va “AI Xat Yozish” tugmasini bosing</p></div>
+    </div>
     </div>
   </div>
 </div>
@@ -5024,10 +5026,13 @@ function renderInvestorCompanies(){
   const tb=document.getElementById('ic-tbody');
   if(!co.length){
     tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
+    mountInvestorAiWorkspace();
     return;
   }
-  tb.innerHTML=co.map((r,i)=>`
-    <tr>
+  tb.innerHTML=co.map((r,i)=>{
+    var isAiOpen = _investorAiOpen && String(_investorAiTargetId||'') === String(r.id);
+    var rowHtml = `
+    <tr id="investor-row-${r.id}">
       <td>${isAdmin?`<input type="checkbox" class="ic-check" data-id="${r.id}" onchange="updateSelectedCount()">`:''}</td>
       <td>${i+1}</td>
       <td><button type="button" onclick="openInvestorAiWorkspace('${r.id}')" style="padding:0;border:none;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left"><b style="color:var(--text)">${r.kompaniya}</b></button></td>
@@ -5044,7 +5049,12 @@ function renderInvestorCompanies(){
           <button class="btn btn-danger btn-sm" onclick="deleteRecord('investorCompanies','${r.id}')">🗑</button>
         </div>`:'<span style="font-size:.65rem;color:var(--text3)">—</span>'}
       </td>
-    </tr>`).join('');
+    </tr>`;
+    if(isAiOpen){
+      rowHtml += `<tr class="investor-ai-inline-row"><td colspan="9" style="padding:0;background:rgba(67,97,238,.03)"><div id="investorAiRowMount" style="padding:.85rem 0 .2rem"></div></td></tr>`;
+    }
+    return rowHtml;
+  }).join('');
   updateSelectedCount();
   // Show/hide admin-only controls
   const bulkBtn = document.getElementById('bulkSendBtn');
@@ -5053,6 +5063,7 @@ function renderInvestorCompanies(){
   const bulkSchedBtn = document.getElementById('bulkSchedBtn');
   if(bulkSchedBtn) bulkSchedBtn.style.display = isAdmin ? 'inline-flex' : 'none';
   if(checkAll) checkAll.style.display = isAdmin ? 'inline-block' : 'none';
+  mountInvestorAiWorkspace();
 }
 
 function toggleAllCheckboxes(el){
@@ -13345,6 +13356,8 @@ function buildAiMetricCard(icon, label, main, detail, accent){
 }
 
 var _investorAiTargetId = null;
+var _investorAiOpen = false;
+var _investorAiWorkspaceEl = null;
 
 function getAiScopeDom(scope){
   if(scope === 'investor'){
@@ -13387,6 +13400,28 @@ function getAiScopeDom(scope){
   };
 }
 
+function getInvestorAiWorkspaceEl(){
+  if(_investorAiWorkspaceEl && _investorAiWorkspaceEl.nodeType === 1) return _investorAiWorkspaceEl;
+  _investorAiWorkspaceEl = document.getElementById('investorAiWorkspace');
+  return _investorAiWorkspaceEl;
+}
+
+function mountInvestorAiWorkspace(){
+  var workspace = getInvestorAiWorkspaceEl();
+  if(!workspace) return;
+  var mount = document.getElementById('investorAiRowMount');
+  var dock = document.getElementById('investorAiDock');
+  if(_investorAiOpen && mount){
+    mount.appendChild(workspace);
+    workspace.style.display = 'block';
+    workspace.style.marginTop = '0';
+  } else if(dock){
+    dock.appendChild(workspace);
+    workspace.style.display = 'none';
+    workspace.style.marginTop = '1rem';
+  }
+}
+
 function resetAiScope(scope, emptyText){
   var dom = getAiScopeDom(scope);
   if(dom.analysisCard) dom.analysisCard.style.display = 'none';
@@ -13420,20 +13455,27 @@ function openInvestorAiWorkspace(id){
     toast('⚠️ Investor topilmadi','error');
     return;
   }
+  var switching = String(_investorAiTargetId || '') !== String(comp.id);
+  if(!switching && _investorAiOpen){
+    closeInvestorAiWorkspace();
+    return;
+  }
   _investorAiTargetId = String(comp.id);
-  var dom = getAiScopeDom('investor');
-  if(dom.workspace) dom.workspace.style.display = 'block';
+  _investorAiOpen = true;
   setInvestorAiMeta(comp);
-  resetAiScope('investor', 'Investor tanlandi. Endi “AI Xat Yozish” tugmasini bosing');
-  if(dom.workspace && typeof dom.workspace.scrollIntoView === 'function'){
-    dom.workspace.scrollIntoView({behavior:'smooth', block:'start'});
+  if(switching){
+    resetAiScope('investor', 'Investor tanlandi. Endi “AI Xat Yozish” tugmasini bosing');
+  }
+  renderInvestorCompanies();
+  var mount = document.getElementById('investorAiRowMount');
+  if(mount && typeof mount.scrollIntoView === 'function'){
+    mount.scrollIntoView({behavior:'smooth', block:'nearest'});
   }
 }
 
 function closeInvestorAiWorkspace(){
-  _investorAiTargetId = null;
-  var dom = getAiScopeDom('investor');
-  if(dom.workspace) dom.workspace.style.display = 'none';
+  _investorAiOpen = false;
+  renderInvestorCompanies();
 }
 
 window.openInvestorAiWorkspace = openInvestorAiWorkspace;
