@@ -13587,6 +13587,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         } catch(_e){
           try { errText = await apResp.text(); } catch(_e2){}
         }
+        if(/access token is invalid/i.test(errText || '')){
+          errText = 'Apollo API key noto‘g‘ri yoki eskirgan. Sozlamalar sahifasida yangilang.';
+        }
         throw new Error(errText || ('Apollo xato: '+apResp.status));
       }
       var apData = await apResp.json();
@@ -13627,6 +13630,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
             pErrText = pErrJson.error || pErrJson.message || JSON.stringify(pErrJson);
           } catch(_e3){
             try { pErrText = await ppResp.text(); } catch(_e4){}
+          }
+          if(/access token is invalid/i.test(pErrText || '')){
+            pErrText = 'Apollo API key noto‘g‘ri yoki eskirgan. Sozlamalar sahifasida yangilang.';
           }
           throw new Error(pErrText || ('Apollo xato: '+ppResp.status));
         }
