@@ -253,12 +253,12 @@ waitForDB();
 body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top right,rgba(67,97,238,.10),transparent 22%),linear-gradient(180deg,#F5F8FF 0%,var(--bg) 28%,#E8F0FF 100%);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;display:flex;}
 /* ═══ SIDEBAR LAYOUT ═══ */
 .sidebar{width:252px;min-height:100vh;background:linear-gradient(180deg,var(--nav-bg) 0%,var(--nav-bg2) 100%);display:flex;flex-direction:column;padding:16px 10px 18px;gap:4px;position:fixed;top:0;left:0;z-index:220;box-shadow:12px 0 36px rgba(7,14,33,.18);overflow-y:auto;overflow-x:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-.sidebar-logo{display:flex;align-items:center;gap:12px;padding:6px 10px;margin-bottom:10px;cursor:pointer;text-decoration:none;}
-.sidebar-logo-icon{width:44px;height:44px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:0;flex-shrink:0;box-shadow:0 8px 20px rgba(39,39,139,.28);border:1px solid rgba(255,255,255,.2);padding:2px;overflow:hidden}
-.sidebar-logo-icon svg{width:100%;height:100%;display:block}
-.sidebar-logo-icon::before{content:"";}
-.sidebar-logo-text{font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;color:#fff;line-height:1.1;}
-.sidebar-logo-sub{font-size:.68rem;color:rgba(255,255,255,.6);margin-top:4px;font-weight:500;}
+.sidebar-logo{display:block;padding:4px 8px 14px;margin-bottom:10px;cursor:pointer;text-decoration:none;}
+.sidebar-logo-icon{width:100%;display:block;background:transparent;font-size:0;box-shadow:none;border:none;padding:0;overflow:visible}
+.sidebar-logo-icon img{width:100%;height:auto;display:block;object-fit:contain}
+.sidebar-logo-icon::before{content:none;}
+.sidebar-logo-text{display:none;font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;color:#fff;line-height:1.1;}
+.sidebar-logo-sub{display:none;font-size:.68rem;color:rgba(255,255,255,.6);margin-top:4px;font-weight:500;}
 .sidebar-logo-sub:empty{display:none;}
 .sidebar-divider{height:1px;background:rgba(255,255,255,.08);margin:8px 8px;}
 .sidebar-section-label{padding:4px 18px 8px;font-family:'Sora',sans-serif;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(230,236,255,.42);}
@@ -1085,90 +1085,7 @@ input[type="time"]{-webkit-appearance:none;}
 <div class="sidebar">
   <div class="sidebar-logo" onclick="showPage('overview')">
     <div class="sidebar-logo-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Navoiy viloyati hokimligi">
-        <defs>
-          <path id="topArc" d="M 92 256 A 164 164 0 0 1 420 256" />
-          <clipPath id="innerClip">
-            <circle cx="256" cy="256" r="134"/>
-          </clipPath>
-        </defs>
-        <rect width="512" height="512" fill="#ffffff"/>
-        <circle cx="256" cy="256" r="184" fill="#27278b"/>
-        <circle cx="256" cy="256" r="154" fill="#ffffff"/>
-        <circle cx="256" cy="256" r="142" fill="#27278b"/>
-        <circle cx="256" cy="256" r="134" fill="#ffffff"/>
-        <g fill="#ffffff" font-family="Arial, sans-serif" font-weight="700" letter-spacing="3.2">
-          <text font-size="22">
-            <textPath href="#topArc" startOffset="50%" text-anchor="middle">NAVOIY VILOYATI HOKIMLIGI</textPath>
-          </text>
-        </g>
-        <g fill="#ffffff">
-          <circle cx="132" cy="367" r="7"/>
-          <circle cx="149" cy="397" r="7"/>
-          <circle cx="178" cy="424" r="7"/>
-          <circle cx="216" cy="442" r="7"/>
-          <circle cx="256" cy="449" r="7"/>
-          <circle cx="296" cy="442" r="7"/>
-          <circle cx="334" cy="424" r="7"/>
-          <circle cx="363" cy="397" r="7"/>
-          <circle cx="380" cy="367" r="7"/>
-        </g>
-        <g clip-path="url(#innerClip)">
-          <rect x="122" y="122" width="268" height="268" fill="#ffffff"/>
-          <g fill="#27278b">
-            <rect x="134" y="208" width="30" height="82"/>
-            <rect x="164" y="220" width="40" height="70"/>
-            <path d="M206 238h54v52h-54z"/>
-            <path d="M222 238q18-22 36 0v12h-36z"/>
-            <rect x="246" y="178" width="20" height="112"/>
-            <path d="M253 162h6l10 16-5 9h-16l-5-9z"/>
-            <rect x="296" y="212" width="24" height="78"/>
-            <rect x="322" y="198" width="22" height="92"/>
-            <path d="M356 194h22v96h-22z"/>
-            <rect x="372" y="228" width="20" height="62"/>
-            <path d="M132 300q58-22 120-22t128 26q20 6 32 12v94H132z"/>
-            <path d="M132 323q80-26 136-24 78 2 144 40v72H132z" fill="#ffffff"/>
-            <path d="M132 345q70-18 127-18 88 0 153 46v68H132z"/>
-          </g>
-          <g fill="#ffffff">
-            <path d="M148 240q16-22 32 0v18h-32z"/>
-            <path d="M188 228q24-30 48 0v30h-48z"/>
-            <path d="M244 240q16-22 32 0v18h-32z"/>
-          </g>
-          <g fill="#ffffff">
-            <rect x="146" y="219" width="6" height="6"/>
-            <rect x="158" y="219" width="6" height="6"/>
-            <rect x="170" y="219" width="6" height="6"/>
-            <rect x="146" y="231" width="6" height="6"/>
-            <rect x="158" y="231" width="6" height="6"/>
-            <rect x="170" y="231" width="6" height="6"/>
-            <rect x="214" y="190" width="7" height="7"/>
-            <rect x="228" y="190" width="7" height="7"/>
-            <rect x="214" y="204" width="7" height="7"/>
-            <rect x="228" y="204" width="7" height="7"/>
-            <rect x="214" y="218" width="7" height="7"/>
-            <rect x="228" y="218" width="7" height="7"/>
-            <rect x="304" y="222" width="18" height="4"/>
-            <rect x="304" y="231" width="18" height="4"/>
-            <rect x="304" y="240" width="18" height="4"/>
-            <rect x="330" y="212" width="12" height="4"/>
-            <rect x="330" y="221" width="12" height="4"/>
-            <rect x="330" y="230" width="12" height="4"/>
-            <rect x="361" y="220" width="12" height="4"/>
-            <rect x="361" y="229" width="12" height="4"/>
-          </g>
-          <g fill="#27278b">
-            <path d="M164 350c7 0 9-7 13-7 5 0 8 6 13 6 3 0 5-2 6-5 2 4 5 6 9 6 4 0 6-2 8-5 3 4 6 7 11 7 5 0 8-3 11-6 2 4 6 6 10 6 4 0 7-3 10-7 3 5 7 8 12 8 5 0 8-2 10-5 3 4 6 7 11 7 4 0 8-2 11-7 3 5 7 8 12 8 5 0 8-2 10-5 2 4 6 6 10 6 4 0 7-3 10-7 3 5 7 8 12 8v18H164z"/>
-          </g>
-          <g fill="#ffffff">
-            <path d="M176 340c4 0 7 3 7 7 0 3-1 5-3 6v7h-6v-6c-4-1-7-4-7-9 0-3 4-5 9-5zm15 3h5l5 7 8 2-4 3 3 6-6-2-4 3-1-7-5-3 5-2zm26-4c5 0 8 3 8 7 0 2-1 5-4 6l1 8h-6l1-7c-4-1-6-4-6-8 0-3 2-6 6-6zm17 5h5l5 8 8 2-4 3 2 5-5-1-5 3v-6l-5-4 5-2zm31-4c5 0 8 3 8 7 0 2-2 5-4 6l1 8h-6l1-7c-4-1-6-4-6-8 0-3 2-6 6-6zm18 4h5l5 8 8 2-4 3 2 5-6-1-4 3v-6l-6-4 5-2z"/>
-          </g>
-        </g>
-      </svg>
-    </div>
-    <div>
-      <div class="sidebar-logo-text">Navoi Invest AI</div>
-      <div class="sidebar-logo-sub"></div>
+      <img src="./navoi-invest-ai-logo.png" alt="Navoi Invest AI">
     </div>
   </div>
   <div class="sidebar-divider"></div>
