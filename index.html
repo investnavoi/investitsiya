@@ -14390,7 +14390,9 @@ async function fetchOfficialAiCountryAnalysis(comp){
   var countryName = getAiCompanyCountry(comp);
   if(!countryName) throw new Error('Kompaniyaning joylashgan davlati ko\'rsatilmagan');
   var cacheKey = getAiCountryCacheKey(countryName);
-  if(AI_COUNTRY_ANALYSIS_CACHE[cacheKey]) return AI_COUNTRY_ANALYSIS_CACHE[cacheKey];
+  if(AI_COUNTRY_ANALYSIS_CACHE[cacheKey] && !isAiAnalysisStale(AI_COUNTRY_ANALYSIS_CACHE[cacheKey])){
+    return AI_COUNTRY_ANALYSIS_CACHE[cacheKey];
+  }
   var resp = await fetch(AI_COUNTRY_API_BASE + '/ai-country-analysis?country=' + encodeURIComponent(countryName));
   var data = await resp.json().catch(function(){ return {}; });
   if(!resp.ok || data.error) throw new Error(data.error || ('Rasmiy tahlil API xato berdi ('+resp.status+')'));
@@ -14412,6 +14414,77 @@ async function fetchOfficialAiTariffSummary(comp, analysis){
   data.productInfo = productInfo;
   AI_PRODUCT_TARIFF_CACHE[cacheKey] = data;
   return data;
+}
+
+function isAiAnalysisStale(analysis){
+  var tax = ((((analysis || {}).metrics || {}).totalTaxRate) || {});
+  var indicator = String(tax.indicator || '');
+  return !Number.isFinite(Number(tax.country)) ||
+    !Number.isFinite(Number(tax.uzbekistan)) ||
+    /IC\.TAX\.TOTL\.CP\.ZS/i.test(indicator);
+}
+
+function isAiTariffSummaryMissing(summary){
+  if(!summary) return true;
+  if(summary.status === 'unavailable') return false;
+  return !Array.isArray(summary.routes) || !summary.routes.length;
+}
+
+function getAiTariffUnavailableSummary(comp, analysis, errorMessage){
+  var productInfo = getAiCompanyProductInfo(comp) || null;
+  return {
+    status: 'unavailable',
+    error: String(errorMessage || 'Rasmiy tarif ma\'lumoti topilmadi'),
+    sourceIso3: String((((analysis || {}).country || {}).iso3) || '').trim().toUpperCase(),
+    productName: (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || 'Tanlangan mahsulot',
+    hsCode: (productInfo && productInfo.hsCode) || '',
+    productInfo: productInfo,
+    routes: [],
+    avgSourceRate: null,
+    avgUzRate: null,
+    avgDiff: null,
+    avgDiffPct: null,
+    bestAdvantage: null
+  };
+}
+
+async function refreshInvestorAiOfficialData(comp){
+  if(!comp || !comp.aiLetterData || !comp.aiLetterData.analysis) return;
+  var saved = comp.aiLetterData || {};
+  var needAnalysis = isAiAnalysisStale(saved.analysis);
+  var needTariff = isAiTariffSummaryMissing(saved.tariffSummary);
+  if(!needAnalysis && !needTariff) return;
+  try{
+    var analysis = needAnalysis ? await fetchOfficialAiCountryAnalysis(comp) : saved.analysis;
+    var tariffSummary = saved.tariffSummary || null;
+    if(needTariff){
+      try{
+        tariffSummary = await fetchOfficialAiTariffSummary(comp, analysis);
+      }catch(err){
+        tariffSummary = getAiTariffUnavailableSummary(comp, analysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
+      }
+    }
+    var transportSummary = saved.transportSummary || buildAiTransportAnalysis((analysis || {}).country || {});
+    comp.aiLetterData = Object.assign({}, saved, {
+      analysis: analysis,
+      transportSummary: transportSummary,
+      tariffSummary: tariffSummary
+    });
+    if(typeof fbSave === 'function') fbSave('investorCompanies', comp);
+    if(_investorAiOpen && String(_investorAiTargetId || '') === String(comp.id)){
+      hydrateAiScope('investor', comp, {
+        analysis: analysis,
+        transportSummary: transportSummary,
+        tariffSummary: tariffSummary,
+        letterSubject: saved.subject || '',
+        letterBody: saved.body || '',
+        lang: saved.lang || 'en',
+        generatedAt: saved.generatedAt || ''
+      });
+    }
+  }catch(err){
+    console.warn('Investor AI official refresh skipped:', err && err.message ? err.message : err);
+  }
 }
 
 function aiRound(value, digits){
@@ -14618,6 +14691,7 @@ function openInvestorAiWorkspace(id){
     });
     var dom = getAiScopeDom('investor');
     if(dom.lang && comp.aiLetterData.lang) dom.lang.value = comp.aiLetterData.lang;
+    refreshInvestorAiOfficialData(comp);
   }
   var mount = document.getElementById('investorAiRowMount');
   if(mount && typeof mount.scrollIntoView === 'function'){
@@ -14691,7 +14765,7 @@ function renderAiAnalysis(analysis, scope){
 
   meta.push('• YaIM / kishi: World Bank Open Data API (' + escapeHtmlText((gdp.countryYear||'—') + '/' + (gdp.uzbekistanYear||'—')) + ')');
   meta.push('• Sanoat ulushi: World Bank Open Data API (' + escapeHtmlText((industry.countryYear||'—') + '/' + (industry.uzbekistanYear||'—')) + ')');
-  meta.push('• Soliq yuklamasi: World Bank Open Data API / IC.TAX.TOTL.CP.ZS (' + escapeHtmlText((tax.countryYear||'—') + '/' + (tax.uzbekistanYear||'—')) + ')');
+  meta.push('• Soliq yuklamasi: World Bank Open Data API / labor tax + profit tax + other taxes (% of profit) (' + escapeHtmlText((tax.countryYear||'—') + '/' + (tax.uzbekistanYear||'—')) + ')');
   meta.push('• Mehnat narxi: ILOSTAT EAR_EMTA_SEX_CUR_NB_A (' + escapeHtmlText((wage.countryYear||'—') + '/' + (wage.uzbekistanYear||'—')) + ') · ' + escapeHtmlText((wage.countryCurrencyBasis||'—') + ' / ' + (wage.uzbekistanCurrencyBasis||'—')));
   meta.push('• Elektr energiyasi: ' + escapeHtmlText(electricity.source || 'Official energy API') + ' (' + escapeHtmlText((electricity.countryYear||'—') + '/' + (electricity.uzbekistanYear||'—')) + ')');
   if(Number.isFinite(Number(gas.country)) || Number.isFinite(Number(gas.uzbekistan))){
@@ -14721,7 +14795,7 @@ function buildOfficialAnalysisLines(analysis){
 
   pushMetric('GDP per capita', metrics.gdpPerCapita, aiFmtUsdExact, aiFmtUsdExact, 'World Bank');
   pushMetric('Industry share of GDP', metrics.industryShare, aiFmtPct, aiFmtPct, 'World Bank');
-  pushMetric('Total tax and contribution rate (% of profit)', metrics.totalTaxRate, aiFmtPct, aiFmtPct, 'World Bank');
+  pushMetric('Total tax and contribution rate (% of profit)', metrics.totalTaxRate, aiFmtPct, aiFmtPct, 'World Bank (labor + profit + other taxes)');
   pushMetric('Average monthly earnings', metrics.monthlyWage, function(value){
     return aiFmtWageValue(value, metrics.monthlyWage && metrics.monthlyWage.countryCurrencyBasis);
   }, function(value){
@@ -14961,6 +15035,22 @@ function renderAiTariffAnalysis(summary, scope){
 
   var productName = ((summary.productInfo || {}).displayName) || summary.productName || 'Tanlangan mahsulot';
   titleEl.textContent = '🛃 Bojxona tarifi — ' + productName;
+  if(summary.error || !Array.isArray(summary.routes) || !summary.routes.length){
+    gridEl.innerHTML =
+      buildAiMetricCard('🛃', 'Tarif holati', 'Ma\'lumot yo\'q', escapeHtmlText(summary.error || 'Rasmiy bojxona tarifi topilmadi'), '#7C3AED') +
+      buildAiMetricCard('🏷️', 'HS kodi', escapeHtmlText(String(summary.hsCode || '—')), 'Mahsulot kodi bo\'yicha rasmiy tarif qidirildi', '#2563EB');
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:1rem;color:var(--text2)">' + escapeHtmlText(summary.error || 'Ushbu investor uchun tarif ma\'lumoti topilmadi.') + '</td></tr>';
+    metaEl.style.display = 'block';
+    metaEl.innerHTML =
+      '<div style="padding-top:.3rem;border-top:1px dashed rgba(124,58,237,.25)">' +
+        '<strong>Izoh:</strong><br>' +
+        escapeHtmlText(summary.error || 'Tarif ma\'lumoti topilmadi') + '<br>' +
+        '• Mahsulot HS kodi investor yozuvida saqlangan bo\'lishi kerak.<br>' +
+        '• Vercel backend yangi tarif logikasi bilan redeploy qilingan bo\'lishi kerak.' +
+      '</div>';
+    card.style.display = 'block';
+    return;
+  }
   gridEl.innerHTML =
     buildAiMetricCard('🌍', 'Kompaniya davlatidan o\'rtacha', aiFmtPct(summary.avgSourceRate), '13 ta davlat bo\'yicha o\'rtacha bojxona tarifi', '#2563EB') +
     buildAiMetricCard('🇺🇿', 'O\'zbekistondan o\'rtacha', aiFmtPct(summary.avgUzRate), 'Xuddi shu mahsulot bo\'yicha O\'zbekiston tarifi', '#059669') +
@@ -15040,6 +15130,7 @@ async function buildAiLetterPackage(comp, lang){
     tariffLines = buildAiTariffPromptLines(tariffSummary);
   }catch(err){
     console.warn('AI tariff analysis skipped:', err && err.message ? err.message : err);
+    tariffSummary = getAiTariffUnavailableSummary(comp, analysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
   }
   var productLabel = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || 'selected product';
   var industryLabel = comp.mahsulotNomi || comp.soha || productLabel || 'Manufacturing';
