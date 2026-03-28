@@ -1109,7 +1109,7 @@ input[type="time"]{-webkit-appearance:none;}
   <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
   <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Kompaniya qidiruvi</span></button>
   <button class="sb-tab" id="tab-investor" onclick="showPage('investor')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investorco">Investorlar bazasi</span><span class="sb-badge" id="badge-investorco">0</span></button>
-  <button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Pipeline</span></button>
+  <button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Oureach statistikasi</span></button>
   <button class="sb-tab" id="tab-trade" onclick="showPage('trade')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Jahon tashqi savdosi</span></button>
   <button class="sb-tab" id="tab-forums" onclick="showPage('forums')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_forums">Forumlar</span><span class="sb-badge" id="badge-forums">0</span></button>
   <div class="sidebar-divider"></div>
@@ -2022,8 +2022,8 @@ input[type="time"]{-webkit-appearance:none;}
 <div class="page" id="page-pipeline">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
-      <div><div class="pg-title">📋 Pipeline — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
-      <button class="btn btn-ghost btn-sm" onclick="resetAllPipeline()" style="color:#EF233C">🗑 Pipeline tozalash</button>
+      <div><div class="pg-title">📋 Oureach statistikasi — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="resetAllPipeline()" style="color:#EF233C">🗑 Oureach statistikasini tozalash</button>
     </div>
     <div class="mailbox-shell">
       <div class="mailbox-head">
@@ -2248,38 +2248,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="padding:.4rem .8rem;font-size:.55rem;color:var(--text3);text-align:right">📊 Manba: UN Comtrade rasmiy bazasi (comtradeapi.un.org)</div>
     </div>
 
-    <div id="tradeEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">🌐</div><p>Davlat tanlang va "🔍 Qidirish" bosing — yoki pastdan qo'lda ma'lumot kiriting</p></div>
-
-    <!-- Admin: Qo'lda kiritish / CSV import -->
-    <div class="tcard" style="margin-top:1rem">
-      <div class="tc-head">
-        <div class="tc-title">📝 Ma'lumot kiritish (Admin)</div>
-        <div style="display:flex;gap:.5rem">
-          <label class="btn btn-sm" style="background:#059669;color:#fff;border:none;cursor:pointer">
-            📥 CSV/Excel import
-            <input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importTradeCSV(this)">
-          </label>
-          <button class="btn btn-sm" onclick="loadTradeFromFirebase()" style="background:var(--bg2);border:1px solid var(--border)">🔥 Firebase'dan yuklash</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearTradeFirebase()" style="color:#EF233C">🗑</button>
-        </div>
-      </div>
-      <!-- Qo'lda kiritish forma -->
-      <div style="padding:.8rem">
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:.5rem">
-          <div class="form-group" style="flex:0 0 100px"><label class="form-label" style="font-size:.6rem">Davlat kodi</label><input class="form-input" id="tm-country" placeholder="643" style="font-size:.75rem"></div>
-          <div class="form-group" style="flex:0 0 100px"><label class="form-label" style="font-size:.6rem">Davlat nomi</label><input class="form-input" id="tm-country-name" placeholder="Rossiya" style="font-size:.75rem"></div>
-          <div class="form-group" style="flex:0 0 80px"><label class="form-label" style="font-size:.6rem">Yil</label><input class="form-input" id="tm-year" placeholder="2023" value="2023" style="font-size:.75rem"></div>
-          <div class="form-group" style="flex:0 0 80px"><label class="form-label" style="font-size:.6rem">Yo'nalish</label><select class="form-input" id="tm-flow" style="font-size:.75rem"><option value="M">Import</option><option value="X">Eksport</option></select></div>
-          <div class="form-group" style="flex:0 0 90px"><label class="form-label" style="font-size:.6rem">HS Kod</label><input class="form-input" id="tm-hs" placeholder="2516" style="font-size:.75rem"></div>
-          <div class="form-group" style="flex:1;min-width:150px"><label class="form-label" style="font-size:.6rem">Mahsulot nomi</label><input class="form-input" id="tm-name" placeholder="Granit bloklar" style="font-size:.75rem"></div>
-          <div class="form-group" style="flex:0 0 120px"><label class="form-label" style="font-size:.6rem">Qiymati (USD)</label><input class="form-input" id="tm-value" type="number" placeholder="45000000" style="font-size:.75rem"></div>
-          <div class="form-group" style="flex:0 0 100px"><label class="form-label" style="font-size:.6rem">Og'irlik (kg)</label><input class="form-input" id="tm-weight" type="number" placeholder="250000" style="font-size:.75rem"></div>
-          <div class="form-group" style="flex:0 0 auto"><button class="btn btn-blue btn-sm" onclick="addTradeRecord()">➕</button></div>
-        </div>
-        <div style="font-size:.55rem;color:var(--text3)">💡 CSV formatda import: Davlat kodi, Davlat nomi, Yil, Yo'nalish(M/X), HS Kod, Mahsulot nomi, Qiymati(USD), Og'irlik(kg)</div>
-        <div style="font-size:.55rem;color:var(--text3);margin-top:2px">📊 Firebase'dagi saqlangan ma'lumotlar: <span id="trade-fb-count" style="font-weight:700">0</span> ta yozuv</div>
-      </div>
-    </div>
+    <div id="tradeEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">🌐</div><p>Davlat tanlang va "🔍 Qidirish" bosing</p></div>
   </div>
 </div>
 
@@ -3615,7 +3584,7 @@ function showPage(id){
     products:'Mahsulotlar',
     import:'Import Tahlili',
     finder:'Kompaniya qidiruvi',
-    pipeline:'Pipeline',
+    pipeline:'Oureach statistikasi',
     trade:'Jahon tashqi savdosi',
     settings:'Sozlamalar',
     admin:'Admin Panel'
@@ -11442,7 +11411,7 @@ function resetAllPipeline(){
     if(typeof fbSave==='function') fbSave('investorCompanies', c);
   });
   renderPipeline();
-  toast('🗑 Pipeline tozalandi — barcha kompaniyalar "Yangi" holatiga qaytarildi');
+  toast('🗑 Oureach statistikasi tozalandi — barcha kompaniyalar "Yangi" holatiga qaytarildi');
 }
 
 function clearWorldBankData(){
