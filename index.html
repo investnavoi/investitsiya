@@ -9826,8 +9826,10 @@ function getEntrepreneurReplySince(ent){
   return new Date(Math.max.apply(null, candidates)).toISOString();
 }
 
-function getTelegramReplyTargets(){
+function getTelegramReplyTargets(ids){
+  var idList = Array.isArray(ids) ? ids.map(function(item){ return String(item); }) : [];
   return (DB.entrepreneurs||[]).filter(function(ent){
+    if(idList.length && idList.indexOf(String(ent.id)) === -1) return false;
     return !!ent.phone && (!!ent.tgSent || !!ent.tgPreparedAt || !!ent.tgPeerId || !!ent.tgUser);
   }).map(function(ent){
     return {
@@ -9866,7 +9868,7 @@ window.showEntrepreneurReply = showEntrepreneurReply;
 
 async function checkTelegramReplies(options){
   options = options || {};
-  var targets = getTelegramReplyTargets();
+  var targets = getTelegramReplyTargets(options.ids);
   if(!targets.length){
     if(options.silent!==true) toast('ℹ️ Telegram javobi tekshiriladigan tadbirkor topilmadi','info');
     return {updated:0,replied:0};
@@ -9920,6 +9922,20 @@ async function checkTelegramReplies(options){
   }
 }
 window.checkTelegramReplies = checkTelegramReplies;
+
+async function checkSingleTelegramReply(id){
+  var ent = (DB.entrepreneurs||[]).find(function(item){ return item.id===id; });
+  if(!ent){
+    toast('⚠️ Tadbirkor topilmadi','error');
+    return;
+  }
+  if(!ent.phone){
+    toast('⚠️ Avval telefon raqamini kiriting','error');
+    return;
+  }
+  return checkTelegramReplies({ids:[id], silent:false});
+}
+window.checkSingleTelegramReply = checkSingleTelegramReply;
 
 function getSelectedEntrepreneurIds(){
   return Array.from(document.querySelectorAll('.entr-check:checked')).map(function(el){
@@ -10180,6 +10196,10 @@ function renderEntrepreneurs(){
   tb.innerHTML = list.map(function(e,i){
     var tgMeta = getEntrepreneurTgStatusMeta(e, tgCooldown);
     var stIcon = renderEntrepreneurTgStatusHtml(e, tgMeta);
+    var replyCheckBtn = '<button class="btn btn-sm" onclick="checkSingleTelegramReply(\''+e.id+'\')" style="background:#2563EB;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram javobini tekshirish">💬</button>';
+    var replyViewBtn = e.tgReplyText
+      ? '<button class="btn btn-sm" onclick="showEntrepreneurReply(\''+e.id+'\')" style="background:#7C3AED;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram javobini ko\'rish">👁</button>'
+      : '';
     var checked = hasSavedSelection ? _entrSelectedIds.indexOf(String(e.id)) !== -1 : !!e.matchedForum;
     var nameCell = '<span id="nm-display-'+e.id+'" style="cursor:pointer" onclick="editEntName(\''+e.id+'\')" title="Bosib tahrirlang"><b>'+escHtml(e.name||'—')+'</b> ✏️</span>'+
       '<div id="nm-edit-'+e.id+'" style="display:none;align-items:center;gap:4px;flex-wrap:wrap">'+
@@ -10201,6 +10221,8 @@ function renderEntrepreneurs(){
       '<td style="font-size:.6rem;color:#4361EE">'+(e.matchedForum||'—')+'</td>'+
       '<td style="font-size:.65rem">'+stIcon+'</td>'+
       '<td style="white-space:nowrap">'+
+        replyCheckBtn+
+        replyViewBtn+
         '<button class="btn btn-sm" onclick="sendSingleTg(\''+e.id+'\')" style="background:#0088cc;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram xabar">📲</button>'+
         '<button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')" style="font-size:.55rem;padding:2px 6px">🗑</button>'+
       '</td></tr>';
@@ -10606,11 +10628,13 @@ function showForumEntrepreneurs(forumNom){
   if(!matched.length){
     document.getElementById('femBody').innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3)">Bu forumga mos tadbirkor topilmadi.<br>Avval "🔗 Moslashtirish" bosing.</div>';
   } else {
-    document.getElementById('femBody').innerHTML='<table style="width:100%;font-size:.75rem"><thead><tr><th>#</th><th>Ism</th><th>Tuman</th><th>📞 Telefon</th><th>Faoliyat</th><th>📨</th></tr></thead><tbody>'+
+    document.getElementById('femBody').innerHTML='<table style="width:100%;font-size:.75rem"><thead><tr><th>#</th><th>Ism</th><th>Tuman</th><th>📞 Telefon</th><th>Faoliyat</th><th>📨</th><th>Amal</th></tr></thead><tbody>'+
       matched.map(function(e,i){
         var tgMeta = getEntrepreneurTgStatusMeta(e, tgCooldown);
         var st = renderEntrepreneurTgStatusHtml(e, tgMeta);
-        return '<tr><td>'+(i+1)+'</td><td><b>'+e.name+'</b></td><td style="font-size:.65rem">'+(e.district||'—')+'</td><td>'+(e.phone||'—')+'</td><td style="font-size:.65rem">'+e.sector+'</td><td>'+st+'</td></tr>';
+        var actionBtns = '<button class="btn btn-sm" onclick="checkSingleTelegramReply(\''+e.id+'\')" style="background:#2563EB;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram javobini tekshirish">💬</button>' +
+          (e.tgReplyText ? '<button class="btn btn-sm" onclick="showEntrepreneurReply(\''+e.id+'\')" style="background:#7C3AED;color:#fff;border:none;font-size:.55rem;padding:2px 6px" title="Telegram javobini ko\'rish">👁</button>' : '');
+        return '<tr><td>'+(i+1)+'</td><td><b>'+e.name+'</b></td><td style="font-size:.65rem">'+(e.district||'—')+'</td><td>'+(e.phone||'—')+'</td><td style="font-size:.65rem">'+e.sector+'</td><td>'+st+'</td><td>'+actionBtns+'</td></tr>';
       }).join('')+'</tbody></table>';
   }
 
