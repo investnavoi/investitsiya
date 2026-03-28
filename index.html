@@ -9837,7 +9837,8 @@ function getTelegramReplyTargets(ids){
       phone: ent.phone || '',
       name: ent.name || '',
       tgPeerId: ent.tgPeerId || '',
-      since: getEntrepreneurReplySince(ent)
+      since: getEntrepreneurReplySince(ent),
+      sentMessage: ent.tgSentMessage || ''
     };
   });
 }
@@ -9988,6 +9989,7 @@ function applyTgResultToEntrepreneur(ent, result){
     ent.tgRetryAfterSec = 0;
     ent.tgBlockedUntil = '';
     ent.tgPreparedAt = '';
+    ent.tgSentMessage = result.sentMessage || ent.tgSentMessage || '';
   } else {
     ent.tgSent = false;
     ent.tgLastTryAt = nowIso;
@@ -10120,7 +10122,8 @@ async function sendTgMessage(phone, message, name){
         user:data.user||'',
         userId:data.userId||'',
         username:data.username||'',
-        contactSource:data.contactSource||''
+        contactSource:data.contactSource||'',
+        sentMessage:message || ''
       };
     }
     var code = data.code || detectTgErrorCode(data.error);
@@ -10290,6 +10293,7 @@ function saveEntPhone(id){
     ent.tgReplyAt = '';
     ent.tgReplyText = '';
     ent.tgReplySeen = false;
+    ent.tgSentMessage = '';
   }
   if(typeof fbSave==='function') fbSave('entrepreneurs', ent);
   renderEntrepreneurs();
