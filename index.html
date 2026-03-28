@@ -1434,6 +1434,7 @@ input[type="time"]{-webkit-appearance:none;}
             <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes(this)"></th>
             <th>T/r</th>
             <th data-i18n="col_company">Kompaniya</th>
+            <th data-i18n="col_company_location">Kompaniya manzili</th>
             <th data-i18n="col_leader">Rahbar</th>
             <th data-i18n="col_field">Soha</th>
             <th>Email</th>
@@ -3165,7 +3166,7 @@ const TRANSLATIONS = {
     btn_add:"➕ Yangi qo'shish", btn_excel:"📥 Excel", btn_clearall:"🗑 Barchasini o'chirish",
     btn_print:"🖨 Chop etish", btn_logout:"🚪 Chiqish", btn_bulk_send:"📧 Tanlanganlarga yuborish",
     col_city:"Shahar/Tuman", col_date:"Sana", col_country:"Davlat", col_purpose:"Maqsad",
-    col_company:"Kompaniya", col_project:"Loyiha", col_value:"Qiymati", col_status:"Maqom",
+    col_company:"Kompaniya", col_company_location:"Kompaniya manzili", col_project:"Loyiha", col_value:"Qiymati", col_status:"Maqom",
     col_region:"Hudud", col_note:"Izoh", col_actions:"Amal", col_email:"Email",
     col_emailstatus:"Email holati", col_leader:"Rahbar", col_position:"Lavozim",
     col_field:"Soha", col_amount:"Summa", col_amount_usd:"Talab (USD)", col_tel:"Telefon",
@@ -3209,7 +3210,7 @@ const TRANSLATIONS = {
     btn_add:"➕ Добавить", btn_excel:"📥 Excel", btn_clearall:"🗑 Очистить всё",
     btn_print:"🖨 Печать", btn_logout:"🚪 Выйти", btn_bulk_send:"📧 Отправить выбранным",
     col_city:"Город/Район", col_date:"Дата", col_country:"Страна", col_purpose:"Цель",
-    col_company:"Компания", col_project:"Проект", col_value:"Стоимость", col_status:"Статус",
+    col_company:"Компания", col_company_location:"Адрес компании", col_project:"Проект", col_value:"Стоимость", col_status:"Статус",
     col_region:"Регион", col_note:"Примечание", col_actions:"Действия", col_email:"Email",
     col_emailstatus:"Email статус", col_leader:"Руководитель", col_position:"Должность",
     col_field:"Отрасль", col_amount:"Сумма", col_amount_usd:"Запрос (USD)", col_tel:"Телефон",
@@ -3253,7 +3254,7 @@ const TRANSLATIONS = {
     btn_add:"➕ Add New", btn_excel:"📥 Excel", btn_clearall:"🗑 Clear All",
     btn_print:"🖨 Print", btn_logout:"🚪 Logout", btn_bulk_send:"📧 Send to Selected",
     col_city:"City/District", col_date:"Date", col_country:"Country", col_purpose:"Purpose",
-    col_company:"Company", col_project:"Project", col_value:"Value", col_status:"Status",
+    col_company:"Company", col_company_location:"Company location", col_project:"Project", col_value:"Value", col_status:"Status",
     col_region:"Region", col_note:"Note", col_actions:"Actions", col_email:"Email",
     col_emailstatus:"Email Status", col_leader:"Director", col_position:"Position",
     col_field:"Industry", col_amount:"Amount", col_amount_usd:"Request (USD)", col_tel:"Phone",
@@ -5069,6 +5070,59 @@ if(typeof _investorAiTargetId === 'undefined') var _investorAiTargetId = null;
 if(typeof _investorAiOpen === 'undefined') var _investorAiOpen = false;
 if(typeof _investorAiWorkspaceEl === 'undefined') var _investorAiWorkspaceEl = null;
 
+var _investorSohaEditId = '';
+
+function getInvestorCompanyLocation(rec){
+  rec = rec || {};
+  var rawLocation = String(rec.davlat || rec.country || '').trim();
+  var city = String(rec.shahar || rec.city || '').trim();
+  var region = String(rec.region || rec.province || rec.state || '').trim();
+  if(!city && !region) return rawLocation;
+  var parts = [];
+  [city, region, rawLocation].forEach(function(part){
+    if(!part) return;
+    if(parts.indexOf(part) === -1) parts.push(part);
+  });
+  return parts.join(', ');
+}
+
+function getInvestorSohaValue(rec){
+  return String((rec && (rec.mahsulotNomi || rec.soha)) || '').trim();
+}
+
+function openInvestorSohaEdit(id){
+  _investorSohaEditId = String(id || '');
+  renderInvestorCompanies();
+  setTimeout(function(){
+    var inp = document.getElementById('investor-soha-input-' + id);
+    if(inp){
+      inp.focus();
+      inp.select();
+    }
+  }, 20);
+}
+window.openInvestorSohaEdit = openInvestorSohaEdit;
+
+function cancelInvestorSohaEdit(){
+  _investorSohaEditId = '';
+  renderInvestorCompanies();
+}
+window.cancelInvestorSohaEdit = cancelInvestorSohaEdit;
+
+async function saveInvestorSohaEdit(id){
+  var rec = (DB.investorCompanies || []).find(function(item){ return String(item.id) === String(id); });
+  if(!rec) return;
+  var inp = document.getElementById('investor-soha-input-' + id);
+  var value = String((inp && inp.value) || '').trim();
+  rec.soha = value;
+  rec.mahsulotNomi = value;
+  if(typeof fbSave === 'function') await fbSave('investorCompanies', rec);
+  _investorSohaEditId = '';
+  renderInvestorCompanies();
+  toast('✅ Soha yangilandi');
+}
+window.saveInvestorSohaEdit = saveInvestorSohaEdit;
+
 function renderInvestorCompanies(){
   const co=DB.investorCompanies||[];
   const total=co.reduce((s,r)=>s+(parseFloat(r.summa)||0),0);
@@ -5080,20 +5134,34 @@ function renderInvestorCompanies(){
 
   const tb=document.getElementById('ic-tbody');
   if(!co.length){
-    tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
+    tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
     if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
     return;
   }
   tb.innerHTML=co.map((r,i)=>{
     var isAiOpen = (typeof _investorAiOpen !== 'undefined' && _investorAiOpen) && String((typeof _investorAiTargetId !== 'undefined' ? _investorAiTargetId : '')||'') === String(r.id);
+    var isSohaEdit = String(_investorSohaEditId || '') === String(r.id);
+    var locationText = getInvestorCompanyLocation(r);
+    var sohaValue = getInvestorSohaValue(r);
+    var sohaCell = isSohaEdit
+      ? '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">' +
+          '<input id="investor-soha-input-'+r.id+'" value="'+tgEscapeAttr(sohaValue)+'" placeholder="Soha / mahsulot nomi" style="min-width:170px;max-width:260px;padding:4px 8px;font-size:.72rem;border:1px solid #4361EE;border-radius:6px;background:#fff" onkeydown="if(event.key===\'Enter\')saveInvestorSohaEdit(\''+r.id+'\');if(event.key===\'Escape\')cancelInvestorSohaEdit()">' +
+          '<button type="button" onclick="saveInvestorSohaEdit(\''+r.id+'\')" style="background:#059669;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:.66rem;cursor:pointer">💾</button>' +
+          '<button type="button" onclick="cancelInvestorSohaEdit()" style="background:#E5E7EB;color:#111827;border:none;border-radius:6px;padding:4px 8px;font-size:.66rem;cursor:pointer">Bekor</button>' +
+        '</div>'
+      : (sohaValue
+          ? '<div style="display:flex;align-items:flex-start;gap:6px;justify-content:space-between"><span>'+escHtml(sohaValue)+'</span>'+(isAdmin?'<button type="button" onclick="openInvestorSohaEdit(\''+r.id+'\')" title="Soha tahrirlash" style="border:none;background:none;color:#4361EE;cursor:pointer;font-size:.8rem;line-height:1">✏️</button>':'')+'</div>'
+          : (isAdmin
+              ? '<button type="button" onclick="openInvestorSohaEdit(\''+r.id+'\')" style="background:#F59E0B;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:.66rem;cursor:pointer">Soha qo\'shish</button>'
+              : '—'));
     var rowHtml = `
     <tr id="investor-row-${r.id}">
       <td>${isAdmin?`<input type="checkbox" class="ic-check" data-id="${r.id}" onchange="updateSelectedCount()">`:''}</td>
       <td>${i+1}</td>
       <td><button type="button" onclick="openInvestorAiWorkspace('${r.id}')" style="padding:0;border:none;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left"><b style="color:var(--text)">${r.kompaniya}</b></button></td>
-      <td>${r.davlat||'<span style="color:var(--text3)">—</span>'}</td>
-      <td>${r.rahbar}${r.lavozim?'<div style="font-size:.6rem;color:var(--text3)">'+r.lavozim+'</div>':''}</td>
-      <td>${r.mahsulotNomi||r.soha||'—'}</td>
+      <td>${locationText||'<span style="color:var(--text3)">—</span>'}</td>
+      <td>${r.rahbar||'<span style="color:var(--text3)">—</span>'}${r.lavozim?'<div style="font-size:.6rem;color:var(--text3)">'+r.lavozim+'</div>':''}</td>
+      <td>${sohaCell}</td>
       <td style="font-size:.7rem;color:#4361EE">${r.email||'<span style="color:var(--text3)">—</span>'}</td>
       <td>${r.linkedin?'<a href="'+(r.linkedin.startsWith('http')?r.linkedin:'https://'+r.linkedin)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:.65rem;color:#0A66C2;text-decoration:none;font-weight:600;padding:3px 8px;background:rgba(10,102,194,.08);border-radius:6px" title="LinkedIn profilni ochish"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>Profil</a>':'<span style="color:var(--text3);font-size:.65rem">—</span>'}</td>
       <td>${getEmailStatusBadge(r)}</td>
