@@ -1442,7 +1442,7 @@ input[type="time"]{-webkit-appearance:none;}
             <th>Email</th>
             <th>Xodimlar</th>
             <th>Daromad</th>
-            <th>Tashkil etilgan</th>
+            <th>T/yil</th>
             <th>LinkedIn</th>
             <th data-i18n="col_emailstatus">Email holati</th>
             <th data-i18n="col_actions">Amal</th>
@@ -4421,14 +4421,14 @@ async function apolloAutoImport(){
 
     try {
       var body = {
-        action: 'people_search',
         page: 1,
         per_page: 25,
         api_key: getApolloApiKey(),
+        action: 'people_search',
         person_titles: search.titles,
         organization_locations: search.locations
       };
-      if(search.industries && search.industries.length) body.q_organization_keyword_tags = search.industries;
+      if(search.industries && search.industries.length) body.organization_industry_tag_ids = search.industries;
 
       var resp = await fetch(APOLLO_PROXY, {
         method: 'POST',
@@ -14084,15 +14084,19 @@ function apolloNeedContactCoverage(found, perCountry){
   }).length;
   return withContact < Math.min(top.length, Math.max(1, Math.ceil(perCountry * 0.7)));
 }
-
 async function apolloRequestJson(payload){
   var body = Object.assign({}, payload);
   if(body.search_type === 'people'){ body.action = 'people_search'; delete body.search_type; }
   else if(body.search_type === 'organizations'){ body.action = 'organization_search'; delete body.search_type; }
   else if(body.search_type === 'people_enrichment'){ body.action = 'people_enrichment'; delete body.search_type; }
   else if(body.search_type === 'org_enrichment'){ body.action = 'org_enrichment'; delete body.search_type; }
-  if(body.action === 'organization_search' && body.q_keywords){
-    body.q_organization_keyword_tags = [body.q_keywords]; delete body.q_keywords;
+  // q_organization_keyword_tags — har bir keyword ALOHIDA element bo'lishi kerak
+  if(body.q_organization_keyword_tags && Array.isArray(body.q_organization_keyword_tags)){
+    var split = [];
+    body.q_organization_keyword_tags.forEach(function(tag){
+      String(tag||'').split(/[\s,]+/).forEach(function(w){ w=w.trim(); if(w && split.indexOf(w)===-1) split.push(w); });
+    });
+    body.q_organization_keyword_tags = split;
   }
   if(body.action === 'people_enrichment' && body.organization_domain){
     body.domain = body.organization_domain; delete body.organization_domain;
@@ -14113,40 +14117,36 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var apolloKey = getApolloApiKey();
   if(!apolloKey) throw new Error('Apollo API key topilmadi. Sozlamalar sahifasiga kiriting.');
   var preferredKeywords = getApolloPreferredKeywords(prod);
-  var primaryKeyword = preferredKeywords[0] || ((prod && prod.name_en) || '');
-  var broadKeyword = preferredKeywords[1] || preferredKeywords[2] || primaryKeyword;
-  var modeWords = meta.mode === 'exporters' ? 'export supplier manufacturer' : 'import buyer distributor';
+  var kw1 = preferredKeywords[0] || ((prod && prod.name_en) || '');
+  var kw2 = preferredKeywords[1] || kw1;
   var found = [];
   var lastError = null;
   var hadSuccess = false;
 
-  // ═══ STEP 1: Organization Search — kompaniya topish (BEPUL) ═══
-  // Keyword'larni QISQA va ALOHIDA qilish — Apollo uzun stringni tanimaydi
-  var shortKeywords = [];
-  if(prod && prod.raw_name) shortKeywords.push(prod.raw_name.toLowerCase().split(/[\s,\/]+/)[0]);
-  if(prod && prod.name_en) shortKeywords.push(prod.name_en.toLowerCase().split(/[\s,\/\-]+/)[0]);
-  if(broadKeyword) shortKeywords.push(broadKeyword.toLowerCase().split(/[\s,\/]+/)[0]);
-  shortKeywords = shortKeywords.filter(function(k){ return k && k.length > 2; });
-  shortKeywords = Array.from(new Set(shortKeywords)).slice(0, 4);
-  if(!shortKeywords.length) shortKeywords = [primaryKeyword.split(/\s+/)[0]];
-
-  for(var ki=0; ki<shortKeywords.length; ki++){
+  // ═══ STEP 1: Organization Search (BEPUL) ═══
+  // q_organization_keyword_tags — har bir keyword alohida!
+  var kwSets = [
+    [kw1, meta.mode==='exporters'?'export':'import'],
+    [kw1],
+    [kw2, 'manufacturer', 'supplier']
+  ];
+  for(var ki=0; ki<kwSets.length; ki++){
     try {
       var apData = await apolloRequestJson({
         search_type:'organizations', page:1, per_page:Math.max(perCountry*2, 10),
         api_key:apolloKey, organization_locations:[country],
-        q_organization_keyword_tags:[shortKeywords[ki]]
+        q_organization_keyword_tags:kwSets[ki]
       });
       hadSuccess = true;
       var orgs = normalizeApolloArray(apData, ['organizations','accounts','companies']);
       orgs.forEach(function(org){
-        var name = org.name || org.organization_name || '';
+        var name = org.name || '';
         if(!name || name.length > 100 || /\|/.test(name)) return;
+        if(found.some(function(f){ return apolloCompanyKey(f.kompaniya)===apolloCompanyKey(name); })) return;
         found.push({
           id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-          kompaniya:name, rahbar:'',
-          lavozim:meta.mode==='exporters'?'Exportyor kompaniya':'Importyor kompaniya',
-          email:'', telefon:org.phone||(org.primary_phone&&org.primary_phone.number?org.primary_phone.number:'')||'',
+          kompaniya:name, rahbar:'', lavozim:meta.mode==='exporters'?'Exportyor kompaniya':'Importyor kompaniya',
+          email:'', telefon:org.phone||(org.primary_phone&&org.primary_phone.number)||'',
           davlat:country, shahar:org.city||org.state||'',
           soha:org.industry||org.industry_tag||'',
           linkedin:org.linkedin_url||'',
@@ -14155,9 +14155,8 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
           xodimlar:Number(org.estimated_num_employees||0)||0,
           daromad:org.organization_revenue_printed||org.annual_revenue_printed||'',
           tpilyil:org.founded_year||'',
-          import_volume:'',
-          score:Math.floor(Math.random()*10)+82,
-          manba:'Apollo Org', finderMode:meta.mode,
+          import_volume:'', score:Math.floor(Math.random()*10)+82,
+          manba:'Apollo', finderMode:meta.mode,
           _orgId:org.id||''
         });
       });
@@ -14165,7 +14164,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     } catch(e){ lastError=e; if(apolloIsFatalError(e)) throw e; }
   }
 
-  // ═══ STEP 2: Har bir org uchun People Search — CEO topish (BEPUL) ═══
+  // ═══ STEP 2: People Search — organization_ids bilan CEO topish (BEPUL) ═══
   for(var fi=0; fi<Math.min(found.length, perCountry, 10); fi++){
     var item = found[fi];
     if(!item._orgId) continue;
@@ -14177,20 +14176,24 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         organization_ids:[item._orgId]
       });
       var people = normalizeApolloArray(ppData, ['people','contacts']);
-      if(people.length > 0){
-        var ceo = people[0];
-        item.rahbar = ((ceo.first_name||'')+' '+(ceo.last_name||ceo.last_name_obfuscated||'')).trim();
-        item.lavozim = ceo.title || item.lavozim;
-        item.email = ceo.email || '';
-        item.linkedin = ceo.linkedin_url || item.linkedin;
-        item.shahar = item.shahar || ceo.city || ceo.state || '';
-        item._personId = ceo.id || '';
-        item._hasEmail = ceo.has_email || false;
+      // has_email:true bo'lgan birinchi odamni tanlash
+      var bestCeo = null;
+      for(var pi=0; pi<people.length; pi++){
+        if(people[pi].has_email === true || people[pi].has_email === 'true'){
+          bestCeo = people[pi]; break;
+        }
       }
-    } catch(e2){ console.log('People search for '+item.kompaniya+' error:', e2); }
+      if(!bestCeo && people.length) bestCeo = people[0];
+      if(bestCeo){
+        item.rahbar = ((bestCeo.first_name||'')+' '+(bestCeo.last_name||bestCeo.last_name_obfuscated||'')).trim();
+        item.lavozim = bestCeo.title || item.lavozim;
+        item._personId = bestCeo.id || '';
+        item._hasEmail = bestCeo.has_email || false;
+      }
+    } catch(e2){ console.log('People search for '+item.kompaniya+': '+e2.message); }
   }
 
-  // ═══ STEP 2.5: Avtomatik People Enrichment — to'liq ism + email (1 kredit per odam) ═══
+  // ═══ STEP 3: People Enrichment — to'liq ism + email (AVTOMATIK, 1 kredit) ═══
   for(var ei=0; ei<Math.min(found.length, perCountry, 10); ei++){
     var eItem = found[ei];
     if(!eItem._personId) continue;
@@ -14203,7 +14206,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       if(person){
         if(person.first_name) eItem.rahbar = ((person.first_name||'')+' '+(person.last_name||'')).trim();
         eItem.lavozim = person.title || eItem.lavozim;
-        eItem.email = person.email || eItem.email || '';
+        eItem.email = person.email || '';
         eItem.linkedin = person.linkedin_url || eItem.linkedin || '';
         eItem.shahar = person.city || person.state || eItem.shahar || '';
         var phones = (person.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean);
@@ -14216,10 +14219,10 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
           eItem.website = eItem.website || apolloAbsoluteUrl(person.organization.website_url||'');
         }
       }
-    } catch(enrErr){ console.log('Auto-enrich '+eItem.kompaniya+' error:', enrErr); }
+    } catch(enrErr){ console.log('Enrich '+eItem.kompaniya+': '+enrErr.message); }
   }
 
-  // ═══ STEP 3: Agar hech narsa topilmasa — oddiy People Search (fallback) ═══
+  // ═══ STEP 4: Fallback — oddiy People Search ═══
   if(!found.length){
     try {
       var fbData = await apolloRequestJson({
@@ -14230,19 +14233,17 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       hadSuccess = true;
       normalizeApolloArray(fbData, ['people','contacts']).forEach(function(p){
         var org = p.organization || {};
-        var compName = org.name || p.organization_name || '';
-        if(!compName) return;
+        var compName = org.name || ''; if(!compName) return;
         found.push({
           id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-          kompaniya:compName,
-          rahbar:((p.first_name||'')+' '+(p.last_name||p.last_name_obfuscated||'')).trim(),
+          kompaniya:compName, rahbar:((p.first_name||'')+' '+(p.last_name||p.last_name_obfuscated||'')).trim(),
           lavozim:p.title||'', email:p.email||'', telefon:'',
           davlat:country, shahar:p.city||'', soha:org.industry||'',
           linkedin:p.linkedin_url||'', website:apolloAbsoluteUrl(org.website_url||''),
           xodimlar:Number(org.estimated_num_employees||0)||0,
-          daromad:'', tpilyil:'',
-          import_volume:'', score:Math.floor(Math.random()*15)+70,
-          manba:'Apollo People', finderMode:meta.mode, _personId:p.id||'', _hasEmail:p.has_email||false
+          daromad:'', tpilyil:'', import_volume:'',
+          score:Math.floor(Math.random()*15)+70,
+          manba:'Apollo', finderMode:meta.mode, _personId:p.id||''
         });
       });
     } catch(e3){ lastError=e3; if(apolloIsFatalError(e3)) throw e3; }
@@ -14251,45 +14252,6 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   if(!found.length && !hadSuccess && lastError) throw lastError;
   return finalizeApolloFinderResults(found, prod, perCountry, strategy, meta);
 }
-
-async function enrichFinderPerson(idx){
-  var r = _finderResults[idx];
-  if(!r){ toast('Natija topilmadi','error'); return; }
-  var apolloKey = getApolloApiKey();
-  if(!apolloKey){ toast('Apollo API key kiriting (Sozlamalar)','error'); return; }
-  if(!r._personId){ toast('Bu kompaniya uchun odam topilmagan','warning'); return; }
-
-  toast('🔍 '+r.kompaniya+' — '+r.rahbar+' uchun email olinmoqda (1 kredit)...');
-  try {
-    var enrData = await apolloRequestJson({
-      search_type:'people_enrichment', api_key:apolloKey,
-      id:r._personId, reveal_personal_emails:true, reveal_phone_number:true
-    });
-    var person = enrData.person || null;
-    if(person && (person.email || person.first_name)){
-      r.rahbar = ((person.first_name||'')+ ' '+(person.last_name||'')).trim() || r.rahbar;
-      r.lavozim = person.title || r.lavozim;
-      r.email = person.email || '';
-      r.linkedin = person.linkedin_url || r.linkedin;
-      r.shahar = person.city || person.state || r.shahar;
-      var phones = (person.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean);
-      if(phones.length) r.telefon = phones.join(', ');
-      if(person.organization){
-        r.soha = person.organization.industry || r.soha;
-        r.xodimlar = person.organization.estimated_num_employees || r.xodimlar;
-        r.daromad = person.organization.organization_revenue_printed || person.organization.annual_revenue_printed || r.daromad || '';
-        r.tpilyil = person.organization.founded_year || r.tpilyil || '';
-      }
-      renderFinderTable(_finderResults);
-      toast('✅ '+r.rahbar+' — '+(r.email||'email topilmadi'));
-    } else {
-      toast('⚠️ Apollo bazasida email topilmadi','warning');
-    }
-  } catch(e){
-    toast('❌ Xato: '+(e.message||''),'error');
-  }
-}
-
 
 function updateFinderModeUI(){
   var modeEl = document.getElementById('finder-mode');
@@ -14499,22 +14461,17 @@ function renderFinderTable(results){
   var meta = getFinderModeMeta(_finderMode||'importers');
   tb.innerHTML = results.sort(function(a,b){return (b.score||0)-(a.score||0);}).map(function(r,i){
     var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
-    var emailCell = r.email
-      ? '<div style="font-size:.62rem;color:#0ea5e9">'+r.email+'</div>'
-      : (r._personId ? '<span style="color:var(--text3);font-size:.6rem">— Email yo\'q</span>' : '');
     return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>'+
       '<td>'+(i+1)+'</td>'+
       '<td><b>'+r.kompaniya+'</b>'+(r.website?'<div style="font-size:.55rem;color:var(--text3)">'+r.website+'</div>':'')+'</td>'+
       '<td>'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>'+
       '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
-      '<td>'+(r.rahbar&&r.rahbar!=='—'?r.rahbar:'—')+'<div style="font-size:.55rem;color:var(--text3)">'+(r.lavozim||'')+'</div>'+emailCell+'</td>'+
+      '<td>'+(r.rahbar||'—')+'<div style="font-size:.55rem;color:var(--text3)">'+(r.lavozim||'')+'</div>'+(r.email?'<div style="font-size:.58rem;color:#0ea5e9;margin-top:2px">'+r.email+'</div>':'<div style="font-size:.55rem;color:var(--text3)">— Email yo\'q</div>')+'</td>'+
       '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
       '<td style="font-size:.65rem">'+(r.daromad||'—')+'</td>'+
       '<td style="font-size:.65rem">'+(r.xodimlar||'—')+'</td>'+
       '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
-      '<td style="white-space:nowrap">'+
-      (r._personId && !r.email ? '<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;border-radius:8px;margin-right:3px;font-size:.58rem;padding:3px 8px" onclick="enrichFinderPerson('+i+')" title="Email olish (1 kredit)">🔍 Email</button>' : '')+
-      '<button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat" style="font-size:.58rem;padding:3px 8px">📧</button></td></tr>';
+      '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat" style="font-size:.58rem;padding:3px 8px">📧</button></td></tr>';
   }).join('');
 }
 
