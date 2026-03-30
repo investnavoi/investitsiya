@@ -1483,6 +1483,8 @@ input[type="time"]{-webkit-appearance:none;}
       <div id="invAiAnalysisCard" class="tcard" style="display:none;margin:1rem">
         <div class="tc-head"><div class="tc-title" id="invAiAnalysisTitle">📊 Iqtisodiy Tahlil</div></div>
         <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="invAiAnalysisGrid"></div>
+        <div id="invAiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
+        <div id="invAiAnalysisDetail" style="display:none;padding:0 1rem 1rem"></div>
         <div id="invAiAnalysisMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
       </div>
 
@@ -1791,7 +1793,7 @@ input[type="time"]{-webkit-appearance:none;}
     <div class="form-card" style="margin-bottom:1.2rem">
       <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:1rem;padding:0 0 1rem 0;border-bottom:1px solid var(--border)">
         <div class="form-group" style="flex:1 1 100%;margin:0">
-          <div style="display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:1rem;align-items:center">
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:1rem;align-items:center">
             <label style="display:flex;align-items:center;justify-content:center;gap:10px;padding:.25rem 0;font-size:.74rem;font-weight:700;color:var(--text);cursor:pointer;background:transparent">
               <input type="checkbox" id="finder-filter-top100">
               <span>Top 100 talik kompaniyalar</span>
@@ -1799,10 +1801,6 @@ input[type="time"]{-webkit-appearance:none;}
             <label style="display:flex;align-items:center;justify-content:center;gap:10px;padding:.25rem 0;font-size:.74rem;font-weight:700;color:var(--text);cursor:pointer;background:transparent">
               <input type="checkbox" id="finder-filter-expansion">
               <span>Kengayish istagida bo'lgan</span>
-            </label>
-            <label style="display:flex;align-items:center;justify-content:center;gap:10px;padding:.25rem 0;font-size:.74rem;font-weight:700;color:var(--text);cursor:pointer;background:transparent">
-              <input type="checkbox" id="finder-filter-target13">
-              <span>13 ta davlatga eksportyorlar</span>
             </label>
           </div>
         </div>
@@ -1824,11 +1822,15 @@ input[type="time"]{-webkit-appearance:none;}
             <div class="custom-select-dropdown" id="finder-dropdown"></div>
           </div>
         </div>
-        <div class="form-group" style="flex:0 0 120px">
-          <label class="form-label">Har davlatdan</label>
-          <select class="form-input" id="finder-count">
-            <option value="1">1 ta</option><option value="3">3 ta</option><option value="5" selected>5 ta</option><option value="10">10 ta</option>
-          </select>
+        <div class="form-group" style="flex:0 0 190px">
+          <label class="form-label">Natija soni</label>
+          <div style="display:grid;grid-template-columns:1fr 84px;gap:.45rem">
+            <select class="form-input" id="finder-count-mode">
+              <option value="per_country" selected>Har davlatdan</option>
+              <option value="total">Jami</option>
+            </select>
+            <input class="form-input" id="finder-count" type="number" min="1" max="100" step="1" value="5" inputmode="numeric">
+          </div>
         </div>
         <div class="form-group" style="flex:0 0 210px">
           <div style="display:flex;flex-direction:column;gap:.45rem">
@@ -1983,6 +1985,8 @@ input[type="time"]{-webkit-appearance:none;}
     <div id="aiAnalysisCard" class="tcard" style="display:none;margin-bottom:1rem">
       <div class="tc-head"><div class="tc-title" id="aiAnalysisTitle">📊 Iqtisodiy Tahlil</div></div>
       <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="aiAnalysisGrid"></div>
+      <div id="aiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
+      <div id="aiAnalysisDetail" style="display:none;padding:0 1rem 1rem"></div>
       <div id="aiAnalysisMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
     </div>
 
@@ -13631,11 +13635,23 @@ function getFinderCountryFlag(name){
 function getFinderStrategyFilters(){
   var top100El = document.getElementById('finder-filter-top100');
   var expansionEl = document.getElementById('finder-filter-expansion');
-  var target13El = document.getElementById('finder-filter-target13');
   return {
     top100: !!(top100El && top100El.checked),
     expansion: !!(expansionEl && expansionEl.checked),
-    target13: !!(target13El && target13El.checked)
+    target13: false
+  };
+}
+
+function getFinderCountSettings(){
+  var modeEl = document.getElementById('finder-count-mode');
+  var countEl = document.getElementById('finder-count');
+  var count = parseInt((countEl && countEl.value) || '5', 10);
+  if(!count || count < 1) count = 5;
+  if(count > 100) count = 100;
+  if(countEl) countEl.value = count;
+  return {
+    mode: (modeEl && modeEl.value) || 'per_country',
+    count: count
   };
 }
 
@@ -13648,6 +13664,28 @@ function toggleFinderTargetCountry(name){
 
 function toggleFinderTargetGroup(name){
   _finderTargetOpenGroups[name] = !_finderTargetOpenGroups[name];
+  renderFinderTargetFilters();
+}
+
+function toggleFinderTargetGroupAll(name){
+  var groupCountries = [];
+  if(name === 'Maqsad davlatlar') groupCountries = FINDER_ALWAYS_TARGET_COUNTRIES.slice();
+  else groupCountries = (FINDER_SOURCE_REGIONS[name] || []).filter(function(country){
+    return FINDER_ALWAYS_TARGET_COUNTRIES.indexOf(country) === -1;
+  });
+  if(!groupCountries.length) return;
+  var allSelected = groupCountries.every(function(country){
+    return _finderTargetCountries.indexOf(country) !== -1;
+  });
+  if(allSelected){
+    _finderTargetCountries = _finderTargetCountries.filter(function(country){
+      return groupCountries.indexOf(country) === -1;
+    });
+  } else {
+    groupCountries.forEach(function(country){
+      if(_finderTargetCountries.indexOf(country) === -1) _finderTargetCountries.push(country);
+    });
+  }
   renderFinderTargetFilters();
 }
 
@@ -13669,9 +13707,13 @@ function renderFinderTargetFilters(){
     var selectedCount = group.countries.filter(function(country){
       return _finderTargetCountries.indexOf(country) !== -1;
     }).length;
+    var allChecked = !!group.countries.length && selectedCount === group.countries.length;
     return '<div style="border:1px solid var(--border);border-radius:12px;background:'+(isCore?'rgba(67,97,238,.07)':'rgba(255,255,255,.45)')+';overflow:hidden">'+
       '<button type="button" onclick="toggleFinderTargetGroup(\''+group.name.replace(/'/g,"\\'")+'\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:.72rem .8rem;background:transparent;border:none;cursor:pointer;color:var(--text)">'+
-        '<span style="font-size:.72rem;font-weight:800;color:var(--text)">'+(isCore?'🎯 ':'🌐 ')+group.name+'</span>'+
+        '<span style="display:flex;align-items:center;gap:10px;font-size:.72rem;font-weight:800;color:var(--text)">'+
+          (isCore?'🎯 ':'🌐 ')+group.name+
+          '<span onclick="event.stopPropagation()"><label style="display:inline-flex;align-items:center;gap:5px;font-size:.63rem;font-weight:700;color:var(--text2);cursor:pointer"><input type="checkbox" '+(allChecked?'checked':'')+' onchange="toggleFinderTargetGroupAll(\''+group.name.replace(/'/g,"\\'")+'\')"> Jami</label></span>'+
+        '</span>'+
         '<span style="display:flex;align-items:center;gap:8px"><span style="font-size:.62rem;color:var(--text3)">'+selectedCount+'/'+group.countries.length+'</span><span style="font-size:10px;color:var(--text3);transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+';transition:transform .18s">▾</span></span>'+
       '</button>'+
       '<div style="display:'+(isOpen?'flex':'none')+';flex-wrap:wrap;gap:.38rem;padding:0 .8rem .75rem">'+
@@ -14354,7 +14396,11 @@ async function runCompanyFinder(source){
   var meta = getFinderModeMeta(document.getElementById('finder-mode').value);
   _finderMode = meta.mode;
   var sourceScope = getFinderSourceSelection();
-  var perCountry = parseInt(document.getElementById('finder-count').value)||5;
+  var countSettings = getFinderCountSettings();
+  var requestedCount = countSettings.count;
+  var requestPerCountry = countSettings.mode === 'total'
+    ? Math.max(1, Math.ceil(requestedCount / Math.max((meta.mode === 'exporters' ? (sourceScope.effectiveCountries || []).length : (_finderTargetCountries || []).length), 1)))
+    : requestedCount;
   var strategy = getFinderStrategyFilters();
 
   // Get selected target countries
@@ -14390,8 +14436,12 @@ async function runCompanyFinder(source){
       for(var ci=0; ci<searchCountries.length; ci++){
         document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+getFinderCountryLabel(searchCountries[ci])+' ('+(ci+1)+'/'+searchCountries.length+') — '+meta.resultWord+'...'+(meta.mode === 'exporters' ? (' | Maqsad: '+targetCountries.slice(0,4).map(getFinderCountryLabel).join(', ')+(targetCountries.length>4?'...':'')) : '');
         try {
-          var countryResults = await apolloFinderSearchCountry(prod, searchCountries[ci], perCountry, meta, sourceScope, targetCountries, strategy);
+          var countryResults = await apolloFinderSearchCountry(prod, searchCountries[ci], requestPerCountry, meta, sourceScope, targetCountries, strategy);
           countryResults.forEach(function(item){ _finderResults.push(item); });
+          if(countSettings.mode === 'total'){
+            dedupeFinderResults();
+            if(_finderResults.length >= requestedCount) break;
+          }
         } catch(e){
           console.log('Apollo '+searchCountries[ci]+' error:', e);
           if(apolloIsFatalError(e)){
@@ -14405,6 +14455,9 @@ async function runCompanyFinder(source){
       }
       if(apolloFatalError) throw apolloFatalError;
       dedupeFinderResults();
+      if(countSettings.mode === 'total'){
+        _finderResults = _finderResults.slice(0, requestedCount);
+      }
       if(!_finderResults.length && apolloSoftErrors.length){
         throw new Error('Apollo qidiruvi natija qaytarmadi. Ayrim davlatlarda xatolar bo‘ldi: ' + apolloSoftErrors.slice(0,3).join(' | '));
       }
@@ -14422,7 +14475,9 @@ async function runCompanyFinder(source){
           prompt = 'You are a B2B trade intelligence expert. Return ONLY valid JSON array.\n'+
             'Find REAL exporter / supplier / manufacturer companies headquartered in these source countries: '+batch.join(', ')+'.\n'+
             'These companies should export or be capable of exporting "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') to one or more of these destination countries: '+targetCountries.join(', ')+'.\n'+
-            'For EACH source country find '+perCountry+' real exporter companies.\n'+
+            (countSettings.mode === 'total'
+              ? ('Return TOTAL '+requestedCount+' real exporter companies across the selected source countries.\n')
+              : ('For EACH source country find '+requestedCount+' real exporter companies.\n'))+
             'Do NOT return importer companies from the destination countries.\n'+
             (strategy.top100 ? 'Prioritize top 100 or market-leading companies in this sector.\n' : '')+
             (strategy.expansion ? 'Prioritize companies showing expansion intent, growth, new market development, or international business development.\n' : '')+
@@ -14440,7 +14495,9 @@ async function runCompanyFinder(source){
         } else {
           prompt = 'You are a B2B trade intelligence expert. Return ONLY valid JSON array.\n'+
             'Find REAL companies that '+meta.promptVerb+' "'+prod.name_en+'" (HS Code: '+(prod.hs_code||'N/A')+') for these countries: '+batch.join(', ')+'.\n'+
-            'For EACH country find '+perCountry+' companies that are '+meta.promptRole+' of this product.\n'+
+            (countSettings.mode === 'total'
+              ? ('Return TOTAL '+requestedCount+' companies across the selected countries that are '+meta.promptRole+' of this product.\n')
+              : ('For EACH country find '+requestedCount+' companies that are '+meta.promptRole+' of this product.\n'))+
             'These should be real active companies relevant to cross-border trade of this product.\n'+
             (strategy.top100 ? 'Prioritize top 100 or market-leading companies in this sector.\n' : '')+
             (strategy.expansion ? 'Prioritize companies showing expansion intent, growth, new market development, or active sourcing scale-up.\n' : '')+
@@ -14484,6 +14541,12 @@ async function runCompanyFinder(source){
           });
         });
       }
+    }
+
+    if(countSettings.mode === 'total' && _finderResults.length > requestedCount){
+      _finderResults = _finderResults
+        .sort(function(a,b){ return (b.score||0) - (a.score||0); })
+        .slice(0, requestedCount);
     }
 
     document.getElementById('finderBar').style.width = '100%';
@@ -14912,18 +14975,148 @@ function aiRatioDirectionText(countryValue, uzValue, cheaperMode){
   return 'Deyarli teng';
 }
 
-function buildAiMetricCard(icon, label, main, detail, accent){
-  return '<div style="padding:1rem;background:var(--bg2);border-radius:10px">' +
+function getAiScopeKey(scope){
+  return scope === 'investor' ? 'investor' : 'default';
+}
+
+function aiValueOrDash(value, formatter){
+  return Number.isFinite(Number(value)) ? formatter(value) : '—';
+}
+
+function aiMetricDiffText(metricKey, countryValue, uzValue){
+  var c = Number(countryValue);
+  var u = Number(uzValue);
+  if(!Number.isFinite(c) || !Number.isFinite(u)) return '—';
+  var diff = c - u;
+  if(metricKey === 'gdpPerCapita') return aiFmtUsdExact(diff);
+  if(metricKey === 'industryShare' || metricKey === 'totalTaxRate') return aiFmtPct(diff);
+  if(metricKey === 'monthlyWage') return aiFmtUsdExact(diff);
+  if(metricKey === 'electricityPrice' || metricKey === 'naturalGasPrice') return aiFmtMwh(diff);
+  return String(aiRound(diff, 2));
+}
+
+function getAiMetricDescriptor(metricKey, analysis){
+  var metrics = (analysis && analysis.metrics) || {};
+  if(metricKey === 'gdpPerCapita') return { key:metricKey, icon:'📈', label:'YaIM / kishi', accent:'#2563EB', metric:metrics.gdpPerCapita || {}, formatter:aiFmtUsdExact, inverse:false };
+  if(metricKey === 'industryShare') return { key:metricKey, icon:'🏭', label:'Sanoat ulushi', accent:'#F59E0B', metric:metrics.industryShare || {}, formatter:aiFmtPct, inverse:false };
+  if(metricKey === 'totalTaxRate') return { key:metricKey, icon:'🧾', label:'Soliq yuklamasi (% foyda)', accent:'#7C3AED', metric:metrics.totalTaxRate || {}, formatter:aiFmtPct, inverse:true };
+  if(metricKey === 'monthlyWage') return { key:metricKey, icon:'👷', label:'Mehnat narxi (oylik)', accent:'#059669', metric:metrics.monthlyWage || {}, formatter:aiFmtWageValue, inverse:true };
+  if(metricKey === 'electricityPrice') return { key:metricKey, icon:'⚡', label:'Elektr energiyasi', accent:'#DC2626', metric:metrics.electricityPrice || {}, secondaryMetric:metrics.naturalGasPrice || {}, formatter:aiFmtMwh, inverse:true };
+  return null;
+}
+
+function buildAiDetailRows(rows){
+  return rows.map(function(row){
+    return '<tr><td style="font-weight:700;color:var(--text)">' + escapeHtmlText(row.label || '—') + '</td><td>' + escapeHtmlText(row.country || '—') + '</td><td>' + escapeHtmlText(row.uzbekistan || '—') + '</td></tr>';
+  }).join('');
+}
+
+function buildAiMetricDetail(metricKey, analysis){
+  var descriptor = getAiMetricDescriptor(metricKey, analysis);
+  if(!descriptor) return '';
+  var metric = descriptor.metric || {};
+  var secondary = descriptor.secondaryMetric || {};
+  var countryName = (((analysis || {}).country || {}).display) || 'Tanlangan davlat';
+  var countryBasis = metric.countryCurrencyBasis || null;
+  var uzBasis = metric.uzbekistanCurrencyBasis || null;
+  var countryValue = descriptor.key === 'monthlyWage'
+    ? aiValueOrDash(metric.country, function(v){ return descriptor.formatter(v, countryBasis); })
+    : aiValueOrDash(metric.country, descriptor.formatter);
+  var uzValue = descriptor.key === 'monthlyWage'
+    ? aiValueOrDash(metric.uzbekistan, function(v){ return descriptor.formatter(v, uzBasis); })
+    : aiValueOrDash(metric.uzbekistan, descriptor.formatter);
+  var ratioText = aiRatioDirectionText(metric.country, metric.uzbekistan, descriptor.inverse);
+  var diffText = aiMetricDiffText(descriptor.key, metric.country, metric.uzbekistan);
+  var rows = [
+    { label: descriptor.label, country: countryValue, uzbekistan: uzValue },
+    { label: 'Oxirgi yil', country: metric.countryYear || '—', uzbekistan: metric.uzbekistanYear || '—' },
+    { label: 'Birlik', country: metric.unit || '—', uzbekistan: metric.unit || '—' },
+    { label: 'Manba', country: metric.source || '—', uzbekistan: metric.source || '—' },
+    { label: 'Indikator', country: metric.indicator || '—', uzbekistan: metric.indicator || '—' }
+  ];
+  var note = '';
+  if(descriptor.key === 'totalTaxRate'){
+    var cParts = ((metric.components || {}).country) || {};
+    var uParts = ((metric.components || {}).uzbekistan) || {};
+    rows.push(
+      { label: 'Labor tax', country: aiValueOrDash(cParts.laborTax, aiFmtPct), uzbekistan: aiValueOrDash(uParts.laborTax, aiFmtPct) },
+      { label: 'Profit tax', country: aiValueOrDash(cParts.profitTax, aiFmtPct), uzbekistan: aiValueOrDash(uParts.profitTax, aiFmtPct) },
+      { label: 'Other taxes', country: aiValueOrDash(cParts.otherTaxes, aiFmtPct), uzbekistan: aiValueOrDash(uParts.otherTaxes, aiFmtPct) }
+    );
+    note = 'Soliq yuklamasi uchta rasmiy komponent yig\'indisi sifatida hisoblangan: labor tax + profit tax + other taxes.';
+  }
+  if(descriptor.key === 'monthlyWage'){
+    rows.push({ label: 'Valyuta bazasi', country: countryBasis || '—', uzbekistan: uzBasis || '—' });
+    note = 'Mehnat narxi ILOSTAT ma\'lumotiga ko\'ra oylik ish haqi ko\'rsatkichi asosida taqqoslanadi.';
+  }
+  if(descriptor.key === 'electricityPrice'){
+    rows.push(
+      { label: 'Tabiiy gaz', country: aiValueOrDash(secondary.country, aiFmtMwh), uzbekistan: aiValueOrDash(secondary.uzbekistan, aiFmtMwh) },
+      { label: 'Gaz yili', country: secondary.countryYear || '—', uzbekistan: secondary.uzbekistanYear || '—' },
+      { label: 'Gaz manbasi', country: secondary.source || '—', uzbekistan: secondary.source || '—' }
+    );
+    note = 'Elektr energiyasi bilan birga tabiiy gaz bo\'yicha ham qo\'shimcha energetik fon berildi.';
+  }
+  return '<div style="border:1px solid rgba(67,97,238,.18);border-radius:14px;background:#fff;box-shadow:0 12px 34px rgba(15,23,42,.06)">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1rem .85rem;border-bottom:1px solid rgba(67,97,238,.12);flex-wrap:wrap">' +
+      '<div><div style="font-family:Sora,sans-serif;font-size:.98rem;font-weight:800;color:var(--text)">' + descriptor.icon + ' ' + escapeHtmlText(descriptor.label) + ' statistikasi</div><div style="font-size:.72rem;color:var(--text3);margin-top:4px">' + escapeHtmlText(countryName) + ' va O\'zbekiston bo\'yicha rasmiy taqqoslash</div></div>' +
+      '<div style="display:flex;gap:.55rem;flex-wrap:wrap">' +
+        '<div style="min-width:135px;padding:.68rem .8rem;border-radius:12px;background:rgba(37,99,235,.08)"><div style="font-size:.65rem;color:var(--text3)">' + escapeHtmlText(countryName) + '</div><div style="font-size:1rem;font-weight:800;color:' + descriptor.accent + '">' + escapeHtmlText(countryValue) + '</div></div>' +
+        '<div style="min-width:135px;padding:.68rem .8rem;border-radius:12px;background:rgba(5,150,105,.08)"><div style="font-size:.65rem;color:var(--text3)">O\'zbekiston</div><div style="font-size:1rem;font-weight:800;color:#059669">' + escapeHtmlText(uzValue) + '</div></div>' +
+        '<div style="min-width:160px;padding:.68rem .8rem;border-radius:12px;background:rgba(124,58,237,.08)"><div style="font-size:.65rem;color:var(--text3)">Nisbat / farq</div><div style="font-size:.98rem;font-weight:800;color:#7C3AED">' + escapeHtmlText(ratioText) + '</div><div style="font-size:.65rem;color:var(--text3);margin-top:2px">Farq: ' + escapeHtmlText(diffText) + '</div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="tscroll" style="padding:0 1rem 1rem"><table><thead><tr><th>Ko\'rsatkich</th><th>' + escapeHtmlText(countryName) + '</th><th>O\'zbekiston</th></tr></thead><tbody>' + buildAiDetailRows(rows) + '</tbody></table></div>' +
+    (note ? '<div style="padding:0 1rem 1rem;font-size:.72rem;line-height:1.6;color:var(--text2)"><strong>Izoh:</strong> ' + escapeHtmlText(note) + '</div>' : '') +
+  '</div>';
+}
+
+function renderAiAnalysisDetail(scope, analysis){
+  var dom = getAiScopeDom(scope);
+  if(!dom.analysisDetail) return;
+  var metricKey = _aiAnalysisOpenMetric[getAiScopeKey(scope)] || '';
+  if(!metricKey){
+    dom.analysisDetail.style.display = 'none';
+    dom.analysisDetail.innerHTML = '';
+    if(dom.analysisHint) dom.analysisHint.style.display = 'block';
+    return;
+  }
+  dom.analysisDetail.style.display = 'block';
+  dom.analysisDetail.innerHTML = buildAiMetricDetail(metricKey, analysis);
+  if(dom.analysisHint) dom.analysisHint.style.display = 'none';
+}
+
+function toggleAiAnalysisDetail(scope, metricKey){
+  var dom = getAiScopeDom(scope);
+  var analysis = dom.analysisCard && dom.analysisCard._analysisData;
+  if(!analysis) return;
+  var scopeKey = getAiScopeKey(scope);
+  _aiAnalysisOpenMetric[scopeKey] = (_aiAnalysisOpenMetric[scopeKey] === metricKey) ? '' : metricKey;
+  renderAiAnalysis(analysis, scope);
+}
+
+window.toggleAiAnalysisDetail = toggleAiAnalysisDetail;
+
+function buildAiMetricCard(icon, label, main, detail, accent, options){
+  var scope = options && options.scope ? options.scope : '';
+  var metricKey = options && options.metricKey ? options.metricKey : '';
+  var selected = !!(options && options.selected);
+  var clickable = scope && metricKey;
+  var tag = clickable ? 'button' : 'div';
+  var attrs = clickable ? ' type="button" onclick="toggleAiAnalysisDetail(\'' + escapeHtmlText(scope) + '\',\'' + escapeHtmlText(metricKey) + '\')"' : '';
+  return '<' + tag + attrs + ' style="padding:1rem;background:var(--bg2);border-radius:10px;border:' + (selected ? '2px solid rgba(67,97,238,.75)' : '1px solid rgba(67,97,238,.12)') + ';box-shadow:' + (selected ? '0 8px 24px rgba(67,97,238,.14)' : 'none') + ';text-align:left;width:100%;cursor:' + (clickable ? 'pointer' : 'default') + '">' +
     '<div style="font-size:1.5rem;margin-bottom:.5rem">' + icon + '</div>' +
     '<div style="font-size:.7rem;color:var(--text3)">' + escapeHtmlText(label) + '</div>' +
     '<div style="font-size:1.1rem;font-weight:800;color:' + (accent || '#059669') + '">' + escapeHtmlText(main) + '</div>' +
     '<div style="font-size:.66rem;color:var(--text3)">' + detail + '</div>' +
-  '</div>';
+    (clickable ? '<div style="margin-top:.45rem;font-size:.63rem;color:' + (selected ? '#4361EE' : 'var(--text3)') + ';font-weight:700">' + (selected ? '▲ Batafsil statistika ochiq' : 'Batafsil statistikani ochish') + '</div>' : '') +
+  '</' + tag + '>';
 }
 
 var _investorAiTargetId = null;
 var _investorAiOpen = false;
 var _investorAiWorkspaceEl = null;
+var _aiAnalysisOpenMetric = { investor:'', default:'' };
 
 function getAiScopeDom(scope){
   if(scope === 'investor'){
@@ -14934,6 +15127,8 @@ function getAiScopeDom(scope){
       analysisCard: document.getElementById('invAiAnalysisCard'),
       analysisTitle: document.getElementById('invAiAnalysisTitle'),
       analysisGrid: document.getElementById('invAiAnalysisGrid'),
+      analysisHint: document.getElementById('invAiAnalysisHint'),
+      analysisDetail: document.getElementById('invAiAnalysisDetail'),
       analysisMeta: document.getElementById('invAiAnalysisMeta'),
       transportCard: document.getElementById('invAiTransportCard'),
       transportTitle: document.getElementById('invAiTransportTitle'),
@@ -14958,6 +15153,8 @@ function getAiScopeDom(scope){
     analysisCard: document.getElementById('aiAnalysisCard'),
     analysisTitle: document.getElementById('aiAnalysisTitle'),
     analysisGrid: document.getElementById('aiAnalysisGrid'),
+    analysisHint: document.getElementById('aiAnalysisHint'),
+    analysisDetail: document.getElementById('aiAnalysisDetail'),
     analysisMeta: document.getElementById('aiAnalysisMeta'),
     transportCard: document.getElementById('aiTransportCard'),
     transportTitle: document.getElementById('aiTransportTitle'),
@@ -15000,7 +15197,13 @@ function mountInvestorAiWorkspace(){
 
 function resetAiScope(scope, emptyText){
   var dom = getAiScopeDom(scope);
+  _aiAnalysisOpenMetric[getAiScopeKey(scope)] = '';
   if(dom.analysisCard) dom.analysisCard.style.display = 'none';
+  if(dom.analysisDetail){
+    dom.analysisDetail.style.display = 'none';
+    dom.analysisDetail.innerHTML = '';
+  }
+  if(dom.analysisHint) dom.analysisHint.style.display = 'block';
   if(dom.transportCard) dom.transportCard.style.display = 'none';
   if(dom.tariffCard) dom.tariffCard.style.display = 'none';
   if(dom.letterCard) dom.letterCard.style.display = 'none';
@@ -15076,6 +15279,8 @@ function renderAiAnalysis(analysis, scope){
   var dom = getAiScopeDom(scope);
   var countryName = (analysis && analysis.country && analysis.country.display) || 'Tanlangan davlat';
   var metrics = (analysis && analysis.metrics) || {};
+  var scopeKey = getAiScopeKey(scope);
+  var selectedMetric = _aiAnalysisOpenMetric[scopeKey] || '';
   var meta = [];
   var grid = [];
   var gdp = metrics.gdpPerCapita || {};
@@ -15093,7 +15298,8 @@ function renderAiAnalysis(analysis, scope){
     'YaIM / kishi',
     aiRatioDirectionText(gdp.country, gdp.uzbekistan, false),
     escapeHtmlText(aiFmtCompactUsd(gdp.country) + ' → ' + aiFmtCompactUsd(gdp.uzbekistan)) + '<br><span style="font-size:.6rem">World Bank · ' + escapeHtmlText((gdp.countryYear||'—') + '/' + (gdp.uzbekistanYear||'—')) + '</span>',
-    '#2563EB'
+    '#2563EB',
+    { scope: scope, metricKey: 'gdpPerCapita', selected: selectedMetric === 'gdpPerCapita' }
   ));
 
   grid.push(buildAiMetricCard(
@@ -15101,7 +15307,8 @@ function renderAiAnalysis(analysis, scope){
     'Sanoat ulushi',
     aiRatioDirectionText(industry.country, industry.uzbekistan, false),
     escapeHtmlText(aiFmtPct(industry.country) + ' → ' + aiFmtPct(industry.uzbekistan)) + '<br><span style="font-size:.6rem">World Bank · ' + escapeHtmlText((industry.countryYear||'—') + '/' + (industry.uzbekistanYear||'—')) + '</span>',
-    '#F59E0B'
+    '#F59E0B',
+    { scope: scope, metricKey: 'industryShare', selected: selectedMetric === 'industryShare' }
   ));
 
   grid.push(buildAiMetricCard(
@@ -15109,7 +15316,8 @@ function renderAiAnalysis(analysis, scope){
     'Soliq yuklamasi (% foyda)',
     aiRatioDirectionText(tax.country, tax.uzbekistan, true),
     escapeHtmlText(aiFmtPct(tax.country) + ' → ' + aiFmtPct(tax.uzbekistan)) + '<br><span style="font-size:.6rem">World Bank · ' + escapeHtmlText((tax.countryYear||'—') + '/' + (tax.uzbekistanYear||'—')) + '</span>',
-    '#7C3AED'
+    '#7C3AED',
+    { scope: scope, metricKey: 'totalTaxRate', selected: selectedMetric === 'totalTaxRate' }
   ));
 
   grid.push(buildAiMetricCard(
@@ -15117,7 +15325,8 @@ function renderAiAnalysis(analysis, scope){
     'Mehnat narxi (oylik)',
     aiRatioDirectionText(wage.country, wage.uzbekistan, true),
     escapeHtmlText(aiFmtWageValue(wage.country, wage.countryCurrencyBasis) + ' → ' + aiFmtWageValue(wage.uzbekistan, wage.uzbekistanCurrencyBasis)) + '<br><span style="font-size:.6rem">ILOSTAT · ' + escapeHtmlText((wage.countryYear||'—') + '/' + (wage.uzbekistanYear||'—')) + '</span>',
-    '#059669'
+    '#059669',
+    { scope: scope, metricKey: 'monthlyWage', selected: selectedMetric === 'monthlyWage' }
   ));
 
   grid.push(buildAiMetricCard(
@@ -15125,7 +15334,8 @@ function renderAiAnalysis(analysis, scope){
     'Elektr energiyasi',
     aiRatioDirectionText(electricity.country, electricity.uzbekistan, true),
     escapeHtmlText(aiFmtMwh(electricity.country) + ' → ' + aiFmtMwh(electricity.uzbekistan)) + '<br><span style="font-size:.6rem">' + escapeHtmlText(electricity.source || 'Official API') + ' · ' + escapeHtmlText((electricity.countryYear||'—') + '/' + (electricity.uzbekistanYear||'—')) + '</span>',
-    '#DC2626'
+    '#DC2626',
+    { scope: scope, metricKey: 'electricityPrice', selected: selectedMetric === 'electricityPrice' }
   ));
 
   meta.push('• YaIM / kishi: World Bank Open Data API (' + escapeHtmlText((gdp.countryYear||'—') + '/' + (gdp.uzbekistanYear||'—')) + ')');
@@ -15138,7 +15348,9 @@ function renderAiAnalysis(analysis, scope){
   }
 
   if(dom.analysisCard) dom.analysisCard.style.display = 'block';
+  if(dom.analysisCard) dom.analysisCard._analysisData = analysis;
   if(dom.analysisGrid) dom.analysisGrid.innerHTML = grid.join('');
+  renderAiAnalysisDetail(scope, analysis);
   if(metaEl){
     metaEl.style.display = 'block';
     metaEl.innerHTML = '<div style="padding-top:.3rem;border-top:1px dashed rgba(59,130,246,.25)"><strong>Rasmiy manbalar:</strong><br>' + meta.join('<br>') + '</div>';
