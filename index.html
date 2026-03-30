@@ -14087,6 +14087,9 @@ async function apolloRequestJson(payload){
   } else if(body.search_type === 'organizations'){
     body.action = 'organization_search';
     delete body.search_type;
+  } else if(body.search_type === 'people_enrichment'){
+    body.action = 'people_enrichment';
+    delete body.search_type;
   }
   if(body.action === 'organization_search' && body.q_keywords){
     body.q_organization_keyword_tags = [body.q_keywords];
@@ -14163,6 +14166,60 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       lastError = e;
       console.log('Apollo '+country+' org attempt '+(oi+1)+' error:', e);
       if(apolloIsFatalError(e)) throw e;
+    }
+  }
+
+  // STEP 1.5: Topilgan org'lar uchun CEO/Director qidirish
+  if(found.length > 0){
+    var orgsWithoutContact = found.filter(function(f){ return !f.rahbar; });
+    for(var fi=0; fi<Math.min(orgsWithoutContact.length, 10); fi++){
+      var orgItem = orgsWithoutContact[fi];
+      try {
+        // Kompaniya domain bilan People Enrichment (agar domain bor bo'lsa)
+        var orgDomain = (orgItem.website||'').replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*/,'');
+        if(orgDomain){
+          var enrichData = await apolloRequestJson({
+            search_type:'people',
+            page:1,
+            per_page:5,
+            api_key:apolloKey,
+            person_titles:meta.apolloTitles,
+            organization_locations:[country],
+            organization_domains:[orgDomain]
+          });
+          var ceoPeople = normalizeApolloArray(enrichData, ['people','contacts']);
+          if(ceoPeople.length > 0){
+            var ceo = ceoPeople[0];
+            orgItem.rahbar = ((ceo.first_name||'') + ' ' + (ceo.last_name||ceo.last_name_obfuscated||'')).trim();
+            orgItem.lavozim = ceo.title || orgItem.lavozim;
+            orgItem.email = ceo.email || '';
+            orgItem.linkedin = ceo.linkedin_url || '';
+            orgItem.shahar = ceo.city || ceo.state || '';
+            orgItem.apolloPersonId = ceo.id || '';
+            if(!orgItem.email && ceo.id){
+              // People Enrichment — email olish (1 kredit)
+              try {
+                var enrData = await apolloRequestJson({
+                  search_type:'people_enrichment',
+                  api_key:apolloKey,
+                  id:ceo.id,
+                  reveal_personal_emails:true,
+                  reveal_phone_number:true
+                });
+                var person = enrData.person || {};
+                orgItem.email = person.email || orgItem.email;
+                orgItem.rahbar = ((person.first_name||ceo.first_name||'') + ' ' + (person.last_name||ceo.last_name||'')).trim() || orgItem.rahbar;
+                orgItem.telefon = (person.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean).join(', ') || orgItem.telefon;
+                orgItem.linkedin = person.linkedin_url || orgItem.linkedin;
+              } catch(enrErr){
+                console.log('Enrichment skip:', orgItem.kompaniya, enrErr.message);
+              }
+            }
+          }
+        }
+      } catch(e3){
+        console.log('Apollo CEO search for '+orgItem.kompaniya+' error:', e3);
+      }
     }
   }
 
