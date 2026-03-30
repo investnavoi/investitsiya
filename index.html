@@ -1437,18 +1437,26 @@ input[type="time"]{-webkit-appearance:none;}
             <th>T/r</th>
             <th data-i18n="col_company">Kompaniya</th>
             <th data-i18n="col_company_location">Kompaniya manzili</th>
-            <th data-i18n="col_leader">Rahbar</th>
             <th data-i18n="col_field">Soha</th>
-            <th>Email</th>
-            <th>Xodimlar</th>
-            <th>Daromad</th>
-            <th>T/yil</th>
-            <th>LinkedIn</th>
+            <th>Batafsil</th>
             <th data-i18n="col_emailstatus">Email holati</th>
             <th data-i18n="col_actions">Amal</th>
           </tr></thead>
           <tbody id="ic-tbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="investorDetailModal" onclick="if(event.target===this)closeInvestorDetailModal()">
+      <div style="width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 24px 80px rgba(15,23,42,.28);border:1px solid rgba(67,97,238,.14)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.1rem;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;color:var(--text)">🏢 Kompaniya haqida batafsil</div>
+            <div id="investorDetailSubtitle" style="font-size:.72rem;color:var(--text3);margin-top:3px">Investor tafsilotlari</div>
+          </div>
+          <button class="modal-close-btn" onclick="closeInvestorDetailModal()">✕</button>
+        </div>
+        <div id="investorDetailBody" style="padding:1rem 1.1rem 1.1rem"></div>
       </div>
     </div>
 
@@ -5046,6 +5054,7 @@ function openCompanyReply(email){
 if(typeof _investorAiTargetId === 'undefined') var _investorAiTargetId = null;
 if(typeof _investorAiOpen === 'undefined') var _investorAiOpen = false;
 if(typeof _investorAiWorkspaceEl === 'undefined') var _investorAiWorkspaceEl = null;
+if(typeof _investorDetailId === 'undefined') var _investorDetailId = null;
 
 var _investorSohaEditId = '';
 
@@ -5081,6 +5090,59 @@ function renderPersonNameWithPhoto(name, photoUrl, extraHtml, size){
   html += '</div></div>';
   return html;
 }
+
+function closeInvestorDetailModal(){
+  var modal = document.getElementById('investorDetailModal');
+  if(modal) modal.classList.remove('open');
+}
+window.closeInvestorDetailModal = closeInvestorDetailModal;
+
+function openInvestorDetailModal(id){
+  _investorDetailId = String(id || '');
+  var rec = (DB.investorCompanies || []).find(function(item){ return String(item.id) === _investorDetailId; });
+  if(!rec) return;
+  var modal = document.getElementById('investorDetailModal');
+  var subtitle = document.getElementById('investorDetailSubtitle');
+  var body = document.getElementById('investorDetailBody');
+  if(!modal || !subtitle || !body) return;
+  subtitle.textContent = rec.kompaniya || 'Investor tafsilotlari';
+  var locationText = getInvestorCompanyLocation(rec) || '—';
+  var sohaValue = getInvestorSohaValue(rec) || '—';
+  var linkedinUrl = rec.linkedin ? (String(rec.linkedin).startsWith('http') ? rec.linkedin : 'https://' + String(rec.linkedin).replace(/^\/+/, '')) : '';
+  body.innerHTML =
+    '<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(260px,.8fr);gap:1rem;align-items:start">'+
+      '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#f8fbff)">'+
+        '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:.9rem">'+
+          renderPersonNameWithPhoto(rec.rahbar, rec.photoUrl || rec.photo_url, rec.lavozim?'<div style="font-size:.72rem;color:var(--text3);margin-top:2px">'+escHtml(rec.lavozim)+'</div>':'', 56)+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem">'+
+          '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Kompaniya</div><div style="font-size:.9rem;font-weight:800;color:var(--text);margin-top:4px">'+escHtml(rec.kompaniya || '—')+'</div></div>'+
+          '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Kompaniya manzili</div><div style="font-size:.85rem;font-weight:700;color:var(--text);margin-top:4px">'+escHtml(locationText)+'</div></div>'+
+          '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Soha / mahsulot</div><div style="font-size:.85rem;font-weight:700;color:var(--text);margin-top:4px">'+escHtml(sohaValue)+'</div></div>'+
+          '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Email</div><div style="font-size:.85rem;font-weight:700;color:#4361EE;margin-top:4px;word-break:break-word">'+(rec.email ? escHtml(rec.email) : '<span style=\"color:var(--text3)\">—</span>')+'</div></div>'+
+          '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Xodimlar</div><div style="font-size:.95rem;font-weight:800;color:var(--text);margin-top:4px">'+escHtml(rec.xodimlar || '—')+'</div></div>'+
+          '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Daromad</div><div style="font-size:.95rem;font-weight:800;color:var(--text);margin-top:4px">'+escHtml(rec.daromad || '—')+'</div></div>'+
+          '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">T/yil</div><div style="font-size:.95rem;font-weight:800;color:var(--text);margin-top:4px">'+escHtml(rec.tpilyil || '—')+'</div></div>'+
+          '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Telefon</div><div style="font-size:.85rem;font-weight:700;color:var(--text);margin-top:4px">'+escHtml(rec.telefon || rec.tel || '—')+'</div></div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:grid;gap:.85rem">'+
+        '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#fbfcff)">'+
+          '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:.55rem">Aloqa va status</div>'+
+          '<div style="font-size:.76rem;color:var(--text2);line-height:1.7"><b>Rahbar:</b> '+escHtml(rec.rahbar || '—')+'<br><b>Lavozim:</b> '+escHtml(rec.lavozim || '—')+'<br><b>Email holati:</b> '+getEmailStatusBadge(rec)+'<br><b>Manba:</b> '+escHtml(rec.manba || '—')+'</div>'+
+        '</div>'+
+        '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#fbfcff)">'+
+          '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:.55rem">Tashqi havolalar</div>'+
+          '<div style="display:grid;gap:.55rem">'+
+            '<div style="font-size:.76rem;color:var(--text2)"><b>Website:</b> '+(rec.website ? '<a href="'+tgEscapeAttr(rec.website)+'" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:none">'+escHtml(rec.website)+'</a>' : '—')+'</div>'+
+            '<div style="font-size:.76rem;color:var(--text2)"><b>LinkedIn:</b> '+(linkedinUrl ? '<a href="'+tgEscapeAttr(linkedinUrl)+'" target="_blank" rel="noopener" style="color:#0A66C2;text-decoration:none">Profilni ochish</a>' : '—')+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  modal.classList.add('open');
+}
+window.openInvestorDetailModal = openInvestorDetailModal;
 
 function openInvestorSohaEdit(id){
   _investorSohaEditId = String(id || '');
@@ -5126,7 +5188,7 @@ function renderInvestorCompanies(){
 
   const tb=document.getElementById('ic-tbody');
   if(!co.length){
-    tb.innerHTML='<tr><td colspan="13" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
     if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
     return;
   }
@@ -5152,13 +5214,8 @@ function renderInvestorCompanies(){
       <td>${i+1}</td>
       <td><button type="button" onclick="openInvestorAiWorkspace('${r.id}')" style="padding:0;border:none;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left"><b style="color:var(--text)">${r.kompaniya}</b></button></td>
       <td>${locationText||'<span style="color:var(--text3)">—</span>'}</td>
-      <td>${renderPersonNameWithPhoto(r.rahbar, r.photoUrl || r.photo_url, r.lavozim?'<div style="font-size:.6rem;color:var(--text3)">'+escHtml(r.lavozim)+'</div>':'', 28)}</td>
       <td>${sohaCell}</td>
-      <td style="font-size:.7rem;color:#4361EE">${r.email||'<span style="color:var(--text3)">—</span>'}</td>
-      <td style="font-size:.7rem">${r.xodimlar||'<span style="color:var(--text3)">—</span>'}</td>
-      <td style="font-size:.7rem">${r.daromad||'<span style="color:var(--text3)">—</span>'}</td>
-      <td style="font-size:.7rem">${r.tpilyil||'<span style="color:var(--text3)">—</span>'}</td>
-      <td>${r.linkedin?'<a href="'+(r.linkedin.startsWith('http')?r.linkedin:'https://'+r.linkedin)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:.65rem;color:#0A66C2;text-decoration:none;font-weight:600;padding:3px 8px;background:rgba(10,102,194,.08);border-radius:6px" title="LinkedIn profilni ochish"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>Profil</a>':'<span style="color:var(--text3);font-size:.65rem">—</span>'}</td>
+      <td><button type="button" onclick="openInvestorDetailModal('${r.id}')" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:5px 10px">Batafsil</button></td>
       <td>${getEmailStatusBadge(r)}</td>
       <td>
         ${isAdmin?`<div style="display:flex;gap:6px">
@@ -5170,7 +5227,7 @@ function renderInvestorCompanies(){
       </td>
     </tr>`;
     if(isAiOpen){
-      rowHtml += `<tr class="investor-ai-inline-row"><td colspan="13" style="padding:0;background:rgba(67,97,238,.03)"><div id="investorAiRowMount" style="padding:.85rem 0 .2rem"></div></td></tr>`;
+      rowHtml += `<tr class="investor-ai-inline-row"><td colspan="8" style="padding:0;background:rgba(67,97,238,.03)"><div id="investorAiRowMount" style="padding:.85rem 0 .2rem"></div></td></tr>`;
     }
     return rowHtml;
   }).join('');
