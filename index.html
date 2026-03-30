@@ -1410,8 +1410,9 @@ input[type="time"]{-webkit-appearance:none;}
         <div style="font-size:.72rem;color:var(--text3)" id="investorGeoMeta">Investorlar bazasidagi kompaniyalar joylashuvi</div>
       </div>
       <div style="padding:1rem">
-        <div id="investorGeoMapCard" style="background:linear-gradient(180deg,#edf5ff,#dfeeff);border:1px solid rgba(67,97,238,.14);border-radius:24px;padding:1rem;min-height:520px;position:relative;overflow:hidden">
-          <div id="investorGeoMap" style="width:100%;height:100%;min-height:480px"></div>
+        <div id="investorGeoMapCard" style="background:#fff;border:1px solid rgba(136,164,188,.18);border-radius:24px;padding:0;min-height:520px;position:relative;overflow:hidden">
+          <div id="investorGeoMap" style="width:100%;height:100%;min-height:520px"></div>
+          <div id="investorGeoOverlay" style="position:absolute;inset:0;pointer-events:none"></div>
         </div>
       </div>
     </div>
@@ -5266,8 +5267,9 @@ function buildInvestorGeoMapSvg(markers){
 
 function renderInvestorGeoCard(companies){
   var mapEl = document.getElementById('investorGeoMap');
+  var overlayEl = document.getElementById('investorGeoOverlay');
   var metaEl = document.getElementById('investorGeoMeta');
-  if(!mapEl || !metaEl) return;
+  if(!mapEl || !metaEl || !overlayEl) return;
   companies = Array.isArray(companies) ? companies : [];
 
   var byCountry = {};
@@ -5296,13 +5298,15 @@ function renderInvestorGeoCard(companies){
 
   if(!markers.length){
     metaEl.textContent = 'Investorlar bazasida davlat maʼlumoti topilmadi';
-    mapEl.innerHTML = '<div style="height:100%;min-height:420px;display:flex;align-items:center;justify-content:center;border-radius:20px;background:linear-gradient(180deg,#eef6ff,#dfeeff);color:var(--text3);font-size:.92rem;font-weight:700">Kompaniya davlatlari saqlangach, haqiqiy xarita shu yerda ko‘rinadi</div>';
+    mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">Kompaniya davlatlari saqlangach, haqiqiy xarita shu yerda ko‘rinadi</div>';
+    overlayEl.innerHTML = '';
     return;
   }
 
   metaEl.textContent = companies.length + ' ta kompaniya · ' + markers.length + ' ta davlat';
   if(!window.simplemaps_worldmap_mapdata || !window.simplemaps_worldmap || typeof window.simplemaps_worldmap.copy !== 'function'){
-    mapEl.innerHTML = '<div style="height:100%;min-height:420px;display:flex;align-items:center;justify-content:center;border-radius:20px;background:linear-gradient(180deg,#eef6ff,#dfeeff);color:var(--text3);font-size:.92rem;font-weight:700">World map kutubxonasi yuklanmadi</div>';
+    mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">World map kutubxonasi yuklanmadi</div>';
+    overlayEl.innerHTML = '';
     return;
   }
 
@@ -5315,56 +5319,69 @@ function renderInvestorGeoCard(companies){
   mapData.main_settings.div = 'investorGeoMap';
   mapData.main_settings.auto_load = 'no';
   mapData.main_settings.width = 'responsive';
-  mapData.main_settings.background_color = '#EAF3FF';
+  mapData.main_settings.background_color = '#FFFFFF';
   mapData.main_settings.background_transparent = 'yes';
-  mapData.main_settings.state_color = '#9FC3F7';
-  mapData.main_settings.state_hover_color = '#8CB7F3';
+  mapData.main_settings.state_color = '#88A4BC';
+  mapData.main_settings.state_hover_color = '#88A4BC';
   mapData.main_settings.border_color = '#FFFFFF';
-  mapData.main_settings.border_size = 1.3;
+  mapData.main_settings.border_size = 1.5;
   mapData.main_settings.all_states_inactive = 'yes';
   mapData.main_settings.all_states_zoomable = 'no';
-  mapData.main_settings.manual_zoom = 'no';
-  mapData.main_settings.hide_labels = 'no';
-  mapData.main_settings.location_type = 'circle';
-  mapData.main_settings.location_color = '#4F46E5';
-  mapData.main_settings.location_opacity = 0.94;
+  mapData.main_settings.manual_zoom = 'yes';
+  mapData.main_settings.hide_labels = 'yes';
+  mapData.main_settings.location_type = 'square';
+  mapData.main_settings.location_color = '#FF0067';
+  mapData.main_settings.location_opacity = 0.86;
   mapData.main_settings.location_hover_opacity = 0.94;
   mapData.main_settings.location_border_color = '#FFFFFF';
-  mapData.main_settings.location_border = 3;
+  mapData.main_settings.location_border = 2;
   mapData.main_settings.location_hover_border = 3;
   mapData.main_settings.all_locations_inactive = 'yes';
+  mapData.main_settings.location_size = 24;
   mapData.main_settings.label_color = '#FFFFFF';
   mapData.main_settings.label_hover_color = '#FFFFFF';
-  mapData.main_settings.label_size = 16;
-  mapData.main_settings.label_font = 'Inter';
-  mapData.main_settings.navigation_size = 0;
-  mapData.main_settings.popup_shadow = 0;
-  mapData.main_settings.popup_corners = 12;
-  mapData.main_settings.popup_font = '13px/1.5 Inter, Arial, sans-serif';
-  mapData.main_settings.fade_time = 0;
+  mapData.main_settings.label_size = 22;
+  mapData.main_settings.label_font = 'Arial';
+  mapData.main_settings.navigation_size = '40';
+  mapData.main_settings.navigation_color = '#f7f7f7';
+  mapData.main_settings.navigation_border_color = '#636363';
+  mapData.main_settings.popup_shadow = 1;
+  mapData.main_settings.popup_corners = 5;
+  mapData.main_settings.popup_font = '12px/1.5 Verdana, Arial, Helvetica, sans-serif';
+  mapData.main_settings.fade_time = 0.1;
   mapData.labels = {};
   mapData.locations = {};
 
   markers.forEach(function(item, idx){
     var count = Number(item.count) || 0;
-    var size = Math.max(26, Math.min(62, 24 + (count * 4)));
+    var size = Math.max(18, Math.min(30, 16 + (count * 2)));
     var preview = item.companies.slice(0, 3).join(', ');
     mapData.locations[String(idx)] = {
-      name: String(count),
+      name: item.name,
       lat: String(item.lat),
       lng: String(item.lon),
       size: size,
-      color: count >= 5 ? '#4F46E5' : '#3B82F6',
+      color: '#FF0067',
       description: '<div style="font-family:Inter,Arial,sans-serif;min-width:180px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">' + escHtml(item.name) + '</div><div style="font-size:12px;color:#334155">' + count + ' ta kompaniya</div>' + (preview ? '<div style="margin-top:6px;font-size:11px;color:#64748B">' + escHtml(preview) + (item.companies.length > 3 ? ' +' + (item.companies.length - 3) + ' ta' : '') + '</div>' : '') + '</div>',
       url: ''
     };
   });
 
   mapEl.innerHTML = '';
+  overlayEl.innerHTML = '';
   window.simplemaps_worldmap_mapdata = mapData;
   window._investorGeoMapInstance = window.simplemaps_worldmap.copy();
   window._investorGeoMapInstance.mapdata = mapData;
   window._investorGeoMapInstance.load();
+  setTimeout(function(){
+    var cardRect = mapEl.getBoundingClientRect();
+    var width = Math.max(1, mapEl.clientWidth || cardRect.width || 1000);
+    var height = Math.max(1, mapEl.clientHeight || cardRect.height || 520);
+    overlayEl.innerHTML = markers.map(function(marker){
+      var point = projectInvestorGeoPoint(marker.lat, marker.lon, width, height);
+      return '<div style="position:absolute;left:'+point.x.toFixed(1)+'px;top:'+point.y.toFixed(1)+'px;transform:translate(-50%,-50%);width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,.25)">'+escHtml(String(marker.count))+'</div>';
+    }).join('');
+  }, 60);
 }
 
 function renderPersonNameWithPhoto(name, photoUrl, extraHtml, size){
