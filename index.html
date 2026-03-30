@@ -5364,31 +5364,7 @@ function renderInvestorGeoCard(companies){
   if(!mapEl || !metaEl || !overlayEl) return;
   companies = Array.isArray(companies) ? companies : [];
 
-  var byCountry = {};
-  companies.forEach(function(rec){
-    var geo = getInvestorGeoHub(rec);
-    if(!geo) return;
-    var key = geo.iso3 || geo.name;
-    if(!byCountry[key]){
-      byCountry[key] = {
-        iso3: geo.iso3 || '',
-        name: geo.display || geo.name || 'Nomaʼlum davlat',
-        lat: geo.lat,
-        lon: geo.lon,
-        count: 0,
-        companies: []
-      };
-    }
-    byCountry[key].count += 1;
-    if(rec.kompaniya) byCountry[key].companies.push(String(rec.kompaniya));
-  });
-
-  var markers = Object.keys(byCountry).map(function(key){
-    var item = byCountry[key];
-    return item;
-  }).sort(function(a, b){ return b.count - a.count; });
-
-  if(!markers.length){
+  if(!companies.length){
     metaEl.textContent = 'Investorlar bazasida davlat maʼlumoti topilmadi';
     mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">Kompaniya davlatlari saqlangach, haqiqiy xarita shu yerda ko‘rinadi</div>';
     overlayEl.innerHTML = '';
@@ -5396,7 +5372,6 @@ function renderInvestorGeoCard(companies){
     return;
   }
 
-  metaEl.textContent = companies.length + ' ta kompaniya · ' + markers.length + ' ta davlat';
   if(!window.simplemaps_worldmap_mapdata || !window.simplemaps_worldmap || typeof window.simplemaps_worldmap.copy !== 'function'){
     mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">World map kutubxonasi yuklanmadi</div>';
     overlayEl.innerHTML = '';
@@ -5457,41 +5432,51 @@ function renderInvestorGeoCard(companies){
         code: stateCode,
         name: (stateSpecific[stateCode] && stateSpecific[stateCode].name) || String(rec.davlat || rec.country || stateCode),
         count: 0,
-        companies: []
+        companies: [],
+        lat: null,
+        lon: null
       };
     }
     stateStats[stateCode].count += 1;
     if(rec.kompaniya) stateStats[stateCode].companies.push(String(rec.kompaniya));
+    if(stateStats[stateCode].lat == null || stateStats[stateCode].lon == null){
+      var geo = getInvestorGeoHub(rec);
+      if(geo){
+        stateStats[stateCode].lat = geo.lat;
+        stateStats[stateCode].lon = geo.lon;
+      }
+    }
   });
   Object.keys(stateSpecific).forEach(function(code){
     var item = stateStats[code] || {
       code: code,
       name: stateSpecific[code].name || code,
       count: 0,
-      companies: []
+      companies: [],
+      lat: null,
+      lon: null
     };
     stateStats[code] = item;
-    stateSpecific[code].description = '<div style="font-family:Inter,Arial,sans-serif;min-width:180px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">' + escHtml(item.name) + '</div><div style="font-size:12px;color:#334155">' + item.count + ' ta kompaniya</div></div>';
+    stateSpecific[code].description = '<div style="font-family:Inter,Arial,sans-serif;min-width:190px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">' + escHtml(item.name) + '</div><div style="font-size:12px;color:#334155">' + item.count + ' ta kompaniya</div></div>';
     stateSpecific[code].url = 'javascript:window.onInvestorGeoCountryClick&&window.onInvestorGeoCountryClick("' + code + '")';
     stateSpecific[code].color = 'default';
-    stateSpecific[code].hover_color = '#3B729F';
+    stateSpecific[code].hover_color = '#6C8EB3';
   });
   window._investorGeoStateStats = stateStats;
-
-  markers.forEach(function(item, idx){
-    var count = Number(item.count) || 0;
-    var size = Math.max(18, Math.min(30, 16 + (count * 2)));
-    var preview = item.companies.slice(0, 3).join(', ');
-    mapData.locations[String(idx)] = {
+  var markers = Object.keys(stateStats).map(function(code){
+    var item = stateStats[code];
+    return {
+      code: code,
       name: item.name,
-      lat: String(item.lat),
-      lng: String(item.lon),
-      size: size,
-      color: '#FF0067',
-      description: '<div style="font-family:Inter,Arial,sans-serif;min-width:180px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">' + escHtml(item.name) + '</div><div style="font-size:12px;color:#334155">' + count + ' ta kompaniya</div>' + (preview ? '<div style="margin-top:6px;font-size:11px;color:#64748B">' + escHtml(preview) + (item.companies.length > 3 ? ' +' + (item.companies.length - 3) + ' ta' : '') + '</div>' : '') + '</div>',
-      url: ''
+      count: Number(item.count) || 0,
+      companies: item.companies || [],
+      lat: item.lat,
+      lon: item.lon
     };
-  });
+  }).filter(function(item){
+    return item.count > 0 && typeof item.lat === 'number' && typeof item.lon === 'number';
+  }).sort(function(a,b){ return b.count - a.count; });
+  metaEl.textContent = companies.length + ' ta kompaniya · ' + Object.keys(stateStats).filter(function(code){ return (stateStats[code].count || 0) > 0; }).length + ' ta davlat';
 
   mapEl.innerHTML = '';
   overlayEl.innerHTML = '';
@@ -5506,7 +5491,10 @@ function renderInvestorGeoCard(companies){
     var height = Math.max(1, mapEl.clientHeight || cardRect.height || 520);
     overlayEl.innerHTML = markers.map(function(marker){
       var point = projectInvestorGeoPoint(marker.lat, marker.lon, width, height);
-      return '<div style="position:absolute;left:'+point.x.toFixed(1)+'px;top:'+point.y.toFixed(1)+'px;transform:translate(-50%,-50%);width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,.25)">'+escHtml(String(marker.count))+'</div>';
+      var size = Math.max(26, Math.min(46, 24 + (marker.count * 3)));
+      return '<div title="'+escHtml(marker.name+': '+marker.count+' ta kompaniya')+'" style="position:absolute;left:'+point.x.toFixed(1)+'px;top:'+point.y.toFixed(1)+'px;transform:translate(-50%,-50%);width:'+size+'px;height:'+size+'px;border-radius:999px;background:rgba(79,70,229,.92);border:3px solid #fff;box-shadow:0 8px 22px rgba(79,70,229,.25);display:flex;align-items:center;justify-content:center;color:#fff;font-size:'+Math.max(11, Math.min(16, 10 + marker.count))+'px;font-weight:800;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,.25)">'
+        + escHtml(String(marker.count)) +
+      '</div>';
     }).join('');
   }, 60);
 }
