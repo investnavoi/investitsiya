@@ -15587,11 +15587,12 @@ function buildAiTransportDetail(summary){
   return '<div style="border:1px solid rgba(16,185,129,.18);border-radius:14px;background:#fff;box-shadow:0 12px 34px rgba(15,23,42,.06)">' +
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1rem .85rem;border-bottom:1px solid rgba(16,185,129,.12);flex-wrap:wrap">' +
       '<div><div style="font-family:Sora,sans-serif;font-size:.98rem;font-weight:800;color:var(--text)">🚛 Transport kalkulyatori statistikasi</div><div style="font-size:.72rem;color:var(--text3);margin-top:4px">' + escapeHtmlText(summary.sourceCountry) + ' va Navoiy bo\'yicha 13 davlatga eksport taqqoslanishi</div></div>' +
-      '<div style="display:flex;gap:.55rem;flex-wrap:wrap">' +
-        '<div style="min-width:140px;padding:.68rem .8rem;border-radius:12px;background:rgba(37,99,235,.08)"><div style="font-size:.65rem;color:var(--text3)">' + escapeHtmlText(summary.sourceCountry) + 'dan o\'rtacha</div><div style="font-size:1rem;font-weight:800;color:#2563EB">' + escapeHtmlText(aiFmtTransportUsd(summary.avgForeign)) + '</div></div>' +
-        '<div style="min-width:140px;padding:.68rem .8rem;border-radius:12px;background:rgba(5,150,105,.08)"><div style="font-size:.65rem;color:var(--text3)">Navoiydan o\'rtacha</div><div style="font-size:1rem;font-weight:800;color:#059669">' + escapeHtmlText(aiFmtTransportUsd(summary.avgNavoi)) + '</div></div>' +
-        '<div style="min-width:165px;padding:.68rem .8rem;border-radius:12px;background:rgba(217,119,6,.08)"><div style="font-size:.65rem;color:var(--text3)">O\'rtacha tejamkorlik</div><div style="font-size:1rem;font-weight:800;color:#D97706">' + escapeHtmlText(aiFmtTransportUsd(summary.avgSaving) + ' (' + summary.avgSavingPct + '%)') + '</div></div>' +
-      '</div>' +
+    '</div>' +
+    '<div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">' +
+      buildAiMetricCard('🌍', summary.sourceCountry + 'dan o\'rtacha', aiFmtTransportUsd(summary.avgForeign), '13 ta davlatga eksport xarajatining o\'rtachasi', '#2563EB') +
+      buildAiMetricCard('🇺🇿', 'Navoiydan o\'rtacha', aiFmtTransportUsd(summary.avgNavoi), 'Navoiydan 13 ta davlatga eksport xarajatining o\'rtachasi', '#059669') +
+      buildAiMetricCard('💰', 'O\'rtacha tejamkorlik', aiFmtTransportUsd(summary.avgSaving) + ' (' + summary.avgSavingPct + '%)', 'Har bir bozor bo\'yicha o\'rtacha ustunlik', '#D97706') +
+      buildAiMetricCard('🎯', 'Eng kuchli bozor', summary.topSaving ? summary.topSaving.name : '—', summary.topSaving ? (aiFmtTransportUsd(summary.topSaving.saving) + ' (' + summary.topSaving.savingPct + '% arzon)') : '—', '#7C3AED') +
     '</div>' +
     '<div class="tscroll" style="padding:0 1rem 1rem"><table><thead><tr><th>#</th><th>Davlat</th><th>' + escapeHtmlText(summary.sourceCountry) + 'dan</th><th>Navoiydan</th><th>Tejamkorlik</th><th>Yo\'nalish</th></tr></thead><tbody>' +
       summary.routes.map(function(row, idx){
@@ -15607,7 +15608,7 @@ function buildAiTransportDetail(summary){
         '</tr>';
       }).join('') +
     '</tbody></table></div>' +
-    '<div style="padding:0 1rem 1rem;font-size:.72rem;line-height:1.6;color:var(--text2)"><strong>Logistika modeli:</strong><br>• Kompaniya joylashgan davlat uchun markaziy logistika hub: ' + escapeHtmlText(summary.sourceHub.name) + '.<br>• Narxlar 1 ta 40ft konteyner bo\'yicha taxminiy multimodal eksport modeli asosida hisoblandi.<br>• Navoiy narxlari ichki koridor benchmarklari, qolganlari esa masofa + koridor profili bo\'yicha modellashtirildi.</div>' +
+    '<div style="padding:0 1rem 1rem;font-size:.72rem;line-height:1.6;color:var(--text2)"><strong>Logistika modeli:</strong><br>• Kompaniya joylashgan davlat uchun markaziy logistika hub: ' + escapeHtmlText(summary.sourceHub.name) + '.<br>• Narxlar 1 ta 40ft konteyner bo\'yicha taxminiy multimodal eksport modeli asosida hisoblandi.<br>• Navoiy narxlari ichki koridor benchmarklari, qolganlari esa masofa + koridor profili bo\'yicha modellashtirildi.' + (summary.fastestNavoi ? '<br>• Eng tez Navoiy yo\'nalishi: ' + escapeHtmlText(summary.fastestNavoi.name) + ' (~' + summary.fastestNavoi.navoiDays + ' kun).' : '') + '</div>' +
   '</div>';
 }
 
