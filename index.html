@@ -14121,13 +14121,21 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var hadSuccess = false;
 
   // ═══ STEP 1: Organization Search — kompaniya topish (BEPUL) ═══
-  var orgKeywords = [primaryKeyword + ' ' + modeWords, primaryKeyword, broadKeyword];
-  for(var ki=0; ki<orgKeywords.length; ki++){
+  // Keyword'larni QISQA va ALOHIDA qilish — Apollo uzun stringni tanimaydi
+  var shortKeywords = [];
+  if(prod && prod.raw_name) shortKeywords.push(prod.raw_name.toLowerCase().split(/[\s,\/]+/)[0]);
+  if(prod && prod.name_en) shortKeywords.push(prod.name_en.toLowerCase().split(/[\s,\/\-]+/)[0]);
+  if(broadKeyword) shortKeywords.push(broadKeyword.toLowerCase().split(/[\s,\/]+/)[0]);
+  shortKeywords = shortKeywords.filter(function(k){ return k && k.length > 2; });
+  shortKeywords = Array.from(new Set(shortKeywords)).slice(0, 4);
+  if(!shortKeywords.length) shortKeywords = [primaryKeyword.split(/\s+/)[0]];
+
+  for(var ki=0; ki<shortKeywords.length; ki++){
     try {
       var apData = await apolloRequestJson({
         search_type:'organizations', page:1, per_page:Math.max(perCountry*2, 10),
         api_key:apolloKey, organization_locations:[country],
-        q_organization_keyword_tags:[orgKeywords[ki]]
+        q_organization_keyword_tags:[shortKeywords[ki]]
       });
       hadSuccess = true;
       var orgs = normalizeApolloArray(apData, ['organizations','accounts','companies']);
@@ -14180,6 +14188,35 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         item._hasEmail = ceo.has_email || false;
       }
     } catch(e2){ console.log('People search for '+item.kompaniya+' error:', e2); }
+  }
+
+  // ═══ STEP 2.5: Avtomatik People Enrichment — to'liq ism + email (1 kredit per odam) ═══
+  for(var ei=0; ei<Math.min(found.length, perCountry, 10); ei++){
+    var eItem = found[ei];
+    if(!eItem._personId) continue;
+    try {
+      var enrData = await apolloRequestJson({
+        search_type:'people_enrichment', api_key:apolloKey,
+        id:eItem._personId, reveal_personal_emails:true, reveal_phone_number:true
+      });
+      var person = enrData.person || null;
+      if(person){
+        if(person.first_name) eItem.rahbar = ((person.first_name||'')+' '+(person.last_name||'')).trim();
+        eItem.lavozim = person.title || eItem.lavozim;
+        eItem.email = person.email || eItem.email || '';
+        eItem.linkedin = person.linkedin_url || eItem.linkedin || '';
+        eItem.shahar = person.city || person.state || eItem.shahar || '';
+        var phones = (person.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean);
+        if(phones.length) eItem.telefon = phones.join(', ');
+        if(person.organization){
+          eItem.soha = person.organization.industry || eItem.soha || '';
+          eItem.xodimlar = person.organization.estimated_num_employees || eItem.xodimlar || 0;
+          eItem.daromad = person.organization.organization_revenue_printed || person.organization.annual_revenue_printed || eItem.daromad || '';
+          eItem.tpilyil = person.organization.founded_year || eItem.tpilyil || '';
+          eItem.website = eItem.website || apolloAbsoluteUrl(person.organization.website_url||'');
+        }
+      }
+    } catch(enrErr){ console.log('Auto-enrich '+eItem.kompaniya+' error:', enrErr); }
   }
 
   // ═══ STEP 3: Agar hech narsa topilmasa — oddiy People Search (fallback) ═══
