@@ -4134,7 +4134,7 @@ function setIntlRegion(i){
 /* ═══════════════════════════════════════
    APOLLO.IO INTEGRATION
 ═══════════════════════════════════════ */
-const APOLLO_PROXY = 'https://navoiy-api-proxy.vercel.app/api/apollo-search';
+const APOLLO_PROXY = 'https://navoiy-api-proxy.vercel.app/api/apollo';
 let _apoPage = 1;
 let _apoResults = [];
 let _apoSelected = new Set();
@@ -4181,13 +4181,14 @@ async function apolloSearch(page){
   status.textContent = 'Apollo bazasidan ma\'lumot olinmoqda...';
 
   var body = {
+    action: 'people_search',
     page: _apoPage,
     per_page: 25,
     api_key: getApolloApiKey()
   };
   if(titles.length) body.person_titles = titles;
-  if(locations.length) body.person_locations = locations;
-  if(industries.length) body.organization_industry_tag_ids = industries;
+  if(locations.length) body.organization_locations = locations;
+  if(industries.length) body.q_organization_keyword_tags = industries;
 
   try {
     var resp = await fetch(APOLLO_PROXY, {
@@ -4417,13 +4418,14 @@ async function apolloAutoImport(){
 
     try {
       var body = {
+        action: 'people_search',
         page: 1,
         per_page: 25,
         api_key: getApolloApiKey(),
         person_titles: search.titles,
-        person_locations: search.locations
+        organization_locations: search.locations
       };
-      if(search.industries && search.industries.length) body.organization_industry_tag_ids = search.industries;
+      if(search.industries && search.industries.length) body.q_organization_keyword_tags = search.industries;
 
       var resp = await fetch(APOLLO_PROXY, {
         method: 'POST',
@@ -14078,10 +14080,25 @@ function apolloNeedContactCoverage(found, perCountry){
 }
 
 async function apolloRequestJson(payload){
+  var body = Object.assign({}, payload);
+  if(body.search_type === 'people'){
+    body.action = 'people_search';
+    delete body.search_type;
+  } else if(body.search_type === 'organizations'){
+    body.action = 'organization_search';
+    delete body.search_type;
+  }
+  if(body.action === 'organization_search' && body.q_keywords){
+    body.q_organization_keyword_tags = [body.q_keywords];
+    delete body.q_keywords;
+  }
+  if(body.action === 'people_search' && body.person_locations && !body.organization_locations){
+    body.organization_locations = body.person_locations;
+  }
   var resp = await fetch(APOLLO_PROXY,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
+    body:JSON.stringify(body)
   });
   var json = null;
   var text = '';
@@ -14090,13 +14107,15 @@ async function apolloRequestJson(payload){
   } catch(_e){
     try { text = await resp.text(); } catch(_e2){}
   }
-  if(!resp.ok){
+  if(!resp.ok && resp.status !== 200){
     var errText = (json && (json.error || json.message || json.detail)) || text || ('Apollo xato: ' + resp.status);
     if(/access token is invalid/i.test(errText || '')){
-      errText = 'Apollo API key noto‘g‘ri yoki eskirgan. Sozlamalar sahifasida yangilang.';
+      errText = 'Apollo API key xato yoki eskirgan. Sozlamalar sahifasida yangilang.';
     }
     throw new Error(errText || ('Apollo xato: ' + resp.status));
   }
+  if(json && json._action) delete json._action;
+  if(json && json._status) delete json._status;
   return json || {};
 }
 
