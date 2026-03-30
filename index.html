@@ -13815,8 +13815,86 @@ function mapApolloPersonToFinderResult(p, country, meta){
     import_volume:'',
     score:Math.floor(Math.random()*20)+75,
     manba:'Apollo',
-    finderMode:meta.mode
+    finderMode:meta.mode,
+    apolloOrgId:org.id || p.organization_id || p.account_id || '',
+    apolloPersonId:p.id || p.person_id || ''
   };
+}
+
+function getApolloPersonId(person){
+  return String(person?.id || person?.person_id || person?.contact_id || '').trim();
+}
+
+function getApolloPersonOrgId(person){
+  return String(
+    person?.organization_id ||
+    person?.account_id ||
+    person?.organization?.id ||
+    person?.organization?.organization_id ||
+    person?.account?.id ||
+    ''
+  ).trim();
+}
+
+function getApolloPersonFullName(person){
+  return ((person?.first_name || person?.firstName || '') + ' ' + (person?.last_name || person?.lastName || person?.last_name_obfuscated || '')).trim();
+}
+
+function mergeApolloPersonIntoFinderResult(target, person){
+  if(!target || !person) return;
+  var personName = getApolloPersonFullName(person);
+  var org = person.organization || person.account || {};
+  if(personName && (!String(target.rahbar || '').trim() || String(target.rahbar || '').trim().length < personName.length)){
+    target.rahbar = personName;
+  }
+  if(person.title && (!target.lavozim || /exportyor kompaniya|importyor kompaniya/i.test(String(target.lavozim || '')))){
+    target.lavozim = person.title;
+  }
+  if(person.email && !target.email) target.email = person.email;
+  if(person.linkedin_url && !target.linkedin) target.linkedin = person.linkedin_url;
+  target.shahar = target.shahar || person.city || person.state || org.city || org.state || '';
+  target.website = target.website || apolloAbsoluteUrl(org.website_url || org.website || '');
+  target.soha = target.soha || org.industry || org.industry_tag || org.primary_industry || '';
+  target.description = target.description || org.short_description || org.organization_headline || org.headline || '';
+  target.keywords = target.keywords || (Array.isArray(org.keywords) ? org.keywords.join(' ') : (org.keywords || ''));
+  target.xodimlar = target.xodimlar || Number(org.estimated_num_employees || org.num_employees || org.employee_count || 0) || 0;
+  target.apolloPersonId = target.apolloPersonId || getApolloPersonId(person);
+  target.apolloOrgId = target.apolloOrgId || getApolloPersonOrgId(person);
+}
+
+function dedupeApolloOrganizations(list){
+  var seen = new Set();
+  return (list || []).filter(function(item){
+    var key = String(item.apolloOrgId || '').trim() || apolloCompanyKey(item.kompaniya);
+    if(!key) return false;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function normalizeApolloPeopleArray(data){
+  return normalizeApolloArray(data, ['people','contacts','matches','results','persons']);
+}
+
+function buildApolloEnrichmentDetails(items){
+  return (items || []).map(function(item){
+    if(item.apolloPersonId) return {id:item.apolloPersonId};
+    var detail = {};
+    if(item.apolloOrgId) detail.organization_id = item.apolloOrgId;
+    if(item.rahbar){
+      var nameParts = String(item.rahbar || '').trim().split(/\s+/);
+      if(nameParts.length){
+        detail.first_name = nameParts.shift();
+        detail.last_name = nameParts.join(' ');
+      }
+    }
+    if(item.kompaniya) detail.organization_name = item.kompaniya;
+    if(item.website) detail.domain = String(item.website).replace(/^https?:\/\//i,'').replace(/^www\./i,'').replace(/\/.*$/,'');
+    return detail;
+  }).filter(function(detail){
+    return detail && (detail.id || detail.organization_id || detail.organization_name || detail.domain);
+  });
 }
 
 function normalizeApolloArray(data, keys){
@@ -14081,16 +14159,16 @@ function apolloNeedContactCoverage(found, perCountry){
 
 async function apolloRequestJson(payload){
   var body = Object.assign({}, payload);
-  if(body.search_type === 'people'){
+  if(!body.action && body.search_type === 'people'){
     body.action = 'people_search';
     delete body.search_type;
-  } else if(body.search_type === 'organizations'){
+  } else if(!body.action && body.search_type === 'organizations'){
     body.action = 'organization_search';
     delete body.search_type;
-  } else if(body.search_type === 'people_enrichment'){
+  } else if(!body.action && body.search_type === 'people_enrichment'){
     body.action = 'people_enrichment';
     delete body.search_type;
-  } else if(body.search_type === 'org_enrichment'){
+  } else if(!body.action && body.search_type === 'org_enrichment'){
     body.action = 'org_enrichment';
     delete body.search_type;
   }
@@ -14138,171 +14216,112 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var primaryKeyword = preferredKeywords[0] || ((prod && prod.name_en) || '');
   var broadKeyword = preferredKeywords[1] || preferredKeywords[2] || primaryKeyword;
   var modeWords = meta.mode === 'exporters' ? 'export supplier manufacturer' : 'import buyer distributor';
-
-  var found = [];
+  var orgFound = [];
   var lastError = null;
   var hadSuccess = false;
 
-  // ═══ STEP 1: Organization Search — kompaniya nomi + domain olish (BEPUL) ═══
+  // ═══ STEP 1: Organization Search — organization_id olish ═══
   var orgKeywords = [primaryKeyword + ' ' + modeWords, primaryKeyword, broadKeyword];
   for(var ki=0; ki<orgKeywords.length; ki++){
     try {
       var apData = await apolloRequestJson({
-        search_type:'organizations',
+        action:'organization_search',
         page:1,
         per_page: Math.max(perCountry*2, 10),
         api_key:apolloKey,
         organization_locations:[country],
-        q_organization_keyword_tags:[orgKeywords[ki]]
+        q_keywords: orgKeywords[ki]
       });
       hadSuccess = true;
       var orgs = normalizeApolloArray(apData, ['organizations','accounts','companies']);
       orgs.forEach(function(org){
-        var name = org.name || org.organization_name || '';
-        if(!name || name.length > 100 || /\|/.test(name)) return;
-        found.push({
-          id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-          kompaniya: name,
-          rahbar:'',
-          lavozim: meta.mode === 'exporters' ? 'Exportyor kompaniya' : 'Importyor kompaniya',
-          email:'',
-          telefon: org.phone || (org.primary_phone && org.primary_phone.number ? org.primary_phone.number : '') || '',
-          davlat: country,
-          shahar: org.city || org.state || '',
-          soha: org.industry || org.industry_tag || '',
-          linkedin: org.linkedin_url || '',
-          website: apolloAbsoluteUrl(org.website_url || org.website || ''),
-          description: org.short_description || '',
-          xodimlar: Number(org.estimated_num_employees || 0) || 0,
-          import_volume:'',
-          score: Math.floor(Math.random()*10)+82,
-          manba:'Apollo Org',
-          finderMode: meta.mode,
-          _domain: (org.primary_domain || org.website_url || org.website || '').replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*/,'').toLowerCase()
-        });
+        var mapped = mapApolloOrganizationToFinderResult(org, country, meta);
+        if(!mapped.kompaniya || mapped.kompaniya.length > 100 || /\|/.test(mapped.kompaniya)) return;
+        mapped.telefon = org.phone || (org.primary_phone && org.primary_phone.number ? org.primary_phone.number : '') || '';
+        mapped.linkedin = org.linkedin_url || mapped.linkedin || '';
+        mapped._domain = String(org.primary_domain || org.website_url || org.website || '')
+          .replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*/,'').toLowerCase();
+        orgFound.push(mapped);
       });
-      if(found.length >= perCountry) break;
+      if(orgFound.length >= perCountry * 2) break;
     } catch(e){
       lastError = e;
       if(apolloIsFatalError(e)) throw e;
     }
   }
 
-  // ═══ STEP 2: People Search — har bir kompaniya domain bo'yicha CEO topish (BEPUL) ═══
-  // Apollo People API Search: person_titles + organization_locations filtrlari
-  // Natijada organization.name bor — shu orqali kompaniyaga bog'laymiz
-  if(found.length > 0){
+  orgFound = dedupeApolloOrganizations(orgFound);
+  var orgCandidates = finalizeApolloFinderResults(orgFound, prod, Math.max(perCountry * 2, 10), strategy, meta);
+  if(!orgCandidates.length) orgCandidates = orgFound.slice(0, Math.max(perCountry * 2, 10));
+
+  // ═══ STEP 2: People Search — organization_ids[] bilan kompaniya xodimlarini olish ═══
+  var orgIds = Array.from(new Set(orgCandidates.map(function(item){
+    return String(item.apolloOrgId || '').trim();
+  }).filter(Boolean))).slice(0, Math.max(perCountry * 2, 10));
+
+  if(orgIds.length){
     try {
       var ppData = await apolloRequestJson({
-        search_type:'people',
+        action:'people_search',
         page:1,
-        per_page: Math.min(found.length * 3, 50),
+        per_page: Math.min(Math.max(orgIds.length * 4, perCountry * 3), 50),
         api_key:apolloKey,
-        person_titles: meta.apolloTitles,
-        organization_locations:[country]
+        person_titles: meta.apolloTitles.concat(meta.apolloFallbackTitles || []),
+        organization_ids: orgIds
       });
-      var people = normalizeApolloArray(ppData, ['people','contacts']);
-      // Har bir odamni topilgan kompaniyaga moslashtirish
+      var people = normalizeApolloPeopleArray(ppData);
       people.forEach(function(p){
-        var pOrg = p.organization || {};
-        var pOrgName = pOrg.name || p.organization_name || '';
-        if(!pOrgName) return;
-        var pOrgKey = apolloCompanyKey(pOrgName);
-        // Topilgan kompaniyalar ichidan mosini topish
-        for(var mi=0; mi<found.length; mi++){
-          if(found[mi].rahbar) continue; // allaqachon rahbar bor
-          var fKey = apolloCompanyKey(found[mi].kompaniya);
-          if(fKey === pOrgKey || pOrgName.toLowerCase().indexOf(fKey) !== -1 || fKey.indexOf(pOrgKey) !== -1){
-            found[mi].rahbar = ((p.first_name||'') + ' ' + (p.last_name || p.last_name_obfuscated || '')).trim();
-            found[mi].lavozim = p.title || found[mi].lavozim;
-            found[mi].email = p.email || '';
-            found[mi].linkedin = p.linkedin_url || found[mi].linkedin;
-            found[mi].shahar = found[mi].shahar || p.city || p.state || '';
-            if(pOrg.website_url) found[mi].website = found[mi].website || apolloAbsoluteUrl(pOrg.website_url);
-            if(pOrg.industry) found[mi].soha = found[mi].soha || pOrg.industry;
-            if(pOrg.estimated_num_employees) found[mi].xodimlar = found[mi].xodimlar || pOrg.estimated_num_employees;
-            break;
+        var orgId = getApolloPersonOrgId(p);
+        var orgName = (p.organization && p.organization.name) || p.organization_name || '';
+        var match = orgCandidates.find(function(item){
+          if(orgId && item.apolloOrgId && orgId === item.apolloOrgId) return true;
+          if(orgName){
+            var orgKey = apolloCompanyKey(orgName);
+            return orgKey && orgKey === apolloCompanyKey(item.kompaniya);
           }
-        }
-      });
-
-      // Agar mos kompaniya topilmagan odamlarni ham qo'shish (yangi kompaniya sifatida)
-      people.forEach(function(p){
-        var pOrg = p.organization || {};
-        var pOrgName = pOrg.name || '';
-        if(!pOrgName) return;
-        var already = found.some(function(f){ return apolloCompanyKey(f.kompaniya) === apolloCompanyKey(pOrgName); });
-        if(!already && found.length < perCountry * 2){
-          found.push({
-            id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-            kompaniya: pOrgName,
-            rahbar: ((p.first_name||'') + ' ' + (p.last_name || p.last_name_obfuscated || '')).trim(),
-            lavozim: p.title || '',
-            email: p.email || '',
-            telefon:'',
-            davlat: country,
-            shahar: p.city || p.state || '',
-            soha: pOrg.industry || '',
-            linkedin: p.linkedin_url || '',
-            website: apolloAbsoluteUrl(pOrg.website_url || ''),
-            xodimlar: Number(pOrg.estimated_num_employees || 0) || 0,
-            import_volume:'',
-            score: Math.floor(Math.random()*15)+75,
-            manba:'Apollo People',
-            finderMode: meta.mode
-          });
-        }
+          return false;
+        });
+        if(match) mergeApolloPersonIntoFinderResult(match, p);
       });
     } catch(e2){
-      console.log('Apollo people match for '+country+' error:', e2);
+      console.log('Apollo people search for '+country+' error:', e2);
       if(apolloIsFatalError(e2)) throw e2;
     }
   }
 
-  // ═══ STEP 3: Agar hech narsa topilmasa — faqat People Search ═══
-  if(!found.length){
+  // ═══ STEP 3: Topilgan odamlarni bulk enrichment orqali email bilan boyitish ═══
+  var enrichTargets = finalizeApolloFinderResults(orgCandidates, prod, perCountry, strategy, meta)
+    .filter(function(item){ return item.apolloPersonId && !item.email; });
+  if(enrichTargets.length){
     try {
-      var fallbackData = await apolloRequestJson({
-        search_type:'people',
-        page:1,
-        per_page: Math.max(perCountry*3, 15),
+      var enrichData = await apolloRequestJson({
+        action:'bulk_people_enrichment',
         api_key:apolloKey,
-        person_titles: meta.apolloTitles.concat(meta.apolloFallbackTitles || []),
-        organization_locations:[country]
+        details: buildApolloEnrichmentDetails(enrichTargets.slice(0, Math.min(enrichTargets.length, 10))),
+        reveal_personal_emails: false,
+        reveal_phone_number: false
       });
-      hadSuccess = true;
-      var fbPeople = normalizeApolloArray(fallbackData, ['people','contacts']);
-      fbPeople.forEach(function(p){
-        var org = p.organization || {};
-        var compName = org.name || p.organization_name || '';
-        if(!compName) return;
-        found.push({
-          id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-          kompaniya: compName,
-          rahbar: ((p.first_name||'') + ' ' + (p.last_name || p.last_name_obfuscated || '')).trim(),
-          lavozim: p.title || '',
-          email: p.email || '',
-          telefon:'',
-          davlat: country,
-          shahar: p.city || '',
-          soha: org.industry || '',
-          linkedin: p.linkedin_url || '',
-          website: apolloAbsoluteUrl(org.website_url || ''),
-          xodimlar: Number(org.estimated_num_employees || 0) || 0,
-          import_volume:'',
-          score: Math.floor(Math.random()*15)+70,
-          manba:'Apollo People',
-          finderMode: meta.mode
+      var enrichedPeople = normalizeApolloPeopleArray(enrichData);
+      enrichedPeople.forEach(function(person){
+        var personId = getApolloPersonId(person);
+        var orgId = getApolloPersonOrgId(person);
+        var orgName = (person.organization && person.organization.name) || person.organization_name || '';
+        var match = orgCandidates.find(function(item){
+          if(personId && item.apolloPersonId && personId === item.apolloPersonId) return true;
+          if(orgId && item.apolloOrgId && orgId === item.apolloOrgId) return true;
+          if(orgName) return apolloCompanyKey(orgName) === apolloCompanyKey(item.kompaniya);
+          return false;
         });
+        if(match) mergeApolloPersonIntoFinderResult(match, person);
       });
     } catch(e3){
-      lastError = e3;
+      console.log('Apollo people enrichment for '+country+' error:', e3);
       if(apolloIsFatalError(e3)) throw e3;
     }
   }
 
-  if(!found.length && !hadSuccess && lastError) throw lastError;
-  return finalizeApolloFinderResults(found, prod, perCountry, strategy, meta);
+  if(!orgCandidates.length && !hadSuccess && lastError) throw lastError;
+  return finalizeApolloFinderResults(orgCandidates, prod, perCountry, strategy, meta);
 }
 function apolloIsFatalError(err){
   return /api key topilmadi|unauthorized|forbidden|credit|permission|access/i.test(String((err&&err.message)||''));
