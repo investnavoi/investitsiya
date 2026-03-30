@@ -1413,6 +1413,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div id="investorGeoMapCard" style="background:#EEF5FF;border:1px solid rgba(146,182,235,.22);border-radius:24px;padding:0;min-height:520px;position:relative;overflow:hidden">
           <div id="map" style="width:100%;height:100%;min-height:520px"></div>
           <div id="investorGeoOverlay" style="position:absolute;inset:0;pointer-events:none"></div>
+          <div id="investorGeoTooltip" style="display:none;position:absolute;left:0;top:0;transform:translate(-50%,-120%);pointer-events:none;z-index:12;background:rgba(15,23,42,.92);color:#fff;padding:.5rem .7rem;border-radius:12px;font-size:.74rem;font-weight:700;box-shadow:0 8px 24px rgba(15,23,42,.18);white-space:nowrap"></div>
         </div>
         <div id="investorGeoStatePanel" style="display:none;margin-top:.9rem;padding:1rem 1.1rem;border:1px solid rgba(136,164,188,.22);border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff)"></div>
       </div>
@@ -5357,10 +5358,78 @@ window.onInvestorGeoCountryClick = function(stateCode){
   renderInvestorGeoStatePanel(stateCode);
 };
 
+function getInvestorGeoTooltipHtml(info){
+  if(!info) return '';
+  return '<div style="font-size:.8rem;font-weight:800">' + escHtml(info.name || info.code || 'Davlat') + '</div>' +
+    '<div style="font-size:.7rem;font-weight:600;opacity:.92;margin-top:2px">' + (Number(info.count) || 0) + ' ta kompaniya</div>';
+}
+
+function extractInvestorGeoStateCodeFromElement(el, stateSpecific){
+  if(!el || !stateSpecific) return '';
+  var raw = [
+    el.id || '',
+    el.getAttribute ? (el.getAttribute('data-id') || '') : '',
+    el.getAttribute ? (el.getAttribute('name') || '') : '',
+    el.getAttribute ? (el.getAttribute('class') || '') : ''
+  ].join(' ');
+  var upper = raw.toUpperCase();
+  var tokens = upper.split(/[^A-Z0-9]+/).filter(Boolean);
+  for(var i=0;i<tokens.length;i++){
+    var token = tokens[i];
+    if(token.length === 2 && stateSpecific[token]) return token;
+  }
+  var match = upper.match(/(?:STATE|COUNTRY|AREA|REGION)[-_]?([A-Z]{2})/);
+  if(match && stateSpecific[match[1]]) return match[1];
+  return '';
+}
+
+function attachInvestorGeoInteractions(stateSpecific, stateStats){
+  var mapEl = document.getElementById('map');
+  var tooltipEl = document.getElementById('investorGeoTooltip');
+  if(!mapEl || !tooltipEl) return;
+  var targets = Array.from(mapEl.querySelectorAll('path, polygon, area, [id], [class]'));
+  targets.forEach(function(node){
+    var code = extractInvestorGeoStateCodeFromElement(node, stateSpecific);
+    if(!code) return;
+    if(node.dataset && node.dataset.investorGeoBound === '1') return;
+    if(node.dataset) node.dataset.investorGeoBound = '1';
+    node.style.cursor = 'pointer';
+    node.addEventListener('mouseenter', function(ev){
+      var info = (stateStats && stateStats[code]) || {
+        code: code,
+        name: (stateSpecific[code] && stateSpecific[code].name) || code,
+        count: 0
+      };
+      tooltipEl.innerHTML = getInvestorGeoTooltipHtml(info);
+      tooltipEl.style.display = 'block';
+      var rect = mapEl.getBoundingClientRect();
+      var x = (ev.clientX || rect.left) - rect.left;
+      var y = (ev.clientY || rect.top) - rect.top;
+      tooltipEl.style.left = x + 'px';
+      tooltipEl.style.top = y + 'px';
+    });
+    node.addEventListener('mousemove', function(ev){
+      if(tooltipEl.style.display !== 'block') return;
+      var rect = mapEl.getBoundingClientRect();
+      tooltipEl.style.left = ((ev.clientX || rect.left) - rect.left) + 'px';
+      tooltipEl.style.top = ((ev.clientY || rect.top) - rect.top) + 'px';
+    });
+    node.addEventListener('mouseleave', function(){
+      tooltipEl.style.display = 'none';
+    });
+    node.addEventListener('click', function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      window.onInvestorGeoCountryClick(code);
+    });
+  });
+}
+
 function renderInvestorGeoCard(companies){
   var mapEl = document.getElementById('map');
   var overlayEl = document.getElementById('investorGeoOverlay');
   var metaEl = document.getElementById('investorGeoMeta');
+  var tooltipEl = document.getElementById('investorGeoTooltip');
   if(!mapEl || !metaEl || !overlayEl) return;
   companies = Array.isArray(companies) ? companies : [];
 
@@ -5368,6 +5437,7 @@ function renderInvestorGeoCard(companies){
     metaEl.textContent = 'Investorlar bazasida davlat maʼlumoti topilmadi';
     mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">Kompaniya davlatlari saqlangach, haqiqiy xarita shu yerda ko‘rinadi</div>';
     overlayEl.innerHTML = '';
+    if(tooltipEl) tooltipEl.style.display = 'none';
     renderInvestorGeoStatePanel('');
     return;
   }
@@ -5375,6 +5445,7 @@ function renderInvestorGeoCard(companies){
   if(!window.simplemaps_worldmap_mapdata || !window.simplemaps_worldmap || typeof window.simplemaps_worldmap.copy !== 'function'){
     mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">World map kutubxonasi yuklanmadi</div>';
     overlayEl.innerHTML = '';
+    if(tooltipEl) tooltipEl.style.display = 'none';
     renderInvestorGeoStatePanel('');
     return;
   }
@@ -5390,6 +5461,7 @@ function renderInvestorGeoCard(companies){
   mapData.main_settings.width = 'responsive';
   mapData.main_settings.background_color = '#EEF5FF';
   mapData.main_settings.background_transparent = 'yes';
+  mapData.main_settings.popups = 'off';
   mapData.main_settings.state_color = '#8EB9F9';
   mapData.main_settings.state_hover_color = '#7FAEF6';
   mapData.main_settings.border_color = '#F8FBFF';
@@ -5480,6 +5552,7 @@ function renderInvestorGeoCard(companies){
 
   mapEl.innerHTML = '';
   overlayEl.innerHTML = '';
+  if(tooltipEl) tooltipEl.style.display = 'none';
   window.simplemaps_worldmap_mapdata = mapData;
   window._investorGeoMapInstance = window.simplemaps_worldmap.copy();
   window._investorGeoMapInstance.mapdata = mapData;
@@ -5496,6 +5569,7 @@ function renderInvestorGeoCard(companies){
         + escHtml(String(marker.count)) +
       '</div>';
     }).join('');
+    attachInvestorGeoInteractions(stateSpecific, stateStats);
   }, 60);
 }
 
