@@ -14200,7 +14200,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     try {
       var enrData = await apolloRequestJson({
         search_type:'people_enrichment', api_key:apolloKey,
-        id:eItem._personId, reveal_personal_emails:true, reveal_phone_number:true
+        id:eItem._personId, reveal_personal_emails:true
       });
       var person = enrData.person || null;
       if(person){
