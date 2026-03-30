@@ -14516,67 +14516,16 @@ async function enrichFinderPerson(idx){
   var apolloKey = getApolloApiKey();
   if(!apolloKey){ toast('Apollo API key kiriting (Sozlamalar)','error'); return; }
 
-  var domain = (r.website||'').replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*/,'').toLowerCase();
-  if(!domain && r.kompaniya){
-    // domain yo'q — kompaniya nomi bilan org enrichment qilish
-    domain = r.kompaniya.toLowerCase().replace(/[^a-z0-9]+/g,'') + '.com';
-  }
-
-  toast('🔍 '+r.kompaniya+' uchun ma\'lumot olinmoqda...');
+  var domain = (r.website||r._domain||'').replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*/,'').toLowerCase();
+  toast('🔍 '+r.kompaniya+' uchun CEO va email qidirilmoqda...');
 
   try {
-    // 1. Avval People Enrichment — domain bilan (agar odam nomi bor bo'lsa aniqroq)
-    var enrichBody = {
-      action:'people_enrichment',
-      api_key:apolloKey,
-      reveal_personal_emails:true,
-      reveal_phone_number:true
-    };
-
-    if(r.rahbar && r.rahbar !== '—' && domain){
-      // Ism + domain bilan — eng aniq
-      var parts = r.rahbar.split(' ');
-      enrichBody.first_name = parts[0] || '';
-      enrichBody.last_name = parts.slice(1).join(' ').replace(/\*+/g,'') || '';
-      enrichBody.domain = domain;
-    } else if(r.apolloPersonId){
-      // Apollo person ID bilan
-      enrichBody.id = r.apolloPersonId;
-    } else if(domain){
-      // Faqat domain bilan
-      enrichBody.domain = domain;
-    } else {
-      toast('⚠️ Domain yoki odam ma\'lumoti yo\'q','error');
-      return;
-    }
-
-    var resp = await fetch(APOLLO_PROXY, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(enrichBody)
-    });
-    var data = await resp.json();
-    var person = data.person || data.match || null;
-
-    if(person && (person.email || person.first_name)){
-      r.rahbar = ((person.first_name||'') + ' ' + (person.last_name||'')).trim() || r.rahbar;
-      r.lavozim = person.title || r.lavozim;
-      r.email = person.email || r.email || '';
-      r.linkedin = person.linkedin_url || r.linkedin || '';
-      r.shahar = person.city || person.state || r.shahar || '';
-      var phones = (person.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean);
-      if(phones.length) r.telefon = phones.join(', ');
-      if(person.organization){
-        r.soha = person.organization.industry || r.soha || '';
-        r.xodimlar = person.organization.estimated_num_employees || r.xodimlar || 0;
-        r.website = r.website || apolloAbsoluteUrl(person.organization.website_url||'');
-      }
-      renderFinderTable(_finderResults);
-      toast('✅ '+r.kompaniya+': '+(r.email||'email topilmadi')+' — '+(r.rahbar||''));
-    } else {
-      // 2. Org enrichment fallback — hech bo'lmasa telefon/soha olish
-      try {
-        if(domain){
+    // ═══ STEP A: People Search — kompaniya nomi bo'yicha CEO topish (BEPUL) ═══
+    var ceoFound = null;
+    if(domain || r.kompaniya){
+      // Organization Enrichment → aniq domain olish
+      if(domain){
+        try {
           var orgResp = await fetch(APOLLO_PROXY, {
             method:'POST',
             headers:{'Content-Type':'application/json'},
@@ -14589,18 +14538,104 @@ async function enrichFinderPerson(idx){
           r.shahar = od.city || r.shahar || '';
           r.telefon = (od.primary_phone && od.primary_phone.number) || od.phone || r.telefon || '';
           r.linkedin = od.linkedin_url || r.linkedin || '';
-          renderFinderTable(_finderResults);
-          toast('⚠️ Email topilmadi, lekin kompaniya ma\'lumoti yangilandi','warning');
+        } catch(oe){}
+      }
+
+      // People Search — CEO/Director, shu kompaniya lokatsiyasida
+      var searchBody = {
+        action:'people_search',
+        api_key:apolloKey,
+        person_titles:['CEO','Founder','Managing Director','Owner','President','General Manager','Director'],
+        per_page:10
+      };
+      if(r.davlat) searchBody.organization_locations = [r.davlat];
+      
+      var searchResp = await fetch(APOLLO_PROXY, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(searchBody)
+      });
+      var searchData = await searchResp.json();
+      var people = searchData.people || [];
+      
+      // Kompaniya nomiga mos odamni topish
+      var orgKey = apolloCompanyKey(r.kompaniya);
+      for(var pi=0; pi<people.length; pi++){
+        var pOrg = people[pi].organization || {};
+        var pOrgName = pOrg.name || people[pi].organization_name || '';
+        var pOrgKey = apolloCompanyKey(pOrgName);
+        if(pOrgKey && orgKey && (pOrgKey === orgKey || orgKey.indexOf(pOrgKey) !== -1 || pOrgKey.indexOf(orgKey) !== -1)){
+          ceoFound = people[pi];
+          break;
         }
-      } catch(oe){ console.log('Org enrich fallback error:', oe); }
-      if(!r.email) toast('⚠️ Apollo bazasida bu kompaniya uchun email topilmadi','warning');
+      }
+
+      // Agar aniq mos topmasa — birinchi natijani olish (shu davlatdagi CEO)
+      if(!ceoFound && people.length > 0){
+        // Domain orqali mos izlash
+        for(var pi2=0; pi2<people.length; pi2++){
+          var p2Org = people[pi2].organization || {};
+          var p2Domain = (p2Org.website_url||'').replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*/,'').toLowerCase();
+          if(domain && p2Domain && (domain === p2Domain || domain.indexOf(p2Domain) !== -1 || p2Domain.indexOf(domain) !== -1)){
+            ceoFound = people[pi2];
+            break;
+          }
+        }
+      }
+    }
+
+    if(ceoFound){
+      // CEO topildi — endi Enrichment qilish (1 kredit)
+      r.rahbar = ((ceoFound.first_name||'') + ' ' + (ceoFound.last_name || ceoFound.last_name_obfuscated || '')).trim();
+      r.lavozim = ceoFound.title || r.lavozim;
+
+      if(ceoFound.id){
+        toast('✅ CEO topildi: '+r.rahbar+'. Email olinmoqda (1 kredit)...');
+        try {
+          var enrResp = await fetch(APOLLO_PROXY, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              action:'people_enrichment',
+              api_key:apolloKey,
+              id:ceoFound.id,
+              reveal_personal_emails:true,
+              reveal_phone_number:true
+            })
+          });
+          var enrData = await enrResp.json();
+          var person = enrData.person || {};
+          if(person.first_name) r.rahbar = ((person.first_name||'') + ' ' + (person.last_name||'')).trim();
+          r.email = person.email || '';
+          r.lavozim = person.title || r.lavozim;
+          r.linkedin = person.linkedin_url || r.linkedin || '';
+          r.shahar = person.city || person.state || r.shahar || '';
+          var phones = (person.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean);
+          if(phones.length) r.telefon = phones.join(', ');
+          if(person.organization){
+            r.soha = r.soha || person.organization.industry || '';
+            r.xodimlar = r.xodimlar || person.organization.estimated_num_employees || 0;
+          }
+        } catch(enrErr){
+          console.log('Enrichment error:', enrErr);
+        }
+      }
+
+      renderFinderTable(_finderResults);
+      if(r.email){
+        toast('✅ '+r.kompaniya+': '+r.rahbar+' — '+r.email);
+      } else {
+        toast('⚠️ CEO topildi ('+r.rahbar+'), lekin Apollo bazasida email mavjud emas','warning');
+      }
+    } else {
+      renderFinderTable(_finderResults);
+      toast('⚠️ Apollo bazasida bu kompaniya uchun CEO topilmadi','warning');
     }
   } catch(e){
     console.log('Enrich error:', e);
     toast('❌ Xato: '+(e.message||''),'error');
   }
 }
-
 function renderFinderTable(results){
   updateFinderModeUI();
   var tb = document.getElementById('finder-tbody');
