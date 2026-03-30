@@ -4330,6 +4330,7 @@ function apolloPersonToRecord(p){
   return {
     kompaniya: (p.organization && p.organization.name) || p.organization_name || '',
     rahbar: name,
+    photoUrl: p.photo_url || p.photoUrl || '',
     lavozim: p.title || '',
     email: p.email || '',
     telefon: p.phone_number || p.sanitized_phone || '',
@@ -5066,6 +5067,21 @@ function getInvestorSohaValue(rec){
   return String((rec && (rec.mahsulotNomi || rec.soha)) || '').trim();
 }
 
+function renderPersonNameWithPhoto(name, photoUrl, extraHtml, size){
+  var cleanName = String(name || '').trim();
+  var cleanPhoto = String(photoUrl || '').trim();
+  var avatarSize = Number(size || 28) || 28;
+  var html = '<div style="display:flex;align-items:flex-start;gap:8px">';
+  if(cleanPhoto){
+    html += '<img src="'+tgEscapeAttr(cleanPhoto)+'" alt="'+tgEscapeAttr(cleanName || 'Contact')+'" style="width:'+avatarSize+'px;height:'+avatarSize+'px;border-radius:999px;object-fit:cover;flex:0 0 auto;border:1px solid rgba(67,97,238,.18);box-shadow:0 2px 6px rgba(15,23,42,.12)">';
+  }
+  html += '<div style="min-width:0">';
+  html += cleanName ? escHtml(cleanName) : '<span style="color:var(--text3)">—</span>';
+  if(extraHtml) html += extraHtml;
+  html += '</div></div>';
+  return html;
+}
+
 function openInvestorSohaEdit(id){
   _investorSohaEditId = String(id || '');
   renderInvestorCompanies();
@@ -5136,7 +5152,7 @@ function renderInvestorCompanies(){
       <td>${i+1}</td>
       <td><button type="button" onclick="openInvestorAiWorkspace('${r.id}')" style="padding:0;border:none;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left"><b style="color:var(--text)">${r.kompaniya}</b></button></td>
       <td>${locationText||'<span style="color:var(--text3)">—</span>'}</td>
-      <td>${r.rahbar||'<span style="color:var(--text3)">—</span>'}${r.lavozim?'<div style="font-size:.6rem;color:var(--text3)">'+r.lavozim+'</div>':''}</td>
+      <td>${renderPersonNameWithPhoto(r.rahbar, r.photoUrl || r.photo_url, r.lavozim?'<div style="font-size:.6rem;color:var(--text3)">'+escHtml(r.lavozim)+'</div>':'', 28)}</td>
       <td>${sohaCell}</td>
       <td style="font-size:.7rem;color:#4361EE">${r.email||'<span style="color:var(--text3)">—</span>'}</td>
       <td style="font-size:.7rem">${r.xodimlar||'<span style="color:var(--text3)">—</span>'}</td>
@@ -13807,6 +13823,7 @@ function mapApolloPersonToFinderResult(p, country, meta){
     id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
     kompaniya:org.name || p.organization_name || '',
     rahbar:((p.first_name||'')+' '+(p.last_name||'')).trim(),
+    photoUrl:p.photo_url || p.photoUrl || '',
     lavozim:p.title||'',
     email:p.email||'',
     telefon:'',
@@ -13986,6 +14003,7 @@ function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, pro
     if(existing){
       existing.email = existing.email || item.email || '';
       existing.rahbar = existing.rahbar || item.rahbar || '';
+      existing.photoUrl = existing.photoUrl || item.photoUrl || item.photo_url || '';
       existing.lavozim = existing.lavozim || item.lavozim || (meta.mode === 'exporters' ? 'Eksport bo‘yicha kontakt' : 'Import bo‘yicha kontakt');
       existing.soha = existing.soha || item.soha || '';
     } else if(item.email || item.kompaniya){
@@ -13993,6 +14011,7 @@ function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, pro
         id:item.id,
         kompaniya:item.kompaniya,
         rahbar:item.rahbar || '',
+        photoUrl:item.photoUrl || item.photo_url || '',
         lavozim:item.lavozim || (meta.mode === 'exporters' ? 'Eksport bo‘yicha kontakt' : 'Import bo‘yicha kontakt'),
         email:item.email || '',
         telefon:'',
@@ -14187,6 +14206,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       if(bestCeo){
         item.rahbar = ((bestCeo.first_name||'')+' '+(bestCeo.last_name||bestCeo.last_name_obfuscated||'')).trim();
         item.lavozim = bestCeo.title || item.lavozim;
+        item.photoUrl = bestCeo.photo_url || bestCeo.photoUrl || item.photoUrl || '';
         item._personId = bestCeo.id || '';
         item._hasEmail = bestCeo.has_email || false;
       }
@@ -14206,6 +14226,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       if(person){
         if(person.first_name) eItem.rahbar = ((person.first_name||'')+' '+(person.last_name||'')).trim();
         eItem.lavozim = person.title || eItem.lavozim;
+        eItem.photoUrl = person.photo_url || person.photoUrl || eItem.photoUrl || '';
         eItem.email = person.email || '';
         eItem.linkedin = person.linkedin_url || eItem.linkedin || '';
         eItem.shahar = person.city || person.state || eItem.shahar || '';
@@ -14237,6 +14258,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         found.push({
           id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
           kompaniya:compName, rahbar:((p.first_name||'')+' '+(p.last_name||p.last_name_obfuscated||'')).trim(),
+          photoUrl:p.photo_url || p.photoUrl || '',
           lavozim:p.title||'', email:p.email||'', telefon:'',
           davlat:country, shahar:p.city||'', soha:org.industry||'',
           linkedin:p.linkedin_url||'', website:apolloAbsoluteUrl(org.website_url||''),
@@ -14466,7 +14488,7 @@ function renderFinderTable(results){
       '<td><b>'+r.kompaniya+'</b>'+(r.website?'<div style="font-size:.55rem;color:var(--text3)">'+r.website+'</div>':'')+'</td>'+
       '<td>'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>'+
       '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
-      '<td>'+(r.rahbar||'—')+'<div style="font-size:.55rem;color:var(--text3)">'+(r.lavozim||'')+'</div>'+(r.email?'<div style="font-size:.58rem;color:#0ea5e9;margin-top:2px">'+r.email+'</div>':'<div style="font-size:.55rem;color:var(--text3)">— Email yo\'q</div>')+'</td>'+
+      '<td>'+renderPersonNameWithPhoto(r.rahbar, r.photoUrl || r.photo_url, '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.lavozim||'')+'</div>'+(r.email?'<div style="font-size:.58rem;color:#0ea5e9;margin-top:2px">'+escHtml(r.email)+'</div>':'<div style="font-size:.55rem;color:var(--text3)">— Email yo\'q</div>'), 24)+'</td>'+
       '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
       '<td style="font-size:.65rem">'+(r.daromad||'—')+'</td>'+
       '<td style="font-size:.65rem">'+(r.xodimlar||'—')+'</td>'+
@@ -14541,6 +14563,10 @@ function saveFinderResults(){
       if((productHs || r.mahsulotHs || r.hsCode) && !exists.mahsulotHs){
         exists.mahsulotHs = r.mahsulotHs || r.hsCode || productHs || '';
         exists.productHs = exists.productHs || exists.mahsulotHs;
+        changed = true;
+      }
+      if((r.photoUrl || r.photo_url) && !exists.photoUrl){
+        exists.photoUrl = r.photoUrl || r.photo_url || '';
         changed = true;
       }
       if(changed && typeof fbSave==='function') fbSave('investorCompanies', exists);
