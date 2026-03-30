@@ -12,8 +12,8 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client"></script>
-<script src="investor-mapdata.js"></script>
-<script src="investor-worldmap.js"></script>
+<script src="mapdata.js"></script>
+<script src="worldmap.js"></script>
 <script>
 if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main_settings){
   window.simplemaps_worldmap_mapdata.main_settings.auto_load = "no";
@@ -1411,9 +1411,10 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
       <div style="padding:1rem">
         <div id="investorGeoMapCard" style="background:#fff;border:1px solid rgba(136,164,188,.18);border-radius:24px;padding:0;min-height:520px;position:relative;overflow:hidden">
-          <div id="investorGeoMap" style="width:100%;height:100%;min-height:520px"></div>
+          <div id="map" style="width:100%;height:100%;min-height:520px"></div>
           <div id="investorGeoOverlay" style="position:absolute;inset:0;pointer-events:none"></div>
         </div>
+        <div id="investorGeoStatePanel" style="display:none;margin-top:.9rem;padding:1rem 1.1rem;border:1px solid rgba(136,164,188,.22);border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff)"></div>
       </div>
     </div>
 
@@ -5141,6 +5142,52 @@ var INVESTOR_GEO_HUBS = {
   PAK:{name:'Pakistan',lat:30.3753,lon:69.3451}
 };
 
+var INVESTOR_GEO_ISO2_BY_ISO3 = {
+  UZB:'UZ', CHN:'CN', USA:'US', DEU:'DE', FRA:'FR', ITA:'IT', ESP:'ES', GBR:'GB', NLD:'NL', BEL:'BE',
+  CHE:'CH', AUT:'AT', POL:'PL', TUR:'TR', ARE:'AE', SAU:'SA', QAT:'QA', JPN:'JP', KOR:'KR', IND:'IN',
+  CAN:'CA', AUS:'AU', BRA:'BR', MEX:'MX', SGP:'SG', RUS:'RU', KAZ:'KZ', KGZ:'KG', TJK:'TJ', TKM:'TM',
+  MNG:'MN', AZE:'AZ', GEO:'GE', ARM:'AM', IRN:'IR', AFG:'AF', PAK:'PK'
+};
+
+var INVESTOR_GEO_ISO2_ALIASES = {
+  "o'zbekiston":'UZ', uzbekistan:'UZ',
+  turkmenistan:'TM', turkmaniston:'TM',
+  tajikistan:'TJ', tojikiston:'TJ',
+  kyrgyzstan:'KG', "qirg'iziston":'KG', qirgiziston:'KG',
+  kazakhstan:'KZ', "qozog'iston":'KZ', qozogiston:'KZ',
+  mongolia:'MN', mongoliya:'MN',
+  russia:'RU', rossiya:'RU',
+  azerbaijan:'AZ', ozarbayjon:'AZ',
+  georgia:'GE', gruziya:'GE',
+  armenia:'AM', armaniston:'AM',
+  iran:'IR', eron:'IR',
+  afghanistan:'AF', "afg'oniston":'AF', afgoniston:'AF',
+  pakistan:'PK', pokiston:'PK',
+  china:'CN', xitoy:'CN',
+  germany:'DE', germaniya:'DE',
+  france:'FR', fransiya:'FR',
+  italy:'IT', italiya:'IT',
+  spain:'ES', ispaniya:'ES',
+  "united kingdom":'GB', britain:'GB', england:'GB',
+  netherlands:'NL', nederland:'NL',
+  belgium:'BE', belgiya:'BE',
+  switzerland:'CH', shveytsariya:'CH',
+  austria:'AT', avstriya:'AT',
+  poland:'PL', polsha:'PL',
+  turkey:'TR', turkiye:'TR', turkiya:'TR',
+  "united arab emirates":'AE', uae:'AE', baa:'AE',
+  "saudi arabia":'SA',
+  qatar:'QA',
+  japan:'JP', yaponiya:'JP',
+  "south korea":'KR', korea:'KR', koreya:'KR',
+  india:'IN', hindiston:'IN',
+  canada:'CA',
+  australia:'AU', avstraliya:'AU',
+  brazil:'BR', braziliya:'BR',
+  mexico:'MX', meksika:'MX',
+  singapore:'SG', singapur:'SG'
+};
+
 var INVESTOR_GEO_ALIASES = {
   "o'zbekiston":'UZB', uzbekistan:'UZB',
   turkmenistan:'TKM', turkmaniston:'TKM',
@@ -5209,6 +5256,24 @@ function getInvestorGeoHub(rec){
   return null;
 }
 
+function getInvestorGeoStateCode(rec, stateSpecific){
+  rec = rec || {};
+  var rawIso2 = String(rec.iso2 || rec.countryIso2 || rec.country_iso2 || '').trim().toUpperCase();
+  if(rawIso2 && stateSpecific && stateSpecific[rawIso2]) return rawIso2;
+  var hub = getInvestorGeoHub(rec);
+  if(hub && hub.iso3 && INVESTOR_GEO_ISO2_BY_ISO3[hub.iso3]) return INVESTOR_GEO_ISO2_BY_ISO3[hub.iso3];
+  var rawCountry = String(rec.davlat || rec.country || '').trim();
+  var normalized = normalizeInvestorGeoCountry(rawCountry);
+  if(INVESTOR_GEO_ISO2_ALIASES[normalized]) return INVESTOR_GEO_ISO2_ALIASES[normalized];
+  if(stateSpecific){
+    var found = Object.keys(stateSpecific).find(function(code){
+      return normalizeInvestorGeoCountry(stateSpecific[code].name) === normalized;
+    });
+    if(found) return found;
+  }
+  return '';
+}
+
 function projectInvestorGeoPoint(lat, lon, width, height){
   var safeLat = Math.max(-60, Math.min(82, Number(lat) || 0));
   var safeLon = Math.max(-180, Math.min(180, Number(lon) || 0));
@@ -5265,8 +5330,35 @@ function buildInvestorGeoMapSvg(markers){
     '</svg>';
 }
 
+function renderInvestorGeoStatePanel(stateCode){
+  var panel = document.getElementById('investorGeoStatePanel');
+  var statsMap = window._investorGeoStateStats || {};
+  if(!panel) return;
+  var info = statsMap[String(stateCode || '').toUpperCase()] || null;
+  if(!info){
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+  var companies = Array.isArray(info.companies) ? info.companies : [];
+  panel.style.display = 'block';
+  panel.innerHTML =
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">' +
+      '<div>' +
+        '<div style="font-family:Sora,sans-serif;font-size:1rem;font-weight:800;color:var(--text)">' + escHtml(info.name || info.code || 'Davlat') + '</div>' +
+        '<div style="font-size:.78rem;color:var(--text3);margin-top:4px">' + (Number(info.count) || 0) + ' ta kompaniya topilgan</div>' +
+      '</div>' +
+      '<button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById(\'investorGeoStatePanel\').style.display=\'none\'">Yopish</button>' +
+    '</div>' +
+    (companies.length ? '<div style="display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.9rem">' + companies.slice(0,18).map(function(name){ return '<span style="display:inline-flex;align-items:center;padding:.42rem .7rem;border-radius:999px;background:#EEF4FF;border:1px solid #D6E4FF;color:#1E3A8A;font-size:.72rem;font-weight:700">' + escHtml(name) + '</span>'; }).join('') + '</div>' : '<div style="margin-top:.85rem;font-size:.8rem;color:var(--text3)">Bu davlat uchun hozircha kompaniya yozuvi yo‘q.</div>') +
+    (companies.length > 18 ? '<div style="margin-top:.7rem;font-size:.72rem;color:var(--text3)">Yana +' + (companies.length - 18) + ' ta kompaniya mavjud</div>' : '');
+}
+window.onInvestorGeoCountryClick = function(stateCode){
+  renderInvestorGeoStatePanel(stateCode);
+};
+
 function renderInvestorGeoCard(companies){
-  var mapEl = document.getElementById('investorGeoMap');
+  var mapEl = document.getElementById('map');
   var overlayEl = document.getElementById('investorGeoOverlay');
   var metaEl = document.getElementById('investorGeoMeta');
   if(!mapEl || !metaEl || !overlayEl) return;
@@ -5300,6 +5392,7 @@ function renderInvestorGeoCard(companies){
     metaEl.textContent = 'Investorlar bazasida davlat maʼlumoti topilmadi';
     mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">Kompaniya davlatlari saqlangach, haqiqiy xarita shu yerda ko‘rinadi</div>';
     overlayEl.innerHTML = '';
+    renderInvestorGeoStatePanel('');
     return;
   }
 
@@ -5307,6 +5400,7 @@ function renderInvestorGeoCard(companies){
   if(!window.simplemaps_worldmap_mapdata || !window.simplemaps_worldmap || typeof window.simplemaps_worldmap.copy !== 'function'){
     mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">World map kutubxonasi yuklanmadi</div>';
     overlayEl.innerHTML = '';
+    renderInvestorGeoStatePanel('');
     return;
   }
 
@@ -5316,7 +5410,7 @@ function renderInvestorGeoCard(companies){
 
   var mapData = JSON.parse(JSON.stringify(window._investorGeoBaseMapData));
   mapData.main_settings = mapData.main_settings || {};
-  mapData.main_settings.div = 'investorGeoMap';
+  mapData.main_settings.div = 'map';
   mapData.main_settings.auto_load = 'no';
   mapData.main_settings.width = 'responsive';
   mapData.main_settings.background_color = '#FFFFFF';
@@ -5325,7 +5419,7 @@ function renderInvestorGeoCard(companies){
   mapData.main_settings.state_hover_color = '#88A4BC';
   mapData.main_settings.border_color = '#FFFFFF';
   mapData.main_settings.border_size = 1.5;
-  mapData.main_settings.all_states_inactive = 'yes';
+  mapData.main_settings.all_states_inactive = 'no';
   mapData.main_settings.all_states_zoomable = 'no';
   mapData.main_settings.manual_zoom = 'yes';
   mapData.main_settings.hide_labels = 'yes';
@@ -5349,8 +5443,40 @@ function renderInvestorGeoCard(companies){
   mapData.main_settings.popup_corners = 5;
   mapData.main_settings.popup_font = '12px/1.5 Verdana, Arial, Helvetica, sans-serif';
   mapData.main_settings.fade_time = 0.1;
+  mapData.main_settings.url_new_tab = 'no';
   mapData.labels = {};
   mapData.locations = {};
+
+  var stateSpecific = mapData.state_specific || {};
+  var stateStats = {};
+  companies.forEach(function(rec){
+    var stateCode = getInvestorGeoStateCode(rec, stateSpecific);
+    if(!stateCode) return;
+    if(!stateStats[stateCode]){
+      stateStats[stateCode] = {
+        code: stateCode,
+        name: (stateSpecific[stateCode] && stateSpecific[stateCode].name) || String(rec.davlat || rec.country || stateCode),
+        count: 0,
+        companies: []
+      };
+    }
+    stateStats[stateCode].count += 1;
+    if(rec.kompaniya) stateStats[stateCode].companies.push(String(rec.kompaniya));
+  });
+  Object.keys(stateSpecific).forEach(function(code){
+    var item = stateStats[code] || {
+      code: code,
+      name: stateSpecific[code].name || code,
+      count: 0,
+      companies: []
+    };
+    stateStats[code] = item;
+    stateSpecific[code].description = '<div style="font-family:Inter,Arial,sans-serif;min-width:180px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">' + escHtml(item.name) + '</div><div style="font-size:12px;color:#334155">' + item.count + ' ta kompaniya</div></div>';
+    stateSpecific[code].url = 'javascript:window.onInvestorGeoCountryClick&&window.onInvestorGeoCountryClick("' + code + '")';
+    stateSpecific[code].color = 'default';
+    stateSpecific[code].hover_color = '#3B729F';
+  });
+  window._investorGeoStateStats = stateStats;
 
   markers.forEach(function(item, idx){
     var count = Number(item.count) || 0;
@@ -5373,6 +5499,7 @@ function renderInvestorGeoCard(companies){
   window._investorGeoMapInstance = window.simplemaps_worldmap.copy();
   window._investorGeoMapInstance.mapdata = mapData;
   window._investorGeoMapInstance.load();
+  renderInvestorGeoStatePanel('');
   setTimeout(function(){
     var cardRect = mapEl.getBoundingClientRect();
     var width = Math.max(1, mapEl.clientWidth || cardRect.width || 1000);
