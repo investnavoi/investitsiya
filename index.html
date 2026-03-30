@@ -14090,6 +14090,9 @@ async function apolloRequestJson(payload){
   } else if(body.search_type === 'people_enrichment'){
     body.action = 'people_enrichment';
     delete body.search_type;
+  } else if(body.search_type === 'org_enrichment'){
+    body.action = 'org_enrichment';
+    delete body.search_type;
   }
   if(body.action === 'organization_search' && body.q_keywords){
     body.q_organization_keyword_tags = [body.q_keywords];
@@ -14097,6 +14100,11 @@ async function apolloRequestJson(payload){
   }
   if(body.action === 'people_search' && body.person_locations && !body.organization_locations){
     body.organization_locations = body.person_locations;
+  }
+  // People enrichment — organization_domain → domain
+  if(body.action === 'people_enrichment' && body.organization_domain){
+    body.domain = body.organization_domain;
+    delete body.organization_domain;
   }
   var resp = await fetch(APOLLO_PROXY,{
     method:'POST',
@@ -14169,56 +14177,61 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     }
   }
 
-  // STEP 1.5: Topilgan org'lar uchun CEO/Director qidirish
+  // STEP 1.5: Topilgan org'lar uchun CEO topish — People Enrichment (domain bilan)
   if(found.length > 0){
     var orgsWithoutContact = found.filter(function(f){ return !f.rahbar; });
-    for(var fi=0; fi<Math.min(orgsWithoutContact.length, 10); fi++){
+    for(var fi=0; fi<Math.min(orgsWithoutContact.length, 8); fi++){
       var orgItem = orgsWithoutContact[fi];
       try {
-        // Kompaniya domain bilan People Enrichment (agar domain bor bo'lsa)
-        var orgDomain = (orgItem.website||'').replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*/,'');
-        if(orgDomain){
-          var enrichData = await apolloRequestJson({
-            search_type:'people',
-            page:1,
-            per_page:5,
-            api_key:apolloKey,
-            person_titles:meta.apolloTitles,
-            organization_locations:[country],
-            organization_domains:[orgDomain]
-          });
-          var ceoPeople = normalizeApolloArray(enrichData, ['people','contacts']);
-          if(ceoPeople.length > 0){
-            var ceo = ceoPeople[0];
-            orgItem.rahbar = ((ceo.first_name||'') + ' ' + (ceo.last_name||ceo.last_name_obfuscated||'')).trim();
-            orgItem.lavozim = ceo.title || orgItem.lavozim;
-            orgItem.email = ceo.email || '';
-            orgItem.linkedin = ceo.linkedin_url || '';
-            orgItem.shahar = ceo.city || ceo.state || '';
-            orgItem.apolloPersonId = ceo.id || '';
-            if(!orgItem.email && ceo.id){
-              // People Enrichment — email olish (1 kredit)
-              try {
-                var enrData = await apolloRequestJson({
-                  search_type:'people_enrichment',
-                  api_key:apolloKey,
-                  id:ceo.id,
-                  reveal_personal_emails:true,
-                  reveal_phone_number:true
-                });
-                var person = enrData.person || {};
-                orgItem.email = person.email || orgItem.email;
-                orgItem.rahbar = ((person.first_name||ceo.first_name||'') + ' ' + (person.last_name||ceo.last_name||'')).trim() || orgItem.rahbar;
-                orgItem.telefon = (person.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean).join(', ') || orgItem.telefon;
-                orgItem.linkedin = person.linkedin_url || orgItem.linkedin;
-              } catch(enrErr){
-                console.log('Enrichment skip:', orgItem.kompaniya, enrErr.message);
-              }
-            }
+        var orgDomain = (orgItem.website||'').replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*/,'').toLowerCase();
+        if(!orgDomain) continue;
+
+        // People Enrichment — domain bo'yicha CEO qidirish (1 kredit)
+        var enrData = await apolloRequestJson({
+          search_type:'people_enrichment',
+          api_key:apolloKey,
+          organization_domain:orgDomain,
+          reveal_personal_emails:true,
+          reveal_phone_number:true
+        });
+        var person = enrData.person || enrData.match || null;
+        if(person && (person.first_name || person.email)){
+          orgItem.rahbar = ((person.first_name||'') + ' ' + (person.last_name||'')).trim();
+          orgItem.lavozim = person.title || orgItem.lavozim;
+          orgItem.email = person.email || '';
+          orgItem.telefon = (person.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean).join(', ');
+          orgItem.linkedin = person.linkedin_url || '';
+          orgItem.shahar = person.city || person.state || '';
+          orgItem.apolloPersonId = person.id || '';
+          if(person.organization){
+            orgItem.soha = orgItem.soha || person.organization.industry || '';
+            orgItem.xodimlar = orgItem.xodimlar || person.organization.estimated_num_employees || 0;
           }
+          continue;
+        }
+
+        // Agar enrichment ishlamasa — Organization Enrichment orqali ko'proq ma'lumot
+        try {
+          var orgEnrData = await apolloRequestJson({
+            search_type:'org_enrichment',
+            api_key:apolloKey,
+            domain:orgDomain
+          });
+          var orgDetail = orgEnrData.organization || {};
+          orgItem.soha = orgItem.soha || orgDetail.industry || '';
+          orgItem.xodimlar = orgItem.xodimlar || orgDetail.estimated_num_employees || 0;
+          orgItem.shahar = orgItem.shahar || orgDetail.city || '';
+          orgItem.linkedin = orgItem.linkedin || orgDetail.linkedin_url || '';
+          orgItem.telefon = orgItem.telefon || orgDetail.phone || '';
+          // primary_phone object
+          if(!orgItem.telefon && orgDetail.primary_phone && orgDetail.primary_phone.number){
+            orgItem.telefon = orgDetail.primary_phone.number;
+          }
+        } catch(orgErr){
+          console.log('Org enrichment skip:', orgItem.kompaniya, orgErr.message);
         }
       } catch(e3){
-        console.log('Apollo CEO search for '+orgItem.kompaniya+' error:', e3);
+        console.log('Apollo CEO enrichment for '+orgItem.kompaniya+' error:', e3);
       }
     }
   }
