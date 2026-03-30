@@ -14081,6 +14081,8 @@ function apolloNeedContactCoverage(found, perCountry){
 
 async function apolloRequestJson(payload){
   var body = Object.assign({}, payload);
+  // Convert search_type → action for /api/apollo
+  var originalSearchType = body.search_type || '';
   if(body.search_type === 'people'){
     body.action = 'people_search';
     delete body.search_type;
@@ -14101,16 +14103,18 @@ async function apolloRequestJson(payload){
   if(body.action === 'people_search' && body.person_locations && !body.organization_locations){
     body.organization_locations = body.person_locations;
   }
-  // People enrichment — organization_domain → domain
   if(body.action === 'people_enrichment' && body.organization_domain){
     body.domain = body.organization_domain;
     delete body.organization_domain;
   }
+
+  // Try /api/apollo first
   var resp = await fetch(APOLLO_PROXY,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)
   });
+
   var json = null;
   var text = '';
   try {
