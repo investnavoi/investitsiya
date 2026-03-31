@@ -1457,29 +1457,41 @@ input[type="time"]{-webkit-appearance:none;}
         <div style="font-size:.78rem;color:var(--text);font-weight:700">📍 Filtr: <span id="investorGeoFilterLabel">Davlat</span></div>
         <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorGeoFilter()">Filtrni tozalash</button>
       </div>
-      <div style="margin:.8rem 0 0;display:flex;gap:.8rem;align-items:flex-end;flex-wrap:wrap">
-        <div class="form-group" style="margin:0;min-width:320px;max-width:520px;flex:1">
-          <label class="form-label">Soha filtri</label>
-          <div class="custom-select-wrap" id="investor-soha-filter-wrap">
-            <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()">— Barcha sohalar —</div>
-            <input type="hidden" id="investor-soha-filter-select" value="">
-            <div class="custom-select-dropdown" id="investor-soha-filter-dropdown"></div>
-          </div>
-        </div>
-        <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none">Soha filtrini tozalash</button>
-      </div>
       <div class="tscroll">
         <table>
-          <thead><tr>
-            <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes(this)"></th>
-            <th>T/r</th>
-            <th data-i18n="col_company">Kompaniya</th>
-            <th data-i18n="col_company_location">Kompaniya manzili</th>
-            <th data-i18n="col_field">Soha</th>
-            <th>Batafsil</th>
-            <th data-i18n="col_emailstatus">Email holati</th>
-            <th data-i18n="col_actions">Amal</th>
-          </tr></thead>
+          <thead>
+            <tr>
+              <th style="width:40px"></th>
+              <th></th>
+              <th></th>
+              <th></th>
+              <th style="vertical-align:top;padding:10px 10px 8px">
+                <div class="form-group" style="margin:0;min-width:280px">
+                  <label class="form-label" style="margin-bottom:6px">Soha filtri</label>
+                  <div class="custom-select-wrap" id="investor-soha-filter-wrap">
+                    <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()">— Barcha sohalar —</div>
+                    <input type="hidden" id="investor-soha-filter-select" value="">
+                    <div class="custom-select-dropdown" id="investor-soha-filter-dropdown"></div>
+                  </div>
+                </div>
+              </th>
+              <th style="vertical-align:bottom;padding:10px 10px 8px">
+                <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none">Tozalash</button>
+              </th>
+              <th></th>
+              <th></th>
+            </tr>
+            <tr>
+              <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes(this)"></th>
+              <th>T/r</th>
+              <th data-i18n="col_company">Kompaniya</th>
+              <th data-i18n="col_company_location">Kompaniya manzili</th>
+              <th data-i18n="col_field">Soha</th>
+              <th>Batafsil</th>
+              <th data-i18n="col_emailstatus">Email holati</th>
+              <th data-i18n="col_actions">Amal</th>
+            </tr>
+          </thead>
           <tbody id="ic-tbody"></tbody>
         </table>
       </div>
