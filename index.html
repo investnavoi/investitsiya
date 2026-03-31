@@ -1066,7 +1066,7 @@ input[type="time"]{-webkit-appearance:none;}
 .custom-select-wrap{position:relative;width:100%;}
 .custom-select-display{cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:38px;user-select:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:28px!important;background:var(--card)!important;color:var(--text);}
 .custom-select-display::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3);pointer-events:none;}
-.custom-select-dropdown{display:none;position:absolute;top:100%;left:0;right:0;max-height:350px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:0 0 10px 10px;box-shadow:0 12px 32px rgba(0,0,0,.15);z-index:999;margin-top:-1px;}
+.custom-select-dropdown{display:none;position:absolute;top:100%;left:0;right:0;max-height:350px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:0 0 10px 10px;box-shadow:0 12px 32px rgba(0,0,0,.15);z-index:5000;margin-top:-1px;}
 .custom-select-dropdown.open{display:block;}
 .csd-group-head{display:flex;align-items:center;gap:8px;padding:9px 14px;font-weight:700;font-size:.82rem;color:var(--text);cursor:pointer;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;user-select:none;transition:background .15s;}
 .csd-group-head:hover{background:var(--border);}
@@ -1457,7 +1457,8 @@ input[type="time"]{-webkit-appearance:none;}
         <div style="font-size:.78rem;color:var(--text);font-weight:700">📍 Filtr: <span id="investorGeoFilterLabel">Davlat</span></div>
         <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorGeoFilter()">Filtrni tozalash</button>
       </div>
-      <div class="tscroll" style="overflow-x:auto;overflow-y:visible;position:relative;z-index:20">
+      <div style="position:relative;overflow:visible;z-index:20">
+        <div class="tscroll">
         <table>
           <thead>
             <tr>
@@ -1472,7 +1473,7 @@ input[type="time"]{-webkit-appearance:none;}
             </tr>
             <tr>
               <th colspan="4" style="background:#fff;border-right:1px solid var(--border)"></th>
-              <th style="padding:8px 10px;background:#f8fbff">
+              <th style="padding:8px 10px;background:#f8fbff;position:relative;overflow:visible">
                 <div style="display:flex;align-items:center;gap:8px;min-width:0">
                   <div class="custom-select-wrap" id="investor-soha-filter-wrap" style="min-width:0;flex:1">
                     <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()" style="margin:0;height:34px;display:flex;align-items:center;padding:0 12px;font-size:.8rem;font-weight:700">— Barcha sohalar —</div>
@@ -1487,6 +1488,7 @@ input[type="time"]{-webkit-appearance:none;}
           </thead>
           <tbody id="ic-tbody"></tbody>
         </table>
+        </div>
       </div>
     </div>
 
@@ -5821,6 +5823,12 @@ function buildInvestorGeoRenderSignature(companies){
   }).join('||');
 }
 
+function isInvestorGeoMapRendered(){
+  var mapEl = document.getElementById('map');
+  if(!mapEl) return false;
+  return !!mapEl.querySelector('svg path, svg polygon');
+}
+
 function renderPersonNameWithPhoto(name, photoUrl, extraHtml, size){
   var cleanName = String(name || '').trim();
   var cleanPhoto = String(photoUrl || '').trim();
@@ -5972,7 +5980,7 @@ function renderInvestorCompanies(){
   const ic4=document.getElementById('ic-k4'); if(ic4) ic4.textContent=`$${Math.round(total/1e6)}M`;
   document.getElementById('badge-investorco').textContent=allCo.length;
   var geoRenderSignature = buildInvestorGeoRenderSignature(allCo);
-  if(window._investorGeoRenderSignature !== geoRenderSignature){
+  if(window._investorGeoRenderSignature !== geoRenderSignature || !isInvestorGeoMapRendered()){
     window._investorGeoRenderSignature = geoRenderSignature;
     renderInvestorGeoCard(allCo);
   }
