@@ -5103,6 +5103,20 @@ function getInvestorSohaValue(rec){
   return String((rec && (rec.mahsulotNomi || rec.soha)) || '').trim();
 }
 
+function getInvestorGeoCountrySource(rec){
+  rec = rec || {};
+  var locationText = getInvestorCompanyLocation(rec);
+  if(locationText){
+    var parts = String(locationText).split(',').map(function(part){
+      return String(part || '').trim();
+    }).filter(Boolean);
+    if(parts.length){
+      return parts[parts.length - 1];
+    }
+  }
+  return String(rec.davlat || rec.country || '').trim();
+}
+
 var INVESTOR_GEO_HUBS = {
   UZB:{name:"O'zbekiston",lat:41.3111,lon:69.2797},
   CHN:{name:'China',lat:35.8617,lon:104.1954},
@@ -5242,7 +5256,7 @@ function getInvestorGeoHub(rec){
   if(iso3 && INVESTOR_GEO_HUBS[iso3]){
     return Object.assign({ iso3: iso3, display: INVESTOR_GEO_HUBS[iso3].name }, INVESTOR_GEO_HUBS[iso3]);
   }
-  var rawCountry = String(rec.davlat || rec.country || '').trim();
+  var rawCountry = getInvestorGeoCountrySource(rec);
   var normalized = normalizeInvestorGeoCountry(rawCountry);
   var aliasIso = INVESTOR_GEO_ALIASES[normalized] || '';
   if(aliasIso && INVESTOR_GEO_HUBS[aliasIso]){
@@ -5263,7 +5277,7 @@ function getInvestorGeoStateCode(rec, stateSpecific){
   if(rawIso2 && stateSpecific && stateSpecific[rawIso2]) return rawIso2;
   var hub = getInvestorGeoHub(rec);
   if(hub && hub.iso3 && INVESTOR_GEO_ISO2_BY_ISO3[hub.iso3]) return INVESTOR_GEO_ISO2_BY_ISO3[hub.iso3];
-  var rawCountry = String(rec.davlat || rec.country || '').trim();
+  var rawCountry = getInvestorGeoCountrySource(rec);
   var normalized = normalizeInvestorGeoCountry(rawCountry);
   if(INVESTOR_GEO_ISO2_ALIASES[normalized]) return INVESTOR_GEO_ISO2_ALIASES[normalized];
   if(stateSpecific){
@@ -5647,7 +5661,7 @@ function renderInvestorGeoCard(companies){
     if(!stateStats[stateCode]){
       stateStats[stateCode] = {
         code: stateCode,
-        name: (stateSpecific[stateCode] && stateSpecific[stateCode].name) || String(rec.davlat || rec.country || stateCode),
+        name: (stateSpecific[stateCode] && stateSpecific[stateCode].name) || String(getInvestorGeoCountrySource(rec) || stateCode),
         count: 0,
         companies: [],
         lat: null,
