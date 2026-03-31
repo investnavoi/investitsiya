@@ -5471,24 +5471,55 @@ function getInvestorGeoStateLayer(svg){
   return groups[0] || svg;
 }
 
+function getInvestorGeoStateElements(svg, stateSpecific){
+  if(!svg || !stateSpecific) return {};
+  var map = {};
+  Array.from(svg.querySelectorAll('path, polygon, rect')).forEach(function(node){
+    var code = extractInvestorGeoStateCodeFromElement(node, stateSpecific);
+    if(!code || map[code]) return;
+    try{
+      var box = typeof node.getBBox === 'function' ? node.getBBox() : null;
+      if(!box || !box.width || !box.height) return;
+      map[code] = node;
+    }catch(_err){}
+  });
+  return map;
+}
+
 function renderInvestorGeoSvgBubbles(markers){
   var mapEl = document.getElementById('map');
   if(!mapEl) return;
   var svg = getInvestorGeoMainSvg();
   var stateLayer = getInvestorGeoStateLayer(svg);
   var mapInfo = window.simplemaps_worldmap_mapinfo;
-  if(!svg || !stateLayer || !mapInfo || !mapInfo.state_bbox_array) return;
+  var stateSpecific = (window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.state_specific) || {};
+  if(!svg || !stateLayer) return;
   var existing = stateLayer.querySelector('.investor-geo-bubble-layer');
   if(existing) existing.remove();
   var ns = 'http://www.w3.org/2000/svg';
   var layer = document.createElementNS(ns, 'g');
   layer.setAttribute('class', 'investor-geo-bubble-layer');
   layer.setAttribute('pointer-events', 'none');
+  var stateElements = getInvestorGeoStateElements(svg, stateSpecific);
   (markers || []).forEach(function(marker){
-    var bbox = mapInfo.state_bbox_array[marker.code];
-    if(!bbox) return;
-    var cx = ((Number(bbox.x) || 0) + (Number(bbox.x2) || 0)) / 2;
-    var cy = ((Number(bbox.y) || 0) + (Number(bbox.y2) || 0)) / 2;
+    var cx = null;
+    var cy = null;
+    var stateEl = stateElements[marker.code];
+    if(stateEl){
+      try{
+        var box = stateEl.getBBox();
+        if(box && box.width && box.height){
+          cx = box.x + (box.width / 2);
+          cy = box.y + (box.height / 2);
+        }
+      }catch(_err){}
+    }
+    if((cx == null || cy == null) && mapInfo && mapInfo.state_bbox_array && mapInfo.state_bbox_array[marker.code]){
+      var bbox = mapInfo.state_bbox_array[marker.code];
+      cx = ((Number(bbox.x) || 0) + (Number(bbox.x2) || 0)) / 2;
+      cy = ((Number(bbox.y) || 0) + (Number(bbox.y2) || 0)) / 2;
+    }
+    if(cx == null || cy == null) return;
     var radius = Math.max(14, Math.min(26, 12 + (marker.count * 1.8)));
     var ring = document.createElementNS(ns, 'circle');
     ring.setAttribute('cx', cx);
