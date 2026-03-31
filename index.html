@@ -1419,7 +1419,7 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
     </div>
 
-    <div class="tcard">
+    <div class="tcard" style="overflow:visible">
       <div class="tc-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.7rem">
         <div class="tc-title" data-i18n="ic_table_title">Kompaniyalar ro'yxati</div>
         <div style="display:flex;gap:.6rem;align-items:center">
@@ -1457,7 +1457,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div style="font-size:.78rem;color:var(--text);font-weight:700">📍 Filtr: <span id="investorGeoFilterLabel">Davlat</span></div>
         <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorGeoFilter()">Filtrni tozalash</button>
       </div>
-      <div class="tscroll">
+      <div class="tscroll" style="overflow-x:auto;overflow-y:visible;position:relative;z-index:20">
         <table>
           <thead>
             <tr>
@@ -5809,6 +5809,18 @@ function renderInvestorGeoCard(companies){
   }, 60);
 }
 
+function buildInvestorGeoRenderSignature(companies){
+  companies = Array.isArray(companies) ? companies : [];
+  return companies.map(function(rec){
+    return [
+      String(rec.id || ''),
+      String(rec.kompaniya || ''),
+      String(rec.companyLocation || rec.location || rec.manzil || ''),
+      String(rec.country || rec.davlat || '')
+    ].join('|');
+  }).join('||');
+}
+
 function renderPersonNameWithPhoto(name, photoUrl, extraHtml, size){
   var cleanName = String(name || '').trim();
   var cleanPhoto = String(photoUrl || '').trim();
@@ -5959,7 +5971,11 @@ function renderInvestorCompanies(){
   document.getElementById('ic-k3').textContent=allCo.filter(r=>r.emailSent).length+'/'+allCo.filter(r=>r.email).length;
   const ic4=document.getElementById('ic-k4'); if(ic4) ic4.textContent=`$${Math.round(total/1e6)}M`;
   document.getElementById('badge-investorco').textContent=allCo.length;
-  renderInvestorGeoCard(allCo);
+  var geoRenderSignature = buildInvestorGeoRenderSignature(allCo);
+  if(window._investorGeoRenderSignature !== geoRenderSignature){
+    window._investorGeoRenderSignature = geoRenderSignature;
+    renderInvestorGeoCard(allCo);
+  }
   renderInvestorProductFilterPicker();
 
   var filterBar = document.getElementById('investorGeoFilterBar');
