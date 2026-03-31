@@ -5616,7 +5616,10 @@ function renderInvestorGeoSvgBubbles(markers, attempt){
       });
     }
     badge.addEventListener('click', function(){
-      if(marker.code){
+      if(!marker.code) return;
+      if(typeof window.onInvestorGeoCountryClick === 'function'){
+        window.onInvestorGeoCountryClick(marker.code);
+      } else {
         renderInvestorGeoStatePanel(marker.code);
       }
     });
