@@ -1465,22 +1465,24 @@ input[type="time"]{-webkit-appearance:none;}
               <th>T/r</th>
               <th data-i18n="col_company">Kompaniya</th>
               <th data-i18n="col_company_location">Kompaniya manzili</th>
-              <th data-i18n="col_field" style="min-width:420px">
-                <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
-                  <span style="white-space:nowrap">Soha</span>
-                  <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;max-width:380px">
-                    <div class="custom-select-wrap" id="investor-soha-filter-wrap" style="min-width:0;flex:1">
-                      <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()" style="margin:0;height:34px;display:flex;align-items:center;padding:0 12px;font-size:.8rem;font-weight:700">— Barcha sohalar —</div>
-                      <input type="hidden" id="investor-soha-filter-select" value="">
-                      <div class="custom-select-dropdown" id="investor-soha-filter-dropdown"></div>
-                    </div>
-                    <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none;padding:6px 10px;white-space:nowrap">Tozalash</button>
-                  </div>
-                </div>
-              </th>
+              <th data-i18n="col_field" style="min-width:420px">Soha</th>
               <th>Batafsil</th>
               <th data-i18n="col_emailstatus">Email holati</th>
               <th data-i18n="col_actions">Amal</th>
+            </tr>
+            <tr>
+              <th colspan="4" style="background:#fff;border-right:1px solid var(--border)"></th>
+              <th style="padding:8px 10px;background:#f8fbff">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                  <div class="custom-select-wrap" id="investor-soha-filter-wrap" style="min-width:0;flex:1">
+                    <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()" style="margin:0;height:34px;display:flex;align-items:center;padding:0 12px;font-size:.8rem;font-weight:700">— Barcha sohalar —</div>
+                    <input type="hidden" id="investor-soha-filter-select" value="">
+                    <div class="custom-select-dropdown" id="investor-soha-filter-dropdown"></div>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none;padding:6px 10px;white-space:nowrap">Tozalash</button>
+                </div>
+              </th>
+              <th colspan="3" style="background:#fff"></th>
             </tr>
           </thead>
           <tbody id="ic-tbody"></tbody>
