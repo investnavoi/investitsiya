@@ -5440,10 +5440,26 @@ function getInvestorGeoLocationAnchors(){
   });
 }
 
+function getInvestorGeoMainSvg(){
+  var mapEl = document.getElementById('map');
+  if(!mapEl) return null;
+  var svgs = Array.from(mapEl.querySelectorAll('svg'));
+  if(!svgs.length) return null;
+  svgs.sort(function(a, b){
+    var ap = a.querySelectorAll('path').length;
+    var bp = b.querySelectorAll('path').length;
+    if(bp !== ap) return bp - ap;
+    var ar = a.getBoundingClientRect();
+    var br = b.getBoundingClientRect();
+    return (br.width * br.height) - (ar.width * ar.height);
+  });
+  return svgs[0] || null;
+}
+
 function renderInvestorGeoSvgBubbles(markers){
   var mapEl = document.getElementById('map');
   if(!mapEl) return;
-  var svg = mapEl.querySelector('svg');
+  var svg = getInvestorGeoMainSvg();
   var mapInfo = window.simplemaps_worldmap_mapinfo;
   if(!svg || !mapInfo || !mapInfo.state_bbox_array) return;
   var existing = svg.querySelector('.investor-geo-bubble-layer');
