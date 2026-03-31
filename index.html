@@ -1453,6 +1453,10 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
         <div style="margin-top:6px;font-size:.62rem;color:var(--text3)" id="apoAutoDetail">Sanoatlar: Mining, Energy, Manufacturing...</div>
       </div>
+      <div id="investorGeoFilterBar" style="display:none;margin:.8rem 0 0;padding:.8rem 1rem;border:1px solid rgba(67,97,238,.16);border-radius:12px;background:linear-gradient(135deg,rgba(67,97,238,.06),rgba(67,97,238,.02));display:none;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap">
+        <div style="font-size:.78rem;color:var(--text);font-weight:700">📍 Filtr: <span id="investorGeoFilterLabel">Davlat</span></div>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorGeoFilter()">Filtrni tozalash</button>
+      </div>
       <div class="tscroll">
         <table>
           <thead><tr>
@@ -5082,6 +5086,7 @@ if(typeof _investorAiTargetId === 'undefined') var _investorAiTargetId = null;
 if(typeof _investorAiOpen === 'undefined') var _investorAiOpen = false;
 if(typeof _investorAiWorkspaceEl === 'undefined') var _investorAiWorkspaceEl = null;
 if(typeof _investorDetailId === 'undefined') var _investorDetailId = null;
+if(typeof _investorGeoFilterStateCode === 'undefined') var _investorGeoFilterStateCode = '';
 
 var _investorSohaEditId = '';
 
@@ -5369,8 +5374,17 @@ function renderInvestorGeoStatePanel(stateCode){
     (companies.length > 18 ? '<div style="margin-top:.7rem;font-size:.72rem;color:var(--text3)">Yana +' + (companies.length - 18) + ' ta kompaniya mavjud</div>' : '');
 }
 window.onInvestorGeoCountryClick = function(stateCode){
+  _investorGeoFilterStateCode = String(stateCode || '').toUpperCase();
   renderInvestorGeoStatePanel(stateCode);
+  renderInvestorCompanies();
 };
+
+function clearInvestorGeoFilter(){
+  _investorGeoFilterStateCode = '';
+  renderInvestorGeoStatePanel('');
+  renderInvestorCompanies();
+}
+window.clearInvestorGeoFilter = clearInvestorGeoFilter;
 
 function getInvestorGeoTooltipHtml(info){
   if(!info) return '';
@@ -5877,14 +5891,32 @@ async function saveInvestorSohaEdit(id){
 window.saveInvestorSohaEdit = saveInvestorSohaEdit;
 
 function renderInvestorCompanies(){
-  const co=DB.investorCompanies||[];
-  const total=co.reduce((s,r)=>s+(parseFloat(r.summa)||0),0);
-  document.getElementById('ic-k1').textContent=co.length;
-  document.getElementById('ic-k2').textContent=co.filter(r=>r.holat==='Tayyor').length;
-  document.getElementById('ic-k3').textContent=co.filter(r=>r.emailSent).length+'/'+co.filter(r=>r.email).length;
+  const allCo=DB.investorCompanies||[];
+  const co=_investorGeoFilterStateCode
+    ? allCo.filter(function(r){ return getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) === _investorGeoFilterStateCode; })
+    : allCo;
+  const total=allCo.reduce((s,r)=>s+(parseFloat(r.summa)||0),0);
+  document.getElementById('ic-k1').textContent=allCo.length;
+  document.getElementById('ic-k2').textContent=allCo.filter(r=>r.holat==='Tayyor').length;
+  document.getElementById('ic-k3').textContent=allCo.filter(r=>r.emailSent).length+'/'+allCo.filter(r=>r.email).length;
   const ic4=document.getElementById('ic-k4'); if(ic4) ic4.textContent=`$${Math.round(total/1e6)}M`;
-  document.getElementById('badge-investorco').textContent=co.length;
-  renderInvestorGeoCard(co);
+  document.getElementById('badge-investorco').textContent=allCo.length;
+  renderInvestorGeoCard(allCo);
+
+  var filterBar = document.getElementById('investorGeoFilterBar');
+  var filterLabel = document.getElementById('investorGeoFilterLabel');
+  if(filterBar){
+    if(_investorGeoFilterStateCode && window._investorGeoStateStats && window._investorGeoStateStats[_investorGeoFilterStateCode]){
+      filterBar.style.display = 'flex';
+      if(filterLabel){
+        var filterInfo = window._investorGeoStateStats[_investorGeoFilterStateCode];
+        filterLabel.textContent = (filterInfo.name || _investorGeoFilterStateCode) + ' (' + co.length + ' ta kompaniya)';
+      }
+    } else {
+      filterBar.style.display = 'none';
+      if(filterLabel) filterLabel.textContent = 'Davlat';
+    }
+  }
 
   const tb=document.getElementById('ic-tbody');
   if(!co.length){
