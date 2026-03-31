@@ -5538,6 +5538,7 @@ function renderInvestorGeoSvgBubbles(markers, attempt){
   if(!mapEl) return;
   var overlayEl = document.getElementById('investorGeoOverlay');
   if(!overlayEl) return;
+  var tooltipEl = document.getElementById('investorGeoTooltip');
   overlayEl.innerHTML = '';
   var instance = window._investorGeoMapInstance || window.simplemaps_worldmap;
   var locations = instance && instance.locations ? instance.locations : null;
@@ -5575,7 +5576,36 @@ function renderInvestorGeoSvgBubbles(markers, attempt){
     badge.style.fontFamily = 'Inter, Arial, sans-serif';
     badge.style.fontWeight = '800';
     badge.style.fontSize = Math.max(11, Math.min(16, 10 + marker.count)) + 'px';
-    badge.style.pointerEvents = 'none';
+    badge.style.pointerEvents = 'auto';
+    badge.style.cursor = 'pointer';
+    badge.title = marker.name + ' — ' + marker.count + ' ta kompaniya';
+    if(tooltipEl){
+      badge.addEventListener('mouseenter', function(ev){
+        tooltipEl.innerHTML = getInvestorGeoTooltipHtml({
+          code: marker.code,
+          name: marker.name,
+          count: marker.count
+        });
+        tooltipEl.style.display = 'block';
+        var rectLocal = mapEl.getBoundingClientRect();
+        tooltipEl.style.left = ((ev.clientX || rectLocal.left) - rectLocal.left) + 'px';
+        tooltipEl.style.top = ((ev.clientY || rectLocal.top) - rectLocal.top) + 'px';
+      });
+      badge.addEventListener('mousemove', function(ev){
+        if(tooltipEl.style.display !== 'block') return;
+        var rectLocal = mapEl.getBoundingClientRect();
+        tooltipEl.style.left = ((ev.clientX || rectLocal.left) - rectLocal.left) + 'px';
+        tooltipEl.style.top = ((ev.clientY || rectLocal.top) - rectLocal.top) + 'px';
+      });
+      badge.addEventListener('mouseleave', function(){
+        tooltipEl.style.display = 'none';
+      });
+    }
+    badge.addEventListener('click', function(){
+      if(marker.code){
+        renderInvestorGeoStatePanel(marker.code);
+      }
+    });
     overlayEl.appendChild(badge);
     rendered += 1;
   });
