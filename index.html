@@ -9155,9 +9155,12 @@ function renderInvestorProductFilterPicker(){
     });
     var html = '';
     ['build','azot','other'].forEach(function(section){
-      var sectionRaws = getSectionRawMaterials(section);
       var sectionProds = getSectionProducts(section).filter(function(product){
         return matchedProducts.some(function(item){ return String(item.id || '') === String(product.id || ''); });
+      });
+      if(!sectionProds.length) return;
+      var sectionRaws = getSectionRawMaterials(section).filter(function(raw){
+        return sectionProds.some(function(product){ return String(product.raw_id || '') === String(raw.id || ''); });
       });
       var sectionLabel = getProductSectionLabel(section);
       var sectionIcon = getProductSectionIcon(section);
@@ -9167,17 +9170,14 @@ function renderInvestorProductFilterPicker(){
       html += '<div class="csd-group-items csd-section-items">';
       sectionRaws.forEach(function(raw){
         var rawProds = sectionProds.filter(function(p){ return String(p.raw_id || '') === String(raw.id); });
+        if(!rawProds.length) return;
         var rawName = raw.name_uz || raw.name_en || 'Nomsiz';
         html += '<div class="csd-group csd-group-raw" data-rawid="'+raw.id+'">';
         html += '<div class="csd-group-head csd-raw-head" onclick="toggleCsdGroup(this)"><span>⛏ '+escapeHtmlText(rawName)+'</span><span class="csd-count">'+rawProds.length+'</span><span class="csd-caret">▾</span></div>';
         html += '<div class="csd-group-items csd-raw-items">';
-        if(rawProds.length){
-          rawProds.forEach(function(p){
-            html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectInvestorProductFilter(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+'</div>';
-          });
-        } else {
-          html += '<div class="csd-item" style="cursor:default;color:var(--text3)">Mahsulot topilmadi</div>';
-        }
+        rawProds.forEach(function(p){
+          html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectInvestorProductFilter(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+'</div>';
+        });
         html += '</div></div>';
       });
       var orphans = sectionProds.filter(function(p){
@@ -9192,11 +9192,11 @@ function renderInvestorProductFilterPicker(){
         });
         html += '</div></div>';
       }
-      if(!sectionRaws.length && !orphans.length){
-        html += '<div class="csd-item" style="cursor:default;color:var(--text3)">Bu bo‘limda hozircha ma’lumot yo‘q</div>';
-      }
       html += '</div></div>';
     });
+    if(!html){
+      html = '<div class="csd-item" style="cursor:default;color:var(--text3)">Mos mahsulot topilmadi</div>';
+    }
     dd.innerHTML = html;
     dd.dataset.signature = signature;
   }
