@@ -5793,41 +5793,24 @@ function renderInvestorGeoCard(companies){
   overlayEl.innerHTML = '';
   if(tooltipEl) tooltipEl.style.display = 'none';
   window.simplemaps_worldmap_mapdata = mapData;
-  window.simplemaps_worldmap.hooks = window.simplemaps_worldmap.hooks || {};
-  window.simplemaps_worldmap.hooks.viewbox_updated = function(){
+  window._investorGeoMapInstance = window.simplemaps_worldmap.copy();
+  window._investorGeoMapInstance.mapdata = mapData;
+  window._investorGeoMapInstance.hooks = window._investorGeoMapInstance.hooks || {};
+  window._investorGeoMapInstance.hooks.viewbox_updated = function(){
     renderInvestorGeoSvgBubbles(markers);
   };
-  window.simplemaps_worldmap.hooks.zooming_complete = function(){
+  window._investorGeoMapInstance.hooks.zooming_complete = function(){
     renderInvestorGeoSvgBubbles(markers);
   };
-  window.simplemaps_worldmap.hooks.refresh_complete = function(){
+  window._investorGeoMapInstance.hooks.refresh_complete = function(){
     renderInvestorGeoSvgBubbles(markers);
   };
-  window.simplemaps_worldmap.load();
-  window._investorGeoMapInstance = window.simplemaps_worldmap;
+  window._investorGeoMapInstance.load();
   renderInvestorGeoStatePanel('');
   setTimeout(function(){
     renderInvestorGeoSvgBubbles(markers);
     attachInvestorGeoInteractions(stateSpecific, stateStats);
   }, 60);
-}
-
-function buildInvestorGeoRenderSignature(companies){
-  companies = Array.isArray(companies) ? companies : [];
-  return companies.map(function(rec){
-    return [
-      String(rec.id || ''),
-      String(rec.kompaniya || ''),
-      String(rec.companyLocation || rec.location || rec.manzil || ''),
-      String(rec.country || rec.davlat || '')
-    ].join('|');
-  }).join('||');
-}
-
-function isInvestorGeoMapRendered(){
-  var mapEl = document.getElementById('map');
-  if(!mapEl) return false;
-  return !!mapEl.querySelector('svg path, svg polygon');
 }
 
 function renderPersonNameWithPhoto(name, photoUrl, extraHtml, size){
@@ -5980,11 +5963,7 @@ function renderInvestorCompanies(){
   document.getElementById('ic-k3').textContent=allCo.filter(r=>r.emailSent).length+'/'+allCo.filter(r=>r.email).length;
   const ic4=document.getElementById('ic-k4'); if(ic4) ic4.textContent=`$${Math.round(total/1e6)}M`;
   document.getElementById('badge-investorco').textContent=allCo.length;
-  var geoRenderSignature = buildInvestorGeoRenderSignature(allCo);
-  if(window._investorGeoRenderSignature !== geoRenderSignature || !isInvestorGeoMapRendered()){
-    window._investorGeoRenderSignature = geoRenderSignature;
-    renderInvestorGeoCard(allCo);
-  }
+  renderInvestorGeoCard(allCo);
   renderInvestorProductFilterPicker();
 
   var filterBar = document.getElementById('investorGeoFilterBar');
@@ -12305,10 +12284,13 @@ var WORLDBANK_URL = 'https://api.worldbank.org/v2/country';
 // Country code mapping for Comtrade
 var COUNTRY_COMTRADE = {UZ:'860',TM:'795',TJ:'762',KG:'417',KZ:'398',MN:'496',RU:'643',AZ:'031',GE:'268',AM:'051',IR:'364',AF:'004',PK:'586'};
 
-async function fetchComtrade(hsCode, year){
+async function fetchComtrade(hsCode, year, targetCountries){
   try {
-    var countryCodes = TARGET_COUNTRIES.map(function(t){ return t.comtrade; }).join(',');
-    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countryCodes);
+    var countriesParam = ((targetCountries && targetCountries.length) ? targetCountries : TARGET_COUNTRIES).map(function(t){
+      if(typeof t === 'string') return t;
+      return String((t && (t.name || t.label || t.comtrade || t.code)) || '').trim();
+    }).filter(Boolean).join('|');
+    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countriesParam);
     if(window._apiKeys && window._apiKeys.comtrade){
       url += '&key='+encodeURIComponent(window._apiKeys.comtrade);
     }
@@ -12635,11 +12617,13 @@ TARGET_COUNTRIES = [
 ];
 
 function initImportAnalysisComtradeOnly(){
+  var targetCountries = arguments[0];
+  var count = (targetCountries && targetCountries.length) ? targetCountries.length : TARGET_COUNTRIES.length;
   var importPage = document.getElementById('page-import');
   if(!importPage) return;
 
   var sub = importPage.querySelector('.pg-sub');
-  if(sub) sub.textContent = "13 davlat import statistikasi - 2021-2024 UN Comtrade va World Bank ko'rsatkichlari";
+  if(sub) sub.textContent = count+" davlat import statistikasi - 2021-2024 UN Comtrade va World Bank ko'rsatkichlari";
 
   var kpi1 = document.getElementById('imp-k1');
   var kpi1Label = kpi1 ? kpi1.previousElementSibling : null;
@@ -12656,27 +12640,45 @@ function initImportAnalysisComtradeOnly(){
   var chartCard = document.getElementById('importBarChart');
   var chartTitle = chartCard ? chartCard.closest('.tcard') : null;
   var chartHead = chartTitle ? chartTitle.querySelector('.tc-title') : null;
-  if(chartHead) chartHead.textContent = "13 Davlat Import Hajmi (2021-2024)";
+  if(chartHead) chartHead.textContent = count+" Davlat Import Hajmi (2021-2024)";
 
   var wbLoading = document.getElementById('wbLoading');
   var wbCard = wbLoading ? wbLoading.closest('.tcard') : null;
   if(wbCard) wbCard.style.display = '';
 }
 
-function buildImportSnapshotId(prod, hsCode){
-  return ['import', (prod&&prod.id)||'na', hsCode||'na']
+function buildImportTargetKey(targetCountries){
+  var names = (targetCountries && targetCountries.length ? targetCountries : FINDER_ALWAYS_TARGET_COUNTRIES.slice()).map(function(country){
+    if(typeof country === 'string') return country;
+    return String(country && (country.name || country.label || country.code) || '').trim();
+  }).filter(Boolean).sort();
+  var base = names.join('|') || 'default';
+  var hash = 0;
+  for(var i=0;i<base.length;i++){
+    hash = ((hash << 5) - hash) + base.charCodeAt(i);
+    hash |= 0;
+  }
+  return 't' + Math.abs(hash).toString(36);
+}
+
+function buildImportSnapshotId(prod, hsCode, targetCountries){
+  return ['import', (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
     .join('_')
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
 
-function getImportSnapshot(prod, hsCode){
-  var id = buildImportSnapshotId(prod, hsCode);
+function getImportSnapshot(prod, hsCode, targetCountries){
+  var id = buildImportSnapshotId(prod, hsCode, targetCountries);
   return (DB.importSnapshots||[]).find(function(item){ return String(item.id)===String(id); }) || null;
 }
 
 function restoreImportSnapshot(snapshot, quiet){
   if(!snapshot || !(snapshot.countries||[]).length) return false;
-  initImportAnalysisComtradeOnly();
+  var storedTargets = (snapshot.targetCountries && snapshot.targetCountries.length) ? snapshot.targetCountries : FINDER_ALWAYS_TARGET_COUNTRIES.slice();
+  var targetCountries = storedTargets.map(function(name){
+    return {name:name,label:getFinderCountryLabel(name),flag:getFinderCountryFlag(name)};
+  });
+  initImportAnalysisComtradeOnly(targetCountries);
   var sel = getImportAnalysisProductSelect();
   if(sel && snapshot.productId) sel.value = String(snapshot.productId);
   var prod = (DB.products||[]).find(function(p){ return String(p.id)===String(snapshot.productId); });
@@ -12700,21 +12702,25 @@ function restoreImportSnapshot(snapshot, quiet){
       status:c.st||c.status||'ok'
     };
   });
-  renderImportResults(countries, prod, snapshot.source||'UN Comtrade (cached)');
+  renderImportResults(countries, prod, snapshot.source||'UN Comtrade (cached)', targetCountries);
   if(!quiet) toast('💾 Firebase cache ochildi: '+(snapshot.productName||formatBilingualProductName(prod)||''));
   return true;
 }
 
-function saveImportSnapshot(prod, hsCode, countries, source){
+function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
   if(!prod || !countries || !countries.length) return;
   if(String(source||'').indexOf('UN Comtrade')===-1) return;
+  var snapshotTargets = ((targetCountries && targetCountries.length) ? targetCountries : FINDER_ALWAYS_TARGET_COUNTRIES.slice()).map(function(country){
+    return typeof country === 'string' ? country : String(country && (country.name || country.label || country.code) || '');
+  }).filter(Boolean);
   var snapshot = {
-    id: buildImportSnapshotId(prod, hsCode),
+    id: buildImportSnapshotId(prod, hsCode, snapshotTargets),
     productId: String(prod.id||''),
     productName: formatBilingualProductName(prod),
     hsCode: hsCode||'',
     source: source||'UN Comtrade',
     updatedAt: new Date().toISOString(),
+    targetCountries: snapshotTargets,
     countries: countries.map(function(c){
       return {
         c:c.code||'',
@@ -12764,7 +12770,8 @@ function resetImportAnalysisUi(message){
 }
 
 function handleImportProductChange(){
-  initImportAnalysisComtradeOnly();
+  var targetCountries = getImportAnalysisTargetCountries();
+  initImportAnalysisComtradeOnly(targetCountries);
   renderFinderProductPicker();
   var sel = getImportAnalysisProductSelect();
   var prodId = sel ? sel.value : '';
@@ -12778,7 +12785,7 @@ function handleImportProductChange(){
     return;
   }
   var hsCode = String(prod.hs_code||'').replace(/\./g,'').replace(/\s+/g,'').slice(0,4);
-  var savedSnapshot = getImportSnapshot(prod, hsCode);
+  var savedSnapshot = getImportSnapshot(prod, hsCode, targetCountries);
   if(savedSnapshot){
     restoreImportSnapshot(savedSnapshot, false);
     return;
@@ -12792,11 +12799,13 @@ function prepareImportAnalysisPage(){
 }
 
 async function runImportAnalysis(forceRefresh){
-  initImportAnalysisComtradeOnly();
+  var targetCountries = getImportAnalysisTargetCountries();
+  initImportAnalysisComtradeOnly(targetCountries);
 
   var sel = getImportAnalysisProductSelect();
   var prodId = sel ? sel.value : '';
   if(!prodId){ toast('Mahsulot tanlang','error'); return; }
+  if(!targetCountries.length){ toast('Kamida bitta maqsad davlat tanlang','error'); return; }
 
   var prod = (DB.products||[]).find(function(p){ return String(p.id)===String(prodId); });
   if(!prod){ toast('Mahsulot topilmadi','error'); return; }
@@ -12817,14 +12826,14 @@ async function runImportAnalysis(forceRefresh){
     return;
   }
 
-  var savedSnapshot = !forceRefresh && getImportSnapshot(prod, hsCode);
+  var savedSnapshot = !forceRefresh && getImportSnapshot(prod, hsCode, targetCountries);
   if(savedSnapshot){
     restoreImportSnapshot(savedSnapshot, false);
     return;
   }
 
   toast('UN Comtrade real ma\'lumot olmoqda (HS: '+hsCode+')...');
-  var countries = await fetchComtrade(hsCode, '2023');
+  var countries = await fetchComtrade(hsCode, '2023', targetCountries);
 
   if(!countries || !countries.length){
     if(resultsEl) resultsEl.style.display = 'none';
@@ -12834,17 +12843,38 @@ async function runImportAnalysis(forceRefresh){
     return;
   }
 
-  renderImportResults(countries, prod, 'UN Comtrade (real)');
+  renderImportResults(countries, prod, 'UN Comtrade (real)', targetCountries);
   if(detailEl) detailEl.style.display = 'block';
-  saveImportSnapshot(prod, hsCode, countries, 'UN Comtrade (real)');
+  saveImportSnapshot(prod, hsCode, countries, 'UN Comtrade (real)', targetCountries);
   var okCount = countries.filter(function(c){ return c.status==='ok'; }).length;
   var noDataCount = countries.filter(function(c){ return c.status==='no_data'; }).length;
   var limitCount = countries.filter(function(c){ return c.status==='rate_limited'; }).length;
   toast('UN Comtrade: OK '+okCount+', ma\'lumot yo\'q '+noDataCount+', limit '+limitCount);
 }
 
-function renderImportResults(countries, prod, source){
+function renderImportResults(countries, prod, source, targetCountries){
+  targetCountries = (targetCountries && targetCountries.length) ? targetCountries : getImportAnalysisTargetCountries();
+  initImportAnalysisComtradeOnly(targetCountries);
   countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
+  var targetMetaByName = {};
+  var targetMetaByCode = {};
+  targetCountries.forEach(function(country){
+    var name = typeof country === 'string' ? country : String(country && (country.name || country.label || '') || '');
+    var label = typeof country === 'string' ? getFinderCountryLabel(country) : (country.label || country.name || '');
+    var flag = typeof country === 'string' ? getFinderCountryFlag(country) : (country.flag || '');
+    if(name){
+      targetMetaByName[String(name).toLowerCase()] = {label:label || name, flag:flag || ''};
+      targetMetaByCode[String(name).toUpperCase()] = {label:label || name, flag:flag || ''};
+    }
+  });
+
+  function getTargetMeta(country){
+    var byName = targetMetaByName[String(country && country.name || '').toLowerCase()];
+    if(byName) return byName;
+    var byCode = targetMetaByCode[String(country && country.code || '').toUpperCase()];
+    if(byCode) return byCode;
+    return {label:(country && country.name) || '—', flag:(country && country.flag) || ''};
+  }
 
   var okCountries = countries.filter(function(c){ return c.status === 'ok'; });
   var total = okCountries.reduce(function(s,c){return s+(c.import_usd||0);},0);
@@ -12860,7 +12890,7 @@ function renderImportResults(countries, prod, source){
   var maxVal = Math.max.apply(null, okCountries.length ? okCountries.map(function(c){return c.import_usd||0;}) : [0]);
   var chartEl = document.getElementById('importBarChart');
   chartEl.innerHTML = countries.map(function(c){
-    var tc = TARGET_COUNTRIES.find(function(t){return t.code===c.code;});
+    var tc = getTargetMeta(c);
     var pct = (c.status==='ok' && maxVal>0) ? Math.round((c.import_usd||0)/maxVal*100) : 0;
     var hasTrend = typeof c.trend_pct === 'number';
     var trend = hasTrend ? c.trend_pct : 0;
@@ -12877,19 +12907,19 @@ function renderImportResults(countries, prod, source){
       var yText = yStatus==='ok' ? ('$'+Math.round(yValue/1e6)+'M') : (yStatus==='no_data' ? '—' : (yStatus==='rate_limited' ? 'limit' : 'xato'));
       return '<div style="min-width:48px;text-align:right"><div style="font-size:.56rem;color:var(--text3);line-height:1.1">'+y+'</div><div style="font-size:.62rem;font-weight:700;line-height:1.2">'+yText+'</div></div>';
     }).join('');
-    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc?tc.flag:c.flag||'')+' '+(c.name||'')+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:72px;font-size:.68rem;font-weight:700;text-align:right">'+amountLabel+'</div><div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;min-width:220px">'+yearsHtml+'</div></div>';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc.flag||c.flag||'')+' '+(tc.label||c.name||'')+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:72px;font-size:.68rem;font-weight:700;text-align:right">'+amountLabel+'</div><div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;min-width:220px">'+yearsHtml+'</div></div>';
   }).join('');
 
   var tb = document.getElementById('import-tbody');
   tb.innerHTML = countries.map(function(c,i){
-    var tc = TARGET_COUNTRIES.find(function(t){return t.code===c.code;});
+    var tc = getTargetMeta(c);
     var hasTrend = typeof c.trend_pct === 'number';
     var trend = hasTrend ? c.trend_pct : 0;
     var amountCell = c.status==='ok' ? ('$'+Math.round((c.import_usd||0)/1e6)+'M') : (c.status==='no_data' ? 'Ma\'lumot yo\'q' : (c.status==='rate_limited' ? 'Limit' : 'Xato'));
     var trendCell = (c.status==='ok' && hasTrend) ? ((trend>0?'↑':'↓')+Math.abs(trend)+'%') : '—';
     var volumeCell = c.status==='ok' && c.volume_tons ? (Math.round(c.volume_tons/1000)+'K t') : '—';
     var trendCellColor = c.status==='ok' ? (trend>0?'#059669':'#EF233C') : '#94A3B8';
-    return '<tr><td>'+(i+1)+'</td><td>'+(tc?tc.flag+' ':c.flag||'')+c.name+'</td><td style="font-weight:700">'+amountCell+'</td><td style="color:'+trendCellColor+';font-weight:700">'+trendCell+'</td><td>'+volumeCell+'</td><td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prod.id+'\',\''+c.code+'\')">🔍</button></td></tr>';
+    return '<tr><td>'+(i+1)+'</td><td>'+(tc.flag?tc.flag+' ':'')+(tc.label||c.name)+'</td><td style="font-weight:700">'+amountCell+'</td><td style="color:'+trendCellColor+';font-weight:700">'+trendCell+'</td><td>'+volumeCell+'</td><td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prod.id+'\',\''+c.code+'\')">🔍</button></td></tr>';
   }).join('');
 
   var okCount2 = countries.filter(function(c){ return c.status==='ok'; }).length;
@@ -14659,6 +14689,18 @@ function renderFinderTargetFilters(){
       '</div>'+
     '</div>';
   }).join('');
+}
+
+function getImportAnalysisTargetCountries(){
+  var selectedNames = (_finderTargetCountries || []).slice().filter(Boolean);
+  return selectedNames.map(function(name){
+    var meta = getFinderCountryMeta(name);
+    return {
+      name: name,
+      label: meta.label || name,
+      flag: meta.flag || ''
+    };
+  });
 }
 
 function getFinderSourceSelection(){
