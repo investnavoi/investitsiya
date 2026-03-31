@@ -5793,19 +5793,18 @@ function renderInvestorGeoCard(companies){
   overlayEl.innerHTML = '';
   if(tooltipEl) tooltipEl.style.display = 'none';
   window.simplemaps_worldmap_mapdata = mapData;
-  window._investorGeoMapInstance = window.simplemaps_worldmap.copy();
-  window._investorGeoMapInstance.mapdata = mapData;
-  window._investorGeoMapInstance.hooks = window._investorGeoMapInstance.hooks || {};
-  window._investorGeoMapInstance.hooks.viewbox_updated = function(){
+  window.simplemaps_worldmap.hooks = window.simplemaps_worldmap.hooks || {};
+  window.simplemaps_worldmap.hooks.viewbox_updated = function(){
     renderInvestorGeoSvgBubbles(markers);
   };
-  window._investorGeoMapInstance.hooks.zooming_complete = function(){
+  window.simplemaps_worldmap.hooks.zooming_complete = function(){
     renderInvestorGeoSvgBubbles(markers);
   };
-  window._investorGeoMapInstance.hooks.refresh_complete = function(){
+  window.simplemaps_worldmap.hooks.refresh_complete = function(){
     renderInvestorGeoSvgBubbles(markers);
   };
-  window._investorGeoMapInstance.load();
+  window.simplemaps_worldmap.load();
+  window._investorGeoMapInstance = window.simplemaps_worldmap;
   renderInvestorGeoStatePanel('');
   setTimeout(function(){
     renderInvestorGeoSvgBubbles(markers);
