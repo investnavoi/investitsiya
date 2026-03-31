@@ -1457,6 +1457,17 @@ input[type="time"]{-webkit-appearance:none;}
         <div style="font-size:.78rem;color:var(--text);font-weight:700">📍 Filtr: <span id="investorGeoFilterLabel">Davlat</span></div>
         <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorGeoFilter()">Filtrni tozalash</button>
       </div>
+      <div style="margin:.8rem 0 0;display:flex;gap:.8rem;align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group" style="margin:0;min-width:320px;max-width:520px;flex:1">
+          <label class="form-label">Soha filtri</label>
+          <div class="custom-select-wrap" id="investor-soha-filter-wrap">
+            <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()">— Barcha sohalar —</div>
+            <input type="hidden" id="investor-soha-filter-select" value="">
+            <div class="custom-select-dropdown" id="investor-soha-filter-dropdown"></div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none">Soha filtrini tozalash</button>
+      </div>
       <div class="tscroll">
         <table>
           <thead><tr>
@@ -5087,6 +5098,7 @@ if(typeof _investorAiOpen === 'undefined') var _investorAiOpen = false;
 if(typeof _investorAiWorkspaceEl === 'undefined') var _investorAiWorkspaceEl = null;
 if(typeof _investorDetailId === 'undefined') var _investorDetailId = null;
 if(typeof _investorGeoFilterStateCode === 'undefined') var _investorGeoFilterStateCode = '';
+if(typeof _investorProductFilterId === 'undefined') var _investorProductFilterId = '';
 
 var _investorSohaEditId = '';
 
@@ -5893,11 +5905,54 @@ async function saveInvestorSohaEdit(id){
 }
 window.saveInvestorSohaEdit = saveInvestorSohaEdit;
 
+function investorCompanyMatchesProductFilter(rec, product){
+  rec = rec || {};
+  product = product || null;
+  if(!product) return true;
+
+  var productId = String(product.id || '').trim();
+  var productHs = String(product.hs_code || '').replace(/\D/g,'').slice(0,6);
+  var recordProductId = String(rec.mahsulotProductId || rec.productId || '').trim();
+  var recordHs = String(rec.mahsulotHs || rec.productHs || rec.hsCode || '').replace(/\D/g,'').slice(0,6);
+
+  if(productId && recordProductId && productId === recordProductId) return true;
+  if(productHs && recordHs && (productHs === recordHs || productHs.indexOf(recordHs) === 0 || recordHs.indexOf(productHs) === 0)) return true;
+
+  var raw = null;
+  if(product.raw_id){
+    raw = (DB.rawMaterials || []).find(function(item){ return String(item.id || '') === String(product.raw_id || ''); }) || null;
+  }
+  var companyText = apolloNormalizeText([
+    getInvestorSohaValue(rec),
+    rec.mahsulotNomi,
+    rec.soha
+  ].filter(Boolean).join(' '));
+  if(!companyText) return false;
+
+  var candidates = [
+    product.name_en,
+    product.name_uz,
+    product.raw_name,
+    raw && raw.name_en,
+    raw && raw.name_uz
+  ].filter(Boolean);
+
+  return candidates.some(function(name){
+    var token = apolloNormalizeText(name);
+    return token && companyText.indexOf(token) !== -1;
+  });
+}
+
 function renderInvestorCompanies(){
   const allCo=DB.investorCompanies||[];
-  const co=_investorGeoFilterStateCode
-    ? allCo.filter(function(r){ return getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) === _investorGeoFilterStateCode; })
-    : allCo;
+  var productFilter = _investorProductFilterId
+    ? (DB.products || []).find(function(item){ return String(item.id || '') === String(_investorProductFilterId || ''); }) || null
+    : null;
+  const co=allCo.filter(function(r){
+    if(_investorGeoFilterStateCode && getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
+    if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
+    return true;
+  });
   const total=allCo.reduce((s,r)=>s+(parseFloat(r.summa)||0),0);
   document.getElementById('ic-k1').textContent=allCo.length;
   document.getElementById('ic-k2').textContent=allCo.filter(r=>r.holat==='Tayyor').length;
@@ -5905,6 +5960,7 @@ function renderInvestorCompanies(){
   const ic4=document.getElementById('ic-k4'); if(ic4) ic4.textContent=`$${Math.round(total/1e6)}M`;
   document.getElementById('badge-investorco').textContent=allCo.length;
   renderInvestorGeoCard(allCo);
+  renderInvestorProductFilterPicker();
 
   var filterBar = document.getElementById('investorGeoFilterBar');
   var filterLabel = document.getElementById('investorGeoFilterLabel');
@@ -9080,12 +9136,115 @@ function selectCsdItem(el, pid){
   if(typeof handleImportProductChange === 'function') handleImportProductChange();
 }
 
+function renderInvestorProductFilterPicker(){
+  var hidden = document.getElementById('investor-soha-filter-select');
+  var display = document.getElementById('investor-soha-filter-display');
+  var dd = document.getElementById('investor-soha-filter-dropdown');
+  var clearBtn = document.getElementById('investor-soha-filter-clear');
+  if(!hidden || !display || !dd) return;
+  var pid = String(hidden.value || '');
+  if(!dd.dataset.built){
+    var html = '';
+    ['build','azot','other'].forEach(function(section){
+      var sectionRaws = getSectionRawMaterials(section);
+      var sectionProds = getSectionProducts(section);
+      var sectionLabel = getProductSectionLabel(section);
+      var sectionIcon = getProductSectionIcon(section);
+      var sectionCount = sectionProds.length || 0;
+      html += '<div class="csd-group csd-group-section" data-section="'+section+'">';
+      html += '<div class="csd-group-head csd-section-head" onclick="toggleCsdGroup(this)"><span>'+sectionIcon+' '+escapeHtmlText(sectionLabel)+'</span><span class="csd-count">'+sectionCount+'</span><span class="csd-caret">▾</span></div>';
+      html += '<div class="csd-group-items csd-section-items">';
+      sectionRaws.forEach(function(raw){
+        var rawProds = sectionProds.filter(function(p){ return String(p.raw_id || '') === String(raw.id); });
+        var rawName = raw.name_uz || raw.name_en || 'Nomsiz';
+        html += '<div class="csd-group csd-group-raw" data-rawid="'+raw.id+'">';
+        html += '<div class="csd-group-head csd-raw-head" onclick="toggleCsdGroup(this)"><span>⛏ '+escapeHtmlText(rawName)+'</span><span class="csd-count">'+rawProds.length+'</span><span class="csd-caret">▾</span></div>';
+        html += '<div class="csd-group-items csd-raw-items">';
+        if(rawProds.length){
+          rawProds.forEach(function(p){
+            html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectInvestorProductFilter(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+'</div>';
+          });
+        } else {
+          html += '<div class="csd-item" style="cursor:default;color:var(--text3)">Mahsulot topilmadi</div>';
+        }
+        html += '</div></div>';
+      });
+      var orphans = sectionProds.filter(function(p){
+        return !p.raw_id || !sectionRaws.some(function(r){ return String(r.id) === String(p.raw_id); });
+      });
+      if(orphans.length){
+        html += '<div class="csd-group csd-group-raw">';
+        html += '<div class="csd-group-head csd-raw-head" onclick="toggleCsdGroup(this)"><span>📦 Boshqa mahsulotlar</span><span class="csd-count">'+orphans.length+'</span><span class="csd-caret">▾</span></div>';
+        html += '<div class="csd-group-items csd-raw-items">';
+        orphans.forEach(function(p){
+          html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectInvestorProductFilter(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+'</div>';
+        });
+        html += '</div></div>';
+      }
+      if(!sectionRaws.length && !orphans.length){
+        html += '<div class="csd-item" style="cursor:default;color:var(--text3)">Bu bo‘limda hozircha ma’lumot yo‘q</div>';
+      }
+      html += '</div></div>';
+    });
+    dd.innerHTML = html;
+    dd.dataset.built = '1';
+  }
+  if(!pid){
+    display.textContent = '— Barcha sohalar —';
+    dd.querySelectorAll('.csd-item').forEach(function(item){ item.classList.remove('selected'); });
+    if(clearBtn) clearBtn.style.display = 'none';
+    return;
+  }
+  var product = (DB.products || []).find(function(p){ return String(p.id) === pid; });
+  if(product){
+    display.textContent = formatBilingualProductName(product) + (product.hs_code ? ' (' + product.hs_code + ')' : '');
+    dd.querySelectorAll('.csd-item').forEach(function(item){
+      item.classList.toggle('selected', String(item.getAttribute('data-pid') || '') === pid);
+    });
+    if(clearBtn) clearBtn.style.display = 'inline-flex';
+  } else {
+    display.textContent = '— Barcha sohalar —';
+    if(clearBtn) clearBtn.style.display = 'none';
+  }
+}
+
+function toggleInvestorProductDropdown(){
+  var dd = document.getElementById('investor-soha-filter-dropdown');
+  if(dd) dd.classList.toggle('open');
+}
+
+function selectInvestorProductFilter(el, pid){
+  var hidden = document.getElementById('investor-soha-filter-select');
+  if(hidden) hidden.value = pid;
+  _investorProductFilterId = String(pid || '');
+  var dd = document.getElementById('investor-soha-filter-dropdown');
+  if(dd) dd.classList.remove('open');
+  renderInvestorProductFilterPicker();
+  renderInvestorCompanies();
+}
+
+function clearInvestorProductFilter(){
+  _investorProductFilterId = '';
+  var hidden = document.getElementById('investor-soha-filter-select');
+  if(hidden) hidden.value = '';
+  renderInvestorProductFilterPicker();
+  renderInvestorCompanies();
+}
+window.toggleInvestorProductDropdown = toggleInvestorProductDropdown;
+window.selectInvestorProductFilter = selectInvestorProductFilter;
+window.clearInvestorProductFilter = clearInvestorProductFilter;
+
 // Click tashqarida dropdown yopish
 document.addEventListener('click', function(e){
   var wrap = document.getElementById('finder-select-wrap');
   if(wrap && !wrap.contains(e.target)){
     var dd = document.getElementById('finder-dropdown');
     if(dd) dd.classList.remove('open');
+  }
+  var investorWrap = document.getElementById('investor-soha-filter-wrap');
+  if(investorWrap && !investorWrap.contains(e.target)){
+    var investorDd = document.getElementById('investor-soha-filter-dropdown');
+    if(investorDd) investorDd.classList.remove('open');
   }
 });
 
