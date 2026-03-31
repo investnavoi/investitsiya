@@ -5669,11 +5669,18 @@ function renderInvestorGeoCard(companies){
     return;
   }
 
-  if(!window.simplemaps_worldmap_mapdata || !window.simplemaps_worldmap || typeof window.simplemaps_worldmap.copy !== 'function'){
+  if(!window.simplemaps_worldmap_mapdata || !window.simplemaps_worldmap || typeof window.simplemaps_worldmap.load !== 'function'){
     mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">World map kutubxonasi yuklanmadi</div>';
     overlayEl.innerHTML = '';
     if(tooltipEl) tooltipEl.style.display = 'none';
     renderInvestorGeoStatePanel('');
+    return;
+  }
+
+  if(!mapEl.getClientRects().length || mapEl.offsetWidth < 120 || mapEl.offsetHeight < 120){
+    overlayEl.innerHTML = '';
+    if(tooltipEl) tooltipEl.style.display = 'none';
+    window._pendingInvestorGeoCompanies = companies.slice();
     return;
   }
 
@@ -5793,7 +5800,7 @@ function renderInvestorGeoCard(companies){
   overlayEl.innerHTML = '';
   if(tooltipEl) tooltipEl.style.display = 'none';
   window.simplemaps_worldmap_mapdata = mapData;
-  window._investorGeoMapInstance = window.simplemaps_worldmap.copy();
+  window._investorGeoMapInstance = window.simplemaps_worldmap;
   window._investorGeoMapInstance.mapdata = mapData;
   window._investorGeoMapInstance.hooks = window._investorGeoMapInstance.hooks || {};
   window._investorGeoMapInstance.hooks.viewbox_updated = function(){
@@ -5964,7 +5971,9 @@ function renderInvestorCompanies(){
   const ic4=document.getElementById('ic-k4'); if(ic4) ic4.textContent=`$${Math.round(total/1e6)}M`;
   document.getElementById('badge-investorco').textContent=allCo.length;
   renderInvestorGeoCard(allCo);
-  renderInvestorProductFilterPicker();
+  if(typeof renderInvestorProductFilterPicker === 'function'){
+    renderInvestorProductFilterPicker();
+  }
 
   var filterBar = document.getElementById('investorGeoFilterBar');
   var filterLabel = document.getElementById('investorGeoFilterLabel');
@@ -17535,7 +17544,7 @@ function saveSettings(){
 // Test API key on load
 async function testGeminiKey(){
   var key = getGeminiKey();
-  if(!key){ console.log('⚠️ Gemini API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.'); return false; }
+  if(!key){ return false; }
   try {
     var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
     if(r.ok){ console.log('✅ Gemini API key ishlayapti'); return true; }
