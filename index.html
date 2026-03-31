@@ -5486,68 +5486,48 @@ function getInvestorGeoStateElements(svg, stateSpecific){
   return map;
 }
 
-function renderInvestorGeoSvgBubbles(markers){
+function renderInvestorGeoSvgBubbles(markers, attempt){
   var mapEl = document.getElementById('map');
   if(!mapEl) return;
-  var svg = getInvestorGeoMainSvg();
-  var stateLayer = getInvestorGeoStateLayer(svg);
-  var mapInfo = window.simplemaps_worldmap_mapinfo;
-  var stateSpecific = (window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.state_specific) || {};
-  if(!svg || !stateLayer) return;
-  var existing = stateLayer.querySelector('.investor-geo-bubble-layer');
-  if(existing) existing.remove();
-  var ns = 'http://www.w3.org/2000/svg';
-  var layer = document.createElementNS(ns, 'g');
-  layer.setAttribute('class', 'investor-geo-bubble-layer');
-  layer.setAttribute('pointer-events', 'none');
-  var stateElements = getInvestorGeoStateElements(svg, stateSpecific);
-  (markers || []).forEach(function(marker){
-    var cx = null;
-    var cy = null;
-    var stateEl = stateElements[marker.code];
-    if(stateEl){
-      try{
-        var box = stateEl.getBBox();
-        if(box && box.width && box.height){
-          cx = box.x + (box.width / 2);
-          cy = box.y + (box.height / 2);
-        }
-      }catch(_err){}
+  var overlayEl = document.getElementById('investorGeoOverlay');
+  if(!overlayEl) return;
+  overlayEl.innerHTML = '';
+  var anchors = getInvestorGeoLocationAnchors();
+  if(!anchors.length){
+    if((Number(attempt) || 0) < 8){
+      setTimeout(function(){ renderInvestorGeoSvgBubbles(markers, (Number(attempt) || 0) + 1); }, 120);
     }
-    if((cx == null || cy == null) && mapInfo && mapInfo.state_bbox_array && mapInfo.state_bbox_array[marker.code]){
-      var bbox = mapInfo.state_bbox_array[marker.code];
-      cx = ((Number(bbox.x) || 0) + (Number(bbox.x2) || 0)) / 2;
-      cy = ((Number(bbox.y) || 0) + (Number(bbox.y2) || 0)) / 2;
-    }
-    if(cx == null || cy == null) return;
-    var radius = Math.max(14, Math.min(26, 12 + (marker.count * 1.8)));
-    var ring = document.createElementNS(ns, 'circle');
-    ring.setAttribute('cx', cx);
-    ring.setAttribute('cy', cy);
-    ring.setAttribute('r', radius + 3);
-    ring.setAttribute('fill', 'rgba(255,255,255,0.55)');
-    layer.appendChild(ring);
-    var bubble = document.createElementNS(ns, 'circle');
-    bubble.setAttribute('cx', cx);
-    bubble.setAttribute('cy', cy);
-    bubble.setAttribute('r', radius);
-    bubble.setAttribute('fill', '#5B5CEB');
-    bubble.setAttribute('stroke', '#FFFFFF');
-    bubble.setAttribute('stroke-width', '3');
-    layer.appendChild(bubble);
-    var text = document.createElementNS(ns, 'text');
-    text.setAttribute('x', cx);
-    text.setAttribute('y', cy + 1);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('dominant-baseline', 'middle');
-    text.setAttribute('fill', '#FFFFFF');
-    text.setAttribute('font-family', 'Inter, Arial, sans-serif');
-    text.setAttribute('font-size', String(Math.max(10, Math.min(16, 9 + marker.count))));
-    text.setAttribute('font-weight', '800');
-    text.textContent = String(marker.count);
-    layer.appendChild(text);
+    return;
+  }
+  var mapRect = mapEl.getBoundingClientRect();
+  anchors.forEach(function(anchor, idx){
+    var marker = markers[idx];
+    if(!marker) return;
+    var rect = anchor.getBoundingClientRect();
+    if(!rect || !rect.width || !rect.height) return;
+    var badge = document.createElement('div');
+    badge.className = 'investor-geo-badge';
+    badge.textContent = String(marker.count);
+    badge.style.position = 'absolute';
+    badge.style.left = ((rect.left - mapRect.left) + (rect.width / 2)) + 'px';
+    badge.style.top = ((rect.top - mapRect.top) + (rect.height / 2)) + 'px';
+    badge.style.transform = 'translate(-50%, -50%)';
+    badge.style.width = Math.max(28, Math.min(40, 24 + (marker.count * 2))) + 'px';
+    badge.style.height = badge.style.width;
+    badge.style.borderRadius = '999px';
+    badge.style.background = '#5B5CEB';
+    badge.style.border = '3px solid #FFFFFF';
+    badge.style.boxShadow = '0 6px 18px rgba(91,92,235,.25)';
+    badge.style.color = '#FFFFFF';
+    badge.style.display = 'flex';
+    badge.style.alignItems = 'center';
+    badge.style.justifyContent = 'center';
+    badge.style.fontFamily = 'Inter, Arial, sans-serif';
+    badge.style.fontWeight = '800';
+    badge.style.fontSize = Math.max(11, Math.min(16, 10 + marker.count)) + 'px';
+    badge.style.pointerEvents = 'none';
+    overlayEl.appendChild(badge);
   });
-  stateLayer.appendChild(layer);
 }
 
 function renderInvestorGeoCard(companies){
@@ -5595,14 +5575,14 @@ function renderInvestorGeoCard(companies){
   mapData.main_settings.all_states_zoomable = 'no';
   mapData.main_settings.manual_zoom = 'yes';
   mapData.main_settings.hide_labels = 'yes';
-  mapData.main_settings.location_type = 'square';
+  mapData.main_settings.location_type = 'circle';
   mapData.main_settings.location_color = '#FF0067';
   mapData.main_settings.location_opacity = 0.86;
   mapData.main_settings.location_hover_opacity = 0.94;
   mapData.main_settings.location_border_color = '#FFFFFF';
   mapData.main_settings.location_border = 2;
   mapData.main_settings.location_hover_border = 3;
-  mapData.main_settings.all_locations_inactive = 'yes';
+  mapData.main_settings.all_locations_inactive = 'no';
   mapData.main_settings.location_size = 24;
   mapData.main_settings.label_color = '#FFFFFF';
   mapData.main_settings.label_hover_color = '#FFFFFF';
@@ -5673,6 +5653,18 @@ function renderInvestorGeoCard(companies){
   }).filter(function(item){
     return item.count > 0 && typeof item.lat === 'number' && typeof item.lon === 'number';
   }).sort(function(a,b){ return b.count - a.count; });
+  mapData.locations = {};
+  markers.forEach(function(marker, idx){
+    mapData.locations[String(idx)] = {
+      name: marker.name,
+      lat: String(marker.lat),
+      lng: String(marker.lon),
+      color: '#FF5AA5',
+      description: '<div style="font-family:Inter,Arial,sans-serif;min-width:170px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">' + escHtml(marker.name) + '</div><div style="font-size:12px;color:#334155">' + marker.count + ' ta kompaniya</div></div>',
+      size: Math.max(18, Math.min(30, 16 + (marker.count * 2))),
+      type: 'circle'
+    };
+  });
   metaEl.textContent = companies.length + ' ta kompaniya · ' + Object.keys(stateStats).filter(function(code){ return (stateStats[code].count || 0) > 0; }).length + ' ta davlat';
 
   mapEl.innerHTML = '';
@@ -5681,6 +5673,16 @@ function renderInvestorGeoCard(companies){
   window.simplemaps_worldmap_mapdata = mapData;
   window._investorGeoMapInstance = window.simplemaps_worldmap.copy();
   window._investorGeoMapInstance.mapdata = mapData;
+  window._investorGeoMapInstance.hooks = window._investorGeoMapInstance.hooks || {};
+  window._investorGeoMapInstance.hooks.viewbox_updated = function(){
+    renderInvestorGeoSvgBubbles(markers);
+  };
+  window._investorGeoMapInstance.hooks.zooming_complete = function(){
+    renderInvestorGeoSvgBubbles(markers);
+  };
+  window._investorGeoMapInstance.hooks.refresh_complete = function(){
+    renderInvestorGeoSvgBubbles(markers);
+  };
   window._investorGeoMapInstance.load();
   renderInvestorGeoStatePanel('');
   setTimeout(function(){
