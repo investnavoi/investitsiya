@@ -1412,7 +1412,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="padding:1rem">
         <div id="investorGeoMapCard" style="background:#EEF5FF;border:1px solid rgba(146,182,235,.22);border-radius:24px;padding:0;min-height:520px;position:relative;overflow:hidden">
           <div id="map" style="width:100%;height:100%;min-height:520px"></div>
-          <div id="investorGeoOverlay" style="position:absolute;inset:0;pointer-events:none"></div>
+          <div id="investorGeoOverlay" style="position:absolute;inset:0;pointer-events:none;z-index:6"></div>
           <div id="investorGeoTooltip" style="display:none;position:absolute;left:0;top:0;transform:translate(-50%,-120%);pointer-events:none;z-index:12;background:rgba(15,23,42,.92);color:#fff;padding:.5rem .7rem;border-radius:12px;font-size:.74rem;font-weight:700;box-shadow:0 8px 24px rgba(15,23,42,.18);white-space:nowrap"></div>
         </div>
         <div id="investorGeoStatePanel" style="display:none;margin-top:.9rem;padding:1rem 1.1rem;border:1px solid rgba(136,164,188,.22);border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff)"></div>
@@ -5486,24 +5486,60 @@ function getInvestorGeoStateElements(svg, stateSpecific){
   return map;
 }
 
+function getInvestorGeoLocationRect(locationObj, mapRect){
+  if(!locationObj) return null;
+  try{
+    if(locationObj.node && typeof locationObj.node.getBoundingClientRect === 'function'){
+      return locationObj.node.getBoundingClientRect();
+    }
+    if(locationObj[0] && locationObj[0].node && typeof locationObj[0].node.getBoundingClientRect === 'function'){
+      return locationObj[0].node.getBoundingClientRect();
+    }
+    if(typeof locationObj.getBBox === 'function'){
+      var box = locationObj.getBBox();
+      if(box && box.width && box.height){
+        return {
+          left: mapRect.left + box.x,
+          top: mapRect.top + box.y,
+          width: box.width,
+          height: box.height
+        };
+      }
+    }
+    if(locationObj.sm && typeof locationObj.sm.x === 'number' && typeof locationObj.sm.y === 'number'){
+      var size = Number(locationObj.sm.size) || 24;
+      return {
+        left: mapRect.left + locationObj.sm.x - (size / 2),
+        top: mapRect.top + locationObj.sm.y - (size / 2),
+        width: size,
+        height: size
+      };
+    }
+  }catch(_err){}
+  return null;
+}
+
 function renderInvestorGeoSvgBubbles(markers, attempt){
   var mapEl = document.getElementById('map');
   if(!mapEl) return;
   var overlayEl = document.getElementById('investorGeoOverlay');
   if(!overlayEl) return;
   overlayEl.innerHTML = '';
-  var anchors = getInvestorGeoLocationAnchors();
-  if(!anchors.length){
+  var instance = window._investorGeoMapInstance || window.simplemaps_worldmap;
+  var locations = instance && instance.locations ? instance.locations : null;
+  var keys = locations ? Object.keys(locations).sort(function(a, b){ return Number(a) - Number(b); }) : [];
+  if(!keys.length){
     if((Number(attempt) || 0) < 8){
       setTimeout(function(){ renderInvestorGeoSvgBubbles(markers, (Number(attempt) || 0) + 1); }, 120);
     }
     return;
   }
   var mapRect = mapEl.getBoundingClientRect();
-  anchors.forEach(function(anchor, idx){
+  var rendered = 0;
+  keys.forEach(function(key, idx){
     var marker = markers[idx];
     if(!marker) return;
-    var rect = anchor.getBoundingClientRect();
+    var rect = getInvestorGeoLocationRect(locations[key], mapRect);
     if(!rect || !rect.width || !rect.height) return;
     var badge = document.createElement('div');
     badge.className = 'investor-geo-badge';
@@ -5527,7 +5563,11 @@ function renderInvestorGeoSvgBubbles(markers, attempt){
     badge.style.fontSize = Math.max(11, Math.min(16, 10 + marker.count)) + 'px';
     badge.style.pointerEvents = 'none';
     overlayEl.appendChild(badge);
+    rendered += 1;
   });
+  if(!rendered && (Number(attempt) || 0) < 8){
+    setTimeout(function(){ renderInvestorGeoSvgBubbles(markers, (Number(attempt) || 0) + 1); }, 120);
+  }
 }
 
 function renderInvestorGeoCard(companies){
