@@ -5436,7 +5436,7 @@ function getInvestorGeoLocationAnchors(){
     var strokeAttr = String(node.getAttribute('stroke') || '');
     var computed = window.getComputedStyle ? window.getComputedStyle(node) : null;
     var colorBlob = [attrStyle, fillAttr, strokeAttr, computed && computed.fill, computed && computed.stroke].join(' ').toLowerCase();
-    return /ff0067|255,\s*0,\s*103/.test(colorBlob);
+    return /ff0067|255,\s*0,\s*103|ff5aa5|255,\s*90,\s*165/.test(colorBlob);
   });
 }
 
