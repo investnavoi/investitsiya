@@ -1461,32 +1461,23 @@ input[type="time"]{-webkit-appearance:none;}
         <table>
           <thead>
             <tr>
-              <th style="width:40px"></th>
-              <th></th>
-              <th></th>
-              <th></th>
-              <th style="vertical-align:top;padding:10px 10px 8px">
-                <div class="form-group" style="margin:0;min-width:280px">
-                  <label class="form-label" style="margin-bottom:6px">Soha filtri</label>
-                  <div class="custom-select-wrap" id="investor-soha-filter-wrap">
-                    <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()">— Barcha sohalar —</div>
-                    <input type="hidden" id="investor-soha-filter-select" value="">
-                    <div class="custom-select-dropdown" id="investor-soha-filter-dropdown"></div>
-                  </div>
-                </div>
-              </th>
-              <th style="vertical-align:bottom;padding:10px 10px 8px">
-                <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none">Tozalash</button>
-              </th>
-              <th></th>
-              <th></th>
-            </tr>
-            <tr>
               <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes(this)"></th>
               <th>T/r</th>
               <th data-i18n="col_company">Kompaniya</th>
               <th data-i18n="col_company_location">Kompaniya manzili</th>
-              <th data-i18n="col_field">Soha</th>
+              <th data-i18n="col_field" style="min-width:420px">
+                <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
+                  <span style="white-space:nowrap">Soha</span>
+                  <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;max-width:380px">
+                    <div class="custom-select-wrap" id="investor-soha-filter-wrap" style="min-width:0;flex:1">
+                      <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()" style="margin:0;height:34px;display:flex;align-items:center;padding:0 12px;font-size:.8rem;font-weight:700">— Barcha sohalar —</div>
+                      <input type="hidden" id="investor-soha-filter-select" value="">
+                      <div class="custom-select-dropdown" id="investor-soha-filter-dropdown"></div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none;padding:6px 10px;white-space:nowrap">Tozalash</button>
+                  </div>
+                </div>
+              </th>
               <th>Batafsil</th>
               <th data-i18n="col_emailstatus">Email holati</th>
               <th data-i18n="col_actions">Amal</th>
@@ -5701,12 +5692,12 @@ function renderInvestorGeoCard(companies){
   mapData.main_settings.manual_zoom = 'yes';
   mapData.main_settings.hide_labels = 'yes';
   mapData.main_settings.location_type = 'circle';
-  mapData.main_settings.location_color = '#FF0067';
-  mapData.main_settings.location_opacity = 0.86;
-  mapData.main_settings.location_hover_opacity = 0.94;
-  mapData.main_settings.location_border_color = '#FFFFFF';
-  mapData.main_settings.location_border = 2;
-  mapData.main_settings.location_hover_border = 3;
+  mapData.main_settings.location_color = 'rgba(0,0,0,0)';
+  mapData.main_settings.location_opacity = 0;
+  mapData.main_settings.location_hover_opacity = 0;
+  mapData.main_settings.location_border_color = 'rgba(0,0,0,0)';
+  mapData.main_settings.location_border = 0;
+  mapData.main_settings.location_hover_border = 0;
   mapData.main_settings.all_locations_inactive = 'no';
   mapData.main_settings.location_size = 24;
   mapData.main_settings.label_color = '#FFFFFF';
@@ -5784,7 +5775,7 @@ function renderInvestorGeoCard(companies){
       name: marker.name,
       lat: String(marker.lat),
       lng: String(marker.lon),
-      color: '#FF5AA5',
+      color: 'rgba(0,0,0,0)',
       description: '<div style="font-family:Inter,Arial,sans-serif;min-width:170px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">' + escHtml(marker.name) + '</div><div style="font-size:12px;color:#334155">' + marker.count + ' ta kompaniya</div></div>',
       size: Math.max(18, Math.min(30, 16 + (marker.count * 2))),
       type: 'circle'
@@ -9155,11 +9146,22 @@ function renderInvestorProductFilterPicker(){
   var clearBtn = document.getElementById('investor-soha-filter-clear');
   if(!hidden || !display || !dd) return;
   var pid = String(hidden.value || '');
-  if(!dd.dataset.built){
+  var investorCompanies = DB.investorCompanies || [];
+  var signature = String(investorCompanies.length) + '|' + investorCompanies.map(function(rec){
+    return [rec.id, getInvestorSohaValue(rec), rec.mahsulotNomi, rec.mahsulotHs, rec.productId].join(':');
+  }).join('|');
+  if(dd.dataset.signature !== signature){
+    var matchedProducts = (DB.products || []).filter(function(product){
+      return investorCompanies.some(function(rec){
+        return investorCompanyMatchesProductFilter(rec, product);
+      });
+    });
     var html = '';
     ['build','azot','other'].forEach(function(section){
       var sectionRaws = getSectionRawMaterials(section);
-      var sectionProds = getSectionProducts(section);
+      var sectionProds = getSectionProducts(section).filter(function(product){
+        return matchedProducts.some(function(item){ return String(item.id || '') === String(product.id || ''); });
+      });
       var sectionLabel = getProductSectionLabel(section);
       var sectionIcon = getProductSectionIcon(section);
       var sectionCount = sectionProds.length || 0;
@@ -9199,7 +9201,7 @@ function renderInvestorProductFilterPicker(){
       html += '</div></div>';
     });
     dd.innerHTML = html;
-    dd.dataset.built = '1';
+    dd.dataset.signature = signature;
   }
   if(!pid){
     display.textContent = '— Barcha sohalar —';
