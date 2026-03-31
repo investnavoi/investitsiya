@@ -5916,35 +5916,30 @@ function investorCompanyMatchesProductFilter(rec, product){
   if(!product) return true;
 
   var productId = String(product.id || '').trim();
-  var productHs = String(product.hs_code || '').replace(/\D/g,'').slice(0,6);
   var recordProductId = String(rec.mahsulotProductId || rec.productId || '').trim();
-  var recordHs = String(rec.mahsulotHs || rec.productHs || rec.hsCode || '').replace(/\D/g,'').slice(0,6);
 
   if(productId && recordProductId && productId === recordProductId) return true;
-  if(productHs && recordHs && (productHs === recordHs || productHs.indexOf(recordHs) === 0 || recordHs.indexOf(productHs) === 0)) return true;
 
-  var raw = null;
-  if(product.raw_id){
-    raw = (DB.rawMaterials || []).find(function(item){ return String(item.id || '') === String(product.raw_id || ''); }) || null;
-  }
-  var companyText = apolloNormalizeText([
-    getInvestorSohaValue(rec),
-    rec.mahsulotNomi,
-    rec.soha
-  ].filter(Boolean).join(' '));
-  if(!companyText) return false;
+  var companyFields = [
+    String(rec.mahsulotNomi || '').trim(),
+    String(rec.soha || '').trim()
+  ].filter(Boolean).map(apolloNormalizeText).filter(Boolean);
+  if(!companyFields.length) return false;
 
+  var explicitUz = String(product.name_uz || '').trim();
+  var bilingualName = String(formatBilingualProductName(product) || '').trim();
   var candidates = [
-    product.name_en,
-    product.name_uz,
-    product.raw_name,
-    raw && raw.name_en,
-    raw && raw.name_uz
-  ].filter(Boolean);
+    String(product.name_en || '').trim(),
+    explicitUz,
+    bilingualName
+  ].filter(Boolean).map(apolloNormalizeText).filter(Boolean).filter(function(token, idx, arr){
+    return arr.indexOf(token) === idx;
+  });
 
-  return candidates.some(function(name){
-    var token = apolloNormalizeText(name);
-    return token && companyText.indexOf(token) !== -1;
+  return companyFields.some(function(field){
+    return candidates.some(function(token){
+      return field === token || (token.length >= 10 && field.indexOf(token) !== -1);
+    });
   });
 }
 
