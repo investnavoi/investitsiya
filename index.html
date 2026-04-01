@@ -1712,7 +1712,7 @@ input[type="time"]{-webkit-appearance:none;}
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head"><div class="pg-title">📦 Mahsulotlar Katalogi</div><div class="pg-sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
     <div class="kpi-grid">
-      <div class="kpi-card c1"><div class="kpi-icon">⛏️</div><div class="kpi-label">Xomashyolar</div><div class="kpi-val" id="pr-k1">0</div></div>
+      <div class="kpi-card c1" onclick="openProductsRawOverview()" style="cursor:pointer"><div class="kpi-icon">⛏️</div><div class="kpi-label">Xomashyolar</div><div class="kpi-val" id="pr-k1">0</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Mahsulotlar</div><div class="kpi-val" id="pr-k2">0</div></div>
       <div class="kpi-card c3"><div class="kpi-icon">🌍</div><div class="kpi-label">Maqsad davlatlar</div><div class="kpi-val" id="pr-k3">12</div></div>
       <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Kompaniya topildi</div><div class="kpi-val" id="pr-k4">0</div></div>
@@ -8958,6 +8958,21 @@ function toggleProductSection(section){
   PRODUCT_ACTIVE_SECTION = section;
   PRODUCT_SECTION_RAW_FILTER = '';
   syncProductSections();
+}
+
+function openProductsRawOverview(){
+  PRODUCT_SECTION_STATE.build = true;
+  PRODUCT_SECTION_STATE.azot = false;
+  PRODUCT_SECTION_STATE.other = false;
+  PRODUCT_ACTIVE_SECTION = 'build';
+  PRODUCT_SECTION_RAW_FILTER = '';
+  syncProductSections();
+  var target = document.getElementById('productSectionBuildBody') || document.getElementById('productSectionBuildMeta');
+  if(target){
+    setTimeout(function(){
+      target.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 80);
+  }
 }
 
 function renderProducts(){
