@@ -1914,7 +1914,7 @@ input[type="time"]{-webkit-appearance:none;}
             <div class="tcard" style="margin-bottom:1rem">
               <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
               <div class="tscroll"><table>
-                <thead><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
+                <thead id="import-thead"><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
                 <tbody id="import-tbody"></tbody>
               </table></div>
             </div>
@@ -12820,6 +12820,8 @@ function resetImportAnalysisUi(message){
   });
   var chartEl = document.getElementById('importBarChart');
   if(chartEl) chartEl.innerHTML = '';
+  var theadEl = document.getElementById('import-thead');
+  if(theadEl) theadEl.innerHTML = '<tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr>';
   var tableEl = document.getElementById('import-tbody');
   if(tableEl) tableEl.innerHTML = '';
 }
@@ -12914,6 +12916,76 @@ async function runImportAnalysis(forceRefresh){
   toast(sourceLabel+': OK '+okCount+', ma\'lumot yo\'q '+noDataCount+', limit '+limitCount);
 }
 
+function buildWitsDetailRows(countries){
+  var rows = [];
+  (countries || []).forEach(function(country){
+    (country.products || []).forEach(function(row){
+      rows.push({
+        reporter: row.reporter || country.name || '—',
+        tradeFlow: row.tradeFlow || 'Import',
+        productCode: row.hs || '',
+        productDescription: row.desc || '',
+        year: row.period || '',
+        partner: row.partner || '—',
+        tradeValue1000Usd: Number(row.tradeValue1000Usd || ((row.value || 0) / 1000) || 0),
+        quantity: Number(row.quantity || row.weight || 0),
+        quantityUnit: row.quantityUnit || 'Kg'
+      });
+    });
+  });
+  rows.sort(function(a,b){
+    if(String(a.reporter) !== String(b.reporter)) return String(a.reporter).localeCompare(String(b.reporter));
+    if(String(a.year) !== String(b.year)) return String(b.year).localeCompare(String(a.year));
+    if(String(a.partner) === 'World' && String(b.partner) !== 'World') return -1;
+    if(String(b.partner) === 'World' && String(a.partner) !== 'World') return 1;
+    return (b.tradeValue1000Usd || 0) - (a.tradeValue1000Usd || 0);
+  });
+  return rows;
+}
+
+function renderWitsImportDetailTable(countries){
+  var theadEl = document.getElementById('import-thead');
+  var tb = document.getElementById('import-tbody');
+  if(!theadEl || !tb) return;
+  theadEl.innerHTML = '<tr><th>#</th><th>Reporter</th><th>TradeFlow</th><th>ProductCode</th><th>Product Description</th><th>Year</th><th>Partner</th><th>Trade Value 1000USD</th><th>Quantity</th><th>Quantity Unit</th></tr>';
+  var rows = buildWitsDetailRows(countries);
+  if(!rows.length){
+    tb.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:1rem">WITS batafsil import qatorlari topilmadi</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(function(row, i){
+    return '<tr>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td>'+escapeHtmlText(row.reporter)+'</td>'+
+      '<td>'+escapeHtmlText(row.tradeFlow)+'</td>'+
+      '<td style="font-weight:700">'+escapeHtmlText(row.productCode)+'</td>'+
+      '<td>'+escapeHtmlText(row.productDescription)+'</td>'+
+      '<td>'+escapeHtmlText(row.year)+'</td>'+
+      '<td>'+escapeHtmlText(row.partner)+'</td>'+
+      '<td style="font-weight:700;text-align:right">'+Number(row.tradeValue1000Usd || 0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})+'</td>'+
+      '<td style="text-align:right">'+Number(row.quantity || 0).toLocaleString('en-US',{maximumFractionDigits:1})+'</td>'+
+      '<td>'+escapeHtmlText(row.quantityUnit)+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
+  var theadEl = document.getElementById('import-thead');
+  var tb = document.getElementById('import-tbody');
+  if(!theadEl || !tb) return;
+  theadEl.innerHTML = '<tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr>';
+  tb.innerHTML = countries.map(function(c,i){
+    var tc = getTargetMeta(c);
+    var hasTrend = typeof c.trend_pct === 'number';
+    var trend = hasTrend ? c.trend_pct : 0;
+    var amountCell = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : (c.status==='no_data' ? 'Ma\'lumot yo\'q' : (c.status==='rate_limited' ? 'Limit' : 'Xato'));
+    var trendCell = (c.status==='ok' && hasTrend) ? ((trend>0?'↑':'↓')+Math.abs(trend)+'%') : '—';
+    var volumeCell = c.status==='ok' && c.volume_tons ? (Math.round(c.volume_tons/1000)+'K t') : '—';
+    var trendCellColor = c.status==='ok' ? (trend>0?'#059669':'#EF233C') : '#94A3B8';
+    return '<tr><td>'+(i+1)+'</td><td>'+(tc.flag?tc.flag+' ':'')+(tc.label||c.name)+'</td><td style="font-weight:700">'+amountCell+'</td><td style="color:'+trendCellColor+';font-weight:700">'+trendCell+'</td><td>'+volumeCell+'</td><td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prod.id+'\',\''+c.code+'\')">🔍</button></td></tr>';
+  }).join('');
+}
+
 function renderImportResults(countries, prod, source, targetCountries){
   targetCountries = (targetCountries && targetCountries.length) ? targetCountries : getImportAnalysisTargetCountries();
   initImportAnalysisComtradeOnly(targetCountries, getImportAnalysisSourceKey(source));
@@ -12988,17 +13060,11 @@ function renderImportResults(countries, prod, source, targetCountries){
     return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc.flag||c.flag||'')+' '+(tc.label||c.name||'')+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:'+(compactChartAmounts?72:110)+'px;font-size:'+(compactChartAmounts?'.68rem':'.62rem')+';font-weight:700;text-align:right" title="'+amountExact+'">'+amountLabel+'</div><div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;min-width:'+(singleCountry?380:220)+'px">'+yearsHtml+'</div></div>';
   }).join('');
 
-  var tb = document.getElementById('import-tbody');
-  tb.innerHTML = countries.map(function(c,i){
-    var tc = getTargetMeta(c);
-    var hasTrend = typeof c.trend_pct === 'number';
-    var trend = hasTrend ? c.trend_pct : 0;
-    var amountCell = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : (c.status==='no_data' ? 'Ma\'lumot yo\'q' : (c.status==='rate_limited' ? 'Limit' : 'Xato'));
-    var trendCell = (c.status==='ok' && hasTrend) ? ((trend>0?'↑':'↓')+Math.abs(trend)+'%') : '—';
-    var volumeCell = c.status==='ok' && c.volume_tons ? (Math.round(c.volume_tons/1000)+'K t') : '—';
-    var trendCellColor = c.status==='ok' ? (trend>0?'#059669':'#EF233C') : '#94A3B8';
-    return '<tr><td>'+(i+1)+'</td><td>'+(tc.flag?tc.flag+' ':'')+(tc.label||c.name)+'</td><td style="font-weight:700">'+amountCell+'</td><td style="color:'+trendCellColor+';font-weight:700">'+trendCell+'</td><td>'+volumeCell+'</td><td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prod.id+'\',\''+c.code+'\')">🔍</button></td></tr>';
-  }).join('');
+  if(String(source || '').toLowerCase().indexOf('wits') !== -1){
+    renderWitsImportDetailTable(countries);
+  } else {
+    renderDefaultImportDetailTable(countries, prod, getTargetMeta);
+  }
 
   var okCount2 = countries.filter(function(c){ return c.status==='ok'; }).length;
   var noDataCount2 = countries.filter(function(c){ return c.status==='no_data'; }).length;
