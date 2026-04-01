@@ -1712,14 +1712,14 @@ input[type="time"]{-webkit-appearance:none;}
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head"><div class="pg-title">📦 Mahsulotlar Katalogi</div><div class="pg-sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
     <div class="kpi-grid">
-      <div class="kpi-card c1"><div class="kpi-icon">⛏️</div><div class="kpi-label">Xomashyolar</div><div class="kpi-val" id="pr-k1">0</div></div>
+      <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;el.scrollIntoView({behavior:'smooth',block:'start'});el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);})()"><div class="kpi-icon">⛏️</div><div class="kpi-label">Xomashyolar</div><div class="kpi-val" id="pr-k1">0</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Mahsulotlar</div><div class="kpi-val" id="pr-k2">0</div></div>
       <div class="kpi-card c3"><div class="kpi-icon">🌍</div><div class="kpi-label">Maqsad davlatlar</div><div class="kpi-val" id="pr-k3">12</div></div>
       <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Kompaniya topildi</div><div class="kpi-val" id="pr-k4">0</div></div>
     </div>
 
     <!-- Mahsulot bo'limlari -->
-    <div class="tcard" style="margin-bottom:1rem">
+    <div class="tcard" id="rawMaterialsCard" style="margin-bottom:1rem">
       <div class="tc-head"><div class="tc-title">🗂 Mahsulot bo'limlari</div>
         <div style="display:flex;gap:.5rem">
           <button class="btn btn-blue btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo'shish</button>
