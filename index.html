@@ -526,13 +526,19 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 #page-products .product-map-card .kpi-icon{width:100%;height:auto;background:none;box-shadow:none;border-radius:0;margin-bottom:1rem;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;align-items:stretch}
 #page-products .product-map-card .kpi-label{font-size:.68rem;letter-spacing:.13em;margin-bottom:.55rem;}
 .mini-map-card{height:48px;border-radius:14px;overflow:hidden;border:1px solid rgba(217,119,6,.16);background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(251,191,36,.06));display:flex;align-items:center;justify-content:center;}
-.mini-map-card img{display:block;width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply;}
+.mini-map-card img{display:block;width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply;transform-origin:center center;}
 .mini-map-card.central{grid-column:span 1;}
 .mini-map-card.caucasus{grid-column:span 1;}
 .mini-map-card.mongolia{grid-column:span 1;}
 .mini-map-card.russia{grid-column:span 2;}
 .mini-map-card.iran{grid-column:span 1;}
 .mini-map-card.pakistan{grid-column:span 1;}
+.mini-map-card.central img{transform:scale(2.15);}
+.mini-map-card.caucasus img{transform:scale(2.85);}
+.mini-map-card.mongolia img{transform:scale(2.4);}
+.mini-map-card.russia img{transform:scale(1.55);}
+.mini-map-card.iran img{transform:scale(2.45);}
+.mini-map-card.pakistan img{transform:scale(2.7);}
 .sum-card{background:linear-gradient(135deg,#1E2B4A 0%,#2D3A6B 60%,#3A0CA3 100%);border-radius:var(--radius);padding:1.5rem 1.8rem;margin-bottom:1.6rem;box-shadow:0 8px 30px rgba(30,43,74,.25);position:relative;overflow:hidden;}
 .sum-tag{font-size:.6rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(163,174,208,.55);margin-bottom:.5rem;}
 .sum-txt{font-size:.82rem;line-height:1.8;color:rgba(210,220,245,.88);}
@@ -1732,7 +1738,18 @@ input[type="time"]{-webkit-appearance:none;}
     <div class="kpi-grid">
       <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()"><div class="kpi-icon">⛏️</div><div class="kpi-label">Resurs va imkoniyatlar</div><div class="kpi-val" id="pr-k1">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
       <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Xomashyo negizidagi mahsulotlar</div><div class="kpi-val" id="pr-k2">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">🌍</div><div class="kpi-label">Eksport yo'nalishlari</div><div class="kpi-val" id="pr-k3">12<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c3 product-map-card">
+        <div class="kpi-icon" aria-hidden="true">
+          <div class="mini-map-card central"><img src="maps/central-asia.png" alt="Markaziy Osiyo"></div>
+          <div class="mini-map-card caucasus"><img src="maps/caucasus.png" alt="Kavkaz"></div>
+          <div class="mini-map-card mongolia"><img src="maps/mongolia.png" alt="Mongoliya"></div>
+          <div class="mini-map-card russia"><img src="maps/russia.png" alt="Rossiya"></div>
+          <div class="mini-map-card iran"><img src="maps/iran.png" alt="Eron"></div>
+          <div class="mini-map-card pakistan"><img src="maps/pakistan.png" alt="Pokiston"></div>
+        </div>
+        <div class="kpi-label">Eksport yo'nalishlari</div>
+        <div class="kpi-val" id="pr-k3">12<span style="font-size:1.1rem;font-weight:700"> ta</span></div>
+      </div>
       <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Aniqlangan maqsadli kompaniyalar</div><div class="kpi-val" id="pr-k4">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
     </div>
 
