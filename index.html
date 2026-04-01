@@ -1712,7 +1712,7 @@ input[type="time"]{-webkit-appearance:none;}
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head"><div class="pg-title">📦 Mahsulotlar Katalogi</div><div class="pg-sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
     <div class="kpi-grid">
-      <div class="kpi-card c1" onclick="openProductsRawOverview()" style="cursor:pointer"><div class="kpi-icon">⛏️</div><div class="kpi-label">Xomashyolar</div><div class="kpi-val" id="pr-k1">0</div></div>
+      <div class="kpi-card c1"><div class="kpi-icon">⛏️</div><div class="kpi-label">Xomashyolar</div><div class="kpi-val" id="pr-k1">0</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Mahsulotlar</div><div class="kpi-val" id="pr-k2">0</div></div>
       <div class="kpi-card c3"><div class="kpi-icon">🌍</div><div class="kpi-label">Maqsad davlatlar</div><div class="kpi-val" id="pr-k3">12</div></div>
       <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Kompaniya topildi</div><div class="kpi-val" id="pr-k4">0</div></div>
@@ -1726,7 +1726,7 @@ input[type="time"]{-webkit-appearance:none;}
           <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('rawMaterials')" style="color:#EF233C">🗑 Tozalash</button>
         </div>
       </div>
-      <div id="productsSectionsPanelBody" style="padding:.8rem;display:none">
+      <div style="padding:.8rem">
         <div style="display:flex;flex-direction:column;gap:.7rem">
           <div style="border:1px solid var(--border);border-radius:16px;background:var(--bg)">
             <button type="button" onclick="toggleProductSection('build')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.95rem 1rem;border:none;background:transparent;color:var(--text);font-weight:800;font-size:.9rem;cursor:pointer">
@@ -8676,7 +8676,6 @@ var PRODUCT_SECTION_STATE = {
   azot: false,
   other: false
 };
-var PRODUCT_SECTIONS_PANEL_OPEN = false;
 var PRODUCT_ACTIVE_SECTION = 'build';
 var PRODUCT_SECTION_RAW_FILTER = '';
 var PRODUCT_AI_STATE = {
@@ -8961,17 +8960,6 @@ function toggleProductSection(section){
   syncProductSections();
 }
 
-function openProductsRawOverview(){
-  PRODUCT_SECTIONS_PANEL_OPEN = true;
-  syncProductSections();
-  var target = document.getElementById('productsSectionsCard') || document.getElementById('productsSectionsPanelBody');
-  if(target){
-    setTimeout(function(){
-      target.scrollIntoView({behavior:'smooth', block:'start'});
-    }, 80);
-  }
-}
-
 function renderProducts(){
   var rms = DB.rawMaterials||[];
   var prods = DB.products||[];
@@ -8979,8 +8967,6 @@ function renderProducts(){
   document.getElementById('pr-k2').textContent = prods.length;
   document.getElementById('pr-k4').textContent = (DB.investorCompanies||[]).length;
   document.getElementById('badge-products').textContent = prods.length;
-  var sectionsPanelBody = document.getElementById('productsSectionsPanelBody');
-  if(sectionsPanelBody) sectionsPanelBody.style.display = PRODUCT_SECTIONS_PANEL_OPEN ? 'block' : 'none';
   syncProductSections(rms, prods);
 
   // Populate selects
