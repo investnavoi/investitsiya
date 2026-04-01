@@ -1323,7 +1323,7 @@ input[type="time"]{-webkit-appearance:none;}
     </div>
 
     <!-- MAHALLIY TADBIRKORLAR — tepada, yig'iladigan -->
-    <div class="tcard" style="margin-bottom:1rem">
+    <div class="tcard" id="productsSectionsCard" style="margin-bottom:1rem">
       <div class="tc-head" style="cursor:pointer" onclick="toggleEntrepreneurs()">
         <div class="tc-title">🏭 Mahalliy Tadbirkorlar (<span id="entr-count">0</span>) <span id="entr-toggle-icon" style="font-size:.7rem">▼</span></div>
         <div style="display:flex;gap:.5rem" onclick="event.stopPropagation()">
@@ -1726,7 +1726,7 @@ input[type="time"]{-webkit-appearance:none;}
           <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('rawMaterials')" style="color:#EF233C">🗑 Tozalash</button>
         </div>
       </div>
-      <div style="padding:.8rem">
+      <div id="productsSectionsPanelBody" style="padding:.8rem;display:none">
         <div style="display:flex;flex-direction:column;gap:.7rem">
           <div style="border:1px solid var(--border);border-radius:16px;background:var(--bg)">
             <button type="button" onclick="toggleProductSection('build')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.95rem 1rem;border:none;background:transparent;color:var(--text);font-weight:800;font-size:.9rem;cursor:pointer">
@@ -8676,6 +8676,7 @@ var PRODUCT_SECTION_STATE = {
   azot: false,
   other: false
 };
+var PRODUCT_SECTIONS_PANEL_OPEN = false;
 var PRODUCT_ACTIVE_SECTION = 'build';
 var PRODUCT_SECTION_RAW_FILTER = '';
 var PRODUCT_AI_STATE = {
@@ -8961,13 +8962,9 @@ function toggleProductSection(section){
 }
 
 function openProductsRawOverview(){
-  PRODUCT_SECTION_STATE.build = true;
-  PRODUCT_SECTION_STATE.azot = false;
-  PRODUCT_SECTION_STATE.other = false;
-  PRODUCT_ACTIVE_SECTION = 'build';
-  PRODUCT_SECTION_RAW_FILTER = '';
+  PRODUCT_SECTIONS_PANEL_OPEN = true;
   syncProductSections();
-  var target = document.getElementById('productSectionBuildBody') || document.getElementById('productSectionBuildMeta');
+  var target = document.getElementById('productsSectionsCard') || document.getElementById('productsSectionsPanelBody');
   if(target){
     setTimeout(function(){
       target.scrollIntoView({behavior:'smooth', block:'start'});
@@ -8982,6 +8979,8 @@ function renderProducts(){
   document.getElementById('pr-k2').textContent = prods.length;
   document.getElementById('pr-k4').textContent = (DB.investorCompanies||[]).length;
   document.getElementById('badge-products').textContent = prods.length;
+  var sectionsPanelBody = document.getElementById('productsSectionsPanelBody');
+  if(sectionsPanelBody) sectionsPanelBody.style.display = PRODUCT_SECTIONS_PANEL_OPEN ? 'block' : 'none';
   syncProductSections(rms, prods);
 
   // Populate selects
