@@ -523,22 +523,22 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 #page-products .kpi-label{font-size:.84rem;letter-spacing:.12em;margin-bottom:.7rem;}
 #page-products .kpi-val{font-size:3.7rem;}
 #page-products .product-map-card{padding-top:2.05rem;}
-#page-products .product-map-card .kpi-icon{width:100%;height:auto;background:none;box-shadow:none;border-radius:0;margin-bottom:1.1rem;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;align-items:stretch}
+#page-products .product-map-card .kpi-icon{width:100%;height:auto;background:none;box-shadow:none;border-radius:0;margin-bottom:1.05rem;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.35rem .7rem;align-items:center;justify-items:center;padding:0 .15rem}
 #page-products .product-map-card .kpi-label{font-size:.68rem;letter-spacing:.13em;margin-bottom:.55rem;}
-.mini-map-card{height:62px;overflow:hidden;border:none;background:transparent;position:relative;}
-.mini-map-card img{position:absolute;top:50%;left:50%;display:block;width:100%;height:100%;max-width:none;object-fit:contain;mix-blend-mode:multiply;transform-origin:center center;}
+.mini-map-card{display:flex;align-items:center;justify-content:center;overflow:visible;border:none;background:transparent;min-height:34px;width:100%;}
+.mini-map-card img{display:block;width:auto;height:auto;max-width:100%;}
 .mini-map-card.central{grid-column:span 2;}
 .mini-map-card.caucasus{grid-column:span 1;}
 .mini-map-card.mongolia{grid-column:span 1;}
 .mini-map-card.russia{grid-column:span 2;}
 .mini-map-card.iran{grid-column:span 1;}
 .mini-map-card.pakistan{grid-column:span 1;}
-.mini-map-card.central img{transform:translate(-50%,-47%) scale(3.7);}
-.mini-map-card.caucasus img{transform:translate(-50%,-49%) scale(5.4);}
-.mini-map-card.mongolia img{transform:translate(-50%,-49%) scale(4.3);}
-.mini-map-card.russia img{transform:translate(-50%,-48%) scale(2.9);}
-.mini-map-card.iran img{transform:translate(-50%,-49%) scale(4.8);}
-.mini-map-card.pakistan img{transform:translate(-50%,-49%) scale(5.2);}
+.mini-map-card.central img{max-height:86px;}
+.mini-map-card.caucasus img{max-height:42px;}
+.mini-map-card.mongolia img{max-height:38px;}
+.mini-map-card.russia img{max-height:50px;}
+.mini-map-card.iran img{max-height:42px;}
+.mini-map-card.pakistan img{max-height:42px;}
 .sum-card{background:linear-gradient(135deg,#1E2B4A 0%,#2D3A6B 60%,#3A0CA3 100%);border-radius:var(--radius);padding:1.5rem 1.8rem;margin-bottom:1.6rem;box-shadow:0 8px 30px rgba(30,43,74,.25);position:relative;overflow:hidden;}
 .sum-tag{font-size:.6rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(163,174,208,.55);margin-bottom:.5rem;}
 .sum-txt{font-size:.82rem;line-height:1.8;color:rgba(210,220,245,.88);}
@@ -1740,12 +1740,12 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Xomashyo negizidagi mahsulotlar</div><div class="kpi-val" id="pr-k2">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
       <div class="kpi-card c3 product-map-card">
         <div class="kpi-icon" aria-hidden="true">
-          <div class="mini-map-card central"><img src="maps/central-asia.png" alt="Markaziy Osiyo"></div>
-          <div class="mini-map-card caucasus"><img src="maps/caucasus.png" alt="Kavkaz"></div>
-          <div class="mini-map-card mongolia"><img src="maps/mongolia.png" alt="Mongoliya"></div>
-          <div class="mini-map-card russia"><img src="maps/russia.png" alt="Rossiya"></div>
-          <div class="mini-map-card iran"><img src="maps/iran.png" alt="Eron"></div>
-          <div class="mini-map-card pakistan"><img src="maps/pakistan.png" alt="Pokiston"></div>
+          <div class="mini-map-card central"><img src="maps/central-asia-cropped.png" alt="Markaziy Osiyo"></div>
+          <div class="mini-map-card caucasus"><img src="maps/caucasus-cropped.png" alt="Kavkaz"></div>
+          <div class="mini-map-card mongolia"><img src="maps/mongolia-cropped.png" alt="Mongoliya"></div>
+          <div class="mini-map-card russia"><img src="maps/russia-cropped.png" alt="Rossiya"></div>
+          <div class="mini-map-card iran"><img src="maps/iran-cropped.png" alt="Eron"></div>
+          <div class="mini-map-card pakistan"><img src="maps/pakistan-cropped.png" alt="Pokiston"></div>
         </div>
         <div class="kpi-label">Eksport yo'nalishlari</div>
         <div class="kpi-val" id="pr-k3">12<span style="font-size:1.1rem;font-weight:700"> ta</span></div>
