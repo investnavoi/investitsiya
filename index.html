@@ -515,6 +515,13 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .kpi-val{font-family:'Sora',sans-serif;font-size:2rem;font-weight:800;line-height:1;}
 .kpi-card.c1 .kpi-val{color:#4361EE;}.kpi-card.c2 .kpi-val{color:#059669;}.kpi-card.c3 .kpi-val{color:#d97706;}.kpi-card.c4 .kpi-val{color:#dc2626;}
 .kpi-trend{font-size:.62rem;color:var(--text3);margin-top:.35rem;font-weight:600;}
+/* Products page — bigger KPI cards */
+#page-products .kpi-grid{gap:1.6rem;margin-bottom:2rem;}
+#page-products .kpi-card{padding:2rem 2.2rem;}
+#page-products .kpi-card::after{width:120px;height:120px;top:-30px;right:-30px;}
+#page-products .kpi-icon{width:62px;height:62px;border-radius:16px;font-size:26px;margin-bottom:1.2rem;}
+#page-products .kpi-label{font-size:.72rem;letter-spacing:.1em;margin-bottom:.5rem;}
+#page-products .kpi-val{font-size:2.8rem;}
 .sum-card{background:linear-gradient(135deg,#1E2B4A 0%,#2D3A6B 60%,#3A0CA3 100%);border-radius:var(--radius);padding:1.5rem 1.8rem;margin-bottom:1.6rem;box-shadow:0 8px 30px rgba(30,43,74,.25);position:relative;overflow:hidden;}
 .sum-tag{font-size:.6rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(163,174,208,.55);margin-bottom:.5rem;}
 .sum-txt{font-size:.82rem;line-height:1.8;color:rgba(210,220,245,.88);}
@@ -1712,10 +1719,10 @@ input[type="time"]{-webkit-appearance:none;}
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head"><div class="pg-title">📦 Mahsulotlar Katalogi</div><div class="pg-sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
     <div class="kpi-grid">
-      <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()"><div class="kpi-icon">⛏️</div><div class="kpi-label">Xomashyolar</div><div class="kpi-val" id="pr-k1">0</div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Mahsulotlar</div><div class="kpi-val" id="pr-k2">0</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">🌍</div><div class="kpi-label">Maqsad davlatlar</div><div class="kpi-val" id="pr-k3">12</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Kompaniya topildi</div><div class="kpi-val" id="pr-k4">0</div></div>
+      <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()"><div class="kpi-icon">⛏️</div><div class="kpi-label">Resurs va imkoniyatlar</div><div class="kpi-val" id="pr-k1">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Xomashyo negizidagi mahsulotlar</div><div class="kpi-val" id="pr-k2">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">🌍</div><div class="kpi-label">Eksport yo'nalishlari</div><div class="kpi-val" id="pr-k3">12<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Aniqlangan maqsadli kompaniyalar</div><div class="kpi-val" id="pr-k4">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
     </div>
 
     <!-- Mahsulot bo'limlari -->
@@ -8963,9 +8970,9 @@ function toggleProductSection(section){
 function renderProducts(){
   var rms = DB.rawMaterials||[];
   var prods = DB.products||[];
-  document.getElementById('pr-k1').textContent = rms.length;
-  document.getElementById('pr-k2').textContent = prods.length;
-  document.getElementById('pr-k4').textContent = (DB.investorCompanies||[]).length;
+  document.getElementById('pr-k1').innerHTML = rms.length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
+  document.getElementById('pr-k2').innerHTML = prods.length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
+  document.getElementById('pr-k4').innerHTML = (DB.investorCompanies||[]).length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
   document.getElementById('badge-products').textContent = prods.length;
   syncProductSections(rms, prods);
 
