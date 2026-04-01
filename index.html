@@ -12295,7 +12295,7 @@ async function loadSampleProducts(){
    M2: IMPORT TAHLILI (ANALYSIS ENGINE)
 ═══════════════════════════════════════ */
 var COMTRADE_PROXY = 'https://navoiy-api-proxy.vercel.app/api/comtrade';
-var WORLDBANK_URL = 'https://api.worldbank.org/v2/country';
+var WORLDBANK_PROXY = TG_API_BASE + '/worldbank';
 
 // Country code mapping for Comtrade
 var COUNTRY_COMTRADE = {UZ:'860',TM:'795',TJ:'762',KG:'417',KZ:'398',MN:'496',RU:'643',AZ:'031',GE:'268',AM:'051',IR:'364',AF:'004',PK:'586'};
@@ -12506,7 +12506,7 @@ var UZB_DATA = {
 
 async function fetchWBIndicator(countryCodes, indicator){
   try {
-    var url = 'https://api.worldbank.org/v2/country/'+countryCodes+'/indicator/'+indicator+'?format=json&date=2020:2024&per_page=500';
+    var url = WORLDBANK_PROXY+'?country='+encodeURIComponent(countryCodes)+'&indicator='+encodeURIComponent(indicator)+'&format=json&date=2020:2024&per_page=500';
     var resp = await fetch(url);
     if(!resp.ok) return {};
     var data = await resp.json();
