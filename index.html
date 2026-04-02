@@ -12428,6 +12428,11 @@ async function fetchComtrade(hsCode, year, targetCountries, source){
     if(window._apiKeys && window._apiKeys.comtrade){
       url += '&key='+encodeURIComponent(window._apiKeys.comtrade);
     }
+    // Add source countries filter if selected
+    var srcSel = getFinderSourceSelection();
+    if(srcSel.hasFilter && srcSel.effectiveCountries.length){
+      url += '&sourceCountries='+encodeURIComponent(srcSel.effectiveCountries.join('|'));
+    }
     var resp = await fetch(url);
     if(!resp.ok) throw new Error('Comtrade proxy: '+resp.status);
     var data = await resp.json();
