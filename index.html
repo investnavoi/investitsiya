@@ -1795,7 +1795,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Aniqlangan maqsadli kompaniyalar</div><div class="kpi-val" id="pr-k4">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
     </div>
 
-    <!-- Mahsulot bo'limlari -->
+    theadEl.innerHTML = '<tr><th colspan="4" style="padding:.5rem .8rem;font-size:.65rem;color:var(--text3);font-weight:700">Eksportyor davlatlar (bosing)</th></tr>';
     <div class="tcard" id="rawMaterialsCard" style="margin-bottom:1rem;display:none">
       <div class="tc-head"><div class="tc-title">🗂 Mahsulot bo'limlari</div>
         <div style="display:flex;gap:.5rem">
@@ -13062,122 +13062,151 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
   var tb = document.getElementById('import-tbody');
   if(!theadEl || !tb) return;
 
-  // Group partner rows by year
-  var byYear = {};
-  var years = ['2024','2023','2022','2021'];
-  years.forEach(function(y){ byYear[y] = []; });
+  // Build: { countryName: { year: [rows] } }
+  var byCountry = {};
+  var countryOrder = [];
 
   countries.forEach(function(c){
     (c.products||[]).forEach(function(p){
       var pCode = Number(p.partnerCode !== undefined ? p.partnerCode : -1);
       if(pCode === 0) return;
       if(!p.value && !p.weight) return;
+      var partner = p.partner || p.partnerDesc || '';
+      if(!partner) return;
       var yr = String(p.period || '');
-      if(!byYear[yr]) byYear[yr] = [];
-      byYear[yr].push({
+      if(!byCountry[partner]){
+        byCountry[partner] = { total:0, weight:0, years:{}, code: c.code };
+        countryOrder.push(partner);
+      }
+      byCountry[partner].total += Number(p.value||0);
+      byCountry[partner].weight += Number(p.weight||p.quantity||0);
+      if(!byCountry[partner].years[yr]) byCountry[partner].years[yr] = [];
+      byCountry[partner].years[yr].push({
         reporter: p.reporter || c.name,
-        partner: p.partner || p.partnerDesc || '',
         value: Number(p.value||0),
-        weight: Number(p.weight||p.quantity||0),
-        code: c.code
+        weight: Number(p.weight||p.quantity||0)
       });
     });
   });
 
-  var hasAnyPartnerRows = years.some(function(y){ return byYear[y].length > 0; });
+  var hasPartnerRows = countryOrder.length > 0;
 
-  if(hasAnyPartnerRows){
-    theadEl.innerHTML = '<tr><th colspan="6" style="padding:0;border:none"></th></tr>';
+  if(hasPartnerRows){
+    // Sort countries by total desc
+    countryOrder.sort(function(a,b){ return (byCountry[b].total||0)-(byCountry[a].total||0); });
+
+    theadEl.innerHTML = '<tr><th colspan="4" style="padding:.5rem .8rem;font-size:.65rem;color:var(--text3);font-weight:700">Eksportyor davlatlar (bosing)</th></tr>';
     tb.innerHTML = '';
 
-    years.forEach(function(yr){
-      var rows = byYear[yr];
-      // Sort by value desc
-      rows.sort(function(a,b){ return (b.value||0)-(a.value||0); });
+    countryOrder.forEach(function(partner, ci){
+      var cd = byCountry[partner];
+      var totalFmt = cd.total > 0 ? '$'+Number(cd.total.toFixed(0)).toLocaleString('en-US') : '—';
+      var wgtFmt = cd.weight > 0 ? (cd.weight > 999999 ? (cd.weight/1000000).toFixed(1)+'K t' : Math.round(cd.weight/1000)+'t') : '—';
+      var uid = 'c'+ci;
 
-      // Year header row (clickable)
-      var yearTotal = rows.reduce(function(s,r){ return s+r.value; }, 0);
-      var yearWgt = rows.reduce(function(s,r){ return s+r.weight; }, 0);
-      var yearTotalFmt = yearTotal > 0 ? '$'+Number(yearTotal.toFixed(0)).toLocaleString('en-US') : '—';
-      var yearWgtFmt = yearWgt > 0 ? Number(Math.round(yearWgt/1000)).toLocaleString('en-US')+' t' : '—';
-      var rowCount = rows.length;
+      // Country header row — always closed
+      var cTr = document.createElement('tr');
+      cTr.style.cssText = 'cursor:pointer;border-top:1px solid var(--border)';
+      cTr.dataset.uid = uid;
+      cTr.innerHTML =
+        '<td colspan="4" style="padding:.65rem 1rem">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between">' +
+        '<div style="display:flex;align-items:center;gap:.7rem">' +
+        '<span class="cty-arrow" style="color:#4361EE;font-size:.75rem;transition:transform .2s;display:inline-block">►</span>' +
+        '<span style="font-weight:700;color:var(--text)">' + escHtml(partner) + '</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:1.5rem;align-items:center">' +
+        '<span style="font-weight:700;color:#4361EE;font-size:.85rem">' + escHtml(totalFmt) + '</span>' +
+        '<span style="color:var(--text3);font-size:.75rem">' + escHtml(wgtFmt) + '</span>' +
+        '</div></div></td>';
 
-      var headerTr = document.createElement('tr');
-      headerTr.style.cssText = 'cursor:pointer;background:linear-gradient(135deg,rgba(67,97,238,.08),rgba(67,97,238,.04));border-top:2px solid rgba(67,97,238,.2)';
-      headerTr.dataset.year = yr;
-      headerTr.innerHTML = [
-        '<td colspan="6" style="padding:.7rem 1rem">',
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:1rem">',
-        '<div style="display:flex;align-items:center;gap:.8rem">',
-        '<span style="font-size:1rem;font-weight:800;color:#4361EE">'+yr+'</span>',
-        '<span style="font-size:.7rem;font-weight:600;color:var(--text3)">'+rowCount+' ta davlat</span>',
-        '</div>',
-        '<div style="display:flex;align-items:center;gap:1.5rem">',
-        '<span style="font-size:.8rem;font-weight:700;color:var(--text)">'+yearTotalFmt+'</span>',
-        '<span style="font-size:.75rem;color:var(--text2)">'+yearWgtFmt+'</span>',
-        '<span class="yr-arrow" style="font-size:.85rem;color:#4361EE;transition:transform .2s">▼</span>',
-        '</div></div></td>'
-      ].join('');
-      tb.appendChild(headerTr);
+      // Country body (years)
+      var cBody = document.createElement('tbody');
+      cBody.dataset.bodyFor = uid;
+      cBody.style.display = 'none';
 
-      // Data rows container
-      var bodyGroup = document.createElement('tbody');
-      bodyGroup.dataset.yearBody = yr;
-      bodyGroup.style.display = 'none';
+      var years = Object.keys(cd.years).sort(function(a,b){ return Number(b)-Number(a); });
+      years.forEach(function(yr, yi){
+        var yRows = cd.years[yr];
+        yRows.sort(function(a,b){ return (b.value||0)-(a.value||0); });
+        var yTotal = yRows.reduce(function(s,r){ return s+r.value; },0);
+        var yWgt = yRows.reduce(function(s,r){ return s+r.weight; },0);
+        var yTotalFmt = yTotal > 0 ? '$'+Number(yTotal.toFixed(0)).toLocaleString('en-US') : '—';
+        var yWgtFmt = yWgt > 0 ? Math.round(yWgt/1000)+'t' : '—';
+        var yuid = uid+'y'+yi;
 
-      // Column headers
-      var colTr = document.createElement('tr');
-      colTr.style.cssText = 'background:rgba(67,97,238,.04);font-size:.65rem';
-      colTr.innerHTML = '<th style="padding:.4rem .8rem">#</th><th style="padding:.4rem .8rem">Reporter</th><th style="padding:.4rem .8rem">Partner</th><th style="padding:.4rem .8rem">Import ($)</th><th style="padding:.4rem .8rem">Hajm (kg)</th><th style="padding:.4rem .8rem">Amal</th>';
-      bodyGroup.appendChild(colTr);
+        // Year header row
+        var yTr = document.createElement('tr');
+        yTr.style.cssText = 'cursor:pointer;background:rgba(67,97,238,.04)';
+        yTr.dataset.yuid = yuid;
+        yTr.innerHTML =
+          '<td style="padding:.5rem 1rem .5rem 2.5rem" colspan="4">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between">' +
+          '<div style="display:flex;align-items:center;gap:.6rem">' +
+          '<span class="yr-arrow" style="color:var(--text3);font-size:.65rem;transition:transform .2s;display:inline-block">►</span>' +
+          '<span style="font-weight:700;color:var(--text2);font-size:.82rem">' + escHtml(yr) + '</span>' +
+          '<span style="font-size:.65rem;color:var(--text3)">' + yRows.length + ' ta manba</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:1rem">' +
+          '<span style="font-weight:700;font-size:.78rem">' + escHtml(yTotalFmt) + '</span>' +
+          '<span style="color:var(--text3);font-size:.72rem">' + escHtml(yWgtFmt) + '</span>' +
+          '</div></div></td>';
 
-      rows.forEach(function(row, i){
-        var valText = row.value > 0 ? '$'+Number(row.value.toFixed(3)).toLocaleString('en-US') : '—';
-        var wgtText = row.weight > 0 ? Number(row.weight).toLocaleString('en-US')+' kg' : '—';
-        var tr = document.createElement('tr');
-        tr.style.cssText = 'font-size:.8rem';
-        tr.innerHTML = [
-          '<td style="padding:.5rem .8rem;color:var(--text3)">'+(i+1)+'</td>',
-          '<td style="padding:.5rem .8rem">'+escHtml(row.reporter||'')+'</td>',
-          '<td style="padding:.5rem .8rem;font-weight:700;color:#4361EE">'+escHtml(row.partner||'—')+'</td>',
-          '<td style="padding:.5rem .8rem;font-weight:700">'+escHtml(valText)+'</td>',
-          '<td style="padding:.5rem .8rem;color:var(--text2)">'+escHtml(wgtText)+'</td>',
-          '<td style="padding:.5rem .8rem"><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(row.code||''))+'">&#128269;</button></td>'
-        ].join('');
-        tr.querySelector('button').addEventListener('click', function(){
-          goToFinder(this.dataset.pid, this.dataset.code);
+        // Year data tbody
+        var yBody = document.createElement('tbody');
+        yBody.dataset.ybodyFor = yuid;
+        yBody.style.display = 'none';
+
+        // Column header
+        var colTr = document.createElement('tr');
+        colTr.style.cssText = 'background:rgba(67,97,238,.06);font-size:.62rem;color:var(--text3)';
+        colTr.innerHTML = '<th style="padding:.3rem .8rem .3rem 3.5rem">Reporter</th><th style="padding:.3rem .8rem">Import ($)</th><th style="padding:.3rem .8rem">Hajm</th><th style="padding:.3rem .8rem">Amal</th>';
+        yBody.appendChild(colTr);
+
+        yRows.forEach(function(row){
+          var rFmt = row.value > 0 ? '$'+Number(row.value.toFixed(3)).toLocaleString('en-US') : '—';
+          var wFmt = row.weight > 0 ? Number(row.weight).toLocaleString('en-US')+' kg' : '—';
+          var rTr = document.createElement('tr');
+          rTr.style.cssText = 'font-size:.78rem;border-top:1px solid rgba(67,97,238,.06)';
+          rTr.innerHTML =
+            '<td style="padding:.4rem .8rem .4rem 3.5rem;color:var(--text2)">' + escHtml(row.reporter||'') + '</td>' +
+            '<td style="padding:.4rem .8rem;font-weight:700">' + escHtml(rFmt) + '</td>' +
+            '<td style="padding:.4rem .8rem;color:var(--text2)">' + escHtml(wFmt) + '</td>' +
+            '<td style="padding:.4rem .8rem"><button class="btn btn-blue btn-sm" data-pid="' + escHtml(String(prod.id||'')) + '" data-code="' + escHtml(String(cd.code||'')) + '">&#128269;</button></td>';
+          rTr.querySelector('button').addEventListener('click', function(){
+            goToFinder(this.dataset.pid, this.dataset.code);
+          });
+          yBody.appendChild(rTr);
         });
-        bodyGroup.appendChild(tr);
+
+        cBody.appendChild(yTr);
+        cBody.appendChild(yBody);
+
+        // Year toggle
+        yTr.addEventListener('click', function(e){
+          e.stopPropagation();
+          var arrow = this.querySelector('.yr-arrow');
+          var isOpen = yBody.style.display !== 'none';
+          yBody.style.display = isOpen ? 'none' : '';
+          if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
+        });
       });
 
-      tb.appendChild(bodyGroup);
+      tb.appendChild(cTr);
+      tb.appendChild(cBody);
 
-      // Toggle on header click
-      headerTr.addEventListener('click', function(){
-        var arrow = this.querySelector('.yr-arrow');
-        var body = tb.parentNode.querySelector('tbody[data-year-body="'+yr+'"]') ||
-                   Array.from(tb.parentNode.querySelectorAll('tbody[data-year-body]')).find(function(el){ return el.dataset.yearBody === yr; });
-        // Find bodyGroup
-        var nextSib = this.nextSibling;
-        while(nextSib && nextSib.tagName !== 'TBODY') nextSib = nextSib.nextSibling;
-        if(nextSib){
-          var isOpen = nextSib.style.display !== 'none';
-          nextSib.style.display = isOpen ? 'none' : '';
-          if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
-        }
+      // Country toggle
+      cTr.addEventListener('click', function(){
+        var arrow = this.querySelector('.cty-arrow');
+        var isOpen = cBody.style.display !== 'none';
+        cBody.style.display = isOpen ? 'none' : '';
+        if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
       });
-
-      // Auto-open 2024
-      if(yr === '2024' && rows.length > 0){
-        bodyGroup.style.display = '';
-        var arrow = headerTr.querySelector('.yr-arrow');
-        if(arrow) arrow.style.transform = 'rotate(180deg)';
-      }
     });
     return;
   }
 
-  // Fallback: country summary with year cols
+  // Fallback: country summary
   theadEl.innerHTML = '<tr><th>#</th><th>Davlat</th><th>Jami</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Hajm (t)</th><th>Amal</th></tr>';
   tb.innerHTML = '';
   countries.forEach(function(c, i){
@@ -13196,17 +13225,13 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
     var total = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '<span style="color:#EF233C;font-size:.7rem">'+escHtml(statusText)+'</span>';
     var vol = c.status==='ok' && c.volume_tons ? (Math.round(c.volume_tons)>999 ? Math.round(c.volume_tons/1000)+'K t' : Math.round(c.volume_tons)+' t') : '—';
     var tr = document.createElement('tr');
-    tr.innerHTML = [
-      '<td>'+(i+1)+'</td>',
-      '<td style="font-weight:600">'+(tc.flag ? escHtml(tc.flag)+' ' : '')+escHtml(tc.label||c.name||'')+'</td>',
-      '<td style="font-weight:800;color:#4361EE">'+total+'</td>',
-      '<td>'+fmtY('2021')+'</td>',
-      '<td>'+fmtY('2022')+'</td>',
-      '<td>'+fmtY('2023')+'</td>',
-      '<td>'+fmtY('2024')+'</td>',
-      '<td style="color:var(--text2)">'+escHtml(vol)+'</td>',
-      '<td><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>'
-    ].join('');
+    tr.innerHTML =
+      '<td>'+(i+1)+'</td>'+
+      '<td style="font-weight:600">'+(tc.flag?escHtml(tc.flag)+' ':'')+escHtml(tc.label||c.name||'')+'</td>'+
+      '<td style="font-weight:800;color:#4361EE">'+total+'</td>'+
+      '<td>'+fmtY('2021')+'</td><td>'+fmtY('2022')+'</td><td>'+fmtY('2023')+'</td><td>'+fmtY('2024')+'</td>'+
+      '<td style="color:var(--text2)">'+escHtml(vol)+'</td>'+
+      '<td><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>';
     tr.querySelector('button').addEventListener('click', function(){
       goToFinder(this.dataset.pid, this.dataset.code);
     });
