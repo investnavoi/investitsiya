@@ -13062,85 +13062,75 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
   var tb = document.getElementById('import-tbody');
   if(!theadEl || !tb) return;
 
-  // Build: { countryName: { year: [rows] } }
-  var byCountry = {};
-  var countryOrder = [];
-
-  countries.forEach(function(c){
-    (c.products||[]).forEach(function(p){
-      var pCode = Number(p.partnerCode !== undefined ? p.partnerCode : -1);
-      if(pCode === 0) return;
-      if(!p.value && !p.weight) return;
-      var partner = p.partner || p.partnerDesc || '';
-      if(!partner) return;
-      var yr = String(p.period || '');
-      if(!byCountry[partner]){
-        byCountry[partner] = { total:0, weight:0, years:{}, code: c.code };
-        countryOrder.push(partner);
-      }
-      byCountry[partner].total += Number(p.value||0);
-      byCountry[partner].weight += Number(p.weight||p.quantity||0);
-      if(!byCountry[partner].years[yr]) byCountry[partner].years[yr] = [];
-      byCountry[partner].years[yr].push({
-        reporter: p.reporter || c.name,
-        value: Number(p.value||0),
-        weight: Number(p.weight||p.quantity||0)
-      });
+  // Check if we have partner-level product rows
+  var hasProducts = countries.some(function(c){
+    return (c.products||[]).some(function(p){
+      return Number(p.partnerCode !== undefined ? p.partnerCode : -1) !== 0 && (p.value || p.weight);
     });
   });
 
-  var hasPartnerRows = countryOrder.length > 0;
-
-  if(hasPartnerRows){
-    // Sort countries by total desc
-    countryOrder.sort(function(a,b){ return (byCountry[b].total||0)-(byCountry[a].total||0); });
-
-    theadEl.innerHTML = '<tr><th colspan="4" style="padding:.5rem .8rem;font-size:.65rem;color:var(--text3);font-weight:700">Eksportyor davlatlar (bosing)</th></tr>';
+  if(hasProducts){
+    // Group by REPORTER country (the 13 selected countries)
+    // Each country has its products array with per-partner rows grouped by year
+    theadEl.innerHTML = '<tr><th colspan="4" style="padding:.5rem .8rem;font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.08em;text-transform:uppercase">Tanlangan davlatlar (bosing)</th></tr>';
     tb.innerHTML = '';
 
-    countryOrder.forEach(function(partner, ci){
-      var cd = byCountry[partner];
-      var totalFmt = cd.total > 0 ? '$'+Number(cd.total.toFixed(0)).toLocaleString('en-US') : '—';
-      var wgtFmt = cd.weight > 0 ? (cd.weight > 999999 ? (cd.weight/1000000).toFixed(1)+'K t' : Math.round(cd.weight/1000)+'t') : '—';
-      var uid = 'c'+ci;
+    // Sort countries by total import desc
+    var sorted = countries.slice().sort(function(a,b){ return (b.import_usd||0)-(a.import_usd||0); });
 
-      // Country header row — always closed
+    sorted.forEach(function(c, ci){
+      var tc = getTargetMeta(c);
+      var totalFmt = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '—';
+      var vol = c.volume_tons > 0 ? (c.volume_tons > 999 ? Math.round(c.volume_tons/1000)+'K t' : Math.round(c.volume_tons)+'t') : '—';
+      var uid = 'rc'+ci;
+      var flag = tc.flag ? tc.flag+' ' : '';
+
+      // Reporter (country) header row
       var cTr = document.createElement('tr');
       cTr.style.cssText = 'cursor:pointer;border-top:1px solid var(--border)';
-      cTr.dataset.uid = uid;
       cTr.innerHTML =
         '<td colspan="4" style="padding:.65rem 1rem">' +
         '<div style="display:flex;align-items:center;justify-content:space-between">' +
         '<div style="display:flex;align-items:center;gap:.7rem">' +
         '<span class="cty-arrow" style="color:#4361EE;font-size:.75rem;transition:transform .2s;display:inline-block">►</span>' +
-        '<span style="font-weight:700;color:var(--text)">' + escHtml(partner) + '</span>' +
+        '<span style="font-weight:700;color:var(--text)">' + escHtml(flag) + escHtml(tc.label||c.name||'') + '</span>' +
         '</div>' +
         '<div style="display:flex;gap:1.5rem;align-items:center">' +
         '<span style="font-weight:700;color:#4361EE;font-size:.85rem">' + escHtml(totalFmt) + '</span>' +
-        '<span style="color:var(--text3);font-size:.75rem">' + escHtml(wgtFmt) + '</span>' +
+        '<span style="color:var(--text3);font-size:.75rem">' + escHtml(vol) + '</span>' +
         '</div></div></td>';
 
-      // Country body (years)
+      // Country body
       var cBody = document.createElement('tbody');
-      cBody.dataset.bodyFor = uid;
       cBody.style.display = 'none';
 
-      var years = Object.keys(cd.years).sort(function(a,b){ return Number(b)-Number(a); });
+      // Group products by year
+      var byYear = {};
+      (c.products||[]).forEach(function(p){
+        var pCode = Number(p.partnerCode !== undefined ? p.partnerCode : -1);
+        if(pCode === 0) return;
+        if(!p.value && !p.weight) return;
+        var yr = String(p.period || '');
+        if(!byYear[yr]) byYear[yr] = [];
+        byYear[yr].push(p);
+      });
+
+      var years = Object.keys(byYear).sort(function(a,b){ return Number(b)-Number(a); });
+
       years.forEach(function(yr, yi){
-        var yRows = cd.years[yr];
+        var yRows = byYear[yr];
         yRows.sort(function(a,b){ return (b.value||0)-(a.value||0); });
-        var yTotal = yRows.reduce(function(s,r){ return s+r.value; },0);
-        var yWgt = yRows.reduce(function(s,r){ return s+r.weight; },0);
+        var yTotal = yRows.reduce(function(s,r){ return s+Number(r.value||0); }, 0);
+        var yWgt = yRows.reduce(function(s,r){ return s+Number(r.weight||r.quantity||0); }, 0);
         var yTotalFmt = yTotal > 0 ? '$'+Number(yTotal.toFixed(0)).toLocaleString('en-US') : '—';
         var yWgtFmt = yWgt > 0 ? Math.round(yWgt/1000)+'t' : '—';
         var yuid = uid+'y'+yi;
 
-        // Year header row
+        // Year row
         var yTr = document.createElement('tr');
         yTr.style.cssText = 'cursor:pointer;background:rgba(67,97,238,.04)';
-        yTr.dataset.yuid = yuid;
         yTr.innerHTML =
-          '<td style="padding:.5rem 1rem .5rem 2.5rem" colspan="4">' +
+          '<td colspan="4" style="padding:.5rem 1rem .5rem 2.5rem">' +
           '<div style="display:flex;align-items:center;justify-content:space-between">' +
           '<div style="display:flex;align-items:center;gap:.6rem">' +
           '<span class="yr-arrow" style="color:var(--text3);font-size:.65rem;transition:transform .2s;display:inline-block">►</span>' +
@@ -13152,42 +13142,37 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
           '<span style="color:var(--text3);font-size:.72rem">' + escHtml(yWgtFmt) + '</span>' +
           '</div></div></td>';
 
-        // Year data tbody
+        // Year body
         var yBody = document.createElement('tbody');
-        yBody.dataset.ybodyFor = yuid;
         yBody.style.display = 'none';
 
-        // Column header
         var colTr = document.createElement('tr');
         colTr.style.cssText = 'background:rgba(67,97,238,.06);font-size:.62rem;color:var(--text3)';
-        colTr.innerHTML = '<th style="padding:.3rem .8rem .3rem 3.5rem">Reporter</th><th style="padding:.3rem .8rem">Import ($)</th><th style="padding:.3rem .8rem">Hajm</th><th style="padding:.3rem .8rem">Amal</th>';
+        colTr.innerHTML = '<th style="padding:.3rem .8rem .3rem 3.5rem">#</th><th style="padding:.3rem .8rem">Manba davlat</th><th style="padding:.3rem .8rem">Import ($)</th><th style="padding:.3rem .8rem">Hajm</th>';
         yBody.appendChild(colTr);
 
-        yRows.forEach(function(row){
-          var rFmt = row.value > 0 ? '$'+Number(row.value.toFixed(3)).toLocaleString('en-US') : '—';
-          var wFmt = row.weight > 0 ? Number(row.weight).toLocaleString('en-US')+' kg' : '—';
+        yRows.forEach(function(row, ri){
+          var rFmt = Number(row.value||0) > 0 ? '$'+Number(Number(row.value||0).toFixed(0)).toLocaleString('en-US') : '—';
+          var wFmt = Number(row.weight||0) > 0 ? Math.round(Number(row.weight||0)/1000)+'t' : '—';
+          var partner = row.partner || row.partnerDesc || '';
           var rTr = document.createElement('tr');
           rTr.style.cssText = 'font-size:.78rem;border-top:1px solid rgba(67,97,238,.06)';
           rTr.innerHTML =
-            '<td style="padding:.4rem .8rem .4rem 3.5rem;color:var(--text2)">' + escHtml(row.reporter||'') + '</td>' +
-            '<td style="padding:.4rem .8rem;font-weight:700">' + escHtml(rFmt) + '</td>' +
-            '<td style="padding:.4rem .8rem;color:var(--text2)">' + escHtml(wFmt) + '</td>' +
-            '<td style="padding:.4rem .8rem"><button class="btn btn-blue btn-sm" data-pid="' + escHtml(String(prod.id||'')) + '" data-code="' + escHtml(String(cd.code||'')) + '">&#128269;</button></td>';
-          rTr.querySelector('button').addEventListener('click', function(){
-            goToFinder(this.dataset.pid, this.dataset.code);
-          });
+            '<td style="padding:.4rem .8rem .4rem 3.5rem;color:var(--text3)">'+(ri+1)+'</td>' +
+            '<td style="padding:.4rem .8rem;font-weight:600;color:#4361EE">'+escHtml(partner||'—')+'</td>' +
+            '<td style="padding:.4rem .8rem;font-weight:700">'+escHtml(rFmt)+'</td>' +
+            '<td style="padding:.4rem .8rem;color:var(--text2)">'+escHtml(wFmt)+'</td>';
           yBody.appendChild(rTr);
         });
 
         cBody.appendChild(yTr);
         cBody.appendChild(yBody);
 
-        // Year toggle
         yTr.addEventListener('click', function(e){
           e.stopPropagation();
-          var arrow = this.querySelector('.yr-arrow');
           var isOpen = yBody.style.display !== 'none';
           yBody.style.display = isOpen ? 'none' : '';
+          var arrow = this.querySelector('.yr-arrow');
           if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
         });
       });
@@ -13195,19 +13180,18 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
       tb.appendChild(cTr);
       tb.appendChild(cBody);
 
-      // Country toggle
       cTr.addEventListener('click', function(){
-        var arrow = this.querySelector('.cty-arrow');
         var isOpen = cBody.style.display !== 'none';
         cBody.style.display = isOpen ? 'none' : '';
+        var arrow = this.querySelector('.cty-arrow');
         if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
       });
     });
     return;
   }
 
-  // Fallback: country summary
-  theadEl.innerHTML = '<tr><th>#</th><th>Davlat</th><th>Jami</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Hajm (t)</th><th>Amal</th></tr>';
+  // Fallback
+  theadEl.innerHTML = '<tr><th>#</th><th>Davlat</th><th>Jami</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Hajm</th><th>Amal</th></tr>';
   tb.innerHTML = '';
   countries.forEach(function(c, i){
     var tc = getTargetMeta(c);
@@ -13223,7 +13207,7 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
     }
     var statusText = c.status==='no_data' ? 'Mavjud emas' : c.status==='rate_limited' ? 'limit' : 'xato';
     var total = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '<span style="color:#EF233C;font-size:.7rem">'+escHtml(statusText)+'</span>';
-    var vol = c.status==='ok' && c.volume_tons ? (Math.round(c.volume_tons)>999 ? Math.round(c.volume_tons/1000)+'K t' : Math.round(c.volume_tons)+' t') : '—';
+    var vol = c.status==='ok' && c.volume_tons ? (c.volume_tons>999 ? Math.round(c.volume_tons/1000)+'K t' : Math.round(c.volume_tons)+'t') : '—';
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td>'+(i+1)+'</td>'+
