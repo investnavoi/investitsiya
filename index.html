@@ -13100,7 +13100,7 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
         '<td style="font-weight:600;color:#4361EE">'+escHtml(row.partner||'—')+'</td>'+
         '<td>'+valCell+'</td>'+
         '<td style="color:var(--text2)">'+wgtCell+'</td>'+
-        '<td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prod.id+'\',\''+row.code+'\')">🔍</button></td>'+
+        '<td><button class="btn btn-blue btn-sm" onclick="goToFinder(&quot;'+prod.id+'&quot;,&quot;'+row.code+'&quot;)">🔍</button></td>'+
       '</tr>';
     }).join('');
     return;
@@ -13120,7 +13120,7 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
       if(st==='error') return '<span style="color:#EF233C;font-size:.65rem">xato</span>';
       return '<span style="color:var(--text3)">—</span>';
     }
-    var total = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '<span style="color:#EF233C;font-size:.7rem">'+(c.status==='no_data'?'ma'lumot yo'q':c.status==='rate_limited'?'limit':'xato')+'</span>';
+    var total = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '<span style="color:#EF233C;font-size:.7rem">'+(c.status==='no_data'?'ma\u02bclumot yo\u02bcq':c.status==='rate_limited'?'limit':'xato')+'</span>';
     var vol = c.status==='ok' && c.volume_tons ? (Math.round(c.volume_tons)>999?Math.round(c.volume_tons/1000)+'K t':Math.round(c.volume_tons)+' t') : '—';
     return '<tr>'+
       '<td>'+(i+1)+'</td>'+
