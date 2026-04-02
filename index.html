@@ -12843,7 +12843,18 @@ function restoreImportSnapshot(snapshot, quiet){
       volume_tons:Number(c.v||c.volume_tons||0)||0,
       year_imports:c.y||c.year_imports||{},
       year_statuses:c.s||c.year_statuses||{},
-      status:c.st||c.status||'ok'
+      status:c.st||c.status||'ok',
+      products:(c.pr||[]).map(function(p){
+        return {
+          period:p.period||'',
+          reporter:p.reporter||'',
+          partner:p.partner||'',
+          partnerDesc:p.partner||'',
+          partnerCode:Number(p.partnerCode||0),
+          value:Number(p.value||0),
+          weight:Number(p.weight||0)
+        };
+      })
     };
   });
   renderImportResults(countries, prod, snapshot.source||getImportAnalysisSourceLabel(sourceKey), targetCountries);
@@ -12876,7 +12887,17 @@ function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
         v:Number(c.volume_tons||0)||0,
         y:c.year_imports||{},
         s:c.year_statuses||{},
-        st:c.status||'ok'
+        st:c.status||'ok',
+        pr:(c.products||[]).map(function(p){
+          return {
+            period:p.period||'',
+            reporter:p.reporter||'',
+            partner:p.partner||p.partnerDesc||'',
+            partnerCode:Number(p.partnerCode||0),
+            value:Number(p.value||0),
+            weight:Number(p.weight||0)
+          };
+        })
       };
     })
   };
