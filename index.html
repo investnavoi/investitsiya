@@ -1990,10 +1990,12 @@ input[type="time"]{-webkit-appearance:none;}
           <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
             <div class="tcard" style="margin-bottom:1rem">
               <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
-              <div class="tscroll"><table>
-                <thead id="import-thead"><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
-                <tbody id="import-tbody"></tbody>
-              </table></div>
+              <div id="import-detail-container" style="overflow:visible">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead id="import-thead"><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
+                  <tbody id="import-tbody"></tbody>
+                </table>
+              </div>
             </div>
             <div class="tcard" style="margin-bottom:1rem">
               <div class="tc-head">
@@ -13061,136 +13063,138 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
   var theadEl = document.getElementById('import-thead');
   var tb = document.getElementById('import-tbody');
   if(!theadEl || !tb) return;
+  var tableEl = tb.parentNode;
 
-  // Check if we have partner-level product rows
   var hasProducts = countries.some(function(c){
     return (c.products||[]).some(function(p){
-      return Number(p.partnerCode !== undefined ? p.partnerCode : -1) !== 0 && (p.value || p.weight);
+      return Number(p.partnerCode !== undefined ? p.partnerCode : -1) !== 0 && (p.value||p.weight);
     });
   });
 
   if(hasProducts){
-    // Group by REPORTER country (the 13 selected countries)
-    // Each country has its products array with per-partner rows grouped by year
-    theadEl.innerHTML = '<tr><th colspan="4" style="padding:.5rem .8rem;font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.08em;text-transform:uppercase">Tanlangan davlatlar (bosing)</th></tr>';
+    theadEl.innerHTML = '<tr style="background:rgba(67,97,238,.06)"><th colspan="4" style="padding:.6rem 1rem;font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Tanlangan davlatlar (bosish bilan oching)</th></tr>';
     tb.innerHTML = '';
+    // Remove any extra tbodies added before
+    Array.from(tableEl.querySelectorAll('tbody[data-extra]')).forEach(function(el){ el.remove(); });
 
-    // Sort countries by total import desc
     var sorted = countries.slice().sort(function(a,b){ return (b.import_usd||0)-(a.import_usd||0); });
 
     sorted.forEach(function(c, ci){
       var tc = getTargetMeta(c);
       var totalFmt = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '—';
       var vol = c.volume_tons > 0 ? (c.volume_tons > 999 ? Math.round(c.volume_tons/1000)+'K t' : Math.round(c.volume_tons)+'t') : '—';
-      var uid = 'rc'+ci;
       var flag = tc.flag ? tc.flag+' ' : '';
+      var label = flag + (tc.label||c.name||'');
 
-      // Reporter (country) header row
+      // Country header tbody
+      var cHead = document.createElement('tbody');
+      cHead.setAttribute('data-extra', '1');
       var cTr = document.createElement('tr');
-      cTr.style.cssText = 'cursor:pointer;border-top:1px solid var(--border)';
+      cTr.style.cssText = 'cursor:pointer;border-top:2px solid var(--border);background:var(--card)';
       cTr.innerHTML =
-        '<td colspan="4" style="padding:.65rem 1rem">' +
+        '<td colspan="4" style="padding:.75rem 1rem">' +
         '<div style="display:flex;align-items:center;justify-content:space-between">' +
-        '<div style="display:flex;align-items:center;gap:.7rem">' +
-        '<span class="cty-arrow" style="color:#4361EE;font-size:.75rem;transition:transform .2s;display:inline-block">►</span>' +
-        '<span style="font-weight:700;color:var(--text)">' + escHtml(flag) + escHtml(tc.label||c.name||'') + '</span>' +
+        '<div style="display:flex;align-items:center;gap:.8rem">' +
+        '<span class="cty-arrow" style="color:#4361EE;font-size:.8rem;display:inline-block;transition:transform .2s">►</span>' +
+        '<b style="color:var(--text);font-size:.9rem">' + escHtml(label) + '</b>' +
         '</div>' +
-        '<div style="display:flex;gap:1.5rem;align-items:center">' +
-        '<span style="font-weight:700;color:#4361EE;font-size:.85rem">' + escHtml(totalFmt) + '</span>' +
-        '<span style="color:var(--text3);font-size:.75rem">' + escHtml(vol) + '</span>' +
+        '<div style="display:flex;gap:2rem;align-items:center">' +
+        '<b style="color:#4361EE;font-size:.88rem">' + escHtml(totalFmt) + '</b>' +
+        '<span style="color:var(--text3);font-size:.78rem">' + escHtml(vol) + '</span>' +
         '</div></div></td>';
+      cHead.appendChild(cTr);
 
-      // Country body
+      // Country body tbody (hidden)
       var cBody = document.createElement('tbody');
+      cBody.setAttribute('data-extra', '1');
       cBody.style.display = 'none';
 
-      // Group products by year
+      // Group by year
       var byYear = {};
       (c.products||[]).forEach(function(p){
-        var pCode = Number(p.partnerCode !== undefined ? p.partnerCode : -1);
-        if(pCode === 0) return;
+        if(Number(p.partnerCode !== undefined ? p.partnerCode : -1) === 0) return;
         if(!p.value && !p.weight) return;
-        var yr = String(p.period || '');
+        var yr = String(p.period||'');
         if(!byYear[yr]) byYear[yr] = [];
         byYear[yr].push(p);
       });
 
       var years = Object.keys(byYear).sort(function(a,b){ return Number(b)-Number(a); });
 
-      years.forEach(function(yr, yi){
-        var yRows = byYear[yr];
-        yRows.sort(function(a,b){ return (b.value||0)-(a.value||0); });
+      years.forEach(function(yr){
+        var yRows = byYear[yr].sort(function(a,b){ return (b.value||0)-(a.value||0); });
         var yTotal = yRows.reduce(function(s,r){ return s+Number(r.value||0); }, 0);
         var yWgt = yRows.reduce(function(s,r){ return s+Number(r.weight||r.quantity||0); }, 0);
         var yTotalFmt = yTotal > 0 ? '$'+Number(yTotal.toFixed(0)).toLocaleString('en-US') : '—';
-        var yWgtFmt = yWgt > 0 ? Math.round(yWgt/1000)+'t' : '—';
-        var yuid = uid+'y'+yi;
+        var yWgtFmt = yWgt > 999 ? Math.round(yWgt/1000)+'K t' : Math.round(yWgt)+'t';
 
-        // Year row
-        var yTr = document.createElement('tr');
-        yTr.style.cssText = 'cursor:pointer;background:rgba(67,97,238,.04)';
-        yTr.innerHTML =
-          '<td colspan="4" style="padding:.5rem 1rem .5rem 2.5rem">' +
+        // Year header row
+        var yHdrTr = document.createElement('tr');
+        yHdrTr.style.cssText = 'cursor:pointer;background:rgba(67,97,238,.05)';
+        yHdrTr.innerHTML =
+          '<td colspan="4" style="padding:.55rem 1rem .55rem 2.8rem">' +
           '<div style="display:flex;align-items:center;justify-content:space-between">' +
           '<div style="display:flex;align-items:center;gap:.6rem">' +
-          '<span class="yr-arrow" style="color:var(--text3);font-size:.65rem;transition:transform .2s;display:inline-block">►</span>' +
-          '<span style="font-weight:700;color:var(--text2);font-size:.82rem">' + escHtml(yr) + '</span>' +
+          '<span class="yr-arrow" style="color:var(--text3);font-size:.65rem;display:inline-block;transition:transform .2s">►</span>' +
+          '<b style="color:var(--text2);font-size:.82rem">' + escHtml(yr) + '</b>' +
           '<span style="font-size:.65rem;color:var(--text3)">' + yRows.length + ' ta manba</span>' +
           '</div>' +
-          '<div style="display:flex;gap:1rem">' +
-          '<span style="font-weight:700;font-size:.78rem">' + escHtml(yTotalFmt) + '</span>' +
+          '<div style="display:flex;gap:1.2rem">' +
+          '<b style="font-size:.78rem">' + escHtml(yTotalFmt) + '</b>' +
           '<span style="color:var(--text3);font-size:.72rem">' + escHtml(yWgtFmt) + '</span>' +
           '</div></div></td>';
+        cBody.appendChild(yHdrTr);
 
-        // Year body
-        var yBody = document.createElement('tbody');
-        yBody.style.display = 'none';
-
+        // Year data rows (hidden)
+        var yDataRows = [];
+        // Col header
         var colTr = document.createElement('tr');
-        colTr.style.cssText = 'background:rgba(67,97,238,.06);font-size:.62rem;color:var(--text3)';
-        colTr.innerHTML = '<th style="padding:.3rem .8rem .3rem 3.5rem">#</th><th style="padding:.3rem .8rem">Manba davlat</th><th style="padding:.3rem .8rem">Import ($)</th><th style="padding:.3rem .8rem">Hajm</th>';
-        yBody.appendChild(colTr);
+        colTr.style.cssText = 'display:none;background:rgba(67,97,238,.08);font-size:.65rem;color:var(--text3)';
+        colTr.innerHTML = '<th style="padding:.35rem 1rem .35rem 4.5rem">#</th><th style="padding:.35rem 1rem">Manba davlat</th><th style="padding:.35rem 1rem">Import ($)</th><th style="padding:.35rem 1rem">Hajm</th>';
+        yDataRows.push(colTr);
+        cBody.appendChild(colTr);
 
         yRows.forEach(function(row, ri){
           var rFmt = Number(row.value||0) > 0 ? '$'+Number(Number(row.value||0).toFixed(0)).toLocaleString('en-US') : '—';
-          var wFmt = Number(row.weight||0) > 0 ? Math.round(Number(row.weight||0)/1000)+'t' : '—';
-          var partner = row.partner || row.partnerDesc || '';
+          var wFmt = Number(row.weight||0) > 0 ? (Number(row.weight||0)>999?Math.round(Number(row.weight||0)/1000)+'K t':Math.round(Number(row.weight||0))+'t') : '—';
+          var partner = escHtml(row.partner||row.partnerDesc||'—');
           var rTr = document.createElement('tr');
-          rTr.style.cssText = 'font-size:.78rem;border-top:1px solid rgba(67,97,238,.06)';
+          rTr.style.cssText = 'display:none;font-size:.8rem;border-top:1px solid rgba(67,97,238,.06)';
           rTr.innerHTML =
-            '<td style="padding:.4rem .8rem .4rem 3.5rem;color:var(--text3)">'+(ri+1)+'</td>' +
-            '<td style="padding:.4rem .8rem;font-weight:600;color:#4361EE">'+escHtml(partner||'—')+'</td>' +
-            '<td style="padding:.4rem .8rem;font-weight:700">'+escHtml(rFmt)+'</td>' +
-            '<td style="padding:.4rem .8rem;color:var(--text2)">'+escHtml(wFmt)+'</td>';
-          yBody.appendChild(rTr);
+            '<td style="padding:.4rem 1rem .4rem 4.5rem;color:var(--text3)">'+(ri+1)+'</td>' +
+            '<td style="padding:.4rem 1rem;font-weight:700;color:#4361EE">'+partner+'</td>' +
+            '<td style="padding:.4rem 1rem;font-weight:700">'+escHtml(rFmt)+'</td>' +
+            '<td style="padding:.4rem 1rem;color:var(--text2)">'+escHtml(wFmt)+'</td>';
+          yDataRows.push(rTr);
+          cBody.appendChild(rTr);
         });
 
-        cBody.appendChild(yTr);
-        cBody.appendChild(yBody);
-
-        yTr.addEventListener('click', function(e){
+        // Year toggle
+        yHdrTr.addEventListener('click', function(e){
           e.stopPropagation();
-          var isOpen = yBody.style.display !== 'none';
-          yBody.style.display = isOpen ? 'none' : '';
           var arrow = this.querySelector('.yr-arrow');
+          var isOpen = colTr.style.display !== 'none';
+          var newDisplay = isOpen ? 'none' : '';
+          yDataRows.forEach(function(r){ r.style.display = newDisplay; });
           if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
         });
       });
 
-      tb.appendChild(cTr);
-      tb.appendChild(cBody);
-
+      // Country toggle
       cTr.addEventListener('click', function(){
+        var arrow = this.querySelector('.cty-arrow');
         var isOpen = cBody.style.display !== 'none';
         cBody.style.display = isOpen ? 'none' : '';
-        var arrow = this.querySelector('.cty-arrow');
         if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
       });
+
+      tableEl.appendChild(cHead);
+      tableEl.appendChild(cBody);
     });
     return;
   }
 
-  // Fallback
+  // Fallback — yillar bo'yicha summary
   theadEl.innerHTML = '<tr><th>#</th><th>Davlat</th><th>Jami</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Hajm</th><th>Amal</th></tr>';
   tb.innerHTML = '';
   countries.forEach(function(c, i){
@@ -13205,16 +13209,15 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
       if(st==='error') return '<span style="color:#EF233C;font-size:.65rem">xato</span>';
       return '<span style="color:var(--text3)">—</span>';
     }
-    var statusText = c.status==='no_data' ? 'Mavjud emas' : c.status==='rate_limited' ? 'limit' : 'xato';
-    var total = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '<span style="color:#EF233C;font-size:.7rem">'+escHtml(statusText)+'</span>';
-    var vol = c.status==='ok' && c.volume_tons ? (c.volume_tons>999 ? Math.round(c.volume_tons/1000)+'K t' : Math.round(c.volume_tons)+'t') : '—';
+    var total = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '—';
+    var vol = c.volume_tons > 0 ? (c.volume_tons>999?Math.round(c.volume_tons/1000)+'K t':Math.round(c.volume_tons)+'t') : '—';
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td>'+(i+1)+'</td>'+
       '<td style="font-weight:600">'+(tc.flag?escHtml(tc.flag)+' ':'')+escHtml(tc.label||c.name||'')+'</td>'+
       '<td style="font-weight:800;color:#4361EE">'+total+'</td>'+
       '<td>'+fmtY('2021')+'</td><td>'+fmtY('2022')+'</td><td>'+fmtY('2023')+'</td><td>'+fmtY('2024')+'</td>'+
-      '<td style="color:var(--text2)">'+escHtml(vol)+'</td>'+
+      '<td>'+escHtml(vol)+'</td>'+
       '<td><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>';
     tr.querySelector('button').addEventListener('click', function(){
       goToFinder(this.dataset.pid, this.dataset.code);
