@@ -14675,8 +14675,13 @@ async function collectInvestAiTradeContext(material){
     var product = products[i];
     var hsCode = getExactImportHsCode(product);
     if(!hsCode || hsCode.length < 2) continue;
-    var snapshot = getImportSnapshot(product, hsCode);
-    if(snapshot && !/UN Comtrade/i.test(String(snapshot.source || ''))) snapshot = null;
+    // Search any snapshot for this product+hs (regardless of targetCountries key)
+    var snapshot = (DB.importSnapshots||[]).find(function(sn){
+      return String(sn.productId)===String(product.id) &&
+             String(sn.hsCode||'')===String(hsCode) &&
+             /UN Comtrade/i.test(String(sn.source||'')) &&
+             (sn.countries||[]).length > 0;
+    }) || null;
     if(!snapshot && liveByHs[hsCode]){
       snapshot = {
         id: buildImportSnapshotId(product, hsCode),
