@@ -2025,9 +2025,12 @@ input[type="time"]{-webkit-appearance:none;}
         <div style="display:flex;flex-direction:column;gap:1rem">
           <div class="tcard" style="margin:0">
             <div class="tc-head"><div class="tc-title">🌍 Maqsad davlatlar</div></div>
-            <div style="padding:1rem">
-              <label class="form-label" style="margin-bottom:.5rem" id="finderCountriesLabel">Importyor kompaniyalar qidiriladi</label>
-              <div id="finderCountries" style="display:flex;flex-direction:column;gap:.7rem"></div>
+            <div style="padding:.7rem 1rem .3rem">
+              <input class="form-input" id="finderTargetSearch" type="text" placeholder="🔍  Davlat qidirish..." oninput="renderFinderTargetFilters()" style="border-radius:20px;padding-left:1rem">
+            </div>
+            <div style="padding:0 1rem 1rem">
+              <label class="form-label" style="margin-bottom:.5rem;display:none" id="finderCountriesLabel">Importyor kompaniyalar qidiriladi</label>
+              <div id="finderCountries" style="display:flex;flex-direction:column;gap:.45rem;margin-top:.7rem"></div>
             </div>
           </div>
 
@@ -2036,12 +2039,14 @@ input[type="time"]{-webkit-appearance:none;}
               <div class="tc-title">🌐 Eksportyor manbasi</div>
               <button class="btn btn-ghost btn-sm" type="button" onclick="clearFinderSourceFilters()">Tozalash</button>
             </div>
-            <div style="padding:1rem">
-              <label class="form-label" style="margin:0 0 .5rem 0" id="finderSourceLabel">Eksportyor manbasi (qit'a yoki davlat bo'yicha)</label>
+            <div style="padding:.7rem 1rem .3rem">
+              <input class="form-input" id="finderSourceSearch" type="text" placeholder="🔍  Davlat qidirish..." oninput="renderFinderSourceFilters()" style="margin-bottom:.7rem;border-radius:20px;padding-left:1rem">
+            </div>
+            <div style="padding:0 1rem 1rem">
+              <label class="form-label" style="margin:0 0 .5rem 0;display:none" id="finderSourceLabel">Eksportyor manbasi</label>
               <div id="finderSourceContinentChips" style="display:grid;grid-template-columns:1fr;gap:.45rem;margin-bottom:.55rem"></div>
-              <input class="form-input" id="finderSourceSearch" type="text" placeholder="Davlat qidirish..." oninput="renderFinderSourceFilters()" style="margin-bottom:.55rem">
               <div id="finderSourceSelected" style="font-size:.65rem;color:var(--text3);margin-bottom:.5rem"></div>
-              <div id="finderSourceCountriesList" style="max-height:220px;overflow:auto;padding:.3rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.55)"></div>
+              <div id="finderSourceCountriesList"></div>
             </div>
           </div>
         </div>
@@ -15060,38 +15065,75 @@ function toggleFinderTargetGroupAll(name){
 function renderFinderTargetFilters(){
   var wrap = document.getElementById('finderCountries');
   if(!wrap) return;
-  var groups = [{'name':'Maqsad davlatlar','countries':FINDER_ALWAYS_TARGET_COUNTRIES.slice()}];
+
+  var search = ((document.getElementById('finderTargetSearch')||{}).value || '').toLowerCase().trim();
+
+  var groups = [{'name':'Maqsad davlatlar','countries':FINDER_ALWAYS_TARGET_COUNTRIES.slice(), isCore:true}];
   Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
     groups.push({
       name: cont,
-      countries: (FINDER_SOURCE_REGIONS[cont] || []).filter(function(country){
-        return FINDER_ALWAYS_TARGET_COUNTRIES.indexOf(country) === -1;
-      })
+      countries: (FINDER_SOURCE_REGIONS[cont]||[]).filter(function(c){ return FINDER_ALWAYS_TARGET_COUNTRIES.indexOf(c) === -1; }),
+      isCore: false
     });
   });
-  wrap.innerHTML = groups.map(function(group, idx){
-    var isCore = idx === 0;
-    var isOpen = !!_finderTargetOpenGroups[group.name];
-    var selectedCount = group.countries.filter(function(country){
-      return _finderTargetCountries.indexOf(country) !== -1;
-    }).length;
-    var allChecked = !!group.countries.length && selectedCount === group.countries.length;
-    return '<div style="border:1px solid var(--border);border-radius:12px;background:'+(isCore?'rgba(67,97,238,.07)':'rgba(255,255,255,.45)')+';overflow:hidden">'+
-      '<button type="button" onclick="toggleFinderTargetGroup(\''+group.name.replace(/'/g,"\\'")+'\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:.72rem .8rem;background:transparent;border:none;cursor:pointer;color:var(--text)">'+
-        '<span style="display:flex;align-items:center;gap:10px;font-size:.72rem;font-weight:800;color:var(--text)">'+
-          (isCore?'🎯 ':'🌐 ')+group.name+
-          '<span onclick="event.stopPropagation()"><label style="display:inline-flex;align-items:center;gap:5px;font-size:.63rem;font-weight:700;color:var(--text2);cursor:pointer"><input type="checkbox" '+(allChecked?'checked':'')+' onchange="toggleFinderTargetGroupAll(\''+group.name.replace(/'/g,"\\'")+'\')"> Jami</label></span>'+
-        '</span>'+
-        '<span style="display:flex;align-items:center;gap:8px"><span style="font-size:.62rem;color:var(--text3)">'+selectedCount+'/'+group.countries.length+'</span><span style="font-size:10px;color:var(--text3);transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+';transition:transform .18s">▾</span></span>'+
-      '</button>'+
-      '<div style="display:'+(isOpen?'flex':'none')+';flex-wrap:wrap;gap:.38rem;padding:0 .8rem .75rem">'+
-        group.countries.map(function(country){
-          var checked = _finderTargetCountries.indexOf(country) !== -1 ? ' checked' : '';
-          return '<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:pointer;border:1px solid '+(checked?'rgba(67,97,238,.35)':'var(--border)')+'"><input type="checkbox" class="fc-country" value="'+country+'"'+checked+' onchange="toggleFinderTargetCountry(\''+country.replace(/'/g,"\\'")+'\')"> '+getFinderCountryFlag(country)+' '+getFinderCountryLabel(country)+'</label>';
-        }).join('')+
-      '</div>'+
-    '</div>';
-  }).join('');
+
+  var html = '';
+  groups.forEach(function(group){
+    var allCountries = group.countries;
+    var filteredCountries = allCountries.filter(function(c){
+      return !search || c.toLowerCase().indexOf(search) !== -1 ||
+             getFinderCountryLabel(c).toLowerCase().indexOf(search) !== -1;
+    });
+    if(search && filteredCountries.length === 0) return;
+
+    var selectedCount = allCountries.filter(function(c){ return _finderTargetCountries.indexOf(c) !== -1; }).length;
+    var allChecked = allCountries.length > 0 && selectedCount === allCountries.length;
+    var someChecked = selectedCount > 0 && !allChecked;
+    var isOpen = !!_finderTargetOpenGroups[group.name] || search.length > 0;
+    var safeId = 'tgt'+group.name.replace(/[^a-zA-Z0-9]/g,'');
+    var borderColor = someChecked || allChecked ? 'rgba(67,97,238,.35)' : 'var(--border)';
+    var bgColor = group.isCore ? 'rgba(67,97,238,.07)' : (someChecked||allChecked ? 'rgba(67,97,238,.04)' : 'rgba(255,255,255,.75)');
+
+    html += '<div style="border:1px solid '+borderColor+';border-radius:12px;overflow:hidden;background:'+bgColor+'">';
+
+    // Header
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:.72rem;font-weight:700;color:var(--text)" onclick="toggleFinderTargetGroup(''+group.name.replace(/'/g,"\'")+'');renderFinderTargetFilters()">';
+    html += '<span style="display:flex;align-items:center;gap:8px">';
+    html += '<input type="checkbox" id="cb-'+safeId+'" '+(allChecked?'checked':'')+' onclick="event.stopPropagation();toggleFinderTargetGroupAll(''+group.name.replace(/'/g,"\'")+'');renderFinderTargetFilters()" style="cursor:pointer">';
+    html += '<span>'+(group.isCore?'🎯 ':'🌐 ')+group.name+'</span>';
+    html += '</span>';
+    html += '<span style="display:flex;align-items:center;gap:8px">';
+    html += '<span style="font-size:.62rem;color:var(--text3)">'+selectedCount+'/'+allCountries.length+'</span>';
+    html += '<span style="font-size:.65rem;color:#4361EE">'+(isOpen?'▼':'►')+'</span>';
+    html += '</span></div>';
+
+    // Countries
+    if(isOpen && filteredCountries.length){
+      html += '<div style="padding:8px 10px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:.35rem">';
+      filteredCountries.forEach(function(country){
+        var checked = _finderTargetCountries.indexOf(country) !== -1;
+        var safeC = country.replace(/'/g,"\'");
+        html += '<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:pointer;border:1px solid '+(checked?'rgba(67,97,238,.35)':'var(--border)')+'">'+
+          '<input type="checkbox" '+(checked?'checked':'')+' onchange="toggleFinderTargetCountry(''+safeC+'')" onclick="event.stopPropagation()">'+
+          ' '+getFinderCountryFlag(country)+' '+getFinderCountryLabel(country)+
+        '</label>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+
+  wrap.innerHTML = html || '<div style="padding:.8rem;color:var(--text3);font-size:.7rem">Hech narsa topilmadi</div>';
+
+  // Set indeterminate
+  groups.forEach(function(group){
+    var allCountries = group.countries;
+    var selCount = allCountries.filter(function(c){ return _finderTargetCountries.indexOf(c)!==-1; }).length;
+    var someChecked = selCount > 0 && selCount < allCountries.length;
+    var safeId = 'tgt'+group.name.replace(/[^a-zA-Z0-9]/g,'');
+    var cb = document.getElementById('cb-'+safeId);
+    if(cb) cb.indeterminate = someChecked;
+  });
 }
 
 function getImportAnalysisTargetCountries(){
@@ -15141,6 +15183,24 @@ function clearFinderSourceFilters(){
   renderFinderSourceFilters();
 }
 
+function toggleFinderSourceContinentAll(name){
+  var allCountries = FINDER_SOURCE_REGIONS[name]||[];
+  var allChecked = allCountries.every(function(c){ return _finderSourceCountries.indexOf(c) !== -1; });
+  if(allChecked){
+    // Uncheck all
+    allCountries.forEach(function(c){
+      var idx = _finderSourceCountries.indexOf(c);
+      if(idx >= 0) _finderSourceCountries.splice(idx, 1);
+    });
+  } else {
+    // Check all
+    allCountries.forEach(function(c){
+      if(_finderSourceCountries.indexOf(c) === -1) _finderSourceCountries.push(c);
+    });
+  }
+  renderFinderSourceFilters();
+}
+
 function toggleFinderSourceContinent(name){
   var idx = _finderSourceContinents.indexOf(name);
   if(idx >= 0) _finderSourceContinents.splice(idx,1);
@@ -15168,31 +15228,49 @@ function renderFinderSourceFilters(){
   chipsEl.style.display = 'grid';
   chipsEl.style.gridTemplateColumns = '1fr';
   chipsEl.style.gap = '.45rem';
-  chipsEl.innerHTML = Object.keys(FINDER_SOURCE_REGIONS).map(function(cont){
-    var active = _finderSourceContinents.indexOf(cont) !== -1;
-    return '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-radius:12px;border:1px solid '+(active?'rgba(67,97,238,.35)':'var(--border)')+';background:'+(active?'rgba(67,97,238,.10)':'rgba(255,255,255,.75)')+';cursor:pointer;font-size:.72rem;font-weight:700;color:var(--text)">'+
-      '<span style="display:flex;align-items:center;gap:8px"><input type="checkbox" '+(active?'checked':'')+' onchange="toggleFinderSourceContinent(\''+cont.replace(/'/g,"\\'")+'\')"> '+cont+'</span>'+
-      '<span style="font-size:.62rem;color:var(--text3)">'+(FINDER_SOURCE_REGIONS[cont]||[]).length+' ta davlat</span>'+
-    '</label>';
-  }).join('');
 
   var search = ((document.getElementById('finderSourceSearch')||{}).value || '').toLowerCase().trim();
-  var visibleContinents = _finderSourceContinents.length ? _finderSourceContinents.slice() : Object.keys(FINDER_SOURCE_REGIONS);
-  var html = '';
-  visibleContinents.forEach(function(cont){
-    var list = (FINDER_SOURCE_REGIONS[cont]||[]).filter(function(country){
-      return !search || country.toLowerCase().indexOf(search) !== -1;
-    });
-    if(!list.length) return;
-    html += '<div style="margin-bottom:.65rem"><div style="font-size:.68rem;font-weight:800;color:var(--text2);margin:.2rem 0 .35rem">'+cont+'</div>';
-    html += '<div style="display:flex;flex-wrap:wrap;gap:.38rem">';
-    html += list.map(function(country){
+
+  var chipsHtml = '';
+  Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
+    var allCountries = FINDER_SOURCE_REGIONS[cont]||[];
+    var filteredCountries = allCountries.filter(function(c){ return !search || c.toLowerCase().indexOf(search) !== -1; });
+    var allChecked = allCountries.length > 0 && allCountries.every(function(c){ return _finderSourceCountries.indexOf(c) !== -1; });
+    var someChecked = allCountries.some(function(c){ return _finderSourceCountries.indexOf(c) !== -1; });
+    var safeId = 'srcc'+cont.replace(/[^a-zA-Z0-9]/g,'');
+    var isOpen = someChecked || search.length > 0;
+    var borderColor = someChecked ? 'rgba(67,97,238,.35)' : 'var(--border)';
+    var bgColor = someChecked ? 'rgba(67,97,238,.06)' : 'rgba(255,255,255,.75)';
+
+    chipsHtml += '<div style="border:1px solid '+borderColor+';border-radius:12px;overflow:hidden;background:'+bgColor+';margin-bottom:.35rem">';
+    chipsHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:.72rem;font-weight:700;color:var(--text)" onclick="var el=document.getElementById(\'' +safeId+ '\');if(el){var op=el.style.display===\'none\';el.style.display=op?\'block\':\'none\'}">';
+    chipsHtml += '<span style="display:flex;align-items:center;gap:8px">';
+    chipsHtml += '<input type="checkbox" id="cb-'+safeId+'" '+(allChecked?'checked':'')+' onclick="event.stopPropagation();toggleFinderSourceContinentAll(\'' +cont.replace(/'/g,"\\'")+'\')" style="cursor:pointer">';
+    chipsHtml += ' '+cont+'</span>';
+    chipsHtml += '<span style="font-size:.62rem;color:var(--text3)">'+allCountries.length+' ta davlat ►</span>';
+    chipsHtml += '</div>';
+    chipsHtml += '<div id="'+safeId+'" style="display:'+(isOpen?'block':'none')+';padding:8px 10px;border-top:1px solid var(--border)">';
+    chipsHtml += '<div style="display:flex;flex-wrap:wrap;gap:.35rem">';
+    filteredCountries.forEach(function(country){
       var checked = _finderSourceCountries.indexOf(country) !== -1;
-      return '<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:pointer;border:1px solid '+(checked?'rgba(67,97,238,.35)':'var(--border)')+'"><input type="checkbox" '+(checked?'checked':'')+' onchange="toggleFinderSourceCountry(\''+country.replace(/'/g,"\\'")+'\')"> '+country+'</label>';
-    }).join('');
-    html += '</div></div>';
+      var safeCountry = country.replace(/'/g,"\\'");
+      chipsHtml += '<label style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:pointer;border:1px solid '+(checked?'rgba(67,97,238,.35)':'var(--border)')+'"><input type="checkbox" '+(checked?'checked':'')+' onchange="toggleFinderSourceCountry(\''+ safeCountry +'\')"> '+country+'</label>';
+    });
+    chipsHtml += '</div></div></div>';
   });
-  countriesEl.innerHTML = html || '<div style="padding:.8rem;color:var(--text3);font-size:.7rem">Hech narsa topilmadi</div>';
+  chipsEl.innerHTML = chipsHtml;
+
+  // Set indeterminate on partial selections
+  Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
+    var allCountries = FINDER_SOURCE_REGIONS[cont]||[];
+    var allChecked = allCountries.length>0 && allCountries.every(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
+    var someChecked = !allChecked && allCountries.some(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
+    var safeId = 'cb-srcc'+cont.replace(/[^a-zA-Z0-9]/g,'');
+    var cb = document.getElementById(safeId);
+    if(cb) cb.indeterminate = someChecked;
+  });
+
+  countriesEl.innerHTML = '';
 
   var selection = getFinderSourceSelection();
   if(selection.hasFilter){
