@@ -8881,7 +8881,10 @@ function analyzeSelectedProductRaw(){
     toast('⚠️ Avval xomashyoni tanlang','error');
     return;
   }
-  fillInvestAiMaterial(getRawAnalysisMaterialName(raw));
+  var name = getRawAnalysisMaterialName(raw);
+  fillInvestAiMaterial(name);
+  // Pass rawId directly so collectInvestAiTradeContext can find it by ID
+  _investAiDirectRawId = String(raw.id || '');
   analyzeInvestmentMaterial();
 }
 
@@ -13362,6 +13365,7 @@ var _investAiBusy = false;
 var _investAiPhase = -1;
 var _investAiMarkdown = '';
 var _investAiCurrentMaterial = '';
+var _investAiDirectRawId = '';
 var _investAiTradeContext = null;
 var INVEST_AI_FALLBACK_MATERIALS = [
   'Basalt','Quartz','Limestone','Gypsum','Granite','Marble','Kaolin','Bentonite','Dolomite','Phosphorite',
@@ -14637,7 +14641,17 @@ function investAiSummarizeCountries(countries){
 }
 
 async function collectInvestAiTradeContext(material){
-  var found = investAiFindProducts(material);
+  // If called from product panel, use direct raw ID for exact match
+  var found;
+  if(_investAiDirectRawId){
+    var directRaw = (DB.rawMaterials||[]).find(function(r){ return String(r.id)===_investAiDirectRawId; });
+    _investAiDirectRawId = '';
+    if(directRaw){
+      var directProds = (DB.products||[]).filter(function(p){ return String(p.raw_id)===String(directRaw.id); });
+      found = { raw: directRaw, products: directProds };
+    }
+  }
+  if(!found) found = investAiFindProducts(material);
   var raw = found.raw;
   var products = (found.products || []);
   if(!raw){
