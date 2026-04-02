@@ -13100,7 +13100,7 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
         '<td style="font-weight:600;color:#4361EE">'+escHtml(row.partner||'—')+'</td>'+
         '<td>'+valCell+'</td>'+
         '<td style="color:var(--text2)">'+wgtCell+'</td>'+
-        '<td><button class="btn btn-blue btn-sm" onclick="goToFinder(''+prod.id+'',''+escHtml(row.code)+'')">🔍</button></td>'+
+        '<td><button class="btn btn-blue btn-sm" onclick="goToFinder(\''+prod.id+'\',\''+row.code+'\')">🔍</button></td>'+
       '</tr>';
     }).join('');
     return;
