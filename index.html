@@ -13085,23 +13085,31 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
       return (b.value||0)-(a.value||0);
     });
     theadEl.innerHTML = '<tr><th>#</th><th>Period</th><th>Reporter</th><th>Partner</th><th>Import ($)</th><th>Hajm (kg)</th><th>Amal</th></tr>';
-    var rows = partnerRows.map(function(row, i){
-      var valCell = row.value > 0 ? '<b>$' + Number(row.value).toLocaleString('en-US') + '</b>' : '—';
-      var wgtCell = row.weight > 0 ? Number(row.weight).toLocaleString('en-US') + ' kg' : '—';
-      var partnerText = escHtml(row.partner || '—');
-      var reporterText = escHtml(row.reporter || '');
-      var periodText = escHtml(String(row.period));
-      var codeVal = String(row.code || '').replace(/'/g, '');
-      var prodId = String(prod.id || '').replace(/'/g, '');
-      var btn = '<button class="btn btn-blue btn-sm" onclick="goToFinder('' + prodId + '','' + codeVal + '')">&#128269;</button>';
-      return '<tr><td>' + (i+1) + '</td><td style="font-weight:700">' + periodText + '</td><td>' + reporterText + '</td><td style="font-weight:600;color:#4361EE">' + partnerText + '</td><td>' + valCell + '</td><td style="color:var(--text2)">' + wgtCell + '</td><td>' + btn + '</td></tr>';
+    tb.innerHTML = '';
+    partnerRows.forEach(function(row, i){
+      var tr = document.createElement('tr');
+      var valText = row.value > 0 ? '$' + Number(row.value).toLocaleString('en-US') : '—';
+      var wgtText = row.weight > 0 ? Number(row.weight).toLocaleString('en-US') + ' kg' : '—';
+      tr.innerHTML = [
+        '<td>' + (i+1) + '</td>',
+        '<td style="font-weight:700">' + escHtml(String(row.period)) + '</td>',
+        '<td>' + escHtml(row.reporter||'') + '</td>',
+        '<td style="font-weight:600;color:#4361EE">' + escHtml(row.partner||'—') + '</td>',
+        '<td><b>' + escHtml(valText) + '</b></td>',
+        '<td style="color:var(--text2)">' + escHtml(wgtText) + '</td>',
+        '<td><button class="btn btn-blue btn-sm" data-pid="' + escHtml(String(prod.id||'')) + '" data-code="' + escHtml(String(row.code||'')) + '">&#128269;</button></td>'
+      ].join('');
+      tr.querySelector('button').addEventListener('click', function(){
+        goToFinder(this.dataset.pid, this.dataset.code);
+      });
+      tb.appendChild(tr);
     });
-    tb.innerHTML = rows.join('');
     return;
   }
 
   theadEl.innerHTML = '<tr><th>#</th><th>Davlat</th><th>Jami (2021-2024)</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Hajm (t)</th><th>Amal</th></tr>';
-  var countryRows = countries.map(function(c, i){
+  tb.innerHTML = '';
+  countries.forEach(function(c, i){
     var tc = getTargetMeta(c);
     var yi = c.year_imports || {};
     var ys = c.year_statuses || {};
@@ -13114,16 +13122,27 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
       return '<span style="color:var(--text3)">—</span>';
     }
     var statusText = c.status==='no_data' ? 'Mavjud emas' : c.status==='rate_limited' ? 'limit' : 'xato';
-    var total = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '<span style="color:#EF233C;font-size:.7rem">'+statusText+'</span>';
+    var total = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '<span style="color:#EF233C;font-size:.7rem">'+escHtml(statusText)+'</span>';
     var vol = c.status==='ok' && c.volume_tons ? (Math.round(c.volume_tons)>999 ? Math.round(c.volume_tons/1000)+'K t' : Math.round(c.volume_tons)+' t') : '—';
-    var flag = tc.flag ? tc.flag+' ' : '';
+    var flag = tc.flag ? escHtml(tc.flag)+' ' : '';
     var label = escHtml(tc.label||c.name||'');
-    var codeVal = String(c.code||'').replace(/'/g,'');
-    var prodId = String(prod.id||'').replace(/'/g,'');
-    var btn = '<button class="btn btn-blue btn-sm" onclick="goToFinder('' + prodId + '','' + codeVal + '')">&#128269;</button>';
-    return '<tr><td>'+(i+1)+'</td><td style="font-weight:600">'+flag+label+'</td><td style="font-weight:800;color:#4361EE">'+total+'</td><td>'+fmtY('2021')+'</td><td>'+fmtY('2022')+'</td><td>'+fmtY('2023')+'</td><td>'+fmtY('2024')+'</td><td style="color:var(--text2)">'+vol+'</td><td>'+btn+'</td></tr>';
+    var tr = document.createElement('tr');
+    tr.innerHTML = [
+      '<td>'+(i+1)+'</td>',
+      '<td style="font-weight:600">'+flag+label+'</td>',
+      '<td style="font-weight:800;color:#4361EE">'+total+'</td>',
+      '<td>'+fmtY('2021')+'</td>',
+      '<td>'+fmtY('2022')+'</td>',
+      '<td>'+fmtY('2023')+'</td>',
+      '<td>'+fmtY('2024')+'</td>',
+      '<td style="color:var(--text2)">'+escHtml(vol)+'</td>',
+      '<td><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>'
+    ].join('');
+    tr.querySelector('button').addEventListener('click', function(){
+      goToFinder(this.dataset.pid, this.dataset.code);
+    });
+    tb.appendChild(tr);
   });
-  tb.innerHTML = countryRows.join('');
 }
 
 function renderImportResults(countries, prod, source, targetCountries){
