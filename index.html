@@ -12850,7 +12850,8 @@ function buildImportTargetKey(targetCountries){
 }
 
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
-  return ['importv2', getImportAnalysisSnapshotSourceKey(source), (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
+  var sourceScope = getImportAnalysisSourceScopeState();
+  return ['importv3', getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
     .join('_')
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
@@ -12860,10 +12861,27 @@ function getImportSnapshot(prod, hsCode, targetCountries, source){
   return (DB.importSnapshots||[]).find(function(item){ return String(item.id)===String(id); }) || null;
 }
 
+function getImportAnalysisSourceScopeState(){
+  var selection = getFinderSourceSelection();
+  var effectiveCountries = (selection.effectiveCountries || []).slice().sort();
+  var countries = (selection.countries || []).slice().sort();
+  var continents = (selection.continents || []).slice().sort();
+  return {
+    hasFilter: !!selection.hasFilter,
+    countries: countries,
+    continents: continents,
+    effectiveCountries: effectiveCountries,
+    cacheKey: effectiveCountries.length ? ('src_' + hashTargetList(effectiveCountries)) : 'world'
+  };
+}
+
 function restoreImportSnapshot(snapshot, quiet){
   if(!snapshot || !(snapshot.countries||[]).length) return false;
   var storedTargets = (snapshot.targetCountries && snapshot.targetCountries.length) ? snapshot.targetCountries : FINDER_ALWAYS_TARGET_COUNTRIES.slice();
   var sourceKey = getImportAnalysisSourceKey(snapshot.source || snapshot.sourceKey || 'comtrade');
+  _finderSourceContinents = (snapshot.sourceContinents || []).slice();
+  _finderSourceCountries = (snapshot.sourceCountries || []).slice();
+  renderFinderSourceFilters();
   var targetCountries = storedTargets.map(function(name){
     return {name:name,label:getFinderCountryLabel(name),flag:getFinderCountryFlag(name)};
   });
@@ -12911,6 +12929,7 @@ function restoreImportSnapshot(snapshot, quiet){
 function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
   if(!prod || !countries || !countries.length) return;
   var sourceKey = getImportAnalysisSourceKey(source);
+  var sourceScope = getImportAnalysisSourceScopeState();
   var snapshotTargets = ((targetCountries && targetCountries.length) ? targetCountries : FINDER_ALWAYS_TARGET_COUNTRIES.slice()).map(function(country){
     return typeof country === 'string' ? country : String(country && (country.name || country.label || country.code) || '');
   }).filter(Boolean);
@@ -12921,6 +12940,10 @@ function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
     hsCode: hsCode||'',
     source: source||getImportAnalysisSourceLabel(sourceKey),
     sourceKey: sourceKey,
+    sourceContinents: sourceScope.continents,
+    sourceCountries: sourceScope.countries,
+    sourceEffectiveCountries: sourceScope.effectiveCountries,
+    sourceScopeKey: sourceScope.cacheKey,
     updatedAt: new Date().toISOString(),
     targetCountries: snapshotTargets,
     countries: countries.map(function(c){
@@ -13244,10 +13267,33 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
   renderCountryImportAccordion(countries, getTargetMeta);
 }
 
+function countryHasImportDisplayData(country){
+  if(!country) return false;
+  var years = country.year_imports || {};
+  var rows = Array.isArray(country.products) ? country.products : [];
+  return ['2021','2022','2023','2024'].some(function(y){
+    if((Number(years[y] || 0) || 0) > 0) return true;
+    return rows.some(function(row){
+      return String(row.period || '') === y && (Number(row.value || 0) || 0) > 0;
+    });
+  });
+}
+
 function renderImportResults(countries, prod, source, targetCountries){
   targetCountries = (targetCountries && targetCountries.length) ? targetCountries : getImportAnalysisTargetCountries();
   initImportAnalysisComtradeOnly(targetCountries, getImportAnalysisSourceKey(source));
+  countries = (countries || []).filter(countryHasImportDisplayData);
   countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
+  if(!countries.length){
+    clearImportDetailBody('Tanlangan davlatar bo‘yicha 2021–2024 import ma\'lumotlari topilmadi');
+    var chartEmptyEl = document.getElementById('importBarChart');
+    if(chartEmptyEl) chartEmptyEl.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text3)">Tanlangan davlatlar bo‘yicha import ma\'lumotlari topilmadi.</div>';
+    document.getElementById('imp-k1').textContent = '$0';
+    document.getElementById('imp-k2').textContent = '—';
+    document.getElementById('imp-k3').textContent = '—';
+    document.getElementById('imp-k4').textContent = source || '—';
+    return;
+  }
   var targetMetaByName = {};
   var targetMetaByCode = {};
   targetCountries.forEach(function(country){
@@ -14724,7 +14770,7 @@ async function collectInvestAiTradeContext(material){
     // If same HS already fetched, reuse data for this product
     if(!snapshot && liveByHs[hsCode]){
       snapshot = {
-        id: buildImportSnapshotId(product, hsCode),
+        id: buildImportSnapshotId(product, hsCode, FINDER_ALWAYS_TARGET_COUNTRIES, 'comtrade'),
         productId: String(product.id || ''),
         productName: formatBilingualProductName(product),
         hsCode: hsCode,
@@ -14742,7 +14788,7 @@ async function collectInvestAiTradeContext(material){
           liveByHs[hsCode] = liveCountries;
           saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real)');
           snapshot = {
-            id: buildImportSnapshotId(product, hsCode),
+            id: buildImportSnapshotId(product, hsCode, FINDER_ALWAYS_TARGET_COUNTRIES, 'comtrade'),
             productId: String(product.id || ''),
             productName: formatBilingualProductName(product),
             hsCode: hsCode,
