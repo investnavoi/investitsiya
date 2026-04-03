@@ -571,13 +571,24 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 [data-theme="dark"] .import-year-item{background:rgba(255,255,255,.03);}
 .import-year-label{font-size:.8rem;font-weight:800;color:var(--text2);}
 .import-year-sources{font-size:.66rem;color:var(--text3);}
-.import-source-list{padding:0 1rem .85rem 3rem;display:flex;flex-direction:column;gap:.35rem;}
-.import-source-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:.8rem;align-items:center;padding:.42rem .1rem;border-top:1px solid rgba(67,97,238,.08);font-size:.76rem;}
-.import-source-row:first-child{border-top:none;}
-.import-source-partner{font-weight:700;color:var(--text);}
-.import-source-value{font-weight:700;color:#111827;}
-.import-source-weight{color:var(--text3);}
-[data-theme="dark"] .import-source-value{color:#F8FAFC;}
+.import-source-table-wrap{padding:0 1rem 1rem 3rem;}
+.import-source-table{width:100%;border-collapse:collapse;border:1.5px solid #b0bcd8;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.88);}
+.import-source-table thead tr{background:rgba(67,97,238,.05);}
+.import-source-table th{padding:9px 10px;text-align:left;font-size:.63rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text);border:1px solid #b0bcd8;white-space:nowrap;}
+.import-source-table td{padding:9px 10px;font-size:.74rem;color:var(--text3);border:1px solid #b0bcd8;vertical-align:middle;}
+.import-source-table td.td-num{font-size:.75rem;}
+.import-source-table td.import-source-reporter{color:var(--text);font-weight:600;}
+.import-source-table td.import-source-partner{font-weight:700;color:#4361EE;}
+.import-source-table td.import-source-value{font-weight:800;color:#111827;}
+.import-source-table td.import-source-weight{white-space:nowrap;}
+.import-source-table td.import-source-action-cell{text-align:center;}
+.import-source-empty{padding:.9rem 1rem;border:1px dashed rgba(67,97,238,.18);border-radius:12px;background:rgba(67,97,238,.03);font-size:.74rem;color:var(--text3);}
+.import-source-action{width:30px;height:30px;border:none;border-radius:999px;background:linear-gradient(135deg,#4361EE,#4895ef);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(67,97,238,.25);font-size:.82rem;}
+.import-source-action:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(67,97,238,.35);}
+[data-theme="dark"] .import-source-table{background:rgba(15,22,41,.88);border-color:rgba(255,255,255,.1);}
+[data-theme="dark"] .import-source-table thead tr{background:rgba(255,255,255,.04);}
+[data-theme="dark"] .import-source-table th,[data-theme="dark"] .import-source-table td{border-color:rgba(255,255,255,.08);}
+[data-theme="dark"] .import-source-table td.import-source-value{color:#F8FAFC;}
 table{width:100%;border-collapse:collapse;}
 thead tr{background:var(--bg);}
 thead th{padding:10px 13px;text-align:left;font-size:.68rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text);white-space:nowrap;border:1.5px solid #b0bcd8;}
@@ -12995,6 +13006,24 @@ function getImportRowWeightTons(row){
   return qty / 1000;
 }
 
+function getImportRowWeightKg(row){
+  if(!row) return 0;
+  var qty = Number(row.weight || row.quantity || 0) || 0;
+  var unit = String(row.quantityUnit || '').toLowerCase();
+  if(unit && unit.indexOf('kg') === -1 && (unit.indexOf('ton') !== -1 || unit === 't')) return qty * 1000;
+  return qty;
+}
+
+function formatImportDetailKg(weightKg){
+  var n = Number(weightKg || 0);
+  if(!(n > 0)) return '\u2014';
+  var rounded = Math.round(n * 100) / 100;
+  return rounded.toLocaleString('en-US', {
+    minimumFractionDigits: rounded % 1 ? 2 : 0,
+    maximumFractionDigits: rounded % 1 ? 2 : 0
+  }) + ' kg';
+}
+
 function isImportWorldRow(row){
   var partner = String(row && (row.partner || row.partnerDesc || '') || '').trim().toLowerCase();
   return partner === 'world' || Number(row && row.partnerCode) === 0;
@@ -13038,14 +13067,29 @@ function renderCountryImportAccordion(countries, getCountryMeta){
       var yearLabel = yearStatus === 'ok' ? formatImportDetailUsd(yearValue) : (yearStatus === 'rate_limited' ? 'limit' : (yearStatus === 'error' ? 'xato' : '\u2014'));
       var yearVolume = yearStatus === 'ok' ? formatImportDetailTons(yearTons, false) : '\u2014';
       var sourcesCount = partnerRows.length;
-      var sourceRowsHtml = partnerRows.length ? ('<div class="import-source-list">' + partnerRows.map(function(row){
-        return '<div class="import-source-row">' +
-          '<div class="import-source-partner">' + escHtml(row.partner || row.partnerDesc || '\u2014') + '</div>' +
-          '<div class="import-source-value">' + formatImportDetailUsd(row.value) + '</div>' +
-          '<div class="import-source-weight">' + escHtml(formatImportDetailTons(getImportRowWeightTons(row), false)) + '</div>' +
-        '</div>';
-      }).join('') + '</div>') : '';
-      return '<details class="import-year-item">' +
+      var sourceRowsHtml = partnerRows.length
+        ? ('<div class="import-source-table-wrap"><div class="tscroll"><table class="import-source-table"><thead><tr>' +
+            '<th>#</th>' +
+            '<th>PERIOD</th>' +
+            '<th>REPORTER</th>' +
+            '<th>PARTNER</th>' +
+            '<th>IMPORT ($)</th>' +
+            '<th>HAJM (KG)</th>' +
+            '<th>AMAL</th>' +
+          '</tr></thead><tbody>' + partnerRows.map(function(row, rowIndex){
+            var reporterLabel = row.reporter || country.name || meta.label || '\u2014';
+            return '<tr>' +
+              '<td class="td-num">' + (rowIndex + 1) + '</td>' +
+              '<td class="td-num">' + escHtml(year) + '</td>' +
+              '<td class="import-source-reporter">' + escHtml(reporterLabel) + '</td>' +
+              '<td class="import-source-partner">' + escHtml(row.partner || row.partnerDesc || '\u2014') + '</td>' +
+              '<td class="import-source-value">' + formatImportDetailUsd(row.value) + '</td>' +
+              '<td class="import-source-weight">' + escHtml(formatImportDetailKg(getImportRowWeightKg(row))) + '</td>' +
+              '<td class="import-source-action-cell"><button type="button" class="import-source-action" title="Partner tafsiloti">🔍</button></td>' +
+            '</tr>';
+          }).join('') + '</tbody></table></div></div>')
+        : '<div class="import-source-table-wrap"><div class="import-source-empty">Bu yil uchun partner kesimidagi import ma\'lumotlari topilmadi.</div></div>';
+      return '<details class="import-year-item"' + (index === 0 && year === '2024' ? ' open' : '') + '>' +
         '<summary class="import-year-summary">' +
           '<div class="import-year-main">' +
             '<span class="import-year-arrow">\u25b6</span>' +
