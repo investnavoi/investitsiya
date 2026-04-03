@@ -14691,10 +14691,58 @@ async function collectInvestAiTradeContext(material){
       reason: 'raw_not_found'
     };
   }
-  var uniqueHsFetches = {};
   var liveByHs = {};
-  var fetchedCount = 0;
   var summaries = [];
+
+  // --- PHASE 1: Collect unique HS codes needing live fetch (skip cached) ---
+  var hsCodesToFetch = [];
+  for(var pi=0;pi<products.length;pi++){
+    var pcheck = products[pi];
+    var hcheck = getExactImportHsCode(pcheck);
+    if(!hcheck || hcheck.length < 2) continue;
+    var cached = (DB.importSnapshots||[]).find(function(sn){
+      return String(sn.hsCode||'')===String(hcheck) &&
+             /UN Comtrade/i.test(String(sn.source||'')) &&
+             (sn.countries||[]).length > 0;
+    });
+    if(!cached && hsCodesToFetch.indexOf(hcheck) === -1) hsCodesToFetch.push(hcheck);
+  }
+
+  // --- PHASE 1: Bulk parallel fetch for all uncached HS codes ---
+  if(hsCodesToFetch.length > 0){
+    try{
+      var countriesParam = TARGET_COUNTRIES.map(function(t){
+        return String((t && (t.comtrade || t.name_en || t.name || t.code)) || '').trim();
+      }).filter(Boolean).join('|');
+      var bulkUrl = COMTRADE_PROXY.replace('/api/comtrade','/api/comtrade-bulk') +
+        '?hs='+encodeURIComponent(hsCodesToFetch.join(','))+
+        '&year=2023'+
+        '&countries='+encodeURIComponent(countriesParam)+
+        '&source='+encodeURIComponent(getImportAnalysisSourceKey());
+      if(window._apiKeys && window._apiKeys.comtrade){
+        bulkUrl += '&key='+encodeURIComponent(window._apiKeys.comtrade);
+      }
+      var bulkResp = await fetch(bulkUrl);
+      if(bulkResp.ok){
+        var bulkData = await bulkResp.json();
+        var bulkResults = bulkData.results || {};
+        Object.keys(bulkResults).forEach(function(hs){
+          var entry = bulkResults[hs];
+          if(entry && entry.countries && entry.countries.length) liveByHs[hs] = entry.countries;
+        });
+      }
+    }catch(e){
+      console.log('AI analyzer bulk Comtrade xato:', e.message);
+    }
+    // Save snapshots for freshly fetched HS codes
+    for(var pi2=0;pi2<products.length;pi2++){
+      var prod2 = products[pi2];
+      var hs2 = getExactImportHsCode(prod2);
+      if(hs2 && liveByHs[hs2]){
+        saveImportSnapshot(prod2, hs2, liveByHs[hs2], 'UN Comtrade (real)');
+      }
+    }
+  }
 
   for(var i=0;i<products.length;i++){
     var product = products[i];
@@ -14706,7 +14754,6 @@ async function collectInvestAiTradeContext(material){
              /UN Comtrade/i.test(String(sn.source||'')) &&
              (sn.countries||[]).length > 0;
     }) || null;
-    // If same HS already fetched, reuse data for this product
     if(!snapshot && liveByHs[hsCode]){
       snapshot = {
         id: buildImportSnapshotId(product, hsCode),
@@ -14717,36 +14764,13 @@ async function collectInvestAiTradeContext(material){
         countries: liveByHs[hsCode]
       };
     }
-    // If no snapshot and HS not yet fetched, fetch from API
-    if(!snapshot && !uniqueHsFetches[hsCode]){
-      uniqueHsFetches[hsCode] = true;
-      fetchedCount += 1;
-      try{
-        var liveCountries = await fetchComtrade(hsCode, '2023');
-        if(liveCountries && liveCountries.length){
-          liveByHs[hsCode] = liveCountries;
-          saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real)');
-          snapshot = {
-            id: buildImportSnapshotId(product, hsCode),
-            productId: String(product.id || ''),
-            productName: formatBilingualProductName(product),
-            hsCode: hsCode,
-            source: 'UN Comtrade (real)',
-            countries: liveCountries
-          };
-        }
-      }catch(e){
-        console.log('AI analyzer Comtrade context xato:', e.message);
-      }
-    }
-    // Try any cached snapshot with same HS code from DB
     if(!snapshot){
-      var anySnap = (DB.importSnapshots||[]).find(function(sn){
+      var anySnap2 = (DB.importSnapshots||[]).find(function(sn){
         return String(sn.hsCode||'')===String(hsCode) &&
                /UN Comtrade/i.test(String(sn.source||'')) &&
                (sn.countries||[]).length > 0;
       });
-      if(anySnap) snapshot = anySnap;
+      if(anySnap2) snapshot = anySnap2;
     }
     if(!snapshot || !(snapshot.countries||[]).length) continue;
     // Expand countries from compressed format for correct year_imports access
