@@ -13269,8 +13269,12 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
 
 function countryHasImportDisplayData(country){
   if(!country) return false;
+  if((Number(country.import_usd || 0) || 0) > 0) return true;
   var years = country.year_imports || {};
   var rows = Array.isArray(country.products) ? country.products : [];
+  if(rows.some(function(row){
+    return (Number(row.value || 0) || 0) > 0 || (Number(row.weight || row.quantity || 0) || 0) > 0;
+  })) return true;
   return ['2021','2022','2023','2024'].some(function(y){
     if((Number(years[y] || 0) || 0) > 0) return true;
     return rows.some(function(row){
@@ -13282,7 +13286,7 @@ function countryHasImportDisplayData(country){
 function renderImportResults(countries, prod, source, targetCountries){
   targetCountries = (targetCountries && targetCountries.length) ? targetCountries : getImportAnalysisTargetCountries();
   initImportAnalysisComtradeOnly(targetCountries, getImportAnalysisSourceKey(source));
-  countries = (countries || []).filter(countryHasImportDisplayData);
+  countries = Array.isArray(countries) ? countries.slice() : [];
   countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
   if(!countries.length){
     clearImportDetailBody('Tanlangan davlatar bo‘yicha 2021–2024 import ma\'lumotlari topilmadi');
