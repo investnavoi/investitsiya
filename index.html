@@ -12851,7 +12851,7 @@ function buildImportTargetKey(targetCountries){
 
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
   var sourceScope = getImportAnalysisSourceScopeState();
-  return ['importv3', getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
+  return ['importv4', getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
     .join('_')
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
