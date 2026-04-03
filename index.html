@@ -12425,7 +12425,8 @@ async function fetchComtrade(hsCode, year, targetCountries, source){
   try {
     var countriesParam = ((targetCountries && targetCountries.length) ? targetCountries : TARGET_COUNTRIES).map(function(t){
       if(typeof t === 'string') return t;
-      return String((t && (t.name || t.label || t.comtrade || t.code)) || '').trim();
+      // Prefer comtrade code, then english name variants, then code
+      return String((t && (t.comtrade || t.name_en || t.label_en || t.name || t.label || t.code)) || '').trim();
     }).filter(Boolean).join('|');
     var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countriesParam)+'&source='+encodeURIComponent(getImportAnalysisSourceKey(source));
     if(window._apiKeys && window._apiKeys.comtrade){
