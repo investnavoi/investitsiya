@@ -14696,7 +14696,9 @@ async function collectInvestAiTradeContext(material){
       uniqueHsFetches[hsCode] = true;
       fetchedCount += 1;
       try{
+        console.log('[AI] fetchComtrade:', hsCode);
         var liveCountries = await fetchComtrade(hsCode, '2023');
+        console.log('[AI] fetchComtrade result:', liveCountries ? liveCountries.length+' countries' : 'NULL');
         if(liveCountries && liveCountries.length){
           liveByHs[hsCode] = liveCountries;
           saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real)');
@@ -14858,7 +14860,13 @@ async function analyzeInvestmentMaterial(){
       if(tradeContext && tradeContext.reason === 'raw_not_found'){
         throw new Error('Bu xomashyo bazada topilmadi. Faqat bazadagi xomashyolarni tanlang.');
       }
-      throw new Error('Bu xomashyo uchun UN Comtrade ma\'lumoti topilmadi. AI tahlil faqat UN Comtrade asosida ishlaydi.');
+      // Comtrade ma'lumoti yo'q bo'lsa ham raw/products bilan davom etamiz
+      if(tradeContext && tradeContext.raw){
+        _investAiTradeContext = tradeContext;
+        toast('⚠️ Comtrade ma\'lumoti topilmadi, mahsulot ma\'lumotlari bilan davom etilmoqda...');
+      } else {
+        throw new Error('Bu xomashyo uchun ma\'lumot topilmadi.');
+      }
     }
     var resp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
       method:'POST',
