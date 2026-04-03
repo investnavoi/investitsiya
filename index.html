@@ -14714,7 +14714,7 @@ async function collectInvestAiTradeContext(material){
       var countriesParam = TARGET_COUNTRIES.map(function(t){
         return String((t && (t.comtrade || t.name_en || t.name || t.code)) || '').trim();
       }).filter(Boolean).join('|');
-      var bulkUrl = COMTRADE_PROXY.replace('/api/comtrade','/api/comtrade-bulk') +
+      var bulkUrl = COMTRADE_PROXY +
         '?hs='+encodeURIComponent(hsCodesToFetch.join(','))+
         '&year=2023'+
         '&countries='+encodeURIComponent(countriesParam)+
