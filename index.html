@@ -14717,13 +14717,11 @@ async function collectInvestAiTradeContext(material){
         countries: liveByHs[hsCode]
       };
     }
-    if(!snapshot && !uniqueHsFetches[hsCode] && fetchedCount < 12){
+    if(!snapshot && !uniqueHsFetches[hsCode] && fetchedCount < 50){
       uniqueHsFetches[hsCode] = true;
       fetchedCount += 1;
       try{
-        console.log('[AI] fetchComtrade:', hsCode);
         var liveCountries = await fetchComtrade(hsCode, '2023');
-        console.log('[AI] fetchComtrade result:', liveCountries ? liveCountries.length+' countries' : 'NULL');
         if(liveCountries && liveCountries.length){
           liveByHs[hsCode] = liveCountries;
           saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real)');
@@ -14740,16 +14738,15 @@ async function collectInvestAiTradeContext(material){
         console.log('AI analyzer Comtrade context xato:', e.message);
       }
     }
-    if(!snapshot) continue;
-    var summarizedCountries = investAiSummarizeCountries(snapshot.countries || []);
+    var summarizedCountries = snapshot ? investAiSummarizeCountries(snapshot.countries || []) : [];
     var totalLatest = summarizedCountries.reduce(function(sum, item){ return sum + (Number(item.latestImportUsd || 0) || 0); }, 0);
     summaries.push({
       productId: String(product.id || ''),
       productName: formatBilingualProductName(product),
       hsCode: hsCode,
-      source: snapshot.source || 'UN Comtrade',
-      snapshotId: snapshot.id || '',
-      countries: snapshot.countries || [],
+      source: snapshot ? (snapshot.source || 'UN Comtrade') : 'N/A',
+      snapshotId: snapshot ? (snapshot.id || '') : '',
+      countries: snapshot ? (snapshot.countries || []) : [],
       totalLatestUsd: totalLatest,
       topCountries: summarizedCountries.slice(0,5)
     });
@@ -14766,7 +14763,7 @@ async function collectInvestAiTradeContext(material){
         hsCode: investAiParseHsCode(product.hs_code).slice(0,6) || String(product.hs_code || '')
       };
     }),
-    officialDataAvailable: summaries.length > 0,
+    officialDataAvailable: summaries.some(function(s){ return (s.countries||[]).length > 0; }),
     officialSource: summaries.length > 0 ? 'UN Comtrade' : '',
     analyzedProducts: summaries
   };
