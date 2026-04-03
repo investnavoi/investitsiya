@@ -17207,18 +17207,37 @@ async function buildAiLetterPackage(comp, lang){
   var productLabel = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || 'selected product';
   var industryLabel = comp.mahsulotNomi || comp.soha || productLabel || 'Manufacturing';
 
-  var letterPrompt = 'Write a professional business letter in '+langName+'. From Navoi Regional Investment Office, Uzbekistan to '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+' in '+(comp.davlat||'abroad')+'.\n'+
-    'Use ONLY the economic and logistics figures below. Do not invent any new numbers. If one metric is unavailable, skip it naturally.\n'+
+  var letterPrompt = 'Write a FULL, DETAILED professional business letter (minimum 5-7 paragraphs, at least 400 words) in '+langName+'.\n'+
+    'FROM: Navoi Regional Investment Office, Uzbekistan.\n'+
+    'TO: '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+', '+(comp.davlat||'abroad')+'.\n'+
+    'SUBJECT: Strategic investment and export partnership for '+productLabel+' from Navoi, Uzbekistan.\n\n'+
+    'STRUCTURE:\n'+
+    'Paragraph 1 (Opening): Formal greeting, introduce Navoi Regional Investment Office and purpose of letter.\n'+
+    'Paragraph 2 (Company recognition): Acknowledge the recipient company, its market position and the product line.\n'+
+    'Paragraph 3 (Economic opportunity): Use the economic figures below — GDP, trade data, growth rates.\n'+
+    'Paragraph 4 (Logistics & connectivity): Use transport/logistics data below — mention the 13 nearby export markets advantage.\n'+
+    'Paragraph 5 (Tariffs & trade terms): Use tariff comparison data below. Mention customs advantages where relevant.\n'+
+    'Paragraph 6 (Navoi advantages): Industrial zones, free economic zone benefits, skilled workforce, investor support.\n'+
+    'Paragraph 7 (Call to action): Specific invitation — visit, meeting, MOU, next steps. Express eagerness to partner.\n'+
+    'Paragraph 8 (Closing): Warm professional close with full signatory block.\n\n'+
+    'ECONOMIC & LOGISTICS DATA (use ALL relevant figures naturally in the letter):\n'+
     officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
     transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-    tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-    'Selected product: ' + productLabel + '.\n' +
-    'Industry / product line: '+industryLabel+'. Mention Navoi industrial advantages, workforce potential, infrastructure and investor support. Tone: professional, human, compelling.\n'+
-    'Explicitly mention that Navoi gives an export logistics advantage to 13 nearby markets when relevant.\n'+
-    (tariffLines.length ? 'If tariff comparison favors Uzbekistan for some markets, naturally mention that customs access is also stronger for those destinations.\n' : '') +
-    'IMPORTANT: First line = email subject ONLY. Second line = ===BODY===. Then letter body.\nExample:\nMarble Partnership in Navoi\n===BODY===\nDear Mr. Schmidt,\n...';
+    tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n\n'+
+    'Product: ' + productLabel + ' | Industry: '+industryLabel+'\n\n'+
+    'RULES:\n'+
+    '- Minimum 400 words, 5-7 full paragraphs\n'+
+    '- Use ONLY figures from the data above — do not invent numbers\n'+
+    '- Tone: professional, warm, compelling and specific\n'+
+    '- Do NOT use bullet points or headers inside the letter body — write in flowing prose paragraphs\n'+
+    '- Sign as: Navoi Regional Investment and Business Development Office, Navoi, Republic of Uzbekistan\n\n'+
+    'FORMAT OUTPUT:\n'+
+    'First line: email subject (no "Subject:" prefix)\n'+
+    'Second line: ===BODY===\n'+
+    'Then: full letter body\n\n'+
+    'Example format:\nStrategic Granite Partnership — Navoi, Uzbekistan\n===BODY===\nDear Mr. Schmidt,\n\n[Full letter body with 5-7 paragraphs]\n\nSincerely,\nNavoi Regional Investment and Business Development Office';
 
-  var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:3000}};
+  var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.72,maxOutputTokens:8192}};
   var data2 = await callGemini(body2);
   var letterRaw = geminiText(data2);
   var letterSubject = 'Investment Opportunity in Navoi, Uzbekistan';
