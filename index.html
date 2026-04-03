@@ -14691,66 +14691,76 @@ async function collectInvestAiTradeContext(material){
       reason: 'raw_not_found'
     };
   }
-  var uniqueHsFetches = {};
-  var liveByHs = {};
-  var fetchedCount = 0;
-  var summaries = [];
-
-  for(var i=0;i<products.length;i++){
-    var product = products[i];
+  // Step 1: Collect products with HS codes, separate cached vs uncached
+  var productsWithHs = [];
+  var hsCodesToFetch = {}; // unique HS codes not yet in snapshot
+  products.forEach(function(product){
     var hsCode = getExactImportHsCode(product);
-    if(!hsCode || hsCode.length < 2) continue;
-    // Search any snapshot for this product+hs (regardless of targetCountries key)
+    if(!hsCode || hsCode.length < 2) return;
     var snapshot = (DB.importSnapshots||[]).find(function(sn){
       return String(sn.productId)===String(product.id) &&
              String(sn.hsCode||'')===String(hsCode) &&
              /UN Comtrade/i.test(String(sn.source||'')) &&
              (sn.countries||[]).length > 0;
     }) || null;
-    if(!snapshot && liveByHs[hsCode]){
-      snapshot = {
-        id: buildImportSnapshotId(product, hsCode),
-        productId: String(product.id || ''),
-        productName: formatBilingualProductName(product),
-        hsCode: hsCode,
-        source: 'UN Comtrade (real)',
-        countries: liveByHs[hsCode]
-      };
-    }
-    if(!snapshot && !uniqueHsFetches[hsCode] && fetchedCount < 50){
-      uniqueHsFetches[hsCode] = true;
-      fetchedCount += 1;
-      try{
-        var liveCountries = await fetchComtrade(hsCode, '2023');
-        if(liveCountries && liveCountries.length){
-          liveByHs[hsCode] = liveCountries;
-          saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real)');
-          snapshot = getImportSnapshot(product, hsCode) || {
-            id: buildImportSnapshotId(product, hsCode),
-            productId: String(product.id || ''),
-            productName: formatBilingualProductName(product),
-            hsCode: hsCode,
-            source: 'UN Comtrade (real)',
-            countries: liveCountries
-          };
-        }
-      }catch(e){
-        console.log('AI analyzer Comtrade context xato:', e.message);
+    productsWithHs.push({ product: product, hsCode: hsCode, snapshot: snapshot });
+    if(!snapshot && !hsCodesToFetch[hsCode]) hsCodesToFetch[hsCode] = true;
+  });
+
+  // Step 2: Fetch missing HS codes — batch of 3 at a time to avoid rate limit
+  var liveByHs = {};
+  var codesToFetch = Object.keys(hsCodesToFetch);
+  if(codesToFetch.length > 0){
+    toast('📊 ' + codesToFetch.length + ' ta yangi HS kod yuklanmoqda...');
+    var BATCH = 3;
+    for(var b = 0; b < codesToFetch.length; b += BATCH){
+      var batch = codesToFetch.slice(b, b + BATCH);
+      var batchResults = await Promise.all(
+        batch.map(function(hsCode){
+          return fetchComtrade(hsCode, '2023')
+            .then(function(c){ return { hsCode: hsCode, countries: c }; })
+            .catch(function(){ return { hsCode: hsCode, countries: null }; });
+        })
+      );
+      batchResults.forEach(function(r){
+        if(r.countries && r.countries.length) liveByHs[r.hsCode] = r.countries;
+      });
+      // Small delay between batches to avoid rate limit
+      if(b + BATCH < codesToFetch.length){
+        await new Promise(function(res){ setTimeout(res, 600); });
       }
     }
-    var summarizedCountries = snapshot ? investAiSummarizeCountries(snapshot.countries || []) : [];
-    var totalLatest = summarizedCountries.reduce(function(sum, item){ return sum + (Number(item.latestImportUsd || 0) || 0); }, 0);
-    summaries.push({
-      productId: String(product.id || ''),
-      productName: formatBilingualProductName(product),
-      hsCode: hsCode,
-      source: snapshot ? (snapshot.source || 'UN Comtrade') : 'N/A',
-      snapshotId: snapshot ? (snapshot.id || '') : '',
-      countries: snapshot ? (snapshot.countries || []) : [],
+  }
+
+  // Step 3: Save snapshots & build summaries
+  var summaries = productsWithHs.map(function(item){
+    var snapshot = item.snapshot;
+    if(!snapshot && liveByHs[item.hsCode]){
+      saveImportSnapshot(item.product, item.hsCode, liveByHs[item.hsCode], 'UN Comtrade (real)');
+      snapshot = getImportSnapshot(item.product, item.hsCode) || {
+        id: buildImportSnapshotId(item.product, item.hsCode),
+        productId: String(item.product.id || ''),
+        productName: formatBilingualProductName(item.product),
+        hsCode: item.hsCode,
+        source: 'UN Comtrade (real)',
+        countries: liveByHs[item.hsCode]
+      };
+    }
+    // Only include if snapshot has actual data
+    if(!snapshot || !(snapshot.countries||[]).length) return null;
+    var summarizedCountries = investAiSummarizeCountries(snapshot.countries || []);
+    var totalLatest = summarizedCountries.reduce(function(s,c){ return s+(Number(c.latestImportUsd||0)||0); }, 0);
+    return {
+      productId: String(item.product.id || ''),
+      productName: formatBilingualProductName(item.product),
+      hsCode: item.hsCode,
+      source: snapshot.source || 'UN Comtrade',
+      snapshotId: snapshot.id || '',
+      countries: snapshot.countries || [],
       totalLatestUsd: totalLatest,
       topCountries: summarizedCountries.slice(0,5)
-    });
-  }
+    };
+  }).filter(Boolean);
 
   return {
     material: material,
@@ -14763,7 +14773,7 @@ async function collectInvestAiTradeContext(material){
         hsCode: investAiParseHsCode(product.hs_code).slice(0,6) || String(product.hs_code || '')
       };
     }),
-    officialDataAvailable: summaries.some(function(s){ return (s.countries||[]).length > 0; }),
+    officialDataAvailable: summaries.length > 0,
     officialSource: summaries.length > 0 ? 'UN Comtrade' : '',
     analyzedProducts: summaries
   };
