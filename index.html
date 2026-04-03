@@ -12432,15 +12432,18 @@ async function fetchComtrade(hsCode, year, targetCountries, source){
       url += '&key='+encodeURIComponent(window._apiKeys.comtrade);
     }
     // Add source countries filter if selected
-    var srcSel = getFinderSourceSelection();
-    if(srcSel.hasFilter && srcSel.effectiveCountries.length){
-      url += '&sourceCountries='+encodeURIComponent(srcSel.effectiveCountries.join('|'));
-    }
+    try {
+      var srcSel = getFinderSourceSelection();
+      if(srcSel && srcSel.hasFilter && srcSel.effectiveCountries && srcSel.effectiveCountries.length){
+        url += '&sourceCountries='+encodeURIComponent(srcSel.effectiveCountries.join('|'));
+      }
+    } catch(selErr){ console.log('sourceSelection xato:', selErr.message); }
     var resp = await fetch(url);
     if(!resp.ok) throw new Error('Comtrade proxy: '+resp.status);
     var data = await resp.json();
+    console.log('[fetchComtrade] response:', data && data.countries ? data.countries.length+' countries' : 'no countries', 'url:', url.slice(0,120));
     if(data.countries && data.countries.length>0) return data.countries;
-  } catch(e){ console.log('Comtrade API xato:',e.message); }
+  } catch(e){ console.log('Comtrade API xato:', e.message, e.stack); }
   return null;
 }
 
