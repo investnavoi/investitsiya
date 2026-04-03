@@ -13035,6 +13035,7 @@ function renderCountryImportAccordion(countries, getCountryMeta){
   var sortedCountries = (countries || []).slice().sort(function(a, b){
     return (b.import_usd || 0) - (a.import_usd || 0);
   });
+  var singleCountryMode = sortedCountries.length === 1;
   if(!sortedCountries.length){
     clearImportDetailBody('Batafsil import ma\'lumotlari topilmadi');
     return;
@@ -13100,6 +13101,10 @@ function renderCountryImportAccordion(countries, getCountryMeta){
         sourceRowsHtml +
       '</details>';
     }).join('');
+
+    if(singleCountryMode){
+      return '<div class="import-country-years">' + yearBlocks + '</div>';
+    }
 
     return '<details class="import-country-item"' + (index === 0 ? ' open' : '') + '>' +
       '<summary class="import-country-summary">' +
