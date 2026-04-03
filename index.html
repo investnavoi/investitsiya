@@ -1091,34 +1091,13 @@ input[type="time"]{-webkit-appearance:none;}
 .csd-item:hover{background:rgba(67,97,238,.06);color:var(--text);}
 .csd-item:last-child{border-bottom:none;}
 .csd-item.selected{background:rgba(67,97,238,.1);color:var(--blue);font-weight:600;}
-
-/* ── Loading Spinner ── */
-.spinner {
-  background-image: linear-gradient(rgb(186, 66, 255) 35%, rgb(0, 225, 255));
-  width: 100px;
-  height: 100px;
-  animation: spinning82341 1.7s linear infinite;
-  text-align: center;
-  border-radius: 50px;
-  filter: blur(1px);
-  box-shadow: 0px -5px 20px 0px rgb(186, 66, 255), 0px 5px 20px 0px rgb(0, 225, 255);
-}
-.spinner1 {
-  background-color: rgb(36, 36, 36);
-  width: 100px;
-  height: 100px;
-  border-radius: 50px;
-  filter: blur(10px);
-}
-@keyframes spinning82341 {
-  to { transform: rotate(360deg); }
-}
 </style>
 </head>
 <body>
 <!-- Firebase loading overlay -->
-<div id="fb-loading" style="display:none;position:fixed;inset:0;background:rgba(15,22,41,.92);z-index:99999;align-items:center;justify-content:center;flex-direction:column;gap:1.5rem">
-  <div class="spinner"><div class="spinner1"></div></div>
+<div id="fb-loading" style="display:none;position:fixed;inset:0;background:rgba(15,22,41,.85);z-index:99999;align-items:center;justify-content:center;flex-direction:column;gap:1rem">
+  <div style="width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#4361EE;border-radius:50%;animation:spin .8s linear infinite"></div>
+  <div style="color:#fff;font-size:.9rem;font-weight:600">Firebase ma'lumotlari yuklanmoqda...</div>
 </div>
 
 <!-- ===== SIDEBAR DESIGN ===== -->
@@ -14691,58 +14670,10 @@ async function collectInvestAiTradeContext(material){
       reason: 'raw_not_found'
     };
   }
+  var uniqueHsFetches = {};
   var liveByHs = {};
+  var fetchedCount = 0;
   var summaries = [];
-
-  // --- PHASE 1: Collect unique HS codes needing live fetch (skip cached) ---
-  var hsCodesToFetch = [];
-  for(var pi=0;pi<products.length;pi++){
-    var pcheck = products[pi];
-    var hcheck = getExactImportHsCode(pcheck);
-    if(!hcheck || hcheck.length < 2) continue;
-    var cached = (DB.importSnapshots||[]).find(function(sn){
-      return String(sn.hsCode||'')===String(hcheck) &&
-             /UN Comtrade/i.test(String(sn.source||'')) &&
-             (sn.countries||[]).length > 0;
-    });
-    if(!cached && hsCodesToFetch.indexOf(hcheck) === -1) hsCodesToFetch.push(hcheck);
-  }
-
-  // --- PHASE 1: Bulk parallel fetch for all uncached HS codes ---
-  if(hsCodesToFetch.length > 0){
-    try{
-      var countriesParam = TARGET_COUNTRIES.map(function(t){
-        return String((t && (t.comtrade || t.name_en || t.name || t.code)) || '').trim();
-      }).filter(Boolean).join('|');
-      var bulkUrl = COMTRADE_PROXY +
-        '?hs='+encodeURIComponent(hsCodesToFetch.join(','))+
-        '&year=2023'+
-        '&countries='+encodeURIComponent(countriesParam)+
-        '&source='+encodeURIComponent(getImportAnalysisSourceKey());
-      if(window._apiKeys && window._apiKeys.comtrade){
-        bulkUrl += '&key='+encodeURIComponent(window._apiKeys.comtrade);
-      }
-      var bulkResp = await fetch(bulkUrl);
-      if(bulkResp.ok){
-        var bulkData = await bulkResp.json();
-        var bulkResults = bulkData.results || {};
-        Object.keys(bulkResults).forEach(function(hs){
-          var entry = bulkResults[hs];
-          if(entry && entry.countries && entry.countries.length) liveByHs[hs] = entry.countries;
-        });
-      }
-    }catch(e){
-      console.log('AI analyzer bulk Comtrade xato:', e.message);
-    }
-    // Save snapshots for freshly fetched HS codes
-    for(var pi2=0;pi2<products.length;pi2++){
-      var prod2 = products[pi2];
-      var hs2 = getExactImportHsCode(prod2);
-      if(hs2 && liveByHs[hs2]){
-        saveImportSnapshot(prod2, hs2, liveByHs[hs2], 'UN Comtrade (real)');
-      }
-    }
-  }
 
   for(var i=0;i<products.length;i++){
     var product = products[i];
@@ -14754,6 +14685,7 @@ async function collectInvestAiTradeContext(material){
              /UN Comtrade/i.test(String(sn.source||'')) &&
              (sn.countries||[]).length > 0;
     }) || null;
+    // If same HS already fetched, reuse data for this product
     if(!snapshot && liveByHs[hsCode]){
       snapshot = {
         id: buildImportSnapshotId(product, hsCode),
@@ -14764,13 +14696,36 @@ async function collectInvestAiTradeContext(material){
         countries: liveByHs[hsCode]
       };
     }
+    // If no snapshot and HS not yet fetched, fetch from API
+    if(!snapshot && !uniqueHsFetches[hsCode]){
+      uniqueHsFetches[hsCode] = true;
+      fetchedCount += 1;
+      try{
+        var liveCountries = await fetchComtrade(hsCode, '2023');
+        if(liveCountries && liveCountries.length){
+          liveByHs[hsCode] = liveCountries;
+          saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real)');
+          snapshot = {
+            id: buildImportSnapshotId(product, hsCode),
+            productId: String(product.id || ''),
+            productName: formatBilingualProductName(product),
+            hsCode: hsCode,
+            source: 'UN Comtrade (real)',
+            countries: liveCountries
+          };
+        }
+      }catch(e){
+        console.log('AI analyzer Comtrade context xato:', e.message);
+      }
+    }
+    // Try any cached snapshot with same HS code from DB
     if(!snapshot){
-      var anySnap2 = (DB.importSnapshots||[]).find(function(sn){
+      var anySnap = (DB.importSnapshots||[]).find(function(sn){
         return String(sn.hsCode||'')===String(hsCode) &&
                /UN Comtrade/i.test(String(sn.source||'')) &&
                (sn.countries||[]).length > 0;
       });
-      if(anySnap2) snapshot = anySnap2;
+      if(anySnap) snapshot = anySnap;
     }
     if(!snapshot || !(snapshot.countries||[]).length) continue;
     // Expand countries from compressed format for correct year_imports access
