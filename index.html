@@ -12569,6 +12569,21 @@ var WB_COUNTRIES = [
   {iso:'MNG',code:'MN',name:"Mo'g'uliston",flag:'🇲🇳'}
 ];
 
+var WB_FALLBACK = {
+  RUS:{gdp:14889, ind:30.7, pop:143.5},
+  KAZ:{gdp:14155, ind:32.1, pop:20.6},
+  KGZ:{gdp:2420, ind:24.7, pop:7.2},
+  TJK:{gdp:1341, ind:33.6, pop:10.6},
+  TKM:{gdp:6857, ind:37.5, pop:7.5},
+  AZE:{gdp:7284, ind:42.6, pop:10.2},
+  GEO:{gdp:9241, ind:19.6, pop:3.7},
+  ARM:{gdp:8556, ind:22.9, pop:3.0},
+  AFG:{gdp:414, ind:13.4, pop:42.6},
+  IRN:{gdp:5190, ind:36.1, pop:91.6},
+  PAK:{gdp:1479, ind:20.2, pop:251.3},
+  MNG:{gdp:6751, ind:38.1, pop:3.5}
+};
+
 // O'zbekiston IEZ ma'lumotlari (solishtirish uchun)
 var UZB_DATA = {
   iso:'UZB', code:'UZ', name:"O'zbekiston (Navoiy IEZ)", flag:'🇺🇿',
@@ -12631,6 +12646,11 @@ async function loadWorldBankData(){
   var emplData = results[3];
   var impData = results[4];
   var wageData = results[5] || {};
+  var cachedRows = (((DB||{}).worldBankData||{}).countries || []);
+  var cachedByIso = {};
+  cachedRows.forEach(function(r){
+    if(r && r.iso) cachedByIso[r.iso] = r;
+  });
 
   document.getElementById('wbLoading').style.display = 'none';
   document.getElementById('wbData').style.display = 'block';
@@ -12647,6 +12667,8 @@ async function loadWorldBankData(){
 
   // Build table
   var rows = WB_COUNTRIES.map(function(c){
+    var cached = cachedByIso[c.iso] || {};
+    var fallback = WB_FALLBACK[c.iso] || {};
     var gdp = gdpData[c.iso] ? Math.round(gdpData[c.iso].value) : '—';
     var ind = indData[c.iso] ? Math.round(indData[c.iso].value*10)/10 : '—';
     var pop = popData[c.iso] ? Math.round(popData[c.iso].value/1e6*10)/10 : '—';
@@ -12654,6 +12676,24 @@ async function loadWorldBankData(){
     var imp = impData[c.iso] ? Math.round(impData[c.iso].value/1e9*10)/10 : '—';
     var wageMeta = wageData[c.iso] && !wageData[c.iso].error ? wageData[c.iso] : null;
     var officialWage = wageMeta && typeof wageMeta.value === 'number' && !isNaN(wageMeta.value) ? Math.round(wageMeta.value) : '—';
+    if(gdp === 'вЂ”' && typeof cached.gdp === 'number') gdp = cached.gdp;
+    if(gdp === 'вЂ”' && typeof fallback.gdp === 'number') gdp = fallback.gdp;
+    if(ind === 'вЂ”' && typeof cached.ind === 'number') ind = cached.ind;
+    if(ind === 'вЂ”' && typeof fallback.ind === 'number') ind = fallback.ind;
+    if(pop === 'вЂ”' && typeof cached.pop === 'number') pop = cached.pop;
+    if(pop === 'вЂ”' && typeof fallback.pop === 'number') pop = fallback.pop;
+    if(empl === 'вЂ”' && typeof cached.empl === 'number') empl = cached.empl;
+    if(imp === 'вЂ”' && typeof cached.imp === 'number') imp = cached.imp;
+    if(officialWage === 'вЂ”' && typeof cached.wage === 'number') officialWage = cached.wage;
+    if(gdp === 'вЂ”' && typeof cached.gdp === 'number') gdp = cached.gdp;
+    if(gdp === 'вЂ”' && typeof fallback.gdp === 'number') gdp = fallback.gdp;
+    if(ind === 'вЂ”' && typeof cached.ind === 'number') ind = cached.ind;
+    if(ind === 'вЂ”' && typeof fallback.ind === 'number') ind = fallback.ind;
+    if(pop === 'вЂ”' && typeof cached.pop === 'number') pop = cached.pop;
+    if(pop === 'вЂ”' && typeof fallback.pop === 'number') pop = fallback.pop;
+    if(empl === 'вЂ”' && typeof cached.empl === 'number') empl = cached.empl;
+    if(imp === 'вЂ”' && typeof cached.imp === 'number') imp = cached.imp;
+    if(officialWage === 'вЂ”' && typeof cached.wage === 'number') officialWage = cached.wage;
     // Taxminiy elektr narxi (mintaqaviy o'rtacha)
     var estElec = gdp !== '—' ? (gdp > 10000 ? 0.15 : gdp > 5000 ? 0.08 : gdp > 2000 ? 0.05 : 0.03) : '—';
 
@@ -12669,6 +12709,9 @@ async function loadWorldBankData(){
   var totalImp = rows.reduce(function(s,r){return s+(typeof r.imp==='number'?r.imp:0);},0);
   var avgGdp = rows.filter(function(r){return typeof r.gdp==='number';});
   var avgGdpVal = avgGdp.length ? Math.round(avgGdp.reduce(function(s,r){return s+r.gdp;},0)/avgGdp.length) : 0;
+  var totalPopDisplay = totalPop > 0 ? Math.round(totalPop)+' mln' : 'вЂ”';
+  var avgGdpDisplay = avgGdpVal > 0 ? '$'+avgGdpVal.toLocaleString() : 'вЂ”';
+  var totalImpDisplay = totalImp > 0 ? '$'+Math.round(totalImp)+'B' : 'вЂ”';
 
   document.getElementById('wbKpiGrid').innerHTML =
     '<div style="padding:.8rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">🌍</div><div style="font-size:.6rem;color:var(--text3)">12 davlat aholisi</div><div style="font-size:1rem;font-weight:800;color:var(--text)">'+Math.round(totalPop)+' mln</div></div>'+
@@ -12796,7 +12839,7 @@ function buildImportTargetKey(targetCountries){
 }
 
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
-  return ['import', getImportAnalysisSnapshotSourceKey(source), (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
+  return ['importv2', getImportAnalysisSnapshotSourceKey(source), (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
     .join('_')
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
