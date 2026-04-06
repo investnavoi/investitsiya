@@ -1220,7 +1220,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="pg-sub" data-i18n="page_overview_sub">Barcha bo'limlar bo'yicha umumlashtirilgan hisobot</div>
     </div>
     <div class="sum-card">
-      <div class="sum-tag" id="sumTag">📋 OYLIK HISOBOT</div>
+      <div class="sum-tag" data-i18n="monthly_report" id="sumTag">📋 OYLIK HISOBOT</div>
       <div class="sum-txt" id="sumTxt">Ma'lumotlar yuklanmoqda...</div>
     </div>
     <div class="kpi-grid">
@@ -1231,11 +1231,11 @@ input[type="time"]{-webkit-appearance:none;}
     </div>
     <div class="two-col">
       <div class="widget">
-        <div class="w-title">📈 Soha bo'yicha taqsimot</div>
+        <div class="w-title" data-i18n="ov_sector_title">📈 Soha bo'yicha taqsimot</div>
         <div id="industryProg"><div class="tc-empty"><div class="tc-empty-icon">📊</div><p>Ma'lumot kiritilgach ko'rinadi</p></div></div>
       </div>
       <div class="widget">
-        <div class="w-title">⚡ Oxirgi faoliyat</div>
+        <div class="w-title" data-i18n="ov_activity_title">⚡ Oxirgi faoliyat</div>
         <div id="recentActivity"><div class="tc-empty"><div class="tc-empty-icon">📝</div><p>Hali faoliyat yo'q</p></div></div>
       </div>
     </div>
@@ -3256,6 +3256,9 @@ const TRANSLATIONS = {
     page_finder_title:"🔍 Kompaniya qidiruvi", page_finder_sub:"Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish",
     page_pipeline_title:"📋 Outreach statistikasi — Investorlar Kanban", page_pipeline_sub:"Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha",
     page_trade_title:"🌐 Xalqaro Savdo Ma'lumotlari", page_settings_title:"⚙️ Sozlamalar", page_settings_sub:"Navoiy IEZ tariflari, API kalitlar, tizim sozlamalari",
+    lbl_zoom_meeting:"Zoom uchrashuvi",
+    ov_sector_title:"📈 Soha bo'yicha taqsimot", ov_activity_title:"⚡ Oxirgi faoliyat",
+    ov_no_activity:"Hali faoliyat yo'q", ov_no_data_yet:"Ma'lumot kiritilagach ko'rinadi",
     ov_k1_lbl:"Investorlar Tashriflari", ov_k2_lbl:"Zoom Uchrashuvlar",
     ov_k3_lbl:"Forumlar", ov_k4_lbl:"Mahalliy Bizneslar",
     lbl_this_month:"Bu oy", lbl_listed:"Ro'yxatda",
@@ -3275,6 +3278,9 @@ const TRANSLATIONS = {
     page_finder_title:"🔍 Поиск компаний", page_finder_sub:"Поиск компаний-импортёров в соседних странах",
     page_pipeline_title:"📋 Статистика охвата — Канбан", page_pipeline_sub:"Отслеживание всех лидов — от поиска компании до MOU",
     page_trade_title:"🌐 Мировые торговые данные", page_settings_title:"⚙️ Настройки", page_settings_sub:"Тарифы Navoi IEZ, API ключи, системные настройки",
+    lbl_zoom_meeting:"Zoom встреча",
+    ov_sector_title:"📈 По отраслям", ov_activity_title:"⚡ Последняя активность",
+    ov_no_activity:"Активности пока нет", ov_no_data_yet:"Появится после ввода данных",
     ov_k1_lbl:"Визиты инвесторов", ov_k2_lbl:"Zoom встречи",
     ov_k3_lbl:"Форумы", ov_k4_lbl:"Местный бизнес",
     lbl_this_month:"В этом месяце", lbl_listed:"В реестре",
@@ -3404,6 +3410,9 @@ const TRANSLATIONS = {
     page_finder_title:"🔍 Company Search", page_finder_sub:"Find companies importing to neighboring countries",
     page_pipeline_title:"📋 Outreach Statistics — Kanban", page_pipeline_sub:"Track all leads from company search to MOU",
     page_trade_title:"🌐 World Trade Data", page_settings_title:"⚙️ Settings", page_settings_sub:"Navoiy IEZ tariffs, API keys, system settings",
+    lbl_zoom_meeting:"Zoom meeting",
+    ov_sector_title:"📈 By Sector", ov_activity_title:"⚡ Recent Activity",
+    ov_no_activity:"No activity yet", ov_no_data_yet:"Will appear after data entry",
     ov_k1_lbl:"Investor Visits", ov_k2_lbl:"Zoom Meetings",
     ov_k3_lbl:"Forums", ov_k4_lbl:"Local Business",
     lbl_this_month:"This month", lbl_listed:"Listed",
@@ -4001,7 +4010,7 @@ function renderOverview(){
     summary=`<strong>${cmn} ${curYear}</strong> monthly report: <strong>${mInv.length} foreign investor(s)</strong> visited this month. <strong>${mZoom.length} Zoom meeting(s)</strong> held${mZoom.length>0?`, of which <strong>${ijobiy}</strong> had positive outcomes.`:`.`} ${mFr.length>0?`<strong>${mFr.length} forum/exhibition(s)</strong> planned.`:''} Local entrepreneur database: <strong>$${Math.round(totalLocal/1e6)||0}M</strong> across ${DB.local.length} projects.`;
   }
 
-  document.getElementById('sumTag').textContent=`📋 ${cmn.toUpperCase()} ${curYear} — OYLIK HISOBOT`;
+  document.getElementById('sumTag').textContent=`📋 ${cmn.toUpperCase()} ${curYear} — ${tr('monthly_report')}`;
   document.getElementById('sumTxt').innerHTML=summary;
   document.getElementById('ov-k1').textContent=mInv.length;
   document.getElementById('ov-k2').textContent=mZoom.length;
@@ -4023,14 +4032,14 @@ function renderOverview(){
         <div class="prog-track"><div class="prog-bar ${colors[i]}" style="width:${Math.round(val/total*100)}%"></div></div>
       </div>`).join('');
   } else {
-    progEl.innerHTML='<div class="tc-empty"><div class="tc-empty-icon">📊</div><p>Ma\'lumot kiritilgach ko\'rinadi</p></div>';
+    progEl.innerHTML='<div class="tc-empty"><div class="tc-empty-icon">📊</div><p>'+tr('ov_no_data_yet')+'</p></div>';
   }
 
   // Activity
   const acts=[];
   const src=mInv.length||mZoom.length?{inv:mInv,zoom:mZoom}:{inv:DB.investors,zoom:DB.zoom};
   src.inv.slice(-3).forEach(r=>acts.push({c:'#4361EE',text:`<b>${r.kompaniya}</b> — ${r.davlat||''}`,time:fmtDate(r.sana)}));
-  src.zoom.slice(-2).forEach(r=>acts.push({c:'#06D6A0',text:`<b>${r.ism}</b> Zoom uchrashuvi`,time:fmtDate(r.sana)}));
+  src.zoom.slice(-2).forEach(r=>acts.push({c:'#06D6A0',text:`<b>${r.ism}</b> ${tr('lbl_zoom_meeting')}`,time:fmtDate(r.sana)}));
   const actEl=document.getElementById('recentActivity');
   if(acts.length){
     actEl.innerHTML=acts.slice(0,6).map(a=>`
@@ -4039,7 +4048,7 @@ function renderOverview(){
         <div><div class="act-text">${a.text}</div><div class="act-time">${a.time}</div></div>
       </div>`).join('');
   } else {
-    actEl.innerHTML='<div class="tc-empty"><div class="tc-empty-icon">📝</div><p>Hali faoliyat yo\'q</p></div>';
+    actEl.innerHTML='<div class="tc-empty"><div class="tc-empty-icon">📝</div><p>'+tr('ov_no_activity')+'</p></div>';
   }
 }
 
