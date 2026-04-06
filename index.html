@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+v<!DOCTYPE html>
 <html lang="uz" data-theme="light">
 <head>
 <meta charset="UTF-8">
@@ -167,9 +167,7 @@ async function loadFromFirestore(){
     await loadApiKeys();
     await fbLoadSettings();
     renderAll();
-    // Restore page from URL hash after Firebase load
-    var _fbHash = (window.location.hash || '').replace('#','').trim();
-    showPage(['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings'].indexOf(_fbHash) !== -1 ? _fbHash : (currentPage || 'overview'));
+    renderOverview();
     if(typeof applyTranslations==='function') applyTranslations();
     console.log('✅ Firebase: ma\'lumotlar yuklandi. Jami:', totalDocs);
   } catch(e){
@@ -177,8 +175,7 @@ async function loadFromFirestore(){
     const loadEl = document.getElementById('fb-loading');
     if(loadEl) loadEl.style.display = 'none';
     renderAll();
-    var _fbHash2 = (window.location.hash || '').replace('#','').trim();
-    showPage(['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings'].indexOf(_fbHash2) !== -1 ? _fbHash2 : (currentPage || 'overview'));
+    renderOverview();
     if(typeof applyTranslations==='function') applyTranslations();
   }
 }
@@ -1086,7 +1083,11 @@ input[type="time"]{-webkit-appearance:none;}
   .trade-subtabs{padding:.7rem .7rem .15rem}
 }
 /* ===== AI CHATBOT WIDGET ===== */
-
+.chat-fab{position:fixed;left:1.2rem;bottom:1.5rem;z-index:350;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;box-shadow:0 4px 20px rgba(66,133,244,.5);transition:all .2s;}
+.chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(66,133,244,.6)}
+.chat-fab .dot{position:absolute;top:2px;right:2px;width:12px;height:12px;background:#EA4335;border-radius:50%;border:2px solid var(--bg);display:none}
+.chat-panel{position:fixed;left:1.2rem;bottom:5rem;z-index:350;width:380px;max-width:calc(100vw - 2rem);height:520px;max-height:calc(100vh - 7rem);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;animation:fadeUp .2s ease}
+.chat-panel.open{display:flex}
 .chat-head{background:linear-gradient(135deg,#4285F4,#34A853);padding:14px 16px;display:flex;align-items:center;gap:10px}
 .chat-head-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px}
 .chat-head-info{flex:1}
@@ -1104,6 +1105,7 @@ input[type="time"]{-webkit-appearance:none;}
 .chat-send{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);border:none;cursor:pointer;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .chat-send:hover{transform:scale(1.05)}
 .chat-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
+@media(max-width:600px){.chat-panel{left:.5rem;right:.5rem;bottom:4.5rem;width:auto;height:calc(100vh - 6rem)}.chat-fab{left:.8rem;bottom:.8rem;width:48px;height:48px;font-size:20px}}
 /* ═══ CUSTOM COLLAPSIBLE SELECT ═══ */
 .custom-select-wrap{position:relative;width:100%;}
 .custom-select-display{cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:38px;user-select:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:28px!important;background:var(--card)!important;color:var(--text);}
@@ -1135,7 +1137,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- Firebase loading overlay -->
 <div id="fb-loading" style="display:none;position:fixed;inset:0;background:rgba(15,22,41,.85);z-index:99999;align-items:center;justify-content:center;flex-direction:column;gap:1rem">
   <div style="width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#4361EE;border-radius:50%;animation:spin .8s linear infinite"></div>
-  <div style="color:#fff;font-size:.9rem;font-weight:600" data-i18n="fb_loading">Firebase ma'lumotlari yuklanmoqda...</div>
+  <div style="color:#fff;font-size:.9rem;font-weight:600">Firebase ma'lumotlari yuklanmoqda...</div>
 </div>
 
 <!-- ===== SIDEBAR DESIGN ===== -->
@@ -1148,7 +1150,7 @@ input[type="time"]{-webkit-appearance:none;}
   <div class="sidebar-divider"></div>
   <div class="sb-group" id="sb-group-sections">
     <button class="sb-group-head" id="sb-group-head-sections" type="button" onclick="toggleSidebarGroup('sections')">
-      <span class="sb-group-head-main"><span class="sb-group-emoji">🗂</span><span class="sb-group-title" data-i18n="nav_dept">Bo'lim ma'lumotlari</span></span>
+      <span class="sb-group-head-main"><span class="sb-group-emoji">🗂</span><span class="sb-group-title">Bo'lim ma'lumotlari</span></span>
       <span class="sb-group-caret">▾</span>
     </button>
     <div class="sb-group-body" id="sb-group-body-sections">
@@ -1160,14 +1162,14 @@ input[type="time"]{-webkit-appearance:none;}
   </div>
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-label">Outreach</div>
-  <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_products">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
-  <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_finder">Kompaniya qidiruvi</span></button>
+  <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
+  <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Kompaniya qidiruvi</span></button>
   <button class="sb-tab" id="tab-investor" onclick="showPage('investor')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investorco">Investorlar bazasi</span><span class="sb-badge" id="badge-investorco">0</span></button>
-<button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_pipeline">Outreach statistikasi</span></button>
-  <button class="sb-tab" id="tab-trade" onclick="showPage('trade')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_trade">Jahon tashqi savdosi</span></button>
+<button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Outreach statistikasi</span></button>
+  <button class="sb-tab" id="tab-trade" onclick="showPage('trade')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Jahon tashqi savdosi</span></button>
   <button class="sb-tab" id="tab-forums" onclick="showPage('forums')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_forums">Forumlar</span><span class="sb-badge" id="badge-forums">0</span></button>
   <div class="sidebar-divider"></div>
-  <button class="sb-tab" id="tab-settings" onclick="showPage('settings')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_settings">Sozlamalar</span></button>
+  <button class="sb-tab" id="tab-settings" onclick="showPage('settings')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Sozlamalar</span></button>
   <button class="sb-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()"><span class="sb-tab-icon"></span><span class="sb-tab-label" id="adminTabLabel" data-i18n="nav_login">Admin</span></button>
 </div>
 
@@ -1189,7 +1191,7 @@ input[type="time"]{-webkit-appearance:none;}
           <div class="notif-bell" onclick="toggleNotifPanel()" title="Email xabarnomalar">🔔<div class="notif-dot" id="notifDot"></div><div class="notif-count" id="notifCount">0</div></div>
           <div class="notif-panel" id="notifPanel">
             <div class="notif-panel-head"><span class="notif-panel-title">📧 Email Javoblar</span><div class="notif-panel-actions"><span id="gmailStatus" style="font-size:.6rem;color:rgba(200,215,255,.6)">Ulanmagan</span><button class="notif-gmail-btn" id="gmailConnectBtn" onclick="openGmailSetup()">Gmail ulash</button></div></div>
-            <div class="notif-list" id="notifList"><div class="notif-empty" data-i18n="gmail_connect">Gmail'ga ulaning - javoblar shu yerda ko'rinadi</div></div>
+            <div class="notif-list" id="notifList"><div class="notif-empty">Gmail'ga ulaning - javoblar shu yerda ko'rinadi</div></div>
             <div class="notif-footer"><span style="font-size:.62rem;color:var(--text3)" id="notifLastCheck">Tekshirilmagan</span><div style="display:flex;gap:.4rem;align-items:center"><select id="pollIntervalSelect" onchange="changePollInterval()" style="font-size:.6rem;padding:2px 6px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer"><option value="30">30s</option><option value="60" selected>1 daq</option><option value="120">2 daq</option><option value="300">5 daq</option><option value="0">O'chiq</option></select><button class="btn btn-ghost btn-sm" onclick="forceRecheckGmail()" style="font-size:.6rem;padding:3px 8px" title="Tozalab qayta tekshirish">↻</button><button class="btn btn-ghost btn-sm" onclick="checkGmailReplies(true)" style="font-size:.6rem;padding:3px 8px">🔄</button></div></div>
           </div>
         </div>
@@ -1211,26 +1213,26 @@ input[type="time"]{-webkit-appearance:none;}
 <div class="page active" id="page-overview">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:block">
-      <div class="pg-title" data-i18n="page_overview_title">Umumiy ma'lumotlar</div>
-      <div class="pg-sub" data-i18n="page_overview_sub">Barcha bo'limlar bo'yicha umumlashtirilgan hisobot</div>
+      <div class="pg-title">Umumiy ma'lumotlar</div>
+      <div class="pg-sub">Barcha bo'limlar bo'yicha umumlashtirilgan hisobot</div>
     </div>
     <div class="sum-card">
-      <div class="sum-tag" data-i18n="monthly_report" id="sumTag">📋 OYLIK HISOBOT</div>
+      <div class="sum-tag" id="sumTag">📋 OYLIK HISOBOT</div>
       <div class="sum-txt" id="sumTxt">Ma'lumotlar yuklanmoqda...</div>
     </div>
     <div class="kpi-grid">
-      <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label" data-i18n="ov_k1_lbl">Investorlar Tashriflari</div><div class="kpi-val" id="ov-k1">0</div><div class="kpi-trend" data-i18n="lbl_this_month" id="ov-t1">Bu oy</div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">💻</div><div class="kpi-label" data-i18n="ov_k2_lbl">Zoom Uchrashuvlar</div><div class="kpi-val" id="ov-k2">0</div><div class="kpi-trend" data-i18n="lbl_this_month" id="ov-t2">Bu oy</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">🗓</div><div class="kpi-label" data-i18n="ov_k3_lbl">Forumlar</div><div class="kpi-val" id="ov-k3">0</div><div class="kpi-trend" data-i18n="lbl_this_month" id="ov-t3">Bu oy</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">🏢</div><div class="kpi-label" data-i18n="ov_k4_lbl">Mahalliy Bizneslar</div><div class="kpi-val" id="ov-k4">0</div><div class="kpi-trend" data-i18n="lbl_listed">Ro'yxatda</div></div>
+      <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label">Investorlar Tashriflari</div><div class="kpi-val" id="ov-k1">0</div><div class="kpi-trend" id="ov-t1">Bu oy</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">💻</div><div class="kpi-label">Zoom Uchrashuvlar</div><div class="kpi-val" id="ov-k2">0</div><div class="kpi-trend" id="ov-t2">Bu oy</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">🗓</div><div class="kpi-label">Forumlar</div><div class="kpi-val" id="ov-k3">0</div><div class="kpi-trend" id="ov-t3">Bu oy</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">🏢</div><div class="kpi-label">Mahalliy Bizneslar</div><div class="kpi-val" id="ov-k4">0</div><div class="kpi-trend">Ro'yxatda</div></div>
     </div>
     <div class="two-col">
       <div class="widget">
-        <div class="w-title" data-i18n="ov_sector_title">📈 Soha bo'yicha taqsimot</div>
+        <div class="w-title">📈 Soha bo'yicha taqsimot</div>
         <div id="industryProg"><div class="tc-empty"><div class="tc-empty-icon">📊</div><p>Ma'lumot kiritilgach ko'rinadi</p></div></div>
       </div>
       <div class="widget">
-        <div class="w-title" data-i18n="ov_activity_title">⚡ Oxirgi faoliyat</div>
+        <div class="w-title">⚡ Oxirgi faoliyat</div>
         <div id="recentActivity"><div class="tc-empty"><div class="tc-empty-icon">📝</div><p>Hali faoliyat yo'q</p></div></div>
       </div>
     </div>
@@ -1359,7 +1361,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
         <div>
           <div style="font-size:1.05rem;font-weight:700;color:var(--text)">🌍 2026-yil Xalqaro Investitsiya Forumlari</div>
-          <div style="font-size:.72rem;color:var(--text3);margin-top:2px" data-i18n="region_forums">Mintaqalar bo'yicha rejalashtirilgan yirik tadbirlar</div>
+          <div style="font-size:.72rem;color:var(--text3);margin-top:2px">Mintaqalar bo'yicha rejalashtirilgan yirik tadbirlar</div>
         </div>
         <div style="font-size:.68rem;color:var(--text3)" id="intl-total-count"></div>
       </div>
@@ -1475,7 +1477,7 @@ input[type="time"]{-webkit-appearance:none;}
             🤖 AI xat yozish
           </button>
           <button class="btn btn-blue btn-sm" onclick="sendBulkEmail()" id="bulkSendBtn" style="display:none">
-            <span data-i18n="btn_bulk_send" data-i18n="btn_send_selected">📧 Tanlanganlarga yuborish</span>
+            <span data-i18n="btn_bulk_send">📧 Tanlanganlarga yuborish</span>
           </button>
           <button class="btn btn-sm" onclick="openBulkScheduleModal()" id="bulkSchedBtn" style="display:none;background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">
             📅 Barchasiga rejalashtirish
@@ -1523,7 +1525,7 @@ input[type="time"]{-webkit-appearance:none;}
                   <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none;padding:6px 10px;white-space:nowrap">Tozalash</button>
                 </div>
               </th>
-              <th data-i18n="col_detail">Batafsil</th>
+              <th>Batafsil</th>
               <th data-i18n="col_emailstatus">Email holati</th>
               <th data-i18n="col_actions">Amal</th>
             </tr>
@@ -1555,7 +1557,7 @@ input[type="time"]{-webkit-appearance:none;}
     <div id="investorAiWorkspace" class="tcard" style="display:none;margin-top:1rem">
       <div class="tc-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
         <div>
-          <div class="tc-title" data-i18n="btn_ai_letter">📧 Investor uchun AI tahlil va xat</div>
+          <div class="tc-title">📧 Investor uchun AI tahlil va xat</div>
           <div id="invAiCompanyMeta" style="font-size:.72rem;color:var(--text3);margin-top:3px">Investor tanlang</div>
         </div>
         <div style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap">
@@ -1574,7 +1576,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div id="invAiAnalysisCard" class="tcard" style="display:none;margin:1rem">
         <div class="tc-head"><div class="tc-title" id="invAiAnalysisTitle">📊 Iqtisodiy Tahlil</div></div>
         <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="invAiAnalysisGrid"></div>
-        <div id="invAiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)" data-i18n="hint_click_card">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
+        <div id="invAiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
         <div id="invAiAnalysisDetail" style="display:none;padding:0 1rem 1rem"></div>
         <div id="invAiAnalysisMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
       </div>
@@ -1601,7 +1603,7 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
 
       <div id="invAiTariffCard" class="tcard" style="display:none;margin:0 1rem 1rem 1rem">
-        <div class="tc-head"><div class="tc-title" id="invAiTariffTitle" data-i18n="lbl_tariff_13">🛃 Bojxona tarifi — mahsulot bo'yicha 13 davlat</div></div>
+        <div class="tc-head"><div class="tc-title" id="invAiTariffTitle">🛃 Bojxona tarifi — mahsulot bo'yicha 13 davlat</div></div>
         <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem" id="invAiTariffGrid"></div>
         <div class="tscroll" style="padding:0 1rem 1rem">
           <table>
@@ -1624,7 +1626,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="tc-head">
           <div class="tc-title">✉️ Taklif Xati</div>
           <div style="display:flex;gap:.5rem">
-            <button class="btn btn-blue btn-sm" onclick="sendInvestorAiLetter()" data-i18n="btn_send">📧 Yuborish</button>
+            <button class="btn btn-blue btn-sm" onclick="sendInvestorAiLetter()">📧 Yuborish</button>
             <button class="btn btn-sm" onclick="scheduleInvestorAiLetter()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">📅 Rejalashtirish</button>
           </div>
         </div>
@@ -1754,10 +1756,10 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: MAHSULOTLAR (M1: Data Engine) ===== -->
 <div class="page" id="page-products">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title" data-i18n="page_products_title">📦 Mahsulotlar Katalogi</div><div class="pg-sub" data-i18n="page_products_sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
+    <div class="pg-head"><div class="pg-title">📦 Mahsulotlar Katalogi</div><div class="pg-sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
     <div class="kpi-grid">
-      <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()"><div class="kpi-icon">⛏️</div><div class="kpi-label" data-i18n="pr_k1_lbl">Resurs va imkoniyatlar</div><div class="kpi-val" id="pr-k1">0<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label" data-i18n="pr_k2_lbl">Xomashyo negizidagi mahsulotlar</div><div class="kpi-val" id="pr-k2">0<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()"><div class="kpi-icon">⛏️</div><div class="kpi-label">Resurs va imkoniyatlar</div><div class="kpi-val" id="pr-k1">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Xomashyo negizidagi mahsulotlar</div><div class="kpi-val" id="pr-k2">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
       <div class="kpi-card c3" style="overflow:visible">
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;align-items:end;margin-bottom:.95rem">
           <div style="grid-column:1 / -1;height:92px;display:flex;align-items:center;justify-content:center">
@@ -1779,16 +1781,16 @@ input[type="time"]{-webkit-appearance:none;}
             <img src="maps/pakistan-cropped.png" alt="Pokiston" style="max-width:100%;max-height:100%;object-fit:contain;transform:scale(1.14);transform-origin:center">
           </div>
         </div>
-        <div style="font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:.4rem" data-i18n="pr_k3_lbl">Eksport yo'nalishlari</div>
-        <div id="pr-k3" style="font-family:'Sora',sans-serif;font-size:2.8rem;font-weight:800;line-height:1;color:#d97706">12<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> ta</span></div>
+        <div style="font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:.4rem">Eksport yo'nalishlari</div>
+        <div id="pr-k3" style="font-family:'Sora',sans-serif;font-size:2.8rem;font-weight:800;line-height:1;color:#d97706">12<span style="font-size:1.1rem;font-weight:700"> ta</span></div>
       </div>
-      <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label" data-i18n="pr_k4_lbl">Aniqlangan maqsadli kompaniyalar</div><div class="kpi-val" id="pr-k4">0<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Aniqlangan maqsadli kompaniyalar</div><div class="kpi-val" id="pr-k4">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
     </div>
 
     <div class="tcard" id="rawMaterialsCard" style="margin-bottom:1rem;display:none">
-      <div class="tc-head"><div class="tc-title" data-i18n="lbl_products_section">🗂 Mahsulot bo'limlari</div>
+      <div class="tc-head"><div class="tc-title">🗂 Mahsulot bo'limlari</div>
         <div style="display:flex;gap:.5rem">
-          <button class="btn btn-blue btn-sm" onclick="showAddRawModal()" data-i18n="btn_add_raw">➕ Xomashyo qo'shish</button>
+          <button class="btn btn-blue btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo'shish</button>
           <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('rawMaterials')" style="color:#EF233C">🗑 Tozalash</button>
         </div>
       </div>
@@ -1824,9 +1826,9 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: IMPORT TAHLILI (M2: Analysis Engine) ===== -->
 <div class="page" id="page-import">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">📊 Import Tahlili</div><div class="pg-sub" data-i18n="lbl_analysis_moved_sub">Mahsulot tahlili endi Kompaniya qidiruvi bo'limiga ko'chirildi</div></div>
+    <div class="pg-head"><div class="pg-title">📊 Import Tahlili</div><div class="pg-sub">Mahsulot tahlili endi Kompaniya qidiruvi bo'limiga ko'chirildi</div></div>
     <div class="tcard">
-      <div class="tc-head"><div class="tc-title" data-i18n="lbl_analysis_moved">ℹ️ Tahlil funksiyasi ko'chirildi</div></div>
+      <div class="tc-head"><div class="tc-title">ℹ️ Tahlil funksiyasi ko'chirildi</div></div>
       <div class="tc-empty" style="padding:3rem">
         <div class="tc-empty-icon">🔍</div>
         <p>Mahsulot tahlili endi Kompaniya qidiruvi ichida ko'rsatiladi. Avval mahsulot tahlil qilinadi, keyin pastda maqsad davlatlar va kompaniya qidirish funksiyalari ishlaydi.</p>
@@ -1901,7 +1903,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: COMPANY FINDER (M3) ===== -->
 <div class="page" id="page-finder">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title" data-i18n="page_finder_title">🔍 Kompaniya qidiruvi</div><div class="pg-sub" data-i18n="page_finder_sub">Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish</div></div>
+    <div class="pg-head"><div class="pg-title">🔍 Kompaniya qidiruvi</div><div class="pg-sub">Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish</div></div>
 
     <div class="form-card" style="margin-bottom:1.2rem">
       <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:1rem;padding:0 0 1rem 0;border-bottom:1px solid var(--border)">
@@ -1913,7 +1915,7 @@ input[type="time"]{-webkit-appearance:none;}
             </label>
             <label style="display:flex;align-items:center;justify-content:center;gap:10px;padding:.25rem 0;font-size:.74rem;font-weight:700;color:var(--text);cursor:pointer;background:transparent">
               <input type="checkbox" id="finder-filter-expansion">
-              <span data-i18n="lbl_wishing_expand">Kengayish istagida bo'lgan</span>
+              <span>Kengayish istagida bo'lgan</span>
             </label>
           </div>
         </div>
@@ -1978,7 +1980,7 @@ input[type="time"]{-webkit-appearance:none;}
           <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem;height:100%"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
           <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
             <div class="tcard" style="margin-bottom:1rem">
-              <div class="tc-head"><div class="tc-title" id="import-detail-title" data-i18n="title_import_detail">Batafsil import ma'lumotlari</div></div>
+              <div class="tc-head"><div class="tc-title" id="import-detail-title">Batafsil import ma'lumotlari</div></div>
               <div id="import-detail-container" style="overflow:visible">
                 <table style="width:100%;border-collapse:collapse">
                   <thead id="import-thead"><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
@@ -1994,7 +1996,7 @@ input[type="time"]{-webkit-appearance:none;}
                   <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
                 </div>
               </div>
-              <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)" data-i18n="wb_loading">⏳ World Bank API'dan ma'lumot olmoqda...</div>
+              <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
               <div id="wbData" style="display:none">
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
                 <div class="tscroll"><table>
@@ -2006,7 +2008,7 @@ input[type="time"]{-webkit-appearance:none;}
                 </table></div>
                 <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API + ILOSTAT API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
               </div>
-              <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p data-i18n="lbl_wb_refresh">"🔄 Yangilash" bosing — tanlangan davlatlar iqtisodiy ma'lumotlari yuklanadi</p></div>
+              <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — tanlangan davlatlar iqtisodiy ma'lumotlari yuklanadi</p></div>
             </div>
           </div>
         </div>
@@ -2015,7 +2017,7 @@ input[type="time"]{-webkit-appearance:none;}
           <div class="tcard" style="margin:0">
             <div class="tc-head"><div class="tc-title">🌍 Maqsad davlatlar</div></div>
             <div style="padding:.7rem 1rem .3rem">
-              <input class="form-input" id="finderTargetSearch" type="text" placeholder="🔍  Davlat qidirish..." data-i18n-ph="ph_country_search" oninput="renderFinderTargetFilters()" style="border-radius:20px">
+              <input class="form-input" id="finderTargetSearch" type="text" placeholder="🔍  Davlat qidirish..." oninput="renderFinderTargetFilters()" style="border-radius:20px">
             </div>
             <div style="padding:0 1rem 1rem">
               <label class="form-label" style="margin-bottom:.5rem;display:none" id="finderCountriesLabel">Importyor kompaniyalar qidiriladi</label>
@@ -2029,7 +2031,7 @@ input[type="time"]{-webkit-appearance:none;}
               <button class="btn btn-ghost btn-sm" type="button" onclick="clearFinderSourceFilters()">Tozalash</button>
             </div>
             <div style="padding:.7rem 1rem .3rem">
-              <input class="form-input" id="finderSourceSearch" type="text" placeholder="🔍  Davlat qidirish..." data-i18n-ph="ph_country_search" oninput="renderFinderSourceFilters()" style="border-radius:20px">
+              <input class="form-input" id="finderSourceSearch" type="text" placeholder="🔍  Davlat qidirish..." oninput="renderFinderSourceFilters()" style="border-radius:20px">
             </div>
             <div style="padding:0 1rem 1rem">
               <label class="form-label" style="margin:0 0 .5rem 0;display:none" id="finderSourceLabel">Eksportyor manbasi</label>
@@ -2061,7 +2063,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="tc-head">
           <div class="tc-title">🏢 Topilgan kompaniyalar (<span id="finder-result-count">0</span>)</div>
           <div style="display:flex;gap:.5rem">
-            <button class="btn btn-blue btn-sm" onclick="saveFinderResults()" data-i18n="btn_save_db">💾 Bazaga saqlash</button>
+            <button class="btn btn-blue btn-sm" onclick="saveFinderResults()">💾 Bazaga saqlash</button>
             <button class="btn btn-sm" onclick="aiLetterAll()" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none">📧 Barchasiga AI xat</button>
             <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('investorCompanies')" style="color:#EF233C">🗑</button>
           </div>
@@ -2085,7 +2087,7 @@ input[type="time"]{-webkit-appearance:none;}
     <div class="kpi-grid">
       <div class="kpi-card c1"><div class="kpi-icon">📧</div><div class="kpi-label">Yaratilgan xatlar</div><div class="kpi-val" id="ai-k1">0</div></div>
       <div class="kpi-card c2"><div class="kpi-icon">📤</div><div class="kpi-label">Yuborilgan</div><div class="kpi-val" id="ai-k2">0</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">👀</div><div class="kpi-label" data-i18n="pl_k2_lbl">Ochildi</div><div class="kpi-val" id="ai-k3">0</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">👀</div><div class="kpi-label">Ochildi</div><div class="kpi-val" id="ai-k3">0</div></div>
       <div class="kpi-card c4"><div class="kpi-icon">💬</div><div class="kpi-label">Javob keldi</div><div class="kpi-val" id="ai-k4">0</div></div>
     </div>
 
@@ -2112,7 +2114,7 @@ input[type="time"]{-webkit-appearance:none;}
     <div id="aiAnalysisCard" class="tcard" style="display:none;margin-bottom:1rem">
       <div class="tc-head"><div class="tc-title" id="aiAnalysisTitle">📊 Iqtisodiy Tahlil</div></div>
       <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="aiAnalysisGrid"></div>
-      <div id="aiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)" data-i18n="hint_click_card">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
+      <div id="aiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
       <div id="aiAnalysisDetail" style="display:none;padding:0 1rem 1rem"></div>
       <div id="aiAnalysisMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
     </div>
@@ -2143,7 +2145,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="tc-head">
         <div class="tc-title">✉️ Taklif Xati</div>
         <div style="display:flex;gap:.5rem">
-          <button class="btn btn-blue btn-sm" onclick="sendAiLetter()" data-i18n="btn_send">📧 Yuborish</button>
+          <button class="btn btn-blue btn-sm" onclick="sendAiLetter()">📧 Yuborish</button>
           <button class="btn btn-sm" onclick="scheduleAiLetter()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">📅 Rejalashtirish</button>
         </div>
       </div>
@@ -2166,7 +2168,7 @@ input[type="time"]{-webkit-appearance:none;}
 <div class="page" id="page-pipeline">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
-<div><div class="pg-title" data-i18n="page_pipeline_title">📋 Outreach statistikasi — Investorlar Kanban</div><div class="pg-sub" data-i18n="page_pipeline_sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
+<div><div class="pg-title">📋 Outreach statistikasi — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
 <button class="btn btn-ghost btn-sm" onclick="resetAllPipeline()" style="color:#EF233C">🗑 Outreach statistikasini tozalash</button>
     </div>
     <div class="mailbox-shell">
@@ -2174,10 +2176,10 @@ input[type="time"]{-webkit-appearance:none;}
         <div>
           <div class="mailbox-title-row">
             <div class="mailbox-title-icon">📬</div>
-            <div class="mailbox-title-main" data-i18n="mb_title">Mailboxes Connected</div>
+            <div class="mailbox-title-main">Mailboxes Connected</div>
             <div class="mailbox-pill" id="mb-connected-pill">0 / 0</div>
           </div>
-          <div class="mailbox-sub" id="mb-sub" data-i18n="lbl_reply_manage">Reply-to email, Gmail ulanishi va yuborish tayyorligi shu yerda boshqariladi.</div>
+          <div class="mailbox-sub" id="mb-sub">Reply-to email, Gmail ulanishi va yuborish tayyorligi shu yerda boshqariladi.</div>
         </div>
         <div style="display:flex;gap:.55rem;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="refreshMailboxPanel()">🔄 Yangilash</button>
@@ -2200,43 +2202,43 @@ input[type="time"]{-webkit-appearance:none;}
           <input class="form-input" id="mailbox-notes" placeholder="Masalan: Asosiy Gmail">
         </div>
         <div style="display:flex;gap:.5rem;align-items:flex-end;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleMailboxForm(false)" data-i18n="btn_cancel">Bekor qilish</button>
-          <button class="btn btn-blue btn-sm" type="button" onclick="saveMailbox()" data-i18n="btn_save">💾 Saqlash</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleMailboxForm(false)">Bekor qilish</button>
+          <button class="btn btn-blue btn-sm" type="button" onclick="saveMailbox()">💾 Saqlash</button>
         </div>
       </div>
 
       <div class="mailbox-kpi-grid">
         <div class="mailbox-kpi" style="--orb:#3B82F6">
-          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">📨</div><div class="mailbox-kpi-label" data-i18n="mb_sent">Sent</div></div>
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">📨</div><div class="mailbox-kpi-label">Sent</div></div>
           <div class="mailbox-kpi-value" id="mb-k1">0</div>
-          <div class="mailbox-kpi-meta" data-i18n="mb_meta_sent">Investorlar bazasidan yuborilganlar</div>
+          <div class="mailbox-kpi-meta">Investorlar bazasidan yuborilganlar</div>
         </div>
         <div class="mailbox-kpi" style="--orb:#10B981">
-          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">💬</div><div class="mailbox-kpi-label" data-i18n="mb_responses">Responses</div></div>
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">💬</div><div class="mailbox-kpi-label">Responses</div></div>
           <div class="mailbox-kpi-value" id="mb-k2">0</div>
-          <div class="mailbox-kpi-meta" data-i18n="mb_meta_responses">Gmail javoblar panelidan</div>
+          <div class="mailbox-kpi-meta">Gmail javoblar panelidan</div>
         </div>
         <div class="mailbox-kpi" style="--orb:#8B5CF6">
-          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">✨</div><div class="mailbox-kpi-label" data-i18n="mb_deliverability">Deliverability</div></div>
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">✨</div><div class="mailbox-kpi-label">Deliverability</div></div>
           <div class="mailbox-kpi-value" id="mb-k3">0%</div>
-          <div class="mailbox-kpi-meta" data-i18n="mb_meta_deliverability">Mailboxlar umumiy tayyorligi</div>
+          <div class="mailbox-kpi-meta">Mailboxlar umumiy tayyorligi</div>
         </div>
         <div class="mailbox-kpi" style="--orb:#FB7185">
-          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">❤️</div><div class="mailbox-kpi-label" data-i18n="mb_health">Mailbox Health</div></div>
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">❤️</div><div class="mailbox-kpi-label">Mailbox Health</div></div>
           <div class="mailbox-kpi-value" id="mb-k4">0%</div>
           <div class="mailbox-kpi-meta">O'rtacha health ball</div>
         </div>
         <div class="mailbox-kpi" style="--orb:#F59E0B">
-          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">📮</div><div class="mailbox-kpi-label" data-i18n="mb_active">Active Mailboxes</div></div>
+          <div class="mailbox-kpi-top"><div class="mailbox-kpi-icon">📮</div><div class="mailbox-kpi-label">Active Mailboxes</div></div>
           <div class="mailbox-kpi-value" id="mb-k5">0</div>
-          <div class="mailbox-kpi-meta" data-i18n="mb_meta_active">Reply-to uchun tanlanganlar</div>
+          <div class="mailbox-kpi-meta">Reply-to uchun tanlanganlar</div>
         </div>
       </div>
 
       <div class="mailbox-grid">
         <div class="mailbox-panel">
-          <div class="mailbox-panel-title" data-i18n="mb_panel_accounts">📂 Mailbox accountlari</div>
-          <div class="mailbox-panel-sub" data-i18n="mb_panel_accounts_sub">Asosiy reply-to emailni tanlang, health holatini ko'ring va mailboxlarni boshqaring.</div>
+          <div class="mailbox-panel-title">📂 Mailbox accountlari</div>
+          <div class="mailbox-panel-sub">Asosiy reply-to emailni tanlang, health holatini ko'ring va mailboxlarni boshqaring.</div>
           <div class="mailbox-table-head">
             <div>Accounts</div>
             <div>Daily Email Capacity</div>
@@ -2251,8 +2253,8 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="mailbox-panel">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap">
             <div>
-              <div class="mailbox-panel-title" data-i18n="mb_panel_chart">📈 So'nggi 14 kun email faolligi</div>
-              <div class="mailbox-panel-sub" data-i18n="mb_panel_chart_sub">Warmup va sovuq outreach yuborishlar grafigi.</div>
+              <div class="mailbox-panel-title">📈 So'nggi 14 kun email faolligi</div>
+              <div class="mailbox-panel-sub">Warmup va sovuq outreach yuborishlar grafigi.</div>
             </div>
             <div class="mailbox-chart-legend">
               <span><span class="mailbox-legend-dot warm"></span>Warmup Emails Sent</span>
@@ -2266,10 +2268,10 @@ input[type="time"]{-webkit-appearance:none;}
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi-card c1"><div class="kpi-icon">📨</div><div class="kpi-label" data-i18n="pl_k1_lbl">Jami yuborildi</div><div class="kpi-val" id="pl-k1">0</div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">👀</div><div class="kpi-label" data-i18n="pl_k2_lbl">Ochildi</div><div class="kpi-val" id="pl-k2">0%</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">💬</div><div class="kpi-label" data-i18n="pl_k3_lbl">Javob</div><div class="kpi-val" id="pl-k3">0%</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">💰</div><div class="kpi-label" data-i18n="pl_k4_lbl">Potensial</div><div class="kpi-val" id="pl-k4">$0M</div></div>
+      <div class="kpi-card c1"><div class="kpi-icon">📨</div><div class="kpi-label">Jami yuborildi</div><div class="kpi-val" id="pl-k1">0</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">👀</div><div class="kpi-label">Ochildi</div><div class="kpi-val" id="pl-k2">0%</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">💬</div><div class="kpi-label">Javob</div><div class="kpi-val" id="pl-k3">0%</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">💰</div><div class="kpi-label">Potensial</div><div class="kpi-val" id="pl-k4">$0M</div></div>
     </div>
 
     <!-- Kanban Board -->
@@ -2310,7 +2312,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: GLOBAL TRADE DATA ===== -->
 <div class="page" id="page-trade">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title" data-i18n="page_trade_title">🌐 Xalqaro Savdo Ma'lumotlari</div><div class="pg-sub">196 davlatning barcha import/eksport mahsulotlari — UN Comtrade · WTO · WITS (World Bank)</div></div>
+    <div class="pg-head"><div class="pg-title">🌐 Xalqaro Savdo Ma'lumotlari</div><div class="pg-sub">196 davlatning barcha import/eksport mahsulotlari — UN Comtrade · WTO · WITS (World Bank)</div></div>
 
     <div class="form-card" style="margin-bottom:1rem">
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end">
@@ -2399,7 +2401,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: SOZLAMALAR (Settings) ===== -->
 <div class="page" id="page-settings">
   <div style="max-width:1200px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title" data-i18n="page_settings_title">⚙️ Sozlamalar</div><div class="pg-sub" data-i18n="page_settings_sub">Navoiy IEZ tariflari, API kalitlar, tizim sozlamalari</div></div>
+    <div class="pg-head"><div class="pg-title">⚙️ Sozlamalar</div><div class="pg-sub">Navoiy IEZ tariflari, API kalitlar, tizim sozlamalari</div></div>
 
     <!-- Navoiy IEZ tariflari -->
     <div class="form-card" style="margin-bottom:1.2rem">
@@ -2414,7 +2416,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group"><label class="form-label">Foyda solig'i (%)</label><input class="form-input" id="set-soliq" type="number" value="0"></div>
         <div class="form-group"><label class="form-label">Soliq imtiyoz muddati (yil)</label><input class="form-input" id="set-soliq-yil" type="number" value="7"></div>
       </div>
-      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()" data-i18n="btn_save">💾 Saqlash</button></div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
     </div>
 
     <!-- API kalitlar -->
@@ -2425,7 +2427,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group span-2"><label class="form-label">Apollo API Key</label><input class="form-input" id="set-apollo-key" type="password" placeholder="API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">apollo.io dan oling</div></div>
         <div class="form-group span-2"><label class="form-label">SeaRates API Key</label><input class="form-input" id="set-searates-key" type="password" placeholder="SeaRates API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">searates.com/integrations dan oling (bepul tier — 100 so'rov/oy)</div></div>
         <div class="form-group span-2"><label class="form-label">🌐 UN Comtrade Subscription Key</label><input class="form-input" id="set-comtrade-key" type="password" placeholder="UN Comtrade subscription key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">comtradeplus.un.org → Sign Up → Subscription → Get Key (bepul: 500 so'rov/kun, 100K qator). <b>Kalitsiz ham ishlaydi</b> (100 so'rov/kun, 500 qator)</div></div>
-        <div class="form-group span-2"><label class="form-label">📊 PPTX Template (Prezentatsiya namunasi)</label><div style="display:flex;gap:.5rem;align-items:center"><button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:#4361EE;color:#fff;border:none">📁 Template yuklash (.pptx)</button><span id="pptx-template-status" style="font-size:.6rem;color:var(--text3)">Yuklanmagan</span></div><div style="font-size:.55rem;color:var(--text3);margin-top:4px" data-i18n="lbl_pptx_hint">Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi</div></div>
+        <div class="form-group span-2"><label class="form-label">📊 PPTX Template (Prezentatsiya namunasi)</label><div style="display:flex;gap:.5rem;align-items:center"><button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:#4361EE;color:#fff;border:none">📁 Template yuklash (.pptx)</button><span id="pptx-template-status" style="font-size:.6rem;color:var(--text3)">Yuklanmagan</span></div><div style="font-size:.55rem;color:var(--text3);margin-top:4px">Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi</div></div>
       </div>
     </div>
     <!-- Telegram MTProto status -->
@@ -2441,12 +2443,12 @@ Vercel Environment Variables:<br>
         <div class="form-group span-2"><label class="form-label">PPTX Template URL</label><input class="form-input" id="set-pptx-url" type="url" placeholder="https://investnavoi.github.io/investitsiya/template_english.pptx"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">GitHub Pages'da template_english.pptx faylini host qiling | <a href="#" onclick="uploadPptxTemplate();return false" style="color:#4361EE">yoki kompyuterdan yuklang</a></div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Bot Token (guruhga yuborish uchun)</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling — guruhga xabar uchun</div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Chat ID (guruh)</label><input class="form-input" id="set-tg-chatid" placeholder="-1001234567890"></div>
-<div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:.8rem"><label class="form-label">📲 Telegram MTProto — telefonga to'g'ridan-to'g'ri xabar</label><div style="font-size:.55rem;color:var(--text3);margin-bottom:.5rem" data-i18n="lbl_settings_vercel">Bu sozlamalar Vercel env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.</div></div>
+<div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:.8rem"><label class="form-label">📲 Telegram MTProto — telefonga to'g'ridan-to'g'ri xabar</label><div style="font-size:.55rem;color:var(--text3);margin-bottom:.5rem">Bu sozlamalar Vercel env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.</div></div>
         <div class="form-group"><label class="form-label">TG API ID</label><input class="form-input" id="set-tg-apiid" placeholder="12345678"><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
         <div class="form-group"><label class="form-label">TG API Hash</label><input class="form-input" id="set-tg-apihash" type="password" placeholder="abc123..."><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
         <div class="form-group span-2"><label class="form-label">TG Session String</label><input class="form-input" id="set-tg-session" type="password" placeholder="1BAAOMTQ5LjE1M..."><div style="font-size:.55rem;color:var(--text3)">generate-session.mjs dan oling (bir marta ishga tushiring)</div></div>
       </div>
-      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()" data-i18n="btn_save">💾 Saqlash</button></div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
     </div>
 
     <!-- Email sozlamalari -->
@@ -2458,7 +2460,7 @@ Vercel Environment Variables:<br>
         <div class="form-group"><label class="form-label">Follow-up 2 (kun)</label><input class="form-input" id="set-fu2" type="number" value="14"></div>
         <div class="form-group"><label class="form-label">Arxivga (kun)</label><input class="form-input" id="set-fu3" type="number" value="21"></div>
       </div>
-      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()" data-i18n="btn_save">💾 Saqlash</button></div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
     </div>
 
     <!-- 12 davlat ro'yxati -->
@@ -2484,10 +2486,11 @@ Vercel Environment Variables:<br>
 
 <!-- ADMIN -->
 <div class="page" id="page-admin">
+  <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head">
       <div>
         <div class="pg-title" data-i18n="admin_panel">⚙️ Admin Panel</div>
-        <div class="pg-sub" data-i18n="admin_sub" data-i18n="admin_sub2">Ma'lumotlarni qo'shish, tahrirlash va o'chirish</div>
+        <div class="pg-sub" data-i18n="admin_sub">Ma'lumotlarni qo'shish, tahrirlash va o'chirish</div>
       </div>
       <button class="btn btn-ghost" onclick="logoutAdmin()" data-i18n="btn_logout">🚪 Chiqish</button>
     </div>
@@ -2513,7 +2516,7 @@ Vercel Environment Variables:<br>
             <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(this)">
             <div class="excel-drop-icon">📊</div>
             <div class="excel-drop-text">Excel faylni shu yerga tashlang yoki bosing</div>
-            <div class="excel-drop-sub">.xlsx yoki .xls format • Columns must match the template</div>
+            <div class="excel-drop-sub">.xlsx yoki .xls format • Namuna fayl ustuni tartibida bo'lishi kerak</div>
           </div>
           <div class="excel-col-hint">
             <div class="excel-col-hint-title">📋 Kutilayotgan ustun tartibi:</div>
@@ -2531,8 +2534,8 @@ Vercel Environment Variables:<br>
           <div class="excel-preview-head">
             <div class="excel-preview-info" id="excelPreviewInfo">0 ta qator topildi</div>
             <div style="display:flex;gap:.5rem">
-              <button class="btn btn-ghost btn-sm" type="button" onclick="cancelExcelUpload()" data-i18n="btn_cancel">✕ Bekor qilish</button>
-              <button class="btn btn-blue btn-sm" type="button" id="excelImportBtn" onclick="importExcelData()" data-i18n="btn_upload_add">✅ Yuklash va qo'shish</button>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="cancelExcelUpload()">✕ Bekor qilish</button>
+              <button class="btn btn-blue btn-sm" type="button" id="excelImportBtn" onclick="importExcelData()">✅ Yuklash va qo'shish</button>
             </div>
           </div>
           <div class="tscroll" style="max-height:240px">
@@ -2571,7 +2574,7 @@ Vercel Environment Variables:<br>
           <div class="form-group span-3"><label class="form-label">Izoh</label><input class="form-input" id="inv-izoh" placeholder="Qo'shimcha ma'lumot..."></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" onclick="addInvestor()" data-i18n="btn_save">✅ Saqlash</button>
+          <button class="btn btn-blue" onclick="addInvestor()">✅ Saqlash</button>
           <button class="btn btn-ghost" onclick="clearInvForm()">🔄 Tozalash</button>
         </div>
       </div>
@@ -2604,7 +2607,7 @@ Vercel Environment Variables:<br>
           <div class="form-group span-3"><label class="form-label">Izoh</label><input class="form-input" id="loc-izoh" placeholder="..."></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" onclick="addLocal()" data-i18n="btn_save">✅ Saqlash</button>
+          <button class="btn btn-blue" onclick="addLocal()">✅ Saqlash</button>
           <button class="btn btn-ghost" onclick="clearForm(['loc-kompaniya','loc-rahbar','loc-lavozim','loc-soha','loc-summa','loc-holat','loc-tel','loc-izoh'])">🔄 Tozalash</button>
         </div>
       </div>
@@ -2635,7 +2638,7 @@ Vercel Environment Variables:<br>
               <div class="zm-media-drop" id="zmMediaDrop" onclick="document.getElementById('zmMediaInput').click()">
                 <input type="file" id="zmMediaInput" accept="image/*,video/*" multiple style="display:none" onchange="handleAdminZoomMedia(this)">
                 <div style="font-size:1.6rem">📎</div>
-                <div style="font-size:.75rem;font-weight:700;color:var(--text)" data-i18n="lbl_add_photo">Rasm yoki video qo'shish</div>
+                <div style="font-size:.75rem;font-weight:700;color:var(--text)">Rasm yoki video qo'shish</div>
                 <div style="font-size:.62rem;color:var(--text3)">JPG, PNG, MP4 • bir nechtasini birdan tanlash mumkin</div>
               </div>
               <div class="zm-url-row">
@@ -2652,7 +2655,7 @@ Vercel Environment Variables:<br>
           </div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" type="button" onclick="addZoom()" data-i18n="btn_save">✅ Saqlash</button>
+          <button class="btn btn-blue" type="button" onclick="addZoom()">✅ Saqlash</button>
           <button class="btn btn-ghost" type="button" onclick="clearZmForm()">🔄 Tozalash</button>
         </div>
       </div>
@@ -2681,13 +2684,13 @@ Vercel Environment Variables:<br>
             <select class="form-select" id="fr-turi"><option value="">Tanlang</option><option>Xalqaro forum</option><option>Milliy forum</option><option>Ko'rgazma / Yarmarka</option><option>B2B uchrashuv</option><option>Mintaqaviy tadbir</option></select>
           </div>
           <div class="form-group"><label class="form-label">Ishtirok holati <span class="req">*</span></label>
-            <select class="form-select" id="fr-holat"><option value="">Tanlang</option><option>✅ Ishtirok tasdiqlangan</option><option>⏳ Delegatsiya tuzilmoqda</option><option>🔧 Tayyorgarlik bosqichida</option><option data-i18n="lbl_no_participation">❌ Ishtirok yo'q</option></select>
+            <select class="form-select" id="fr-holat"><option value="">Tanlang</option><option>✅ Ishtirok tasdiqlangan</option><option>⏳ Delegatsiya tuzilmoqda</option><option>🔧 Tayyorgarlik bosqichida</option><option>❌ Ishtirok yo'q</option></select>
           </div>
           <div class="form-group span-3"><label class="form-label">Tadbir ta'rifi <span class="req">*</span></label><textarea class="form-textarea" id="fr-desc" placeholder="Forum haqida..."></textarea></div>
           <div class="form-group span-3"><label class="form-label">Izoh</label><input class="form-input" id="fr-izoh" placeholder="Bo'lim xodimlari, delegatsiya..."></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" onclick="addForum()" data-i18n="btn_save">✅ Saqlash</button>
+          <button class="btn btn-blue" onclick="addForum()">✅ Saqlash</button>
           <button class="btn btn-ghost" onclick="clearForm(['fr-nom','fr-sana','fr-shahar','fr-davlat','fr-turi','fr-holat','fr-desc','fr-izoh'])">🔄 Tozalash</button>
         </div>
       </div>
@@ -2721,7 +2724,7 @@ Vercel Environment Variables:<br>
           <div class="tscroll" style="max-height:280px"><table><thead id="icExcelPreviewHead"></thead><tbody id="icExcelPreviewBody"></tbody></table></div>
           <div class="form-actions" style="margin-top:.8rem">
             <button class="btn btn-blue" onclick="importIcExcel()">✅ Barchasini Firebase'ga saqlash</button>
-            <button class="btn btn-ghost" onclick="cancelIcExcel()" data-i18n="btn_cancel">Bekor qilish</button>
+            <button class="btn btn-ghost" onclick="cancelIcExcel()">Bekor qilish</button>
           </div>
         </div>
       </div>
@@ -2741,7 +2744,7 @@ Vercel Environment Variables:<br>
           <div class="form-group"><label class="form-label">Website</label><input class="form-input" id="ic-website" placeholder="www.company.com"></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" onclick="addInvestorCo()" data-i18n="btn_save">✅ Saqlash</button>
+          <button class="btn btn-blue" onclick="addInvestorCo()">✅ Saqlash</button>
           <button class="btn btn-ghost" onclick="clearIcForm()">🔄 Tozalash</button>
         </div>
       </div>
@@ -2761,6 +2764,7 @@ Vercel Environment Variables:<br>
       </div>
     </div>
 
+  </div>
 </div>
 
 <!-- ===== BULK SCHEDULE MODAL ===== -->
@@ -2826,7 +2830,7 @@ Vercel Environment Variables:<br>
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-blue" onclick="saveBulkSchedule()" data-i18n="btn_save_all">✅ Barchasiga saqlash</button>
+        <button class="btn btn-blue" onclick="saveBulkSchedule()">✅ Barchasiga saqlash</button>
         <button class="btn btn-ghost" onclick="closeBulkScheduleModal()">Bekor</button>
       </div>
     </div>
@@ -2918,7 +2922,7 @@ Vercel Environment Variables:<br>
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-blue" onclick="saveSchedule()" data-i18n="btn_save">✅ Saqlash</button>
+        <button class="btn btn-blue" onclick="saveSchedule()">✅ Saqlash</button>
         <button class="btn btn-ghost" onclick="disableSchedule()" id="schedDisableBtn" style="display:none">🚫 O'chirish</button>
         <button class="btn btn-ghost" onclick="closeScheduleModal()">Bekor</button>
       </div>
@@ -2934,7 +2938,7 @@ Vercel Environment Variables:<br>
       <div class="login-logo-icon">🔐</div>
       <div>
         <div class="login-title">Admin Kirish</div>
-        <div class="login-sub" data-i18n="lbl_admin_only">Faqat vakolatli xodim uchun</div>
+        <div class="login-sub">Faqat vakolatli xodim uchun</div>
       </div>
     </div>
     <div class="login-field">
@@ -2959,8 +2963,8 @@ Vercel Environment Variables:<br>
     </div>
     <p style="font-size:.81rem;color:var(--text3);margin-bottom:1.4rem;line-height:1.7" id="deleteMsg"></p>
     <div style="display:flex;gap:.6rem">
-      <button class="btn btn-danger" id="deleteConfirmBtn" onclick="confirmDelete()" data-i18n="btn_delete_yes">🗑 Ha, o'chirish</button>
-      <button class="btn btn-ghost" onclick="closeDeleteModal()" data-i18n="btn_cancel">Bekor qilish</button>
+      <button class="btn btn-danger" id="deleteConfirmBtn" onclick="confirmDelete()">🗑 Ha, o'chirish</button>
+      <button class="btn btn-ghost" onclick="closeDeleteModal()">Bekor qilish</button>
     </div>
   </div>
 </div>
@@ -3021,7 +3025,7 @@ Vercel Environment Variables:<br>
         </div>
         <!-- Media grid -->
         <div id="zdMediaGrid" class="zoom-media-grid">
-          <div class="zoom-media-empty" data-i18n="lbl_no_media">📁 Hali media fayl yo'q</div>
+          <div class="zoom-media-empty">📁 Hali media fayl yo'q</div>
         </div>
       </div>
     </div>
@@ -3081,7 +3085,7 @@ Vercel Environment Variables:<br>
         </div>
         <!-- Add doc form (hidden by default) -->
         <div id="fdDocForm" style="display:none;background:var(--bg2);border-radius:8px;padding:.8rem;margin-bottom:.8rem;border:1px solid var(--border)">
-          <div style="font-size:.7rem;color:var(--text3);margin-bottom:.5rem;font-weight:600" data-i18n="lbl_add_doc">Yangi hujjat qo'shish</div>
+          <div style="font-size:.7rem;color:var(--text3);margin-bottom:.5rem;font-weight:600">Yangi hujjat qo'shish</div>
           <input class="form-input" id="fdDocName" placeholder="Hujjat nomi (ixtiyoriy — avtomatik olinadi)" style="font-size:.73rem;margin-bottom:.4rem">
           <!-- File upload -->
           <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;background:var(--card);border:1.5px dashed var(--border);border-radius:8px;padding:.6rem .8rem;margin-bottom:.5rem;transition:border-color .2s" id="fdFileLabel">
@@ -3090,13 +3094,13 @@ Vercel Environment Variables:<br>
             <input type="file" id="fdFileInput" accept=".xlsx,.xls,.doc,.docx,.pdf,.png,.jpg,.jpeg,.csv,.txt,.pptx" style="display:none" onchange="onFdFileSelect(this)">
           </label>
           <div style="display:flex;gap:.4rem">
-            <button class="btn btn-blue btn-sm" onclick="saveForumDoc()" style="font-size:.68rem" data-i18n="btn_save">✅ Saqlash</button>
+            <button class="btn btn-blue btn-sm" onclick="saveForumDoc()" style="font-size:.68rem">✅ Saqlash</button>
             <button class="btn btn-ghost btn-sm" onclick="cancelFdDoc()" style="font-size:.68rem">Bekor</button>
           </div>
         </div>
         <!-- Document list -->
         <div id="fdDocList" style="display:flex;flex-direction:column;gap:.5rem">
-          <div style="font-size:.72rem;color:var(--text3);text-align:center;padding:1rem" data-i18n="lbl_no_doc">📁 Hujjat qo'shilmagan</div>
+          <div style="font-size:.72rem;color:var(--text3);text-align:center;padding:1rem">📁 Hujjat qo'shilmagan</div>
         </div>
       </div>
     </div>
@@ -3119,14 +3123,14 @@ Vercel Environment Variables:<br>
         <select class="form-select" id="fed-turi"><option>Xalqaro forum</option><option>Milliy forum</option><option>Ko'rgazma / Yarmarka</option><option>B2B uchrashuv</option><option>Mintaqaviy tadbir</option><option>Forum</option></select>
       </div>
       <div class="form-group"><label class="form-label">Holat</label>
-        <select class="form-select" id="fed-holat"><option>✅ Ishtirok tasdiqlangan</option><option>⏳ Delegatsiya tuzilmoqda</option><option>🔧 Tayyorgarlik bosqichida</option><option data-i18n="lbl_no_participation">❌ Ishtirok yo'q</option></select>
+        <select class="form-select" id="fed-holat"><option>✅ Ishtirok tasdiqlangan</option><option>⏳ Delegatsiya tuzilmoqda</option><option>🔧 Tayyorgarlik bosqichida</option><option>❌ Ishtirok yo'q</option></select>
       </div>
       <div class="form-group span-2"><label class="form-label">Ta'rif</label><textarea class="form-textarea" id="fed-desc" rows="3"></textarea></div>
       <div class="form-group span-2"><label class="form-label">Izoh / Delegatsiya</label><input class="form-input" id="fed-izoh"></div>
     </div>
     <div class="form-actions">
-      <button class="btn btn-blue" onclick="saveForumEdit()" data-i18n="btn_save">💾 Saqlash</button>
-      <button class="btn btn-ghost" onclick="closeForumEdit()" data-i18n="btn_cancel">Bekor qilish</button>
+      <button class="btn btn-blue" onclick="saveForumEdit()">💾 Saqlash</button>
+      <button class="btn btn-ghost" onclick="closeForumEdit()">Bekor qilish</button>
     </div>
   </div>
 </div>
@@ -3154,7 +3158,7 @@ Vercel Environment Variables:<br>
     </div>
 
     <div style="display:flex;justify-content:flex-end;gap:.8rem;margin-top:1rem">
-      <button class="btn btn-ghost" onclick="closeEmailModal()" data-i18n="btn_cancel">Bekor qilish</button>
+      <button class="btn btn-ghost" onclick="closeEmailModal()">Bekor qilish</button>
       <button class="send-btn" id="sendBtn" onclick="sendEmail()">YUBORISH 📧</button>
     </div>
   </div>
@@ -3179,12 +3183,75 @@ Vercel Environment Variables:<br>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem">
-      <button class="btn btn-ghost" onclick="closeBulkEmailModal()" id="bulkCancelBtn" data-i18n="btn_cancel">Bekor qilish</button>
+      <button class="btn btn-ghost" onclick="closeBulkEmailModal()" id="bulkCancelBtn">Bekor qilish</button>
       <button class="send-btn" id="bulkSendBtnModal" onclick="executeBulkSend()">HAMMAGA YUBORISH 📧</button>
     </div>
   </div>
 </div>
 
+<!-- ===== IJRO INTIZOMI WIDGET ===== -->
+<div class="ij-widget" id="ijWidget">
+  <div class="ij-panel" id="ijPanel">
+    <div class="ij-panel-head">
+      <div class="ij-panel-icon">📋</div>
+      <div>
+        <div class="ij-panel-title">Ijro Intizomi</div>
+        <div class="ij-panel-date" id="ijDate"></div>
+      </div>
+      <button class="ij-close" onclick="toggleIjWidget()">✕</button>
+    </div>
+    <div class="ij-total-row">
+      <div>
+        <div class="ij-total-label">Bugun jami yopilgan</div>
+        <div style="font-size:.58rem;color:var(--text2)" id="ijDateSmall"></div>
+      </div>
+      <div class="ij-total-num" id="ijTotal">0</div>
+    </div>
+    <div class="ij-items">
+      <div class="ij-lock-overlay" id="ijLockOverlay">
+        <div class="ij-lock-box">
+          <div style="font-size:2rem">🔐</div>
+          <div class="ij-lock-text">Ma'lumotlarni o'zgartirish uchun admin sifatida kiring</div>
+          <button class="ij-lock-btn" onclick="toggleIjWidget();openAdminOrLogin()">Kirish →</button>
+        </div>
+      </div>
+      <div class="ij-item">
+        <div class="ij-item-left"><div class="ij-item-dot" style="background:#EF233C"></div><div class="ij-item-name">Prezident topshiriqlari</div></div>
+        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('prez',-1)">−</button><input class="ij-input" id="ij-prez" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('prez',1)">+</button></div>
+      </div>
+      <div class="ij-item">
+        <div class="ij-item-left"><div class="ij-item-dot" style="background:#7209B7"></div><div class="ij-item-name">PA topshiriqlari</div></div>
+        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('pa',-1)">−</button><input class="ij-input" id="ij-pa" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('pa',1)">+</button></div>
+      </div>
+      <div class="ij-item">
+        <div class="ij-item-left"><div class="ij-item-dot" style="background:#4361EE"></div><div class="ij-item-name">VM topshiriqlari</div></div>
+        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('vm',-1)">−</button><input class="ij-input" id="ij-vm" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('vm',1)">+</button></div>
+      </div>
+      <div class="ij-item">
+        <div class="ij-item-left"><div class="ij-item-dot" style="background:#059669"></div><div class="ij-item-name">HK topshiriqlari</div></div>
+        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('komissiya',-1)">−</button><input class="ij-input" id="ij-komissiya" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('komissiya',1)">+</button></div>
+      </div>
+      <div class="ij-item">
+        <div class="ij-item-left"><div class="ij-item-dot" style="background:#d97706"></div><div class="ij-item-name">YTT xatlar</div></div>
+        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('yuqari',-1)">−</button><input class="ij-input" id="ij-yuqari" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('yuqari',1)">+</button></div>
+      </div>
+    </div>
+    <div class="ij-chart">
+      <div class="ij-chart-title">Kunlik ko'rsatkichlar</div>
+      <div class="ij-bars" id="ijBars"></div>
+    </div>
+    <div class="ij-btn-row">
+      <button class="ij-save-btn" onclick="ijSave()">💾 Saqlash</button>
+      <button class="ij-reset-btn" onclick="ijReset()">🔄</button>
+    </div>
+  </div>
+  <div class="ij-toggle" onclick="toggleIjWidget()">
+    <div class="ij-toggle-icon">📋</div>
+    <div class="ij-toggle-label">Ijro<br>Intizomi</div>
+    <div class="ij-toggle-total" id="ijTotalBadge">0</div>
+    <div class="ij-toggle-arrow" id="ijArrow">‹</div>
+  </div>
+</div>
 
 <!-- TOASTS -->
 <div class="toast-wrap" id="toastWrap"></div>
@@ -3200,164 +3267,26 @@ var _zmAdminMedia = [];
 // Simple translation helper (falls back to uz hardcoded strings)
 const TRANSLATIONS = {
   uz: {
-            st_positive:"Ijobiy", st_ongoing:"Davom etmoqda", st_negative:"Salbiy", st_pending:"Kutilmoqda",
-    st_agreed:"Kelishilgan", st_review:"Ko'rib chiqilmoqda", st_new:"Yangi",
-    st_cancelled:"Bekor qilindi", st_negotiating:"Muzokarada", st_ready:"Tayyor",
-    st_inprogress:"Jarayonda", st_planned:"Rejalashtirilgan",
-    purpose_individual:"Individual", purpose_forum:"Forum doirasida",
-    col_detail:"Batafsil", btn_send:"📧 Yuborish", btn_save:"💾 Saqlash",
-    btn_cancel:"Bekor qilish", ph_country_search:"🔍  Davlat qidirish...",
-    title_import_detail:"Batafsil import ma'lumotlari",
-    hint_click_card:"Batafsil statistikani ko'rish uchun kartalardan birini bosing",
-    mb_health_minor:"Kichik muammolar", mb_primary_replyto:"Asosiy reply-to", mb_no_replyto:"Reply-to tanlanmagan", mb_active_count:"ta aktiv mailbox", mb_used:"ishlatilgan", mb_left:"qolgan",
-    mb_title:"Ulangan Mailboxlar", mb_sent:"Yuborildi", mb_responses:"Javoblar",
-    mb_deliverability:"Yetkazish", mb_health:"Mailbox Salomatligi", mb_active:"Faol Mailboxlar",
-    mb_meta_sent:"Investorlar bazasidan yuborilganlar", mb_meta_responses:"Gmail javoblar panelidan",
-    mb_meta_deliverability:"Mailboxlar umumiy tayyorligi", mb_meta_active:"Reply-to uchun tanlanganlar",
-    mb_panel_accounts:"📂 Mailbox accountlari", mb_panel_accounts_sub:"Asosiy reply-to emailni tanlang, health holatini ko'ring va mailboxlarni boshqaring.",
-    mb_panel_chart:"📈 So'nggi 14 kun email faolligi", mb_panel_chart_sub:"Warmup va sovuq outreach yuborishlar grafigi.",
-    pl_k1_lbl:"Jami yuborildi", pl_k2_lbl:"Ochildi", pl_k3_lbl:"Javob", pl_k4_lbl:"Potensial",
-    page_overview_title:"Umumiy ma'lumotlar", page_overview_sub:"Barcha bo'limlar bo'yicha umumlashtirilgan hisobot",
-    page_products_title:"📦 Mahsulotlar Katalogi", page_products_sub:"30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari",
-    page_finder_title:"🔍 Kompaniya qidiruvi", page_finder_sub:"Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish",
-    page_pipeline_title:"📋 Outreach statistikasi — Investorlar Kanban", page_pipeline_sub:"Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha",
-    page_trade_title:"🌐 Xalqaro Savdo Ma'lumotlari", page_settings_title:"⚙️ Sozlamalar", page_settings_sub:"Navoiy IEZ tariflari, API kalitlar, tizim sozlamalari",
-    lbl_zoom_meeting:"Zoom uchrashuvi",
-    fb_loading:"Firebase ma'lumotlari yuklanmoqda...",
-    nav_dept:"Bo'lim ma'lumotlari",
-    gmail_connect:"Gmail'ga ulaning - javoblar shu yerda ko'rinadi",
-    region_forums:"Mintaqalar bo'yicha rejalashtirilgan yirik tadbirlar",
-    btn_send_selected:"📧 Tanlanganlarga yuborish",
-    btn_ai_letter:"📧 Investor uchun AI tahlil va xat",
-    hint_click_card2:"Batafsil statistikani ko'rish uchun kartalardan birini bosing",
-    lbl_tariff_13:"🛃 Bojxona tarifi — mahsulot bo'yicha 13 davlat",
-    lbl_export_dir:"Eksport yo'nalishlari",
-    lbl_analysis_moved:"ℹ️ Tahlil funksiyasi ko'chirildi",
-    lbl_analysis_moved_sub:"Mahsulot tahlili endi Kompaniya qidiruvi bo'limiga ko'chirildi",
-    btn_save_all:"✅ Barchasiga saqlash",
-    btn_save_firebase:"✅ Barchasini Firebase'ga saqlash",
-    btn_upload_add:"✅ Yuklash va qo'shish",
-    btn_add_raw:"➕ Xomashyo qo'shish",
-    btn_add_new:"➕ Yangi qo'shish",
-    btn_delete_yes:"🗑 Ha, o'chirish",
-    btn_delete_all_lbl:"🗑 Hammasini o'chirish",
-    btn_save_db:"💾 Bazaga saqlash",
-    lbl_no_media:"📁 Hali media fayl yo'q",
-    lbl_no_doc:"📁 Hujjat qo'shilmagan",
-    lbl_click_file:"📂 Fayl tanlash uchun bosing",
-    lbl_products_section:"🗂 Mahsulot bo'limlari",
-    lbl_no_participation:"❌ Ishtirok yo'q",
-    lbl_wishing_expand:"Kengayish istagida bo'lgan",
-    lbl_excel_format:".xlsx yoki .xls format • Columns must match the template",
-    lbl_admin_only:"Faqat vakolatli xodim uchun",
-    lbl_excel_upload_title:tr('lbl_excel_upload_title'),
-    wb_loading:tr('wb_loading'),
-    comtrade_loading:tr('comtrade_loading'),
-    lbl_gmail_setup:"Email javoblarini avtomatik ko'rish uchun bir marta sozlang",
-    lbl_add_photo:"Rasm yoki video qo'shish",
-    lbl_add_doc:"Yangi hujjat qo'shish",
-    lbl_event_desc:"Tadbir ta'rifi",
-    lbl_available_data:"Mavjud ma'lumotlarni",
-    lbl_settings_vercel:"Bu sozlamalar Vercel env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.",
-    lbl_pptx_hint:"Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi",
-    lbl_ai_hint:"Navoiy viloyati uchun xomashyo bo'yicha AI-powered trade analysis va investitsiya tavsiyasi",
-    lbl_wb_refresh:"\"🔄 Yangilash\" bosing — tanlangan davlatlar iqtisodiy ma'lumotlari yuklanadi",
-    lbl_reply_manage:"Reply-to email, Gmail ulanishi va yuborish tayyorligi shu yerda boshqariladi.",
-    admin_sub2:"Ma'lumotlarni qo'shish, tahrirlash va o'chirish",
-    lbl_products_section_info:"🗂 Mahsulot bo'limlari",
-    ov_sector_title:"📈 Soha bo'yicha taqsimot", ov_activity_title:"⚡ Oxirgi faoliyat",
-    ov_no_activity:"Hali faoliyat yo'q", ov_no_data_yet:"Ma'lumot kiritilagach ko'rinadi",
-    ov_k1_lbl:"Investorlar Tashriflari", ov_k2_lbl:"Zoom Uchrashuvlar",
-    ov_k3_lbl:"Forumlar", ov_k4_lbl:"Mahalliy Bizneslar",
-    lbl_this_month:"Bu oy", lbl_listed:"Ro'yxatda",
-    pr_k1_lbl:"Resurs va imkoniyatlar", pr_k2_lbl:"Xomashyo negizidagi mahsulotlar",
-    pr_k3_lbl:"Eksport yo'nalishlari", pr_k4_lbl:"Aniqlangan maqsadli kompaniyalar",
-    lbl_unit_ta:"ta",
-    mb_health_minor:"Незначительные проблемы", mb_primary_replyto:"Основной reply-to", mb_no_replyto:"Reply-to не выбран", mb_active_count:"активных ящиков", mb_used:"использовано", mb_left:"осталось",
-    mb_title:"Подключённые ящики", mb_sent:"Отправлено", mb_responses:"Ответы",
-    mb_deliverability:"Доставляемость", mb_health:"Здоровье ящика", mb_active:"Активных ящиков",
-    mb_meta_sent:"Отправлено из базы инвесторов", mb_meta_responses:"Из панели Gmail",
-    mb_meta_deliverability:"Общая готовность ящиков", mb_meta_active:"Выбранных для reply-to",
-    mb_panel_accounts:"📂 Аккаунты почты", mb_panel_accounts_sub:"Выберите основной reply-to email, проверьте статус и управляйте ящиками.",
-    mb_panel_chart:"📈 Активность за 14 дней", mb_panel_chart_sub:"График отправки прогревочных и холодных писем.",
-    pl_k1_lbl:"Всего отправлено", pl_k2_lbl:"Открыто", pl_k3_lbl:"Ответов", pl_k4_lbl:"Потенциал",
-    page_overview_title:"Обзор", page_overview_sub:"Сводный отчёт по всем разделам",
-    page_products_title:"📦 Каталог продуктов", page_products_sub:"30 видов сырья, 450+ продуктов — производственные возможности Навои",
-    page_finder_title:"🔍 Поиск компаний", page_finder_sub:"Поиск компаний-импортёров в соседних странах",
-    page_pipeline_title:"📋 Статистика охвата — Канбан", page_pipeline_sub:"Отслеживание всех лидов — от поиска компании до MOU",
-    page_trade_title:"🌐 Мировые торговые данные", page_settings_title:"⚙️ Настройки", page_settings_sub:"Тарифы Navoi IEZ, API ключи, системные настройки",
-    lbl_zoom_meeting:"Zoom встреча",
-    fb_loading:"Загрузка данных Firebase...",
-    nav_dept:"Данные отдела",
-    gmail_connect:"Подключите Gmail - ответы появятся здесь",
-    region_forums:"Крупные мероприятия по регионам",
-    btn_send_selected:"📧 Отправить выбранным",
-    btn_ai_letter:"📧 AI анализ и письмо инвестору",
-    hint_click_card2:"Нажмите на карточку для просмотра статистики",
-    lbl_tariff_13:"🛃 Таможенный тариф — 13 стран по продукту",
-    lbl_export_dir:"Экспортные направления",
-    lbl_analysis_moved:"ℹ️ Функция анализа перемещена",
-    lbl_analysis_moved_sub:"Анализ продукта перенесён в раздел Поиска компаний",
-    btn_save_all:"✅ Сохранить все",
-    btn_save_firebase:"✅ Сохранить всё в Firebase",
-    btn_upload_add:"✅ Загрузить и добавить",
-    btn_add_raw:"➕ Добавить сырьё",
-    btn_add_new:"➕ Добавить новый",
-    btn_delete_yes:"🗑 Да, удалить",
-    btn_delete_all_lbl:"🗑 Удалить всё",
-    btn_save_db:"💾 Сохранить в базу",
-    lbl_no_media:"📁 Медиафайлов пока нет",
-    lbl_no_doc:"📁 Документ не добавлен",
-    lbl_click_file:"📂 Нажмите для выбора файла",
-    lbl_products_section:"🗂 Разделы продуктов",
-    lbl_no_participation:"❌ Нет участия",
-    lbl_wishing_expand:"Желающие расширяться",
-    lbl_excel_format:".xlsx yoki .xls format • Колонки должны быть в правильном порядке",
-    lbl_admin_only:"Только для уполномоченных сотрудников",
-    lbl_excel_upload_title:"Загрузка данных из Excel",
-    wb_loading:"⏳ Загрузка данных World Bank API...",
-    comtrade_loading:"Загрузка данных UN Comtrade API...",
-    lbl_gmail_setup:"Настройте один раз для автоматического просмотра ответов",
-    lbl_add_photo:"Добавить фото или видео",
-    lbl_add_doc:"Добавить новый документ",
-    lbl_event_desc:"Описание мероприятия",
-    lbl_available_data:"Имеющиеся данные",
-    lbl_settings_vercel:"Эти настройки добавляются в Vercel env. Можно также добавить в Firebase.",
-    lbl_pptx_hint:"Загрузите шаблон презентации — для каждого продукта будет создана аналогичная",
-    lbl_ai_hint:"AI-анализ торговли сырьём и инвестиционные рекомендации для Навоийской области",
-    lbl_wb_refresh:"Нажмите «🔄 Обновить» — загрузятся экономические данные выбранных стран",
-    lbl_reply_manage:"Управление reply-to email, подключением Gmail и готовностью к отправке.",
-    admin_sub2:"Добавление, редактирование и удаление данных",
-    lbl_products_section_info:"🗂 Разделы продуктов",
-    ov_sector_title:"📈 По отраслям", ov_activity_title:"⚡ Последняя активность",
-    ov_no_activity:"Активности пока нет", ov_no_data_yet:"Появится после ввода данных",
-    ov_k1_lbl:"Визиты инвесторов", ov_k2_lbl:"Zoom встречи",
-    ov_k3_lbl:"Форумы", ov_k4_lbl:"Местный бизнес",
-    lbl_this_month:"В этом месяце", lbl_listed:"В реестре",
-    pr_k1_lbl:"Ресурсы и возможности", pr_k2_lbl:"Продукты на основе сырья",
-    pr_k3_lbl:"Экспортные направления", pr_k4_lbl:"Выявленные целевые компании",
-    lbl_unit_ta:"ед.",
-    nav_products:"Махсулотлар", nav_finder:"Поиск компаний", nav_pipeline:"Статистика охвата", nav_trade:"Мировая торговля", nav_settings:"Настройки",
-    nav_overview:"Обзор", nav_investors:"Визиты инвесторов",
-    nav_local:"Местные предприниматели", nav_zoom:"Zoom встречи",
-    nav_forums:"Форумы", nav_investorco:"База инвесторов", nav_login:"Войти",
-    nav_admin:"Админ панель",
-    page_investors_title:"Иностранные инвесторы",
-    page_investors_sub:"Список иностранных инвесторов, посетивших Навоийскую область",
-    page_local_title:"Местные предприниматели",
-    page_local_sub:"Местные компании, ищущие иностранных инвестиций",
-    page_zoom_title:"Zoom встречи", page_zoom_sub:"Онлайн-встречи с иностранными инвесторами",
-    page_forums_title:"Форумы и выставки", page_forums_sub:"Запланированные международные мероприятия",
-    page_investor_title:"База инвесторов", page_investor_sub:"Управление инвестиционными проектами",
-    btn_add:"➕ Добавить", btn_excel:"📥 Excel", btn_clearall:"🗑 Очистить всё",
-    btn_print:"🖨 Печать", btn_logout:"🚪 Выйти", btn_bulk_send:"📧 Отправить выбранным",
-    col_city:"Город/Район", col_date:"Дата", col_country:"Страна", col_purpose:"Цель",
-    col_company:"Компания", col_company_location:"Адрес компании", col_project:"Проект", col_value:"Стоимость", col_status:"Статус",
-    col_region:"Регион", col_note:"Примечание", col_actions:"Действия", col_email:"Email",
-    col_emailstatus:"Статус Email", col_leader:"Руководитель", col_position:"Должность",
-    col_field:"Отрасль", col_amount:"Сумма", col_amount_usd:"Запрос (USD)", col_tel:"Телефон",
-    col_org:"Организация", col_participants:"Участники", col_result:"Результат",
-    col_name:"Название", col_type:"Тип", col_project_disc:"Обсуждаемый проект",
+    nav_overview:"Umumiy ma'lumotlar", nav_investors:"Investorlar Tashriflari",
+    nav_local:"Mahalliy Tadbirkorlar", nav_zoom:"Zoom Uchrashuvlar",
+    nav_forums:"Forumlar", nav_investorco:"Investorlar bazasi", nav_login:"Kirish",
+    nav_admin:"Admin Panel",
+    page_investors_title:"Tashrif Buyurgan Xorijiy Investorlar",
+    page_investors_sub:"Navoiy viloyatiga tashrif buyurgan xorijiy investorlar ro'yxati",
+    page_local_title:"Mahalliy Tadbirkorlar Ro'yxati",
+    page_local_sub:"Xorijiy investitsiyaga muhtoj mahalliy kompaniyalar",
+    page_zoom_title:"Zoom Uchrashuvlar", page_zoom_sub:"Xorijiy investorlar bilan o'tkazilgan onlayn uchrashuvlar",
+    page_forums_title:"Forumlar & Xalqaro Ko'rgazmalar", page_forums_sub:"Rejalashtirilgan xalqaro tadbirlar va ishtirok rejasi",
+    page_investor_title:"Investorlar — Kompaniyalar Ro'yxati", page_investor_sub:"Navoiy viloyati investitsiya loyihalari boshqaruvi",
+    btn_add:"➕ Yangi qo'shish", btn_excel:"📥 Excel", btn_clearall:"🗑 Barchasini o'chirish",
+    btn_print:"🖨 Chop etish", btn_logout:"🚪 Chiqish", btn_bulk_send:"📧 Tanlanganlarga yuborish",
+    col_city:"Shahar/Tuman", col_date:"Sana", col_country:"Davlat", col_purpose:"Maqsad",
+    col_company:"Kompaniya", col_company_location:"Kompaniya manzili", col_project:"Loyiha", col_value:"Qiymati", col_status:"Maqom",
+    col_region:"Hudud", col_note:"Izoh", col_actions:"Amal", col_email:"Email",
+    col_emailstatus:"Email holati", col_leader:"Rahbar", col_position:"Lavozim",
+    col_field:"Soha", col_amount:"Summa", col_amount_usd:"Talab (USD)", col_tel:"Telefon",
+    col_org:"Tashkilot", col_participants:"Ishtirokchi", col_result:"Natija",
+    col_name:"Nomi", col_type:"Turi", col_project_disc:"Muhokama Loyiha",
     lbl_total:"Jami", lbl_positive:"Ijobiy Natija", lbl_countries:"Davlatlar",
     lbl_ready:"Tayyor", lbl_new:"Yangi", lbl_negotiating:"Muzokarada",
     lbl_active:"Faol", lbl_inprogress:"Jarayonda", lbl_confirmed:"Tasdiqlangan",
@@ -3384,16 +3313,6 @@ const TRANSLATIONS = {
     admin_sub:"Ma'lumotlarni qo'shish, tahrirlash va o'chirish",
   },
   ru: {
-            st_positive:"Положительный", st_ongoing:"Продолжается", st_negative:"Отрицательный", st_pending:"Ожидается",
-    st_agreed:"Согласовано", st_review:"На рассмотрении", st_new:"Новый",
-    st_cancelled:"Отменено", st_negotiating:"Переговоры", st_ready:"Готово",
-    st_inprogress:"В процессе", st_planned:"Запланировано",
-    purpose_individual:"Индивидуальный", purpose_forum:"В рамках форума",
-    col_detail:"Подробнее", btn_send:"📧 Отправить", btn_save:"💾 Сохранить",
-    btn_cancel:"Отмена", ph_country_search:"🔍  Поиск страны...",
-    title_import_detail:"Подробные данные импорта",
-    hint_click_card:"Нажмите на карточку для просмотра статистики",
-    nav_products:"Mahsulotlar", nav_finder:"Поиск компаний", nav_pipeline:"Статистика охвата", nav_trade:"Мировая торговля", nav_settings:"Настройки",
     nav_overview:"Обзор", nav_investors:"Визиты инвесторов",
     nav_local:"Местные предприниматели", nav_zoom:"Zoom встречи",
     nav_forums:"Форумы", nav_investorco:"База инвесторов", nav_login:"Войти",
@@ -3438,80 +3357,6 @@ const TRANSLATIONS = {
     admin_sub:"Добавление, редактирование и удаление данных",
   },
   en: {
-            st_positive:"Positive", st_ongoing:"Ongoing", st_negative:"Negative", st_pending:"Pending",
-    st_agreed:"Agreed", st_review:"Under Review", st_new:"New",
-    st_cancelled:"Cancelled", st_negotiating:"Negotiating", st_ready:"Ready",
-    st_inprogress:"In Progress", st_planned:"Planned",
-    purpose_individual:"Individual", purpose_forum:"Forum",
-    col_detail:"Details", btn_send:"📧 Send", btn_save:"💾 Save",
-    btn_cancel:"Cancel", ph_country_search:"🔍  Search country...",
-    title_import_detail:"Import detail data",
-    hint_click_card:"Click a card to view detailed statistics",
-    mb_health_minor:"Minor Issues", mb_primary_replyto:"Primary reply-to", mb_no_replyto:"No reply-to selected", mb_active_count:"active mailboxes", mb_used:"used", mb_left:"left",
-    mb_title:"Mailboxes Connected", mb_sent:"Sent", mb_responses:"Responses",
-    mb_deliverability:"Deliverability", mb_health:"Mailbox Health", mb_active:"Active Mailboxes",
-    mb_meta_sent:"Sent from investor database", mb_meta_responses:"From Gmail reply panel",
-    mb_meta_deliverability:"Overall mailbox readiness", mb_meta_active:"Selected for reply-to",
-    mb_panel_accounts:"📂 Mailbox accounts", mb_panel_accounts_sub:"Select primary reply-to email, check health and manage mailboxes.",
-    mb_panel_chart:"📈 Last 14 days activity", mb_panel_chart_sub:"Warmup and cold outreach email chart.",
-    pl_k1_lbl:"Total sent", pl_k2_lbl:"Opened", pl_k3_lbl:"Replies", pl_k4_lbl:"Potential",
-    page_overview_title:"Overview", page_overview_sub:"Summary report across all sections",
-    page_products_title:"📦 Product Catalog", page_products_sub:"30 raw materials, 450+ products — Navoiy production opportunities",
-    page_finder_title:"🔍 Company Search", page_finder_sub:"Find companies importing to neighboring countries",
-    page_pipeline_title:"📋 Outreach Statistics — Kanban", page_pipeline_sub:"Track all leads from company search to MOU",
-    page_trade_title:"🌐 World Trade Data", page_settings_title:"⚙️ Settings", page_settings_sub:"Navoiy IEZ tariffs, API keys, system settings",
-    lbl_zoom_meeting:"Zoom meeting",
-    fb_loading:"Loading Firebase data...",
-    nav_dept:"Department Data",
-    gmail_connect:"Connect Gmail - replies will show here",
-    region_forums:"Major events by region",
-    btn_send_selected:"📧 Send to Selected",
-    btn_ai_letter:"📧 AI analysis & letter for investor",
-    hint_click_card2:"Click a card to view detailed statistics",
-    lbl_tariff_13:"🛃 Customs tariff — 13 countries by product",
-    lbl_export_dir:"Export Directions",
-    lbl_analysis_moved:"ℹ️ Analysis function moved",
-    lbl_analysis_moved_sub:"Product analysis moved to Company Search",
-    btn_save_all:"✅ Save All",
-    btn_save_firebase:"✅ Save All to Firebase",
-    btn_upload_add:"✅ Upload and Add",
-    btn_add_raw:"➕ Add Raw Material",
-    btn_add_new:"➕ Add New",
-    btn_delete_yes:"🗑 Yes, delete",
-    btn_delete_all_lbl:"🗑 Delete All",
-    btn_save_db:"💾 Save to Database",
-    lbl_no_media:"📁 No media files yet",
-    lbl_no_doc:"📁 No document added",
-    lbl_click_file:"📂 Click to select file",
-    lbl_products_section:"🗂 Product Sections",
-    lbl_no_participation:"❌ No participation",
-    lbl_wishing_expand:"Looking to expand",
-    lbl_excel_format:".xlsx or .xls format • Columns must match the template",
-    lbl_admin_only:"Authorized staff only",
-    lbl_excel_upload_title:"Upload data from Excel",
-    wb_loading:"⏳ Loading World Bank API data...",
-    comtrade_loading:"Loading UN Comtrade API data...",
-    lbl_gmail_setup:"Set up once to automatically view email replies",
-    lbl_add_photo:"Add photo or video",
-    lbl_add_doc:"Add new document",
-    lbl_event_desc:"Event description",
-    lbl_available_data:"Available data",
-    lbl_settings_vercel:"These settings go into Vercel env. Can also be added to Firebase.",
-    lbl_pptx_hint:"Upload a presentation template — each product will use the same design",
-    lbl_ai_hint:"AI-powered trade analysis and investment recommendations for Navoiy region",
-    lbl_wb_refresh:"Click '🔄 Refresh' — economic data for selected countries will load",
-    lbl_reply_manage:"Manage reply-to email, Gmail connection and sending readiness here.",
-    admin_sub2:"Add, edit and delete data",
-    lbl_products_section_info:"🗂 Product Sections",
-    ov_sector_title:"📈 By Sector", ov_activity_title:"⚡ Recent Activity",
-    ov_no_activity:"No activity yet", ov_no_data_yet:"Will appear after data entry",
-    ov_k1_lbl:"Investor Visits", ov_k2_lbl:"Zoom Meetings",
-    ov_k3_lbl:"Forums", ov_k4_lbl:"Local Business",
-    lbl_this_month:"This month", lbl_listed:"Listed",
-    pr_k1_lbl:"Resources & Opportunities", pr_k2_lbl:"Raw Material Products",
-    pr_k3_lbl:"Export Directions", pr_k4_lbl:"Target Companies Found",
-    lbl_unit_ta:"units",
-    nav_products:"Products", nav_finder:"Company Search", nav_pipeline:"Outreach Statistics", nav_trade:"World Trade", nav_settings:"Settings",
     nav_overview:"Overview", nav_investors:"Investor Visits",
     nav_local:"Local Entrepreneurs", nav_zoom:"Zoom Meetings",
     nav_forums:"Forums", nav_investorco:"Investor Database", nav_login:"Login",
@@ -3559,16 +3404,6 @@ const TRANSLATIONS = {
 
 function tr(key){ return (TRANSLATIONS[currentLang]||TRANSLATIONS.uz)[key] || key; }
 
-// Translate dynamic status/purpose values
-const STATUS_KEYS = {
-  "Kelishilgan":"st_agreed", "Ko'rib chiqilmoqda":"st_review", "Yangi":"st_new",
-  "Bekor qilindi":"st_cancelled", "Muzokarada":"st_negotiating", "Tayyor":"st_ready",
-  "Jarayonda":"st_inprogress", "Rejalashtirilgan":"st_planned",
-  "Individual":"purpose_individual", "Forum doirasida":"purpose_forum",
-  "Ijobiy":"st_positive", "Davom etmoqda":"st_ongoing", "Salbiy":"st_negative", "Kutilmoqda":"st_pending"
-};
-function trVal(val){ return val ? (tr(STATUS_KEYS[val] || val) || val) : val; }
-
 function t(key){
   return tr(key);
 }
@@ -3578,22 +3413,6 @@ function applyTranslations(){
     const key = el.getAttribute('data-i18n');
     const val = tr(key);
     if(val) el.textContent = val;
-  });
-  // Translate placeholders
-  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
-    const key = el.getAttribute('data-i18n-ph');
-    const val = tr(key);
-    if(val) el.placeholder = val;
-  });
-  // Update unit suffix spans
-  document.querySelectorAll('.unit-ta').forEach(el=>{
-    el.textContent = ' ' + tr('lbl_unit_ta');
-  });
-  // Translate titles
-  document.querySelectorAll('[data-i18n-title]').forEach(el=>{
-    const key = el.getAttribute('data-i18n-title');
-    const val = tr(key);
-    if(val) el.title = val;
   });
   // Update print button
   const printBtn = document.querySelector('.tn-btn.green');
@@ -3758,31 +3577,28 @@ function nextId(arr){
 function getInitials(name=''){return(name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase())||'??';}
 function v(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 
-function makomBadge(m, label){
+function makomBadge(m){
   if(!m)return`<span class="badge bdg-gray">—</span>`;
-  const txt = label || m;
   const ml = m.toLowerCase().replace(/[''`]/g,"'");
-  if(ml.includes('kelishilgan'))return`<span class="badge bdg-green">${txt}</span>`;
-  if(ml.includes("ko'rib")||ml.includes('korib'))return`<span class="badge bdg-amber">${txt}</span>`;
-  if(ml.includes('yangi'))return`<span class="badge bdg-blue">${txt}</span>`;
-  return`<span class="badge bdg-gray">${txt}</span>`;
+  if(ml.includes('kelishilgan'))return`<span class="badge bdg-green">${m}</span>`;
+  if(ml.includes("ko'rib")||ml.includes('korib'))return`<span class="badge bdg-amber">${m}</span>`;
+  if(ml.includes('yangi'))return`<span class="badge bdg-blue">${m}</span>`;
+  return`<span class="badge bdg-gray">${m}</span>`;
 }
-function holatBadge(h, label){
+function holatBadge(h){
   if(!h)return`<span class="badge bdg-gray">—</span>`;
-  const txt = label || h;
-  if(h==='Tayyor')return`<span class="badge bdg-green">${txt}</span>`;
-  if(h==='Muzokarada')return`<span class="badge bdg-amber">${txt}</span>`;
-  if(h==='Yangi')return`<span class="badge bdg-blue">${txt}</span>`;
-  return`<span class="badge bdg-gray">${txt}</span>`;
+  if(h==='Tayyor')return`<span class="badge bdg-green">Tayyor</span>`;
+  if(h==='Muzokarada')return`<span class="badge bdg-amber">Muzokarada</span>`;
+  if(h==='Yangi')return`<span class="badge bdg-blue">Yangi</span>`;
+  return`<span class="badge bdg-gray">${h}</span>`;
 }
 function natijaHolatBadge(n){
   if(!n)return`<span class="badge bdg-gray">—</span>`;
-  const txt = trVal(n);
-  if(n==='Ijobiy')return`<span class="badge bdg-green">${txt}</span>`;
-  if(n==='Davom etmoqda')return`<span class="badge bdg-amber">${txt}</span>`;
-  if(n==='Salbiy')return`<span class="badge bdg-red">${txt}</span>`;
-  if(n==='Kutilmoqda')return`<span class="badge bdg-purple">${txt}</span>`;
-  return`<span class="badge bdg-gray">${txt}</span>`;
+  if(n==='Ijobiy')return`<span class="badge bdg-green">Ijobiy</span>`;
+  if(n==='Davom etmoqda')return`<span class="badge bdg-amber">Davom etmoqda</span>`;
+  if(n==='Salbiy')return`<span class="badge bdg-red">Salbiy</span>`;
+  if(n==='Kutilmoqda')return`<span class="badge bdg-purple">Kutilmoqda</span>`;
+  return`<span class="badge bdg-gray">${n}</span>`;
 }
 
 /* ═══════════════════════════════════════
@@ -3865,12 +3681,6 @@ function initGroupedNav(){
   host.innerHTML='';
   host.appendChild(shell);
   host.dataset.grouped='1';
-  // Restore page from URL hash on load
-  var initHash = (window.location.hash || '').replace('#','').trim();
-  var validPages = ['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings','admin'];
-  if(initHash && validPages.indexOf(initHash) !== -1){
-    currentPage = initHash;
-  }
   syncNavGroups(currentPage || 'overview');
 }
 
@@ -3910,20 +3720,23 @@ function showPage(id){
   const tb=document.getElementById('tab-'+id);
   if(tb)tb.classList.add('active');
   currentPage=id;
-  // Update URL hash without triggering hashchange
-  if(window.history && window.history.replaceState){
-    window.history.replaceState(null, '', '#'+id);
-  }
+  const titles={
+    overview:"Umumiy ma'lumotlar",
+    investors:'Investorlar tashriflari',
+    local:'Mahalliy tadbirkorlar',
+    zoom:'Zoom uchrashuvlar',
+    forums:'Forumlar',
+    investor:'Investorlar bazasi',
+    products:'Mahsulotlar',
+    import:'Import Tahlili',
+    finder:'Kompaniya qidiruvi',
+pipeline:'Outreach statistikasi',
+    trade:'Jahon tashqi savdosi',
+    settings:'Sozlamalar',
+    admin:'Admin Panel'
+  };
   const titleEl=document.getElementById('topbarTitle');
-  if(titleEl){
-    const titleKeys={
-      overview:'page_overview_title', investors:'nav_investors', local:'nav_local',
-      zoom:'nav_zoom', forums:'nav_forums', investor:'nav_investorco',
-      products:'nav_products', finder:'nav_finder', pipeline:'nav_pipeline',
-      trade:'nav_trade', settings:'nav_settings', admin:'admin_panel'
-    };
-    titleEl.textContent = tr(titleKeys[id] || id) || id;
-  }
+  if(titleEl) titleEl.textContent=titles[id]||id;
   if(id==='overview')renderOverview();
   else if(id==='investors')renderInvestors();
   else if(id==='local')renderLocal();
@@ -4010,9 +3823,7 @@ function logoutAdmin(){
   applyAdminUI(false);
   renderInvestorCompanies();
   toast('🚪 Chiqildi');
-  var initHash = (window.location.hash || '').replace('#','').trim();
-  var validPages2 = ['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings'];
-  showPage(initHash && validPages2.indexOf(initHash) !== -1 ? initHash : 'overview');
+  showPage('overview');
 }
 function applyAdminUI(admin){
   document.getElementById('navAvatar').textContent = admin ? 'A' : 'B';
@@ -4099,7 +3910,7 @@ function renderOverview(){
     summary=`<strong>${cmn} ${curYear}</strong> monthly report: <strong>${mInv.length} foreign investor(s)</strong> visited this month. <strong>${mZoom.length} Zoom meeting(s)</strong> held${mZoom.length>0?`, of which <strong>${ijobiy}</strong> had positive outcomes.`:`.`} ${mFr.length>0?`<strong>${mFr.length} forum/exhibition(s)</strong> planned.`:''} Local entrepreneur database: <strong>$${Math.round(totalLocal/1e6)||0}M</strong> across ${DB.local.length} projects.`;
   }
 
-  document.getElementById('sumTag').textContent=`📋 ${cmn.toUpperCase()} ${curYear} — ${tr('monthly_report')}`;
+  document.getElementById('sumTag').textContent=`📋 ${cmn.toUpperCase()} ${curYear} — OYLIK HISOBOT`;
   document.getElementById('sumTxt').innerHTML=summary;
   document.getElementById('ov-k1').textContent=mInv.length;
   document.getElementById('ov-k2').textContent=mZoom.length;
@@ -4121,14 +3932,14 @@ function renderOverview(){
         <div class="prog-track"><div class="prog-bar ${colors[i]}" style="width:${Math.round(val/total*100)}%"></div></div>
       </div>`).join('');
   } else {
-    progEl.innerHTML='<div class="tc-empty"><div class="tc-empty-icon">📊</div><p>'+tr('ov_no_data_yet')+'</p></div>';
+    progEl.innerHTML='<div class="tc-empty"><div class="tc-empty-icon">📊</div><p>Ma\'lumot kiritilgach ko\'rinadi</p></div>';
   }
 
   // Activity
   const acts=[];
   const src=mInv.length||mZoom.length?{inv:mInv,zoom:mZoom}:{inv:DB.investors,zoom:DB.zoom};
   src.inv.slice(-3).forEach(r=>acts.push({c:'#4361EE',text:`<b>${r.kompaniya}</b> — ${r.davlat||''}`,time:fmtDate(r.sana)}));
-  src.zoom.slice(-2).forEach(r=>acts.push({c:'#06D6A0',text:`<b>${r.ism}</b> ${tr('lbl_zoom_meeting')}`,time:fmtDate(r.sana)}));
+  src.zoom.slice(-2).forEach(r=>acts.push({c:'#06D6A0',text:`<b>${r.ism}</b> Zoom uchrashuvi`,time:fmtDate(r.sana)}));
   const actEl=document.getElementById('recentActivity');
   if(acts.length){
     actEl.innerHTML=acts.slice(0,6).map(a=>`
@@ -4137,7 +3948,7 @@ function renderOverview(){
         <div><div class="act-text">${a.text}</div><div class="act-time">${a.time}</div></div>
       </div>`).join('');
   } else {
-    actEl.innerHTML='<div class="tc-empty"><div class="tc-empty-icon">📝</div><p>'+tr('ov_no_activity')+'</p></div>';
+    actEl.innerHTML='<div class="tc-empty"><div class="tc-empty-icon">📝</div><p>Hali faoliyat yo\'q</p></div>';
   }
 }
 
@@ -4182,11 +3993,11 @@ function renderInvestors(page){
     <tr>
       <td>${start+i+1}</td><td>${r.shahar||'—'}</td><td>${fmtDate(r.sana)}</td>
       <td>${r.flag||'🌐'} ${r.davlat||'—'}</td>
-      <td>${trVal(r.maqsad)||'—'}</td>
+      <td>${r.maqsad||'—'}</td>
       <td><b>${r.kompaniya||'—'}</b></td>
       <td>${r.loyiha||'—'}</td>
       <td class="td-num" style="color:#4361EE">${r.qiymat||'—'}</td>
-      <td>${makomBadge(r.makom, trVal(r.makom))}</td>
+      <td>${makomBadge(r.makom)}</td>
       <td>${r.hudud||'—'}</td>
       <td style="font-size:.69rem">${r.izoh||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('investors',${r.id})">🗑</button></td>
@@ -4244,7 +4055,7 @@ function renderLocal(){
       <td>${r.rahbar||'—'}<br><span style="font-size:.64rem;color:var(--text3)">${r.lavozim||''}</span></td>
       <td>${r.soha||'—'}</td>
       <td class="td-num" style="color:#059669">${fmtMoney(r.summa)}</td>
-      <td>${holatBadge(r.holat, trVal(r.holat))}</td>
+      <td>${holatBadge(r.holat)}</td>
       <td>${r.tel||'—'}</td>
       <td style="font-size:.69rem">${r.izoh||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('local',${r.id})">🗑</button></td>
@@ -4328,7 +4139,7 @@ function renderForums(){
         <div class="fc-loc">📍 ${r.shahar||''}, ${r.davlat||''}</div>
         <div class="fc-desc">${r.desc||'—'}</div>
         <div class="fc-foot">
-          <div style="font-size:.67rem;font-weight:600;color:var(--text)">${trVal(r.holat)||'—'}</div>
+          <div style="font-size:.67rem;font-weight:600;color:var(--text)">${r.holat||'—'}</div>
           <div style="display:flex;align-items:center;gap:4px">
             <span class="badge bdg-blue">${r.turi||'Forum'}</span>
             ${docCount?`<span style="font-size:.6rem;background:rgba(67,97,238,.15);color:#4361EE;padding:2px 6px;border-radius:10px">📎${docCount}</span>`:''}
@@ -5662,7 +5473,7 @@ function renderInvestorGeoStatePanel(stateCode){
       '</div>' +
       '<button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById(\'investorGeoStatePanel\').style.display=\'none\'">Yopish</button>' +
     '</div>' +
-    (companies.length ? '<div style="display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.9rem">' + companies.slice(0,18).map(function(name){ return '<span style="display:inline-flex;align-items:center;padding:.42rem .7rem;border-radius:999px;background:#EEF4FF;border:1px solid #D6E4FF;color:#1E3A8A;font-size:.72rem;font-weight:700">' + escHtml(name) + '</span>'; }).join('') + '</div>' : '<div style="margin-top:.85rem;font-size:.8rem;color:var(--text3)">Bu davlat uchun hozircha kompaniya yozuvi yo\u02bcq.</div>') +
+    (companies.length ? '<div style="display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.9rem">' + companies.slice(0,18).map(function(name){ return '<span style="display:inline-flex;align-items:center;padding:.42rem .7rem;border-radius:999px;background:#EEF4FF;border:1px solid #D6E4FF;color:#1E3A8A;font-size:.72rem;font-weight:700">' + escHtml(name) + '</span>'; }).join('') + '</div>' : '<div style="margin-top:.85rem;font-size:.8rem;color:var(--text3)">Bu davlat uchun hozircha kompaniya yozuvi yo‘q.</div>') +
     (companies.length > 18 ? '<div style="margin-top:.7rem;font-size:.72rem;color:var(--text3)">Yana +' + (companies.length - 18) + ' ta kompaniya mavjud</div>' : '');
 }
 window.onInvestorGeoCountryClick = function(stateCode){
@@ -5933,7 +5744,7 @@ function renderInvestorGeoCard(companies){
 
   if(!companies.length){
     metaEl.textContent = 'Investorlar bazasida davlat maʼlumoti topilmadi';
-    mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">Kompaniya davlatlari saqlangach, haqiqiy xarita shu yerda ko\u02bcrinadi</div>';
+    mapEl.innerHTML = '<div style="height:100%;min-height:520px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.92rem;font-weight:700">Kompaniya davlatlari saqlangach, haqiqiy xarita shu yerda ko‘rinadi</div>';
     overlayEl.innerHTML = '';
     if(tooltipEl) tooltipEl.style.display = 'none';
     renderInvestorGeoStatePanel('');
@@ -6480,11 +6291,11 @@ function renderAdminLists(){
       <td>${r.shahar||'—'}</td>
       <td>${fmtDate(r.sana)}</td>
       <td>${r.flag||''} ${r.davlat||'—'}</td>
-      <td>${trVal(r.maqsad)||'—'}</td>
+      <td>${r.maqsad||'—'}</td>
       <td><b>${r.kompaniya||'—'}</b></td>
       <td>${r.loyiha||'—'}</td>
       <td style="color:#059669;font-weight:700">${r.qiymat||'—'}</td>
-      <td>${makomBadge(r.makom, trVal(r.makom))}</td>
+      <td>${makomBadge(r.makom)}</td>
       <td>${r.hudud||'—'}</td>
       <td style="font-size:.72rem;color:var(--text3)">${r.izoh||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('investors',${r.id})">🗑</button></td>
@@ -6496,7 +6307,7 @@ function renderAdminLists(){
   const all=document.getElementById('admin-loc-list');
   all.innerHTML=DB.local.length?DB.local.map((r,i)=>`
     <tr><td>${i+1}</td><td><b>${r.kompaniya||'—'}</b></td><td>${r.rahbar||'—'}</td><td>${r.soha||'—'}</td>
-    <td class="td-num" style="color:#059669">${fmtMoney(r.summa)}</td><td>${holatBadge(r.holat, trVal(r.holat))}</td>
+    <td class="td-num" style="color:#059669">${fmtMoney(r.summa)}</td><td>${holatBadge(r.holat)}</td>
     <td>${r.tel||'—'}</td>
     <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('local',${r.id})">🗑</button></td></tr>`).join('')
     :'<tr><td colspan="8"><div class="tc-empty"><div class="tc-empty-icon">🏢</div><p>Hali ma\'lumot yo\'q</p></div></td></tr>';
@@ -7996,7 +7807,7 @@ function showExcelPreview(data, fileName){
       <td>${r.shahar||'—'}</td>
       <td>${r.sana||'—'}</td>
       <td>${r.flag} ${r.davlat||'—'}</td>
-      <td>${trVal(r.maqsad)||'—'}</td>
+      <td>${r.maqsad||'—'}</td>
       <td><b>${r.kompaniya||'—'}</b></td>
       <td>${r.loyiha||'—'}</td>
       <td>${r.qiymat||'—'}</td>
@@ -8058,17 +7869,10 @@ function resetDropZone(){
     <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(this)">
     <div class="excel-drop-icon">📊</div>
     <div class="excel-drop-text">Excel faylni shu yerga tashlang yoki bosing</div>
-    <div class="excel-drop-sub">.xlsx yoki .xls format • Columns must match the template</div>`;
+    <div class="excel-drop-sub">.xlsx yoki .xls format • Namuna fayl ustuni tartibida bo'lishi kerak</div>`;
 }
 
 // Drag & drop support
-window.addEventListener('hashchange', function(){
-  var hash = (window.location.hash || '').replace('#','').trim();
-  var validPages = ['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings'];
-  if(hash && validPages.indexOf(hash) !== -1 && hash !== currentPage){
-    showPage(hash);
-  }
-});
 document.addEventListener('DOMContentLoaded', () => {
   const zone = document.getElementById('excelDropZone');
   if(!zone) return;
@@ -8756,7 +8560,7 @@ window.addEventListener('load', ()=>{
   <div class="email-modal-box" style="max-width:520px">
     <button class="modal-close-btn" onclick="closeGmailSetup()" style="position:absolute;top:1rem;right:1rem">✕</button>
     <div class="email-modal-title">🔗 Gmail Xabarnomalarini Ulash</div>
-    <div class="email-modal-sub" data-i18n="lbl_gmail_setup">Email javoblarini avtomatik ko'rish uchun bir marta sozlang</div>
+    <div class="email-modal-sub">Email javoblarini avtomatik ko'rish uchun bir marta sozlang</div>
 
     <!-- Step 1: My email -->
     <div style="margin-top:1rem;background:rgba(6,214,160,.06);border-radius:10px;padding:.9rem;border-left:3px solid #059669">
@@ -8794,12 +8598,30 @@ window.addEventListener('load', ()=>{
     <div id="gmailSetupError" style="font-size:.67rem;color:#dc2626;margin-top:.4rem;min-height:1rem"></div>
 
     <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:.8rem">
-      <button class="btn btn-ghost" onclick="closeGmailSetup()" data-i18n="btn_cancel">Bekor qilish</button>
+      <button class="btn btn-ghost" onclick="closeGmailSetup()">Bekor qilish</button>
       <button class="send-btn" onclick="saveAndConnectGmail()">Saqlash va ulash 🔗</button>
     </div>
   </div>
 </div>
-
+<!-- AI CHATBOT -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()">🤖<span class="dot" id="chatDot"></span></button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <div class="chat-head-avatar">🤖</div>
+    <div class="chat-head-info">
+      <div class="chat-head-name">Navoiy AI Yordamchi</div>
+      <div class="chat-head-status">Gemini AI — investitsiya savollari uchun</div>
+    </div>
+    <button class="chat-head-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs">
+    <div class="chat-msg bot">Assalomu alaykum! 👋 Men Navoiy viloyati investitsiya yordamchisiman. Navoiy haqida, investitsiya imkoniyatlari, foydali qazilmalar, sanoat va boshqa savollaringizga javob beraman. Nima so'raysiz?</div>
+  </div>
+  <div class="chat-input-wrap">
+    <input class="chat-input" id="chatInput" placeholder="Savolingizni yozing..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
+    <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
+  </div>
+</div>
 
 <script>
 /* ═══ GEMINI CONFIG (must be first) ═══ */
@@ -9114,7 +8936,7 @@ function renderProductRawAiBlock(section, sectionRaws, sectionProds){
         '<div>' +
           '<div class="prod-ai-eyebrow">AI Invest Lens</div>' +
           '<div class="prod-ai-title">⛏️ '+escapeHtmlText(rawName)+'</div>' +
-          '<div class="prod-ai-sub">'+escapeHtmlText(getProductSectionLabel(section))+' bo\u2019limidagi ushbu xomashyoga tegishli mahsulotlar, TN VED kodlar va UN Comtrade asosidagi investitsiya tahlili shu yerda ishlaydi.</div>' +
+          '<div class="prod-ai-sub">'+escapeHtmlText(getProductSectionLabel(section))+' bo‘limidagi ushbu xomashyoga tegishli mahsulotlar, TN VED kodlar va UN Comtrade asosidagi investitsiya tahlili shu yerda ishlaydi.</div>' +
           '<div class="prod-ai-pills">' +
             '<span class="prod-ai-pill">📦 '+relatedProducts.length+' ta mahsulot</span>' +
             '<span class="prod-ai-pill">🔢 '+hsCodes.length+' ta HS kod</span>' +
@@ -9125,24 +8947,24 @@ function renderProductRawAiBlock(section, sectionRaws, sectionProds){
         '<div class="prod-ai-actions">' +
           '<button class="btn btn-blue btn-sm" id="productRawAiAnalyzeBtn" onclick="analyzeSelectedProductRaw()">🧠 Shu xomashyoni tahlil qilish</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="loadProductRawAiHistory()">🕘 Oxirgi tahlilni ochish</button>' +
-          '<button class="btn btn-ghost btn-sm" onclick="openProductRawAiPage()">↗ To'liq AI sahifada ochish</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="openProductRawAiPage()">↗ To‘liq AI sahifada ochish</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="closeProductRawAi(\''+section+'\')">✕ Yopish</button>' +
         '</div>' +
       '</div>' +
       '<div class="prod-ai-preview">'+(preview || '<span class="prod-ai-preview-more">Mahsulotlar hali kiritilmagan</span>')+'</div>' +
-      '<div class="prod-ai-note">Kreativ yondashuv sifatida bu panel xomashyodan boshlab investitsiya tahlilini shu joyning o\u02bczida ochadi. AI natija tayyor bo\u02bcgach, shu yerning o\u02bczida ko\u02bcrasiz va kerak bo\u02blsa to\u02bcliq AI Invest Tahlili sahifasiga o\u02bctasiz.</div>' +
+      '<div class="prod-ai-note">Kreativ yondashuv sifatida bu panel xomashyodan boshlab investitsiya tahlilini shu joyning o‘zida ochadi. AI natija tayyor bo‘lgach, shu yerning o‘zida ko‘rasiz va kerak bo‘lsa to‘liq AI Invest Tahlili sahifasiga o‘tasiz.</div>' +
       '<div class="prod-ai-divider"></div>' +
       '<div class="tcard prod-ai-inline-card" id="productRawAiProgressCard" style="display:none">' +
         '<div class="tc-head"><div class="tc-title">⏳ Tahlil bosqichlari</div><div class="anx-running">AI tahlil ishlayapti...</div></div>' +
         '<div class="anx-progress" id="productRawAiProgress"></div>' +
       '</div>' +
       '<div class="tcard prod-ai-inline-card" id="productRawAiOutputCard" style="display:none">' +
-        '<div class="tc-head"><div class="tc-title">📄 Xomashyo bo'yicha AI hisobot</div><div style="font-size:.72rem;color:var(--text3)" id="productRawAiOutputMeta">—</div></div>' +
+        '<div class="tc-head"><div class="tc-title">📄 Xomashyo bo‘yicha AI hisobot</div><div style="font-size:.72rem;color:var(--text3)" id="productRawAiOutputMeta">—</div></div>' +
         '<div class="anx-output-wrap"><div class="anx-output" id="productRawAiOutput"><p>Mahsulot tahlilini boshlash uchun yuqoridagi tugmani bosing.</p></div></div>' +
       '</div>' +
       '<div class="tcard prod-ai-inline-card" id="productRawAiExcelNotice" style="display:none">' +
         '<div class="anx-cta-card">' +
-          '<div class="anx-cta-title">📘 To'liq Excel workbook mavjud</div>' +
+          '<div class="anx-cta-title">📘 To‘liq Excel workbook mavjud</div>' +
           '<div class="anx-cta-body">UN Comtrade asosidagi AI tahlil yakunlangach, shu xomashyo uchun workbook yuklab olishingiz mumkin.</div>' +
           '<div style="margin-top:.85rem"><button class="btn btn-green btn-sm" id="productRawAiExportBtn" onclick="exportInvestAiWorkbook()">📥 Excel yuklab olish</button></div>' +
         '</div>' +
@@ -9251,7 +9073,7 @@ function renderProducts(){
   var prods = DB.products||[];
   document.getElementById('pr-k1').innerHTML = rms.length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
   document.getElementById('pr-k2').innerHTML = prods.length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
-  document.getElementById('pr-k4').innerHTML = (DB.investorCompanies||[]).length+'<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> '+tr('lbl_unit_ta')+'</span>';
+  document.getElementById('pr-k4').innerHTML = (DB.investorCompanies||[]).length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
   document.getElementById('badge-products').textContent = prods.length;
   syncProductSections(rms, prods);
 
@@ -9371,7 +9193,7 @@ function populateProductSelects(){
       }
 
       if(!sectionRaws.length && !orphans.length){
-        html += '<div class="csd-item" style="cursor:default;color:var(--text3)">'+tr('no_data')+'</div>';
+        html += '<div class="csd-item" style="cursor:default;color:var(--text3)">Bu bo‘limda hozircha ma’lumot yo‘q</div>';
       }
       html += '</div></div>';
     });
@@ -11184,7 +11006,7 @@ async function checkTelegramReplies(options){
       body: JSON.stringify({mode:'replies', targets:targets})
     });
     var data = await resp.json();
-    if(!data.ok) throw new Error(data.error || 'Telegram javoblarini tekshirib bo'lmadi');
+    if(!data.ok) throw new Error(data.error || 'Telegram javoblarini tekshirib bo‘lmadi');
 
     var updated = 0;
     var replied = 0;
@@ -11473,7 +11295,7 @@ var SECTOR_KEYWORDS = {
   'energetika':['energetika','energy','solar','quyosh','shamol','gaz','neft','elektr','generator','kabel','энергетика','энергия','қуёш','шамол','газ','нефт','электр','генератор','кабел'],
   'elektronika':['elektronika','electronic','kompyuter','telefon','texnologiya','IT','dastur','software','электроника','компьютер','технология','дастур'],
   'qishloq':['qishloq','fermer','chorva','paranda','baliq','issiqxona','o\'g\'it','dehqon','bog\'dorchilik','қишлоқ','фермер','чорва','паранда','балиқ','иссиқхона','ўғит','деҳқон','етиштириш','пахта'],
-  'transport':['transport','logistika','yuk','tashish','avto','poyezd','samolyot','havo','temir yo\u02bcl','транспорт','логистика','юк','ташиш','авто','поезд','самолёт','ҳаво','темир йўл'],
+  'transport':['transport','logistika','yuk','tashish','avto','poyezd','samolyot','havo','temir yo\'l','транспорт','логистика','юк','ташиш','авто','поезд','самолёт','ҳаво','темир йўл'],
   'turizm':['turizm','tourism','mehmonxona','hotel','restoran','sayohat','kafe','dam olish','туризм','меҳмонхона','отел','ресторан','саёҳат','кафе','дам олиш'],
   'konchilik':['konchilik','mining','kon','oltin','mis','uran','fosfat','maden','mineral','rudnik','qazib','кончилик','қазиб','олтин','мис','уран','фосфат','минерал','рудник','қазиб олиш','каолин','кварц','marble','гранит'],
   'mebel':['mebel','furniture','yog\'och','wood','faner','eshik','deraza','karavot','shkaf','stol','мебел','ёғоч','фанер','эшик','дераза','каравот','шкаф','стол'],
@@ -13106,24 +12928,24 @@ async function loadWorldBankData(){
     var imp = impData[c.iso] ? Math.round(impData[c.iso].value/1e9*10)/10 : '—';
     var wageMeta = wageData[c.iso] && !wageData[c.iso].error ? wageData[c.iso] : null;
     var officialWage = wageMeta && typeof wageMeta.value === 'number' && !isNaN(wageMeta.value) ? Math.round(wageMeta.value) : '—';
-    if(gdp === 'вЂ"' && typeof cached.gdp === 'number') gdp = cached.gdp;
-    if(gdp === 'вЂ"' && typeof fallback.gdp === 'number') gdp = fallback.gdp;
-    if(ind === 'вЂ"' && typeof cached.ind === 'number') ind = cached.ind;
-    if(ind === 'вЂ"' && typeof fallback.ind === 'number') ind = fallback.ind;
-    if(pop === 'вЂ"' && typeof cached.pop === 'number') pop = cached.pop;
-    if(pop === 'вЂ"' && typeof fallback.pop === 'number') pop = fallback.pop;
-    if(empl === 'вЂ"' && typeof cached.empl === 'number') empl = cached.empl;
-    if(imp === 'вЂ"' && typeof cached.imp === 'number') imp = cached.imp;
-    if(officialWage === 'вЂ"' && typeof cached.wage === 'number') officialWage = cached.wage;
-    if(gdp === 'вЂ"' && typeof cached.gdp === 'number') gdp = cached.gdp;
-    if(gdp === 'вЂ"' && typeof fallback.gdp === 'number') gdp = fallback.gdp;
-    if(ind === 'вЂ"' && typeof cached.ind === 'number') ind = cached.ind;
-    if(ind === 'вЂ"' && typeof fallback.ind === 'number') ind = fallback.ind;
-    if(pop === 'вЂ"' && typeof cached.pop === 'number') pop = cached.pop;
-    if(pop === 'вЂ"' && typeof fallback.pop === 'number') pop = fallback.pop;
-    if(empl === 'вЂ"' && typeof cached.empl === 'number') empl = cached.empl;
-    if(imp === 'вЂ"' && typeof cached.imp === 'number') imp = cached.imp;
-    if(officialWage === 'вЂ"' && typeof cached.wage === 'number') officialWage = cached.wage;
+    if(gdp === 'вЂ”' && typeof cached.gdp === 'number') gdp = cached.gdp;
+    if(gdp === 'вЂ”' && typeof fallback.gdp === 'number') gdp = fallback.gdp;
+    if(ind === 'вЂ”' && typeof cached.ind === 'number') ind = cached.ind;
+    if(ind === 'вЂ”' && typeof fallback.ind === 'number') ind = fallback.ind;
+    if(pop === 'вЂ”' && typeof cached.pop === 'number') pop = cached.pop;
+    if(pop === 'вЂ”' && typeof fallback.pop === 'number') pop = fallback.pop;
+    if(empl === 'вЂ”' && typeof cached.empl === 'number') empl = cached.empl;
+    if(imp === 'вЂ”' && typeof cached.imp === 'number') imp = cached.imp;
+    if(officialWage === 'вЂ”' && typeof cached.wage === 'number') officialWage = cached.wage;
+    if(gdp === 'вЂ”' && typeof cached.gdp === 'number') gdp = cached.gdp;
+    if(gdp === 'вЂ”' && typeof fallback.gdp === 'number') gdp = fallback.gdp;
+    if(ind === 'вЂ”' && typeof cached.ind === 'number') ind = cached.ind;
+    if(ind === 'вЂ”' && typeof fallback.ind === 'number') ind = fallback.ind;
+    if(pop === 'вЂ”' && typeof cached.pop === 'number') pop = cached.pop;
+    if(pop === 'вЂ”' && typeof fallback.pop === 'number') pop = fallback.pop;
+    if(empl === 'вЂ”' && typeof cached.empl === 'number') empl = cached.empl;
+    if(imp === 'вЂ”' && typeof cached.imp === 'number') imp = cached.imp;
+    if(officialWage === 'вЂ”' && typeof cached.wage === 'number') officialWage = cached.wage;
     // Taxminiy elektr narxi (mintaqaviy o'rtacha)
     var estElec = gdp !== '—' ? (gdp > 10000 ? 0.15 : gdp > 5000 ? 0.08 : gdp > 2000 ? 0.05 : 0.03) : '—';
 
@@ -13139,9 +12961,9 @@ async function loadWorldBankData(){
   var totalImp = rows.reduce(function(s,r){return s+(typeof r.imp==='number'?r.imp:0);},0);
   var avgGdp = rows.filter(function(r){return typeof r.gdp==='number';});
   var avgGdpVal = avgGdp.length ? Math.round(avgGdp.reduce(function(s,r){return s+r.gdp;},0)/avgGdp.length) : 0;
-  var totalPopDisplay = totalPop > 0 ? Math.round(totalPop)+' mln' : 'вЂ"';
-  var avgGdpDisplay = avgGdpVal > 0 ? '$'+avgGdpVal.toLocaleString() : 'вЂ"';
-  var totalImpDisplay = totalImp > 0 ? '$'+Math.round(totalImp)+'B' : 'вЂ"';
+  var totalPopDisplay = totalPop > 0 ? Math.round(totalPop)+' mln' : 'вЂ”';
+  var avgGdpDisplay = avgGdpVal > 0 ? '$'+avgGdpVal.toLocaleString() : 'вЂ”';
+  var totalImpDisplay = totalImp > 0 ? '$'+Math.round(totalImp)+'B' : 'вЂ”';
 
   document.getElementById('wbKpiGrid').innerHTML =
     '<div style="padding:.8rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">🌍</div><div style="font-size:.6rem;color:var(--text3)">12 davlat aholisi</div><div style="font-size:1rem;font-weight:800;color:var(--text)">'+Math.round(totalPop)+' mln</div></div>'+
@@ -14048,9 +13870,9 @@ function renderImportResults(countries, prod, source, targetCountries){
   countries = Array.isArray(countries) ? countries.slice() : [];
   countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
   if(!countries.length){
-    clearImportDetailBody('Tanlangan davlatar bo'yicha 2021–2024 import ma\'lumotlari topilmadi');
+    clearImportDetailBody('Tanlangan davlatar bo‘yicha 2021–2024 import ma\'lumotlari topilmadi');
     var chartEmptyEl = document.getElementById('importBarChart');
-    if(chartEmptyEl) chartEmptyEl.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text3)">Tanlangan davlatlar bo\u02bcyicha import ma'lumotlari topilmadi.</div>';
+    if(chartEmptyEl) chartEmptyEl.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text3)">Tanlangan davlatlar bo‘yicha import ma\'lumotlari topilmadi.</div>';
     document.getElementById('imp-k1').textContent = '$0';
     document.getElementById('imp-k2').textContent = '—';
     document.getElementById('imp-k3').textContent = '—';
@@ -14272,7 +14094,7 @@ var INVEST_AI_I18N = {
   uz: {
     nav:'AI Invest Tahlil',
     pageTitle:'🧠 AI Investitsiya Tahlili',
-    pageSub:"Navoiy viloyati uchun xomashyo bo'yicha AI-powered trade analysis va investitsiya tavsiyasi",
+    pageSub:'Navoiy viloyati uchun xomashyo bo‘yicha AI-powered trade analysis va investitsiya tavsiyasi',
     inputLabel:'Xomashyo nomini kiriting',
     placeholder:'Basalt, Quartz, Limestone, Gypsum...',
     analyze:'🔎 Tahlil qilish',
@@ -14280,10 +14102,10 @@ var INVEST_AI_I18N = {
     progressTitle:'⏳ Tahlil bosqichlari',
     running:'AI tahlil ishlayapti...',
     reportTitle:'📄 AI hisoboti',
-    historyTitle:'🕘 So'nggi 5 tahlil',
+    historyTitle:'🕘 So‘nggi 5 tahlil',
     historyEmpty:'Hali tahlillar saqlanmagan',
-    excelTitle:"📘 To'liq Excel workbook mavjud",
-    excelBody:"9 ta analitik sheetdan iborat to'liq Excel workbook tayyor bo'ladi. To'liq hisobotni olish uchun Investitsiya boshqarmasi bilan bog'laning.',
+    excelTitle:'📘 To‘liq Excel workbook mavjud',
+    excelBody:'9 ta analitik sheetdan iborat to‘liq Excel workbook tayyor bo‘ladi. To‘liq hisobotni olish uchun Investitsiya boshqarmasi bilan bog‘laning.',
     exportBtn:'📥 Excel yuklab olish',
     statusPending:'Kutilmoqda',
     statusActive:'Jarayonda',
@@ -14294,10 +14116,10 @@ var INVEST_AI_I18N = {
     toastStream:'🤖 AI tahlil boshlanmoqda...',
     toastReady:'✅ Tahlil tayyor!',
     toastHistory:'📂 Saqlangan tahlil yuklandi',
-    outputEmpty:"Natija hozircha yo'q",
+    outputEmpty:'Natija hozircha yo‘q',
     noSystemPrompt:'Anthropic system prompt env sozlanmagan',
     phase0:'Mahsulot va HS mapping',
-    phase1:'UN Comtrade yig'ish',
+    phase1:'UN Comtrade yig‘ish',
     phase2:'Qayta ishlash va tahlil',
     phase3:'Hisobot yaratish'
   },
@@ -14638,7 +14460,7 @@ function extractInvestAiTaggedLines(markdown, regex){
 function investAiNormalizeText(value){
   var text = String(value || '').toLowerCase();
   try { text = text.normalize('NFD').replace(/[\u0300-\u036f]/g,''); } catch(e){}
-  return text.replace(/[''`"]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+  return text.replace(/['’`"]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
 }
 
 function investAiParseHsCode(value){
@@ -16440,7 +16262,7 @@ function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, pro
       existing.email = existing.email || item.email || '';
       existing.rahbar = existing.rahbar || item.rahbar || '';
       existing.photoUrl = existing.photoUrl || item.photoUrl || item.photo_url || '';
-      existing.lavozim = existing.lavozim || item.lavozim || (meta.mode === 'exporters' ? 'Eksport bo\u02bcyicha kontakt' : 'Import bo\u02bcyicha kontakt');
+      existing.lavozim = existing.lavozim || item.lavozim || (meta.mode === 'exporters' ? 'Eksport bo‘yicha kontakt' : 'Import bo‘yicha kontakt');
       existing.soha = existing.soha || item.soha || '';
     } else if(item.email || item.kompaniya){
       found.push({
@@ -16448,7 +16270,7 @@ function mergeApolloPeopleIntoCompanies(found, peopleResults, country, meta, pro
         kompaniya:item.kompaniya,
         rahbar:item.rahbar || '',
         photoUrl:item.photoUrl || item.photo_url || '',
-        lavozim:item.lavozim || (meta.mode === 'exporters' ? 'Eksport bo\u02bcyicha kontakt' : 'Import bo\u02bcyicha kontakt'),
+        lavozim:item.lavozim || (meta.mode === 'exporters' ? 'Eksport bo‘yicha kontakt' : 'Import bo‘yicha kontakt'),
         email:item.email || '',
         telefon:'',
         davlat:country,
@@ -16747,7 +16569,7 @@ async function runCompanyFinder(source){
     ? (sourceScope.effectiveCountries || []).slice()
     : targetCountries.slice();
   if(meta.mode === 'exporters' && !searchCountries.length){
-    toast('⚠️ Eksportyor kompaniyalar uchun avval "Eksportyor manbasi" bo'limidan qit\'a yoki davlat tanlang','error');
+    toast('⚠️ Eksportyor kompaniyalar uchun avval "Eksportyor manbasi" bo‘limidan qit\'a yoki davlat tanlang','error');
     return;
   }
 
@@ -16796,7 +16618,7 @@ async function runCompanyFinder(source){
         _finderResults = _finderResults.slice(0, requestedCount);
       }
       if(!_finderResults.length && apolloSoftErrors.length){
-        throw new Error('Apollo qidiruvi natija qaytarmadi. Ayrim davlatlarda xatolar bo\u02bcldi: ' + apolloSoftErrors.slice(0,3).join(' | '));
+        throw new Error('Apollo qidiruvi natija qaytarmadi. Ayrim davlatlarda xatolar bo‘ldi: ' + apolloSoftErrors.slice(0,3).join(' | '));
       }
     } else {
       // Gemini AI — country-by-country search for importers
@@ -17111,7 +16933,7 @@ function getAiProductCacheKey(sourceIso3, hsCode){
 function normalizeAiLookupText(value){
   return String(value || '')
     .toLowerCase()
-    .replace(/[''`"]/g,'')
+    .replace(/['’`"]/g,'')
     .replace(/[^a-z0-9а-яёўқғҳөү\s]+/gi,' ')
     .replace(/\s+/g,' ')
     .trim();
@@ -17599,7 +17421,7 @@ function openInvestorAiWorkspace(id){
   _investorAiOpen = true;
   setInvestorAiMeta(comp);
   if(switching){
-    resetAiScope('investor', 'Investor tanlandi. Endi "AI Xat Yozish" tugmasini bosing');
+    resetAiScope('investor', 'Investor tanlandi. Endi “AI Xat Yozish” tugmasini bosing');
   }
   renderInvestorCompanies();
   if(comp.aiLetterData && comp.aiLetterData.analysis){
@@ -18493,7 +18315,7 @@ function getMailboxHealthMeta(mailbox){
   var health = Math.max(0, Math.min(100, parseInt(mailbox.health,10)||0));
   if(mailbox.disabled || !mailbox.connected) return { health:health || 28, cls:'bad', text:'Disconnected' };
   if(health >= 85) return { health:health, cls:'ok', text:'Fully Operational' };
-  if(health >= 60) return { health:health, cls:'warn', text:tr('mb_health_minor') };
+  if(health >= 60) return { health:health, cls:'warn', text:'Minor Issues' };
   return { health:health, cls:'bad', text:'Urgent Issues' };
 }
 function syncMailboxStateFromIntegrations(){
@@ -18627,7 +18449,7 @@ function renderMailboxPanel(){
   var sub = document.getElementById('mb-sub');
   if(sub){
     var primary = getPrimaryMailboxEmail();
-    sub.textContent = (primary ? (tr('mb_primary_replyto') + ': ' + primary) : tr('mb_no_replyto')) + ' • ' + active + ' ' + tr('mb_active_count');
+    sub.textContent = (primary ? ('Asosiy reply-to: ' + primary) : 'Asosiy reply-to tanlanmagan') + ' • ' + active + ' ta aktiv mailbox';
   }
   var note = document.getElementById('mailboxChartNote');
   if(note) note.textContent = (typeof _gmailConnected !== 'undefined' && _gmailConnected) ? 'Gmail ulangan — javoblar mailbox bo\'yicha taqsimlanadi.' : 'Gmail ulanmagan — javoblar soni umumiy hisobda ko\'rsatiladi.';
@@ -18650,7 +18472,7 @@ function renderMailboxPanel(){
       var actionClass = m.disabled ? 'primary' : '';
       return '<div class="mailbox-row">'
         + '<div class="mailbox-account"><div class="mailbox-avatar">'+getMailboxAvatar(provider)+'</div><div class="mailbox-acc-meta"><div class="mailbox-acc-email">'+m.email+'</div><div class="mailbox-acc-sub">'+provider+(m.notes ? ' • '+m.notes : '')+' • Sent: '+metrics.sent+' • Replies: '+metrics.responses+'</div></div></div>'
-        + '<div class="mailbox-capacity"><strong>'+(m.dailyCapacity||0)+'</strong><div>'+used+' '+tr('mb_used')+' • '+left+' '+tr('mb_left')+'</div></div>'
+        + '<div class="mailbox-capacity"><strong>'+(m.dailyCapacity||0)+'</strong><div>'+used+' ishlatilgan • '+left+' qolgan</div></div>'
         + '<div><span class="mailbox-chip '+meta.cls+'">'+meta.text+'</span></div>'
         + '<div>'+renderMailboxHealthBars(meta)+'</div>'
         + '<div class="mailbox-use"><button class="mailbox-toggle '+((m.active && !m.disabled)?'active':'')+'" onclick="toggleMailboxPrimary('+m.id+')" title="Asosiy mailbox qilish"></button></div>'
@@ -19021,6 +18843,102 @@ Javob berishda:
 
 let chatHistory = [];
 
+function toggleChat(){
+  var panel = document.getElementById('chatPanel');
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')){
+    document.getElementById('chatInput').focus();
+    document.getElementById('chatDot').style.display = 'none';
+  }
+}
+
+async function sendChat(){
+  var input = document.getElementById('chatInput');
+  var msg = input.value.trim();
+  if(!msg) return;
+
+  input.value = '';
+  addChatMsg(msg, 'user');
+  
+  var sendBtn = document.getElementById('chatSendBtn');
+  sendBtn.disabled = true;
+  
+  addChatMsg('Yozmoqda...', 'bot typing');
+
+  chatHistory.push({role:'user', parts:[{text:msg}]});
+
+  try {
+    var body = {
+      system_instruction: {parts:[{text: NAVOIY_CONTEXT}]},
+      contents: chatHistory,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024
+      }
+    };
+
+    var reply = '';
+    var lastError = '';
+    var success = false;
+
+    // Try each model until one works
+    for(var m = 0; m < GEMINI_MODELS.length; m++){
+      try {
+        var resp = await fetch(geminiUrl(GEMINI_MODELS[m]), {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+
+        if(resp.ok){
+          var data = await resp.json();
+          if(data.candidates && data.candidates[0] && data.candidates[0].content){
+            reply = data.candidates[0].content.parts[0].text;
+            success = true;
+            break;
+          }
+        } else {
+          var err = await resp.json().catch(function(){return {};});
+          lastError = (err.error?.message || 'Status ' + resp.status);
+          console.log('Gemini ' + GEMINI_MODELS[m] + ' xato:', lastError);
+          // If 403 or API not enabled, try next model
+          if(resp.status === 403 || resp.status === 429) continue;
+          // Other errors - still try next
+          continue;
+        }
+      } catch(fetchErr){
+        lastError = fetchErr.message;
+        continue;
+      }
+    }
+
+    removeTyping();
+
+    if(success){
+      chatHistory.push({role:'model', parts:[{text:reply}]});
+      if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+      addChatMsg(reply, 'bot');
+    } else {
+      chatHistory.pop(); // remove failed user msg from history
+      if(lastError.indexOf('API_KEY') !== -1 || lastError.indexOf('API key') !== -1){
+        addChatMsg('⚠️ API kalit noto\'g\'ri yoki Generative Language API yoqilmagan.\n\nTuzatish: aistudio.google.com → Get API Key → yangi kalit yarating.', 'bot');
+      } else if(lastError.indexOf('quota') !== -1 || lastError.indexOf('429') !== -1 || lastError.indexOf('RESOURCE_EXHAUSTED') !== -1){
+        addChatMsg('⚠️ Kunlik limit tugadi. Ertaga qayta urinib ko\'ring.', 'bot');
+      } else if(lastError.indexOf('not found') !== -1 || lastError.indexOf('404') !== -1){
+        addChatMsg('⚠️ Model topilmadi. Xato: ' + lastError, 'bot');
+      } else {
+        addChatMsg('⚠️ Xato: ' + lastError + '\n\nIltimos qaytadan urinib ko\'ring yoki admin bilan bog\'laning.', 'bot');
+      }
+    }
+
+  } catch(e){
+    removeTyping();
+    chatHistory.pop();
+    addChatMsg('⚠️ Tarmoq xatosi: ' + e.message, 'bot');
+  }
+
+  sendBtn.disabled = false;
+}
 
 function addChatMsg(text, type){
   var container = document.getElementById('chatMsgs');
