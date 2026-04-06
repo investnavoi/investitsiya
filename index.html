@@ -13218,13 +13218,13 @@ async function renderUzbExportSection(prod, hsCode, sourceKey){
   if(!wrap || !body) return;
 
   wrap.style.display = 'block';
-  if(title) title.textContent = "O'zbekiston Eksport — " + (prod.name_en || prod.name_uz || '') + ' (HS: ' + hsCode + ')';
+  if(title) title.textContent = "O'zbekiston Eksporti — " + (prod.name_en || prod.name_uz || '') + ' (HS: ' + hsCode + ')';
   body.innerHTML = '<div style="padding:1rem;color:var(--text3);font-size:.8rem">⏳ Yuklanmoqda...</div>';
 
   try {
-    // Fetch UZB (860) export data for this HS code — all world partners
+    // 4 yil, barcha partnerlar, O'zbekiston eksporti
     var url = COMTRADE_PROXY + '?hs=' + encodeURIComponent(hsCode) +
-      '&year=2023&countries=860&source=' + encodeURIComponent(sourceKey) + '&flow=X';
+      '&year=2021%2C2022%2C2023%2C2024&countries=860&source=' + encodeURIComponent(sourceKey) + '&flow=X';
     if(window._apiKeys && window._apiKeys.comtrade){
       url += '&key=' + encodeURIComponent(window._apiKeys.comtrade);
     }
@@ -13233,31 +13233,52 @@ async function renderUzbExportSection(prod, hsCode, sourceKey){
     var uzb = data && data.countries && data.countries[0];
 
     if(!uzb || uzb.status !== 'ok' || !(uzb.import_usd > 0)){
-      body.innerHTML = '<div style="padding:1rem;color:var(--text3);font-size:.8rem;text-align:center">O'zbekistonning bu mahsulot bo'yicha eksport ma'lumoti topilmadi.</div>';
+      var noDataMsg = document.createElement('div');
+      noDataMsg.style.cssText = 'padding:1rem;color:var(--text3);font-size:.8rem;text-align:center';
+      noDataMsg.textContent = "O'zbekistonning bu mahsulot bo'yicha eksport ma'lumoti topilmadi.";
+      body.innerHTML = '';
+      body.appendChild(noDataMsg);
       return;
     }
 
-    // Year imports table
     var yi = uzb.year_imports || {};
     var years = ['2021','2022','2023','2024'];
-    var yRows = years.map(function(y){
-      var v = Number(yi[y]||0);
-      return '<td style="padding:.5rem .8rem;font-weight:'+(v>0?'700':'400')+';color:'+(v>0?'#059669':'var(--text3)')+'">'+
-        (v>0?investAiFmtUsd(v):'—')+'</td>';
-    }).join('');
+    var v21 = Number(yi['2021']||0), v24 = Number(yi['2024']||0);
+    var cagr = (v21>0&&v24>0) ? (Math.pow(v24/v21,1/3)-1)*100 : null;
+    var cagrFmt = cagr!==null ? (cagr>=0?'+':'')+cagr.toFixed(1)+'%' : '—';
+    var cagrColor = cagr!==null ? (cagr>=0?'#059669':'#EF233C') : 'var(--text3)';
 
-    // Partner breakdown
+    // Maqsad davlatlar nomlarini olamiz (filter uchun)
+    var targetNames = (getImportAnalysisTargetCountries()||[]).map(function(t){
+      return String(typeof t==='string'?t:(t.name||t.label||'')).toLowerCase().trim();
+    }).filter(Boolean);
+
+    // Partner qatorlar — maqsad davlatlardan TASHQARI
     var partners = (uzb.products||[])
-      .filter(function(p){ return Number(p.partnerCode||0)!==0 && Number(p.value||0)>0; })
+      .filter(function(p){
+        if(Number(p.partnerCode||0)===0) return false;
+        if(!(Number(p.value||0)>0)) return false;
+        var pName = String(p.partner||p.partnerDesc||'').toLowerCase().trim();
+        if(targetNames.length && targetNames.some(function(n){
+          return pName===n || pName.indexOf(n)!==-1 || n.indexOf(pName)!==-1;
+        })) return false;
+        return true;
+      })
       .sort(function(a,b){ return Number(b.value||0)-Number(a.value||0); });
 
     var partnerHtml = '';
     if(partners.length){
-      var top = partners.slice(0,15);
-      partnerHtml = '<div style="margin-top:.75rem"><div style="font-size:.7rem;font-weight:700;color:var(--text3);padding:0 1rem .4rem;text-transform:uppercase">Top eksport yo'nalishlari</div>' +
+      partnerHtml = '<div style="margin-top:.75rem">' +
+        '<div style="font-size:.7rem;font-weight:700;color:var(--text3);padding:0 1rem .4rem;text-transform:uppercase">Eksport yo'nalishlari (maqsad davlatlardan tashqari)</div>' +
         '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:rgba(5,150,105,.06);font-size:.65rem;color:var(--text3);font-weight:700">' +
-        '<th style="padding:.35rem .8rem">#</th><th style="padding:.35rem .8rem">Yil</th><th style="padding:.35rem .8rem">Manzil davlat</th><th style="padding:.35rem .8rem">Eksport ($)</th><th style="padding:.35rem .8rem">Hajm (kg)</th><th style="padding:.35rem .8rem">Narx ($/kg)</th></tr></thead><tbody>' +
-        top.map(function(p,i){
+        '<th style="padding:.35rem .8rem">#</th>' +
+        '<th style="padding:.35rem .8rem">Yil</th>' +
+        '<th style="padding:.35rem .8rem">Manzil davlat</th>' +
+        '<th style="padding:.35rem .8rem">Eksport ($)</th>' +
+        '<th style="padding:.35rem .8rem">Hajm (kg)</th>' +
+        '<th style="padding:.35rem .8rem">Narx ($/kg)</th>' +
+        '</tr></thead><tbody>' +
+        partners.slice(0,30).map(function(p,i){
           var val = Number(p.value||0);
           var wgt = Number(p.weight||0);
           var price = (val>0&&wgt>0) ? '$'+(val/wgt>=1?(val/wgt).toFixed(2):(val/wgt).toFixed(4))+'/kg' : '—';
@@ -13270,17 +13291,23 @@ async function renderUzbExportSection(prod, hsCode, sourceKey){
             '<td style="padding:.4rem .8rem;color:#059669;font-weight:600">'+escHtml(price)+'</td>' +
           '</tr>';
         }).join('') + '</tbody></table></div>';
+    } else {
+      partnerHtml = '<div style="padding:.75rem 1rem;color:var(--text3);font-size:.8rem">Maqsad davlatlardan tashqari eksport yo'nalishlari topilmadi.</div>';
     }
 
     body.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;padding:.75rem 1rem">' +
-        '<div style="background:rgba(5,150,105,.07);border-radius:10px;padding:.6rem .8rem">' +
+      '<div style="display:flex;gap:.5rem;padding:.75rem 1rem;flex-wrap:wrap">' +
+        '<div style="background:rgba(5,150,105,.07);border-radius:10px;padding:.6rem .8rem;min-width:8rem">' +
           '<div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;font-weight:700">Jami eksport 2021-2024</div>' +
           '<div style="font-size:1.1rem;font-weight:800;color:#059669">'+investAiFmtUsd(uzb.import_usd||0)+'</div>' +
         '</div>' +
+        '<div style="background:rgba(5,150,105,.04);border-radius:10px;padding:.6rem .8rem;min-width:6rem">' +
+          '<div style="font-size:.6rem;color:var(--text3);font-weight:700">CAGR (4 yil)</div>' +
+          '<div style="font-size:.95rem;font-weight:800;color:'+cagrColor+'">'+cagrFmt+'</div>' +
+        '</div>' +
         years.map(function(y){
           var v = Number(yi[y]||0);
-          return '<div style="background:rgba(5,150,105,.04);border-radius:10px;padding:.6rem .8rem">' +
+          return '<div style="background:rgba(5,150,105,.04);border-radius:10px;padding:.6rem .8rem;min-width:6rem">' +
             '<div style="font-size:.6rem;color:var(--text3);font-weight:700">'+y+'</div>' +
             '<div style="font-size:.9rem;font-weight:700;color:'+(v>0?'#059669':'var(--text3)')+'">'+
             (v>0?investAiFmtUsd(v):'—')+'</div></div>';
@@ -13290,7 +13317,6 @@ async function renderUzbExportSection(prod, hsCode, sourceKey){
     body.innerHTML = '<div style="padding:1rem;color:#EF233C;font-size:.8rem">Eksport ma'lumotini yuklashda xato: ' + escHtml(e.message) + '</div>';
   }
 }
-
 async function runImportAnalysis(forceRefresh){
   var targetCountries = getImportAnalysisTargetCountries();
   var sourceKey = getImportAnalysisSource();
