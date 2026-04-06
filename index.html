@@ -12381,6 +12381,36 @@ function getImportAnalysisSource(){
   return sel ? String(sel.value || 'comtrade').toLowerCase() : 'comtrade';
 }
 
+function getImportAnalysisFinderMode(){
+  var el = document.getElementById('finder-mode');
+  return (el && String(el.value || '').toLowerCase() === 'importers') ? 'importers' : 'exporters';
+}
+
+function getImportAnalysisTradeFlowCode(){
+  return getImportAnalysisFinderMode() === 'importers' ? 'X' : 'M';
+}
+
+function getImportAnalysisLabels(){
+  if(getImportAnalysisFinderMode() === 'importers'){
+    return {
+      totalKpi: "Jami eksport 2021-2024",
+      biggestKpi: "Eng katta eksportyor",
+      chartTitleSuffix: "Eksport Hajmi (2021-2024)",
+      emptyText: "Tanlangan davlatlar bo'yicha eksport ma'lumotlari topilmadi",
+      sourceLabel: "Ma'lumot manbasi",
+      valueColumn: "Eksport ($)"
+    };
+  }
+  return {
+    totalKpi: "Jami import 2021-2024",
+    biggestKpi: "Top importyor",
+    chartTitleSuffix: "Import Hajmi (2021-2024)",
+    emptyText: "Tanlangan davlatlar bo'yicha import ma'lumotlari topilmadi",
+    sourceLabel: "Ma'lumot manbasi",
+    valueColumn: "Import ($)"
+  };
+}
+
 function getImportAnalysisSourceLabel(source){
   var value = String(source || '').toLowerCase();
   if(value === 'wits' || value.indexOf('wits') >= 0) return 'WITS (World Bank)';
@@ -12418,17 +12448,19 @@ async function fetchComtrade(hsCode, year, targetCountries, source){
       // Prefer comtrade code, then english name variants, then code
       return String((t && (t.comtrade || t.name_en || t.label_en || t.name || t.label || t.code)) || '').trim();
     }).filter(Boolean).join('|');
-    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countriesParam)+'&source='+encodeURIComponent(getImportAnalysisSourceKey(source));
+    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countriesParam)+'&source='+encodeURIComponent(getImportAnalysisSourceKey(source))+'&flow='+encodeURIComponent(getImportAnalysisTradeFlowCode());
     if(window._apiKeys && window._apiKeys.comtrade){
       url += '&key='+encodeURIComponent(window._apiKeys.comtrade);
     }
-    // Add source countries filter if selected
-    try {
-      var srcSel = getFinderSourceSelection();
-      if(srcSel && srcSel.hasFilter && srcSel.effectiveCountries && srcSel.effectiveCountries.length){
-        url += '&sourceCountries='+encodeURIComponent(srcSel.effectiveCountries.join('|'));
-      }
-    } catch(selErr){ console.log('sourceSelection xato:', selErr.message); }
+    // Add source countries filter only in exporter mode
+    if(getImportAnalysisFinderMode() === 'exporters'){
+      try {
+        var srcSel = getFinderSourceSelection();
+        if(srcSel && srcSel.hasFilter && srcSel.effectiveCountries && srcSel.effectiveCountries.length){
+          url += '&sourceCountries='+encodeURIComponent(srcSel.effectiveCountries.join('|'));
+        }
+      } catch(selErr){ console.log('sourceSelection xato:', selErr.message); }
+    }
     var resp = await fetch(url);
     if(!resp.ok) throw new Error('Comtrade proxy: '+resp.status);
     var data = await resp.json();
@@ -12809,6 +12841,7 @@ TARGET_COUNTRIES = [
 function initImportAnalysisComtradeOnly(){
   var targetCountries = arguments[0];
   var source = arguments[1] || 'comtrade';
+  var labels = getImportAnalysisLabels();
   var count = (targetCountries && targetCountries.length) ? targetCountries.length : TARGET_COUNTRIES.length;
   var importPage = document.getElementById('page-import');
   if(!importPage) return;
@@ -12818,20 +12851,20 @@ function initImportAnalysisComtradeOnly(){
 
   var kpi1 = document.getElementById('imp-k1');
   var kpi1Label = kpi1 ? kpi1.previousElementSibling : null;
-  if(kpi1Label) kpi1Label.textContent = "Jami import 2021-2024";
+  if(kpi1Label) kpi1Label.textContent = labels.totalKpi;
 
   var kpi4 = document.getElementById('imp-k4');
   var kpi4Label = kpi4 ? kpi4.previousElementSibling : null;
-  if(kpi4Label) kpi4Label.textContent = "Ma'lumot manbasi";
+  if(kpi4Label) kpi4Label.textContent = labels.sourceLabel;
 
   var kpi3 = document.getElementById('imp-k3');
   var kpi3Label = kpi3 ? kpi3.previousElementSibling : null;
-  if(kpi3Label) kpi3Label.textContent = "Top importyor";
+  if(kpi3Label) kpi3Label.textContent = labels.biggestKpi;
 
   var chartCard = document.getElementById('importBarChart');
   var chartTitle = chartCard ? chartCard.closest('.tcard') : null;
   var chartHead = chartTitle ? chartTitle.querySelector('.tc-title') : null;
-  if(chartHead) chartHead.textContent = count+" Davlat Import Hajmi (2021-2024)";
+  if(chartHead) chartHead.textContent = count+" Davlat "+labels.chartTitleSuffix;
 
   var wbLoading = document.getElementById('wbLoading');
   var wbCard = wbLoading ? wbLoading.closest('.tcard') : null;
@@ -12854,7 +12887,7 @@ function buildImportTargetKey(targetCountries){
 
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
   var sourceScope = getImportAnalysisSourceScopeState();
-  return ['importv4', getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
+  return ['importv5', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
     .join('_')
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
@@ -12865,6 +12898,15 @@ function getImportSnapshot(prod, hsCode, targetCountries, source){
 }
 
 function getImportAnalysisSourceScopeState(){
+  if(getImportAnalysisFinderMode() === 'importers'){
+    return {
+      hasFilter: false,
+      countries: [],
+      continents: [],
+      effectiveCountries: [],
+      cacheKey: 'world'
+    };
+  }
   var selection = getFinderSourceSelection();
   var effectiveCountries = (selection.effectiveCountries || []).slice().sort();
   var countries = (selection.countries || []).slice().sort();
@@ -13338,7 +13380,7 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
         rBody.appendChild(yTr);
         var colTr=document.createElement('tr');
         colTr.style.cssText='display:none;background:rgba(67,97,238,.08);font-size:.65rem;color:var(--text3);font-weight:700';
-        colTr.innerHTML='<th style="padding:.35rem .8rem .35rem 4rem">#</th><th style="padding:.35rem .8rem">Period</th><th style="padding:.35rem .8rem">Reporter</th><th style="padding:.35rem .8rem">Partner</th><th style="padding:.35rem .8rem">Import ($)</th><th style="padding:.35rem .8rem">Hajm (kg)</th><th style="padding:.35rem .8rem">Narx ($/kg)</th><th style="padding:.35rem .8rem">Amal</th>';
+        colTr.innerHTML='<th style="padding:.35rem .8rem .35rem 4rem">#</th><th style="padding:.35rem .8rem">Period</th><th style="padding:.35rem .8rem">Reporter</th><th style="padding:.35rem .8rem">Partner</th><th style="padding:.35rem .8rem">'+getImportAnalysisLabels().valueColumn+'</th><th style="padding:.35rem .8rem">Hajm (kg)</th><th style="padding:.35rem .8rem">Narx ($/kg)</th><th style="padding:.35rem .8rem">Amal</th>';
         rBody.appendChild(colTr);
         var dataRows=[colTr];
         yRows.forEach(function(row,ri){
@@ -13420,6 +13462,7 @@ function countryHasImportDisplayData(country){
 function renderImportResults(countries, prod, source, targetCountries){
   targetCountries = (targetCountries && targetCountries.length) ? targetCountries : getImportAnalysisTargetCountries();
   initImportAnalysisComtradeOnly(targetCountries, getImportAnalysisSourceKey(source));
+  var labels = getImportAnalysisLabels();
   countries = Array.isArray(countries) ? countries.slice() : [];
   countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
   if(!countries.length){
@@ -13463,9 +13506,11 @@ function renderImportResults(countries, prod, source, targetCountries){
   var k2Label = document.getElementById('imp-k2-label');
   var k3Label = document.getElementById('imp-k3-label');
 
-  if(k1Label) k1Label.textContent = 'Jami import 2021-2024';
+  if(k1Label) k1Label.textContent = labels.totalKpi;
   if(k2Label) k2Label.textContent = 'Eng katta bozor';
-  if(k3Label) k3Label.textContent = singleCountry ? '2024 import' : 'Top importyor';
+  if(k3Label) k3Label.textContent = singleCountry
+    ? (getImportAnalysisFinderMode() === 'importers' ? '2024 eksport' : '2024 import')
+    : labels.biggestKpi;
 
   document.getElementById('imp-k1').textContent = investAiFmtUsd(total);
   document.getElementById('imp-k2').textContent = (biggest.flag||'')+' '+(biggest.name||'—');
