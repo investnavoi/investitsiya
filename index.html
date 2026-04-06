@@ -3235,14 +3235,14 @@ const TRANSLATIONS = {
     lbl_analysis_moved:"ℹ️ Tahlil funksiyasi ko'chirildi",
     lbl_analysis_moved_sub:"Mahsulot tahlili endi Kompaniya qidiruvi bo'limiga ko'chirildi",
     btn_save_all:"✅ Barchasiga saqlash",
-    btn_save_firebase:tr('btn_save_firebase'),
+    btn_save_firebase:"✅ Barchasini Firebase'ga saqlash",
     btn_upload_add:"✅ Yuklash va qo'shish",
     btn_add_raw:"➕ Xomashyo qo'shish",
     btn_add_new:"➕ Yangi qo'shish",
     btn_delete_yes:"🗑 Ha, o'chirish",
     btn_delete_all_lbl:"🗑 Hammasini o'chirish",
     btn_save_db:"💾 Bazaga saqlash",
-    lbl_no_media:tr('lbl_no_media'),
+    lbl_no_media:"📁 Hali media fayl yo'q",
     lbl_no_doc:"📁 Hujjat qo'shilmagan",
     lbl_click_file:"📂 Fayl tanlash uchun bosing",
     lbl_products_section:"🗂 Mahsulot bo'limlari",
@@ -9130,7 +9130,7 @@ function renderProductRawAiBlock(section, sectionRaws, sectionProds){
         '</div>' +
       '</div>' +
       '<div class="prod-ai-preview">'+(preview || '<span class="prod-ai-preview-more">Mahsulotlar hali kiritilmagan</span>')+'</div>' +
-      '<div class="prod-ai-note">Kreativ yondashuv sifatida bu panel xomashyodan boshlab investitsiya tahlilini shu joyning o'zida ochadi. AI natija tayyor bo'lgach, shu yerning o'zida ko'rasiz va kerak bo'lsa to'liq AI Invest Tahlili sahifasiga o'tasiz.</div>' +
+      '<div class="prod-ai-note">Kreativ yondashuv sifatida bu panel xomashyodan boshlab investitsiya tahlilini shu joyning o\u02bczida ochadi. AI natija tayyor bo\u02bcgach, shu yerning o\u02bczida ko\u02bcrasiz va kerak bo\u02blsa to\u02bcliq AI Invest Tahlili sahifasiga o\u02bctasiz.</div>' +
       '<div class="prod-ai-divider"></div>' +
       '<div class="tcard prod-ai-inline-card" id="productRawAiProgressCard" style="display:none">' +
         '<div class="tc-head"><div class="tc-title">⏳ Tahlil bosqichlari</div><div class="anx-running">AI tahlil ishlayapti...</div></div>' +
@@ -11473,7 +11473,7 @@ var SECTOR_KEYWORDS = {
   'energetika':['energetika','energy','solar','quyosh','shamol','gaz','neft','elektr','generator','kabel','энергетика','энергия','қуёш','шамол','газ','нефт','электр','генератор','кабел'],
   'elektronika':['elektronika','electronic','kompyuter','telefon','texnologiya','IT','dastur','software','электроника','компьютер','технология','дастур'],
   'qishloq':['qishloq','fermer','chorva','paranda','baliq','issiqxona','o\'g\'it','dehqon','bog\'dorchilik','қишлоқ','фермер','чорва','паранда','балиқ','иссиқхона','ўғит','деҳқон','етиштириш','пахта'],
-  'transport':['transport','logistika','yuk','tashish','avto','poyezd','samolyot','havo','temir yo\'l','транспорт','логистика','юк','ташиш','авто','поезд','самолёт','ҳаво','темир йўл'],
+  'transport':['transport','logistika','yuk','tashish','avto','poyezd','samolyot','havo','temir yo\u02bcl','транспорт','логистика','юк','ташиш','авто','поезд','самолёт','ҳаво','темир йўл'],
   'turizm':['turizm','tourism','mehmonxona','hotel','restoran','sayohat','kafe','dam olish','туризм','меҳмонхона','отел','ресторан','саёҳат','кафе','дам олиш'],
   'konchilik':['konchilik','mining','kon','oltin','mis','uran','fosfat','maden','mineral','rudnik','qazib','кончилик','қазиб','олтин','мис','уран','фосфат','минерал','рудник','қазиб олиш','каолин','кварц','marble','гранит'],
   'mebel':['mebel','furniture','yog\'och','wood','faner','eshik','deraza','karavot','shkaf','stol','мебел','ёғоч','фанер','эшик','дераза','каравот','шкаф','стол'],
@@ -14272,7 +14272,7 @@ var INVEST_AI_I18N = {
   uz: {
     nav:'AI Invest Tahlil',
     pageTitle:'🧠 AI Investitsiya Tahlili',
-    pageSub:'Navoiy viloyati uchun xomashyo bo'yicha AI-powered trade analysis va investitsiya tavsiyasi',
+    pageSub:"Navoiy viloyati uchun xomashyo bo'yicha AI-powered trade analysis va investitsiya tavsiyasi",
     inputLabel:'Xomashyo nomini kiriting',
     placeholder:'Basalt, Quartz, Limestone, Gypsum...',
     analyze:'🔎 Tahlil qilish',
@@ -14282,8 +14282,8 @@ var INVEST_AI_I18N = {
     reportTitle:'📄 AI hisoboti',
     historyTitle:'🕘 So'nggi 5 tahlil',
     historyEmpty:'Hali tahlillar saqlanmagan',
-    excelTitle:'📘 To'liq Excel workbook mavjud',
-    excelBody:'9 ta analitik sheetdan iborat to'liq Excel workbook tayyor bo'ladi. To'liq hisobotni olish uchun Investitsiya boshqarmasi bilan bog'laning.',
+    excelTitle:"📘 To'liq Excel workbook mavjud",
+    excelBody:"9 ta analitik sheetdan iborat to'liq Excel workbook tayyor bo'ladi. To'liq hisobotni olish uchun Investitsiya boshqarmasi bilan bog'laning.',
     exportBtn:'📥 Excel yuklab olish',
     statusPending:'Kutilmoqda',
     statusActive:'Jarayonda',
@@ -14294,7 +14294,7 @@ var INVEST_AI_I18N = {
     toastStream:'🤖 AI tahlil boshlanmoqda...',
     toastReady:'✅ Tahlil tayyor!',
     toastHistory:'📂 Saqlangan tahlil yuklandi',
-    outputEmpty:'Natija hozircha yo'q',
+    outputEmpty:"Natija hozircha yo'q",
     noSystemPrompt:'Anthropic system prompt env sozlanmagan',
     phase0:'Mahsulot va HS mapping',
     phase1:'UN Comtrade yig'ish',
@@ -16796,7 +16796,7 @@ async function runCompanyFinder(source){
         _finderResults = _finderResults.slice(0, requestedCount);
       }
       if(!_finderResults.length && apolloSoftErrors.length){
-        throw new Error('Apollo qidiruvi natija qaytarmadi. Ayrim davlatlarda xatolar bo'ldi: ' + apolloSoftErrors.slice(0,3).join(' | '));
+        throw new Error('Apollo qidiruvi natija qaytarmadi. Ayrim davlatlarda xatolar bo\u02bcldi: ' + apolloSoftErrors.slice(0,3).join(' | '));
       }
     } else {
       // Gemini AI — country-by-country search for importers
