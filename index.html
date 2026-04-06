@@ -11319,9 +11319,9 @@ function renderEntrepreneurs(){
   tb.innerHTML = list.map(function(e,i){
     var tgMeta = getEntrepreneurTgStatusMeta(e, tgCooldown);
     var stIcon = renderEntrepreneurTgStatusHtml(e, tgMeta);
-    var replyCheckBtn = '<button class="btn btn-sm" onclick="checkSingleTelegramReply(\''+e.id+'\')" style="background:#2563EB;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram javobini tekshirish">💬</button>';
+    var replyCheckBtn = '<button class="btn btn-sm" onclick="checkSingleTelegramReply(\''+e.id+'\')" style="background:#2563EB;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="Telegram javobini tekshirish">💬</button>';
     var replyViewBtn = e.tgReplyText
-      ? '<button class="btn btn-sm" onclick="showEntrepreneurReply(\''+e.id+'\')" style="background:#7C3AED;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram javobini ko\'rish">👁</button>'
+      ? '<button class="btn btn-sm" onclick="showEntrepreneurReply(\''+e.id+'\')" style="background:#7C3AED;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="Telegram javobini ko\'rish">👁</button>'
       : '';
     var checked = hasSavedSelection ? _entrSelectedIds.indexOf(String(e.id)) !== -1 : !!e.matchedForum;
     var nameCell = '<span id="nm-display-'+e.id+'" style="cursor:pointer" onclick="editEntName(\''+e.id+'\')" title="Bosib tahrirlang"><b>'+escHtml(e.name||'—')+'</b> ✏️</span>'+
@@ -11346,8 +11346,8 @@ function renderEntrepreneurs(){
       '<td style="white-space:nowrap">'+
         replyCheckBtn+
         replyViewBtn+
-        '<button class="btn btn-sm" onclick="sendSingleTg(\''+e.id+'\')" style="background:#0088cc;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram xabar">📲</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')" style="font-size:.55rem;padding:2px 6px">🗑</button>'+
+        '<button class="btn btn-sm" onclick="sendSingleTg(\''+e.id+'\')" style="background:#0088cc;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="Telegram xabar"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 14.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/></svg></button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')" style="font-size:.72rem;padding:5px 9px">🗑</button>'+
       '</td></tr>';
   }).join('');
   updateEntrepreneurSelectedCount();
