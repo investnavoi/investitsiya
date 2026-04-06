@@ -13315,7 +13315,7 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
       var rcagr=(rv21>0&&rv24>0)?(Math.pow(rv24/rv21,1/3)-1)*100:null;
       var rcagrFmt=rcagr!==null?(rcagr>=0?'+':'')+rcagr.toFixed(1)+'%':'—';
       var rcagrColor=rcagr!==null?(rcagr>=0?'#059669':'#EF233C'):'var(--text3)';
-      rTr.innerHTML='<td colspan="7" style="padding:.75rem 1rem"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:.8rem"><span class="r-arrow" style="color:#4361EE;font-size:.8rem;display:inline-block;transition:transform .2s">►</span><b style="font-size:.92rem;color:var(--text)">'+escHtml(flag)+escHtml(tc.label||c.name||'')+'</b></div><div style="display:flex;gap:1.5rem;align-items:center"><b style="color:#4361EE;font-size:.88rem">'+escHtml(totalFmt)+'</b><span style="font-size:.78rem;font-weight:700;color:'+rcagrColor+'">'+escHtml(rcagrFmt)+'</span><span style="color:var(--text3);font-size:.78rem">'+escHtml(vol)+'</span></div></div></td>';
+      rTr.innerHTML='<td colspan="8" style="padding:.75rem 1rem"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:.8rem"><span class="r-arrow" style="color:#4361EE;font-size:.8rem;display:inline-block;transition:transform .2s">►</span><b style="font-size:.92rem;color:var(--text)">'+escHtml(flag)+escHtml(tc.label||c.name||'')+'</b></div><div style="display:flex;align-items:center"><b style="color:#4361EE;font-size:.88rem;min-width:8rem;text-align:right">'+escHtml(totalFmt)+'</b><span style="font-size:.78rem;font-weight:700;color:'+rcagrColor+';min-width:4.5rem;text-align:right">'+escHtml(rcagrFmt)+'</span><span style="color:var(--text3);font-size:.78rem;min-width:3.5rem;text-align:right">'+escHtml(vol)+'</span></div></div></td>';
       rHead.appendChild(rTr);
       var rBody=document.createElement('tbody'); rBody.setAttribute('data-extra','1'); rBody.style.display='none';
       var byYear={};
@@ -13334,11 +13334,11 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
         var yWgtFmt=yWgt>999?Math.round(yWgt/1000)+'K t':Math.round(yWgt)+'t';
         var yTr=document.createElement('tr');
         yTr.style.cssText='cursor:pointer;background:rgba(67,97,238,.05)';
-        yTr.innerHTML='<td colspan="7" style="padding:.55rem 1rem .55rem 2.5rem"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:.6rem"><span class="y-arrow" style="color:var(--text3);font-size:.65rem;display:inline-block;transition:transform .2s">►</span><b style="color:var(--text2);font-size:.82rem">'+escHtml(yr)+'</b><span style="font-size:.65rem;color:var(--text3)">'+yRows.length+' ta manba</span></div><div style="display:flex;gap:1.2rem"><b style="font-size:.78rem">'+escHtml(yTotalFmt)+'</b><span style="color:var(--text3);font-size:.72rem">'+escHtml(yWgtFmt)+'</span></div></div></td>';
+        yTr.innerHTML='<td colspan="8" style="padding:.55rem 1rem .55rem 2.5rem"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:.6rem"><span class="y-arrow" style="color:var(--text3);font-size:.65rem;display:inline-block;transition:transform .2s">►</span><b style="color:var(--text2);font-size:.82rem">'+escHtml(yr)+'</b><span style="font-size:.65rem;color:var(--text3)">'+yRows.length+' ta manba</span></div><div style="display:flex;gap:1.2rem"><b style="font-size:.78rem">'+escHtml(yTotalFmt)+'</b><span style="color:var(--text3);font-size:.72rem">'+escHtml(yWgtFmt)+'</span></div></div></td>';
         rBody.appendChild(yTr);
         var colTr=document.createElement('tr');
         colTr.style.cssText='display:none;background:rgba(67,97,238,.08);font-size:.65rem;color:var(--text3);font-weight:700';
-        colTr.innerHTML='<th style="padding:.35rem .8rem .35rem 4rem">#</th><th style="padding:.35rem .8rem">Period</th><th style="padding:.35rem .8rem">Reporter</th><th style="padding:.35rem .8rem">Partner</th><th style="padding:.35rem .8rem">Import ($)</th><th style="padding:.35rem .8rem">Hajm (kg)</th><th style="padding:.35rem .8rem">Narx ($/kg)</th><th style="padding:.35rem .8rem">CAGR</th><th style="padding:.35rem .8rem">Amal</th>';
+        colTr.innerHTML='<th style="padding:.35rem .8rem .35rem 4rem">#</th><th style="padding:.35rem .8rem">Period</th><th style="padding:.35rem .8rem">Reporter</th><th style="padding:.35rem .8rem">Partner</th><th style="padding:.35rem .8rem">Import ($)</th><th style="padding:.35rem .8rem">Hajm (kg)</th><th style="padding:.35rem .8rem">Narx ($/kg)</th><th style="padding:.35rem .8rem">Amal</th>';
         rBody.appendChild(colTr);
         var dataRows=[colTr];
         yRows.forEach(function(row,ri){
@@ -13352,15 +13352,9 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
           var priceFmt = unitPrice !== null
             ? '$' + (unitPrice >= 1 ? unitPrice.toFixed(2) : unitPrice.toFixed(4)) + '/kg'
             : '—';
-          // CAGR per partner: use country-level year_imports (2021→2024)
-          var yi = c.year_imports || {};
-          var v21 = Number(yi['2021']||0), v24 = Number(yi['2024']||0);
-          var cagr = (v21 > 0 && v24 > 0) ? (Math.pow(v24/v21, 1/3) - 1) * 100 : null;
-          var cagrFmt = cagr !== null ? (cagr >= 0 ? '+' : '') + cagr.toFixed(1) + '%' : '—';
-          var cagrColor = cagr !== null ? (cagr >= 0 ? '#059669' : '#EF233C') : 'var(--text3)';
           var dTr=document.createElement('tr');
           dTr.style.cssText='display:none;font-size:.8rem;border-top:1px solid rgba(67,97,238,.07)';
-          dTr.innerHTML='<td style="padding:.5rem .8rem .5rem 4rem;color:var(--text3)">'+(ri+1)+'</td><td style="padding:.5rem .8rem;font-weight:700">'+escHtml(yr)+'</td><td style="padding:.5rem .8rem">'+escHtml(c.name||'')+'</td><td style="padding:.5rem .8rem;font-weight:600;color:#4361EE">'+escHtml(partner||'—')+'</td><td style="padding:.5rem .8rem;font-weight:700">'+escHtml(rFmt)+'</td><td style="padding:.5rem .8rem;color:var(--text2)">'+escHtml(wFmt)+'</td><td style="padding:.5rem .8rem;color:#059669;font-weight:600">'+escHtml(priceFmt)+'</td><td style="padding:.5rem .8rem;font-weight:700;color:'+cagrColor+'">'+escHtml(cagrFmt)+'</td><td style="padding:.5rem .8rem"><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>';
+          dTr.innerHTML='<td style="padding:.5rem .8rem .5rem 4rem;color:var(--text3)">'+(ri+1)+'</td><td style="padding:.5rem .8rem;font-weight:700">'+escHtml(yr)+'</td><td style="padding:.5rem .8rem">'+escHtml(c.name||'')+'</td><td style="padding:.5rem .8rem;font-weight:600;color:#4361EE">'+escHtml(partner||'—')+'</td><td style="padding:.5rem .8rem;font-weight:700">'+escHtml(rFmt)+'</td><td style="padding:.5rem .8rem;color:var(--text2)">'+escHtml(wFmt)+'</td><td style="padding:.5rem .8rem;color:#059669;font-weight:600">'+escHtml(priceFmt)+'</td><td style="padding:.5rem .8rem"><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>';
           dTr.querySelector('button').addEventListener('click',function(){goToFinder(this.dataset.pid,this.dataset.code);});
           dataRows.push(dTr);
           rBody.appendChild(dTr);
