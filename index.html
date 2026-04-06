@@ -1525,7 +1525,7 @@ input[type="time"]{-webkit-appearance:none;}
                   <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none;padding:6px 10px;white-space:nowrap">Tozalash</button>
                 </div>
               </th>
-              <th>Batafsil</th>
+              <th data-i18n="col_detail">Batafsil</th>
               <th data-i18n="col_emailstatus">Email holati</th>
               <th data-i18n="col_actions">Amal</th>
             </tr>
@@ -1576,7 +1576,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div id="invAiAnalysisCard" class="tcard" style="display:none;margin:1rem">
         <div class="tc-head"><div class="tc-title" id="invAiAnalysisTitle">📊 Iqtisodiy Tahlil</div></div>
         <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="invAiAnalysisGrid"></div>
-        <div id="invAiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
+        <div id="invAiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)" data-i18n="hint_click_card">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
         <div id="invAiAnalysisDetail" style="display:none;padding:0 1rem 1rem"></div>
         <div id="invAiAnalysisMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
       </div>
@@ -1626,7 +1626,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="tc-head">
           <div class="tc-title">✉️ Taklif Xati</div>
           <div style="display:flex;gap:.5rem">
-            <button class="btn btn-blue btn-sm" onclick="sendInvestorAiLetter()">📧 Yuborish</button>
+            <button class="btn btn-blue btn-sm" onclick="sendInvestorAiLetter()" data-i18n="btn_send">📧 Yuborish</button>
             <button class="btn btn-sm" onclick="scheduleInvestorAiLetter()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">📅 Rejalashtirish</button>
           </div>
         </div>
@@ -1980,7 +1980,7 @@ input[type="time"]{-webkit-appearance:none;}
           <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem;height:100%"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
           <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
             <div class="tcard" style="margin-bottom:1rem">
-              <div class="tc-head"><div class="tc-title" id="import-detail-title">Batafsil import ma'lumotlari</div></div>
+              <div class="tc-head"><div class="tc-title" id="import-detail-title" data-i18n="title_import_detail">Batafsil import ma'lumotlari</div></div>
               <div id="import-detail-container" style="overflow:visible">
                 <table style="width:100%;border-collapse:collapse">
                   <thead id="import-thead"><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
@@ -2017,7 +2017,7 @@ input[type="time"]{-webkit-appearance:none;}
           <div class="tcard" style="margin:0">
             <div class="tc-head"><div class="tc-title">🌍 Maqsad davlatlar</div></div>
             <div style="padding:.7rem 1rem .3rem">
-              <input class="form-input" id="finderTargetSearch" type="text" placeholder="🔍  Davlat qidirish..." oninput="renderFinderTargetFilters()" style="border-radius:20px">
+              <input class="form-input" id="finderTargetSearch" type="text" placeholder="🔍  Davlat qidirish..." data-i18n-ph="ph_country_search" oninput="renderFinderTargetFilters()" style="border-radius:20px">
             </div>
             <div style="padding:0 1rem 1rem">
               <label class="form-label" style="margin-bottom:.5rem;display:none" id="finderCountriesLabel">Importyor kompaniyalar qidiriladi</label>
@@ -2031,7 +2031,7 @@ input[type="time"]{-webkit-appearance:none;}
               <button class="btn btn-ghost btn-sm" type="button" onclick="clearFinderSourceFilters()">Tozalash</button>
             </div>
             <div style="padding:.7rem 1rem .3rem">
-              <input class="form-input" id="finderSourceSearch" type="text" placeholder="🔍  Davlat qidirish..." oninput="renderFinderSourceFilters()" style="border-radius:20px">
+              <input class="form-input" id="finderSourceSearch" type="text" placeholder="🔍  Davlat qidirish..." data-i18n-ph="ph_country_search" oninput="renderFinderSourceFilters()" style="border-radius:20px">
             </div>
             <div style="padding:0 1rem 1rem">
               <label class="form-label" style="margin:0 0 .5rem 0;display:none" id="finderSourceLabel">Eksportyor manbasi</label>
@@ -2114,7 +2114,7 @@ input[type="time"]{-webkit-appearance:none;}
     <div id="aiAnalysisCard" class="tcard" style="display:none;margin-bottom:1rem">
       <div class="tc-head"><div class="tc-title" id="aiAnalysisTitle">📊 Iqtisodiy Tahlil</div></div>
       <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem" id="aiAnalysisGrid"></div>
-      <div id="aiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
+      <div id="aiAnalysisHint" style="padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text3)" data-i18n="hint_click_card">Batafsil statistikani ko'rish uchun kartalardan birini bosing</div>
       <div id="aiAnalysisDetail" style="display:none;padding:0 1rem 1rem"></div>
       <div id="aiAnalysisMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
     </div>
@@ -2145,7 +2145,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div class="tc-head">
         <div class="tc-title">✉️ Taklif Xati</div>
         <div style="display:flex;gap:.5rem">
-          <button class="btn btn-blue btn-sm" onclick="sendAiLetter()">📧 Yuborish</button>
+          <button class="btn btn-blue btn-sm" onclick="sendAiLetter()" data-i18n="btn_send">📧 Yuborish</button>
           <button class="btn btn-sm" onclick="scheduleAiLetter()" style="background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">📅 Rejalashtirish</button>
         </div>
       </div>
@@ -2202,8 +2202,8 @@ input[type="time"]{-webkit-appearance:none;}
           <input class="form-input" id="mailbox-notes" placeholder="Masalan: Asosiy Gmail">
         </div>
         <div style="display:flex;gap:.5rem;align-items:flex-end;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleMailboxForm(false)">Bekor qilish</button>
-          <button class="btn btn-blue btn-sm" type="button" onclick="saveMailbox()">💾 Saqlash</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleMailboxForm(false)" data-i18n="btn_cancel">Bekor qilish</button>
+          <button class="btn btn-blue btn-sm" type="button" onclick="saveMailbox()" data-i18n="btn_save">💾 Saqlash</button>
         </div>
       </div>
 
@@ -2416,7 +2416,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group"><label class="form-label">Foyda solig'i (%)</label><input class="form-input" id="set-soliq" type="number" value="0"></div>
         <div class="form-group"><label class="form-label">Soliq imtiyoz muddati (yil)</label><input class="form-input" id="set-soliq-yil" type="number" value="7"></div>
       </div>
-      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()" data-i18n="btn_save">💾 Saqlash</button></div>
     </div>
 
     <!-- API kalitlar -->
@@ -2448,7 +2448,7 @@ Vercel Environment Variables:<br>
         <div class="form-group"><label class="form-label">TG API Hash</label><input class="form-input" id="set-tg-apihash" type="password" placeholder="abc123..."><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
         <div class="form-group span-2"><label class="form-label">TG Session String</label><input class="form-input" id="set-tg-session" type="password" placeholder="1BAAOMTQ5LjE1M..."><div style="font-size:.55rem;color:var(--text3)">generate-session.mjs dan oling (bir marta ishga tushiring)</div></div>
       </div>
-      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()" data-i18n="btn_save">💾 Saqlash</button></div>
     </div>
 
     <!-- Email sozlamalari -->
@@ -2460,7 +2460,7 @@ Vercel Environment Variables:<br>
         <div class="form-group"><label class="form-label">Follow-up 2 (kun)</label><input class="form-input" id="set-fu2" type="number" value="14"></div>
         <div class="form-group"><label class="form-label">Arxivga (kun)</label><input class="form-input" id="set-fu3" type="number" value="21"></div>
       </div>
-      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()" data-i18n="btn_save">💾 Saqlash</button></div>
     </div>
 
     <!-- 12 davlat ro'yxati -->
@@ -2534,7 +2534,7 @@ Vercel Environment Variables:<br>
           <div class="excel-preview-head">
             <div class="excel-preview-info" id="excelPreviewInfo">0 ta qator topildi</div>
             <div style="display:flex;gap:.5rem">
-              <button class="btn btn-ghost btn-sm" type="button" onclick="cancelExcelUpload()">✕ Bekor qilish</button>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="cancelExcelUpload()" data-i18n="btn_cancel">✕ Bekor qilish</button>
               <button class="btn btn-blue btn-sm" type="button" id="excelImportBtn" onclick="importExcelData()">✅ Yuklash va qo'shish</button>
             </div>
           </div>
@@ -2574,7 +2574,7 @@ Vercel Environment Variables:<br>
           <div class="form-group span-3"><label class="form-label">Izoh</label><input class="form-input" id="inv-izoh" placeholder="Qo'shimcha ma'lumot..."></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" onclick="addInvestor()">✅ Saqlash</button>
+          <button class="btn btn-blue" onclick="addInvestor()" data-i18n="btn_save">✅ Saqlash</button>
           <button class="btn btn-ghost" onclick="clearInvForm()">🔄 Tozalash</button>
         </div>
       </div>
@@ -2607,7 +2607,7 @@ Vercel Environment Variables:<br>
           <div class="form-group span-3"><label class="form-label">Izoh</label><input class="form-input" id="loc-izoh" placeholder="..."></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" onclick="addLocal()">✅ Saqlash</button>
+          <button class="btn btn-blue" onclick="addLocal()" data-i18n="btn_save">✅ Saqlash</button>
           <button class="btn btn-ghost" onclick="clearForm(['loc-kompaniya','loc-rahbar','loc-lavozim','loc-soha','loc-summa','loc-holat','loc-tel','loc-izoh'])">🔄 Tozalash</button>
         </div>
       </div>
@@ -2655,7 +2655,7 @@ Vercel Environment Variables:<br>
           </div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" type="button" onclick="addZoom()">✅ Saqlash</button>
+          <button class="btn btn-blue" type="button" onclick="addZoom()" data-i18n="btn_save">✅ Saqlash</button>
           <button class="btn btn-ghost" type="button" onclick="clearZmForm()">🔄 Tozalash</button>
         </div>
       </div>
@@ -2690,7 +2690,7 @@ Vercel Environment Variables:<br>
           <div class="form-group span-3"><label class="form-label">Izoh</label><input class="form-input" id="fr-izoh" placeholder="Bo'lim xodimlari, delegatsiya..."></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" onclick="addForum()">✅ Saqlash</button>
+          <button class="btn btn-blue" onclick="addForum()" data-i18n="btn_save">✅ Saqlash</button>
           <button class="btn btn-ghost" onclick="clearForm(['fr-nom','fr-sana','fr-shahar','fr-davlat','fr-turi','fr-holat','fr-desc','fr-izoh'])">🔄 Tozalash</button>
         </div>
       </div>
@@ -2724,7 +2724,7 @@ Vercel Environment Variables:<br>
           <div class="tscroll" style="max-height:280px"><table><thead id="icExcelPreviewHead"></thead><tbody id="icExcelPreviewBody"></tbody></table></div>
           <div class="form-actions" style="margin-top:.8rem">
             <button class="btn btn-blue" onclick="importIcExcel()">✅ Barchasini Firebase'ga saqlash</button>
-            <button class="btn btn-ghost" onclick="cancelIcExcel()">Bekor qilish</button>
+            <button class="btn btn-ghost" onclick="cancelIcExcel()" data-i18n="btn_cancel">Bekor qilish</button>
           </div>
         </div>
       </div>
@@ -2744,7 +2744,7 @@ Vercel Environment Variables:<br>
           <div class="form-group"><label class="form-label">Website</label><input class="form-input" id="ic-website" placeholder="www.company.com"></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-blue" onclick="addInvestorCo()">✅ Saqlash</button>
+          <button class="btn btn-blue" onclick="addInvestorCo()" data-i18n="btn_save">✅ Saqlash</button>
           <button class="btn btn-ghost" onclick="clearIcForm()">🔄 Tozalash</button>
         </div>
       </div>
@@ -2922,7 +2922,7 @@ Vercel Environment Variables:<br>
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-blue" onclick="saveSchedule()">✅ Saqlash</button>
+        <button class="btn btn-blue" onclick="saveSchedule()" data-i18n="btn_save">✅ Saqlash</button>
         <button class="btn btn-ghost" onclick="disableSchedule()" id="schedDisableBtn" style="display:none">🚫 O'chirish</button>
         <button class="btn btn-ghost" onclick="closeScheduleModal()">Bekor</button>
       </div>
@@ -2964,7 +2964,7 @@ Vercel Environment Variables:<br>
     <p style="font-size:.81rem;color:var(--text3);margin-bottom:1.4rem;line-height:1.7" id="deleteMsg"></p>
     <div style="display:flex;gap:.6rem">
       <button class="btn btn-danger" id="deleteConfirmBtn" onclick="confirmDelete()">🗑 Ha, o'chirish</button>
-      <button class="btn btn-ghost" onclick="closeDeleteModal()">Bekor qilish</button>
+      <button class="btn btn-ghost" onclick="closeDeleteModal()" data-i18n="btn_cancel">Bekor qilish</button>
     </div>
   </div>
 </div>
@@ -3094,7 +3094,7 @@ Vercel Environment Variables:<br>
             <input type="file" id="fdFileInput" accept=".xlsx,.xls,.doc,.docx,.pdf,.png,.jpg,.jpeg,.csv,.txt,.pptx" style="display:none" onchange="onFdFileSelect(this)">
           </label>
           <div style="display:flex;gap:.4rem">
-            <button class="btn btn-blue btn-sm" onclick="saveForumDoc()" style="font-size:.68rem">✅ Saqlash</button>
+            <button class="btn btn-blue btn-sm" onclick="saveForumDoc()" style="font-size:.68rem" data-i18n="btn_save">✅ Saqlash</button>
             <button class="btn btn-ghost btn-sm" onclick="cancelFdDoc()" style="font-size:.68rem">Bekor</button>
           </div>
         </div>
@@ -3129,8 +3129,8 @@ Vercel Environment Variables:<br>
       <div class="form-group span-2"><label class="form-label">Izoh / Delegatsiya</label><input class="form-input" id="fed-izoh"></div>
     </div>
     <div class="form-actions">
-      <button class="btn btn-blue" onclick="saveForumEdit()">💾 Saqlash</button>
-      <button class="btn btn-ghost" onclick="closeForumEdit()">Bekor qilish</button>
+      <button class="btn btn-blue" onclick="saveForumEdit()" data-i18n="btn_save">💾 Saqlash</button>
+      <button class="btn btn-ghost" onclick="closeForumEdit()" data-i18n="btn_cancel">Bekor qilish</button>
     </div>
   </div>
 </div>
@@ -3158,7 +3158,7 @@ Vercel Environment Variables:<br>
     </div>
 
     <div style="display:flex;justify-content:flex-end;gap:.8rem;margin-top:1rem">
-      <button class="btn btn-ghost" onclick="closeEmailModal()">Bekor qilish</button>
+      <button class="btn btn-ghost" onclick="closeEmailModal()" data-i18n="btn_cancel">Bekor qilish</button>
       <button class="send-btn" id="sendBtn" onclick="sendEmail()">YUBORISH 📧</button>
     </div>
   </div>
@@ -3183,7 +3183,7 @@ Vercel Environment Variables:<br>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem">
-      <button class="btn btn-ghost" onclick="closeBulkEmailModal()" id="bulkCancelBtn">Bekor qilish</button>
+      <button class="btn btn-ghost" onclick="closeBulkEmailModal()" id="bulkCancelBtn" data-i18n="btn_cancel">Bekor qilish</button>
       <button class="send-btn" id="bulkSendBtnModal" onclick="executeBulkSend()">HAMMAGA YUBORISH 📧</button>
     </div>
   </div>
@@ -3241,7 +3241,7 @@ Vercel Environment Variables:<br>
       <div class="ij-bars" id="ijBars"></div>
     </div>
     <div class="ij-btn-row">
-      <button class="ij-save-btn" onclick="ijSave()">💾 Saqlash</button>
+      <button class="ij-save-btn" onclick="ijSave()" data-i18n="btn_save">💾 Saqlash</button>
       <button class="ij-reset-btn" onclick="ijReset()">🔄</button>
     </div>
   </div>
@@ -3267,6 +3267,15 @@ var _zmAdminMedia = [];
 // Simple translation helper (falls back to uz hardcoded strings)
 const TRANSLATIONS = {
   uz: {
+            st_positive:"Ijobiy", st_ongoing:"Davom etmoqda", st_negative:"Salbiy", st_pending:"Kutilmoqda",
+    st_agreed:"Kelishilgan", st_review:"Ko'rib chiqilmoqda", st_new:"Yangi",
+    st_cancelled:"Bekor qilindi", st_negotiating:"Muzokarada", st_ready:"Tayyor",
+    st_inprogress:"Jarayonda", st_planned:"Rejalashtirilgan",
+    purpose_individual:"Individual", purpose_forum:"Forum doirasida",
+    col_detail:"Batafsil", btn_send:"📧 Yuborish", btn_save:"💾 Saqlash",
+    btn_cancel:"Bekor qilish", ph_country_search:"🔍  Davlat qidirish...",
+    title_import_detail:"Batafsil import ma'lumotlari",
+    hint_click_card:"Batafsil statistikani ko'rish uchun kartalardan birini bosing",
     nav_overview:"Umumiy ma'lumotlar", nav_investors:"Investorlar Tashriflari",
     nav_local:"Mahalliy Tadbirkorlar", nav_zoom:"Zoom Uchrashuvlar",
     nav_forums:"Forumlar", nav_investorco:"Investorlar bazasi", nav_login:"Kirish",
@@ -3313,6 +3322,15 @@ const TRANSLATIONS = {
     admin_sub:"Ma'lumotlarni qo'shish, tahrirlash va o'chirish",
   },
   ru: {
+            st_positive:"Положительный", st_ongoing:"Продолжается", st_negative:"Отрицательный", st_pending:"Ожидается",
+    st_agreed:"Согласовано", st_review:"На рассмотрении", st_new:"Новый",
+    st_cancelled:"Отменено", st_negotiating:"Переговоры", st_ready:"Готово",
+    st_inprogress:"В процессе", st_planned:"Запланировано",
+    purpose_individual:"Индивидуальный", purpose_forum:"В рамках форума",
+    col_detail:"Подробнее", btn_send:"📧 Отправить", btn_save:"💾 Сохранить",
+    btn_cancel:"Отмена", ph_country_search:"🔍  Поиск страны...",
+    title_import_detail:"Подробные данные импорта",
+    hint_click_card:"Нажмите на карточку для просмотра статистики",
     nav_overview:"Обзор", nav_investors:"Визиты инвесторов",
     nav_local:"Местные предприниматели", nav_zoom:"Zoom встречи",
     nav_forums:"Форумы", nav_investorco:"База инвесторов", nav_login:"Войти",
@@ -3357,6 +3375,15 @@ const TRANSLATIONS = {
     admin_sub:"Добавление, редактирование и удаление данных",
   },
   en: {
+            st_positive:"Positive", st_ongoing:"Ongoing", st_negative:"Negative", st_pending:"Pending",
+    st_agreed:"Agreed", st_review:"Under Review", st_new:"New",
+    st_cancelled:"Cancelled", st_negotiating:"Negotiating", st_ready:"Ready",
+    st_inprogress:"In Progress", st_planned:"Planned",
+    purpose_individual:"Individual", purpose_forum:"Forum",
+    col_detail:"Details", btn_send:"📧 Send", btn_save:"💾 Save",
+    btn_cancel:"Cancel", ph_country_search:"🔍  Search country...",
+    title_import_detail:"Import detail data",
+    hint_click_card:"Click a card to view detailed statistics",
     nav_overview:"Overview", nav_investors:"Investor Visits",
     nav_local:"Local Entrepreneurs", nav_zoom:"Zoom Meetings",
     nav_forums:"Forums", nav_investorco:"Investor Database", nav_login:"Login",
@@ -3404,6 +3431,16 @@ const TRANSLATIONS = {
 
 function tr(key){ return (TRANSLATIONS[currentLang]||TRANSLATIONS.uz)[key] || key; }
 
+// Translate dynamic status/purpose values
+const STATUS_KEYS = {
+  "Kelishilgan":"st_agreed", "Ko'rib chiqilmoqda":"st_review", "Yangi":"st_new",
+  "Bekor qilindi":"st_cancelled", "Muzokarada":"st_negotiating", "Tayyor":"st_ready",
+  "Jarayonda":"st_inprogress", "Rejalashtirilgan":"st_planned",
+  "Individual":"purpose_individual", "Forum doirasida":"purpose_forum",
+  "Ijobiy":"st_positive", "Davom etmoqda":"st_ongoing", "Salbiy":"st_negative", "Kutilmoqda":"st_pending"
+};
+function trVal(val){ return val ? (tr(STATUS_KEYS[val] || val) || val) : val; }
+
 function t(key){
   return tr(key);
 }
@@ -3413,6 +3450,18 @@ function applyTranslations(){
     const key = el.getAttribute('data-i18n');
     const val = tr(key);
     if(val) el.textContent = val;
+  });
+  // Translate placeholders
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const key = el.getAttribute('data-i18n-ph');
+    const val = tr(key);
+    if(val) el.placeholder = val;
+  });
+  // Translate titles
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{
+    const key = el.getAttribute('data-i18n-title');
+    const val = tr(key);
+    if(val) el.title = val;
   });
   // Update print button
   const printBtn = document.querySelector('.tn-btn.green');
@@ -3577,28 +3626,31 @@ function nextId(arr){
 function getInitials(name=''){return(name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase())||'??';}
 function v(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 
-function makomBadge(m){
+function makomBadge(m, label){
   if(!m)return`<span class="badge bdg-gray">—</span>`;
+  const txt = label || m;
   const ml = m.toLowerCase().replace(/[''`]/g,"'");
-  if(ml.includes('kelishilgan'))return`<span class="badge bdg-green">${m}</span>`;
-  if(ml.includes("ko'rib")||ml.includes('korib'))return`<span class="badge bdg-amber">${m}</span>`;
-  if(ml.includes('yangi'))return`<span class="badge bdg-blue">${m}</span>`;
-  return`<span class="badge bdg-gray">${m}</span>`;
+  if(ml.includes('kelishilgan'))return`<span class="badge bdg-green">${txt}</span>`;
+  if(ml.includes("ko'rib")||ml.includes('korib'))return`<span class="badge bdg-amber">${txt}</span>`;
+  if(ml.includes('yangi'))return`<span class="badge bdg-blue">${txt}</span>`;
+  return`<span class="badge bdg-gray">${txt}</span>`;
 }
-function holatBadge(h){
+function holatBadge(h, label){
   if(!h)return`<span class="badge bdg-gray">—</span>`;
-  if(h==='Tayyor')return`<span class="badge bdg-green">Tayyor</span>`;
-  if(h==='Muzokarada')return`<span class="badge bdg-amber">Muzokarada</span>`;
-  if(h==='Yangi')return`<span class="badge bdg-blue">Yangi</span>`;
-  return`<span class="badge bdg-gray">${h}</span>`;
+  const txt = label || h;
+  if(h==='Tayyor')return`<span class="badge bdg-green">${txt}</span>`;
+  if(h==='Muzokarada')return`<span class="badge bdg-amber">${txt}</span>`;
+  if(h==='Yangi')return`<span class="badge bdg-blue">${txt}</span>`;
+  return`<span class="badge bdg-gray">${txt}</span>`;
 }
 function natijaHolatBadge(n){
   if(!n)return`<span class="badge bdg-gray">—</span>`;
-  if(n==='Ijobiy')return`<span class="badge bdg-green">Ijobiy</span>`;
-  if(n==='Davom etmoqda')return`<span class="badge bdg-amber">Davom etmoqda</span>`;
-  if(n==='Salbiy')return`<span class="badge bdg-red">Salbiy</span>`;
-  if(n==='Kutilmoqda')return`<span class="badge bdg-purple">Kutilmoqda</span>`;
-  return`<span class="badge bdg-gray">${n}</span>`;
+  const txt = trVal(n);
+  if(n==='Ijobiy')return`<span class="badge bdg-green">${txt}</span>`;
+  if(n==='Davom etmoqda')return`<span class="badge bdg-amber">${txt}</span>`;
+  if(n==='Salbiy')return`<span class="badge bdg-red">${txt}</span>`;
+  if(n==='Kutilmoqda')return`<span class="badge bdg-purple">${txt}</span>`;
+  return`<span class="badge bdg-gray">${txt}</span>`;
 }
 
 /* ═══════════════════════════════════════
@@ -3993,11 +4045,11 @@ function renderInvestors(page){
     <tr>
       <td>${start+i+1}</td><td>${r.shahar||'—'}</td><td>${fmtDate(r.sana)}</td>
       <td>${r.flag||'🌐'} ${r.davlat||'—'}</td>
-      <td>${r.maqsad||'—'}</td>
+      <td>${trVal(r.maqsad)||'—'}</td>
       <td><b>${r.kompaniya||'—'}</b></td>
       <td>${r.loyiha||'—'}</td>
       <td class="td-num" style="color:#4361EE">${r.qiymat||'—'}</td>
-      <td>${makomBadge(r.makom)}</td>
+      <td>${makomBadge(r.makom, trVal(r.makom))}</td>
       <td>${r.hudud||'—'}</td>
       <td style="font-size:.69rem">${r.izoh||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('investors',${r.id})">🗑</button></td>
@@ -4055,7 +4107,7 @@ function renderLocal(){
       <td>${r.rahbar||'—'}<br><span style="font-size:.64rem;color:var(--text3)">${r.lavozim||''}</span></td>
       <td>${r.soha||'—'}</td>
       <td class="td-num" style="color:#059669">${fmtMoney(r.summa)}</td>
-      <td>${holatBadge(r.holat)}</td>
+      <td>${holatBadge(r.holat, trVal(r.holat))}</td>
       <td>${r.tel||'—'}</td>
       <td style="font-size:.69rem">${r.izoh||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('local',${r.id})">🗑</button></td>
@@ -4139,7 +4191,7 @@ function renderForums(){
         <div class="fc-loc">📍 ${r.shahar||''}, ${r.davlat||''}</div>
         <div class="fc-desc">${r.desc||'—'}</div>
         <div class="fc-foot">
-          <div style="font-size:.67rem;font-weight:600;color:var(--text)">${r.holat||'—'}</div>
+          <div style="font-size:.67rem;font-weight:600;color:var(--text)">${trVal(r.holat)||'—'}</div>
           <div style="display:flex;align-items:center;gap:4px">
             <span class="badge bdg-blue">${r.turi||'Forum'}</span>
             ${docCount?`<span style="font-size:.6rem;background:rgba(67,97,238,.15);color:#4361EE;padding:2px 6px;border-radius:10px">📎${docCount}</span>`:''}
@@ -6291,11 +6343,11 @@ function renderAdminLists(){
       <td>${r.shahar||'—'}</td>
       <td>${fmtDate(r.sana)}</td>
       <td>${r.flag||''} ${r.davlat||'—'}</td>
-      <td>${r.maqsad||'—'}</td>
+      <td>${trVal(r.maqsad)||'—'}</td>
       <td><b>${r.kompaniya||'—'}</b></td>
       <td>${r.loyiha||'—'}</td>
       <td style="color:#059669;font-weight:700">${r.qiymat||'—'}</td>
-      <td>${makomBadge(r.makom)}</td>
+      <td>${makomBadge(r.makom, trVal(r.makom))}</td>
       <td>${r.hudud||'—'}</td>
       <td style="font-size:.72rem;color:var(--text3)">${r.izoh||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('investors',${r.id})">🗑</button></td>
@@ -6307,7 +6359,7 @@ function renderAdminLists(){
   const all=document.getElementById('admin-loc-list');
   all.innerHTML=DB.local.length?DB.local.map((r,i)=>`
     <tr><td>${i+1}</td><td><b>${r.kompaniya||'—'}</b></td><td>${r.rahbar||'—'}</td><td>${r.soha||'—'}</td>
-    <td class="td-num" style="color:#059669">${fmtMoney(r.summa)}</td><td>${holatBadge(r.holat)}</td>
+    <td class="td-num" style="color:#059669">${fmtMoney(r.summa)}</td><td>${holatBadge(r.holat, trVal(r.holat))}</td>
     <td>${r.tel||'—'}</td>
     <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('local',${r.id})">🗑</button></td></tr>`).join('')
     :'<tr><td colspan="8"><div class="tc-empty"><div class="tc-empty-icon">🏢</div><p>Hali ma\'lumot yo\'q</p></div></td></tr>';
@@ -7807,7 +7859,7 @@ function showExcelPreview(data, fileName){
       <td>${r.shahar||'—'}</td>
       <td>${r.sana||'—'}</td>
       <td>${r.flag} ${r.davlat||'—'}</td>
-      <td>${r.maqsad||'—'}</td>
+      <td>${trVal(r.maqsad)||'—'}</td>
       <td><b>${r.kompaniya||'—'}</b></td>
       <td>${r.loyiha||'—'}</td>
       <td>${r.qiymat||'—'}</td>
@@ -8598,7 +8650,7 @@ window.addEventListener('load', ()=>{
     <div id="gmailSetupError" style="font-size:.67rem;color:#dc2626;margin-top:.4rem;min-height:1rem"></div>
 
     <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:.8rem">
-      <button class="btn btn-ghost" onclick="closeGmailSetup()">Bekor qilish</button>
+      <button class="btn btn-ghost" onclick="closeGmailSetup()" data-i18n="btn_cancel">Bekor qilish</button>
       <button class="send-btn" onclick="saveAndConnectGmail()">Saqlash va ulash 🔗</button>
     </div>
   </div>
