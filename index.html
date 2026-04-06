@@ -1980,7 +1980,7 @@ input[type="time"]{-webkit-appearance:none;}
           <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem;height:100%"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
           <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
             <div class="tcard" style="margin-bottom:1rem">
-              <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
+              <div class="tc-head"><div class="tc-title" id="import-detail-title">Batafsil import ma'lumotlari</div></div>
               <div id="import-detail-container" style="overflow:visible">
                 <table style="width:100%;border-collapse:collapse">
                   <thead id="import-thead"><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
@@ -13861,6 +13861,12 @@ function renderImportResults(countries, prod, source, targetCountries){
   targetCountries = (targetCountries && targetCountries.length) ? targetCountries : getImportAnalysisTargetCountries();
   initImportAnalysisComtradeOnly(targetCountries, getImportAnalysisSourceKey(source));
   var labels = getImportAnalysisLabels();
+  var detailTitleEl = document.getElementById('import-detail-title');
+  if(detailTitleEl){
+    detailTitleEl.textContent = getImportAnalysisFinderMode() === 'importers'
+      ? "Batafsil eksport ma'lumotlari"
+      : "Batafsil import ma'lumotlari";
+  }
   countries = Array.isArray(countries) ? countries.slice() : [];
   countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
   if(!countries.length){
