@@ -1968,7 +1968,7 @@ input[type="time"]{-webkit-appearance:none;}
               <div class="tc-head"><div class="tc-title">📊 Import tahlili</div></div>
               <div class="kpi-grid" style="padding:1rem 1rem .3rem 1rem;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem">
                 <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label" id="imp-k1-label">Jami import</div><div class="kpi-val" id="imp-k1">—</div></div>
-                <div class="kpi-card c2"><div class="kpi-icon">📈</div><div class="kpi-label" id="imp-k2-label">Eng katta bozor</div><div class="kpi-val" id="imp-k2">—</div></div>
+                <div class="kpi-card c2"><div class="kpi-icon">📈</div><div class="kpi-label" id="imp-k2-label">Top eksportyor</div><div class="kpi-val" id="imp-k2">—</div></div>
                 <div class="kpi-card c3"><div class="kpi-icon">🚀</div><div class="kpi-label" id="imp-k3-label">Top importyor</div><div class="kpi-val" id="imp-k3">—</div></div>
                 <div class="kpi-card c4"><div class="kpi-icon">💡</div><div class="kpi-label" id="imp-k4-label">Ma'lumot manbasi</div><div class="kpi-val" id="imp-k4" style="font-size:.7rem">—</div></div>
               </div>
@@ -12394,7 +12394,7 @@ function getImportAnalysisLabels(){
   if(getImportAnalysisFinderMode() === 'importers'){
     return {
       totalKpi: "Jami eksport 2021-2024",
-      biggestKpi: "Eng katta eksportyor",
+      biggestKpi: "Top eksportyor",
       chartTitleSuffix: "Eksport Hajmi (2021-2024)",
       emptyText: "Tanlangan davlatlar bo'yicha eksport ma'lumotlari topilmadi",
       sourceLabel: "Ma'lumot manbasi",
@@ -12570,6 +12570,13 @@ function renderImportResults(countries, prod, source){
   var total = countries.reduce(function(s,c){return s+(c.import_usd||0);},0);
   var biggest = countries[0] || {};
   var fastest = countries.slice().sort(function(a,b){return (b.trend_pct||0)-(a.trend_pct||0);})[0] || {};
+  var labels = (typeof getImportAnalysisLabels === 'function')
+    ? getImportAnalysisLabels()
+    : { totalKpi:'Jami import 2021-2024', biggestKpi:'Top importyor' };
+  var k1Label = document.getElementById('imp-k1-label');
+  var k2Label = document.getElementById('imp-k2-label');
+  if(k1Label) k1Label.textContent = labels.totalKpi;
+  if(k2Label) k2Label.textContent = labels.biggestKpi;
 
   document.getElementById('imp-k1').textContent = '$'+Math.round(total/1e6)+'M';
   document.getElementById('imp-k2').textContent = (biggest.flag||'')+' '+(biggest.name||'—');
