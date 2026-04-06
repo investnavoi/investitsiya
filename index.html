@@ -1976,9 +1976,20 @@ input[type="time"]{-webkit-appearance:none;}
             </div>
           </div>
           <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem;height:100%"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
+          <div id="finderUzbExportWrap" style="display:none;margin-top:1rem">
+            <div class="tcard" style="margin-bottom:1rem">
+              <div class="tc-head">
+                <div class="tc-title" style="display:flex;align-items:center;gap:.5rem">
+                  <span style="background:#059669;color:#fff;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700">EKSPORT</span>
+                  <span id="uzbExportTitle">O'zbekiston Eksport Ma'lumotlari</span>
+                </div>
+              </div>
+              <div id="uzb-export-body" style="padding:.5rem 0"></div>
+            </div>
+          </div>
           <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
             <div class="tcard" style="margin-bottom:1rem">
-              <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
+              <div class="tc-head"><div class="tc-title" id="import-detail-title">Batafsil import ma'lumotlari</div></div>
               <div id="import-detail-container" style="overflow:visible">
                 <table style="width:100%;border-collapse:collapse">
                   <thead id="import-thead"><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
@@ -12411,14 +12422,15 @@ function syncImportSourceSelect(source){
   sel.value = getImportAnalysisSourceKey(source);
 }
 
-async function fetchComtrade(hsCode, year, targetCountries, source){
+async function fetchComtrade(hsCode, year, targetCountries, source, flow){
   try {
     var countriesParam = ((targetCountries && targetCountries.length) ? targetCountries : TARGET_COUNTRIES).map(function(t){
       if(typeof t === 'string') return t;
       // Prefer comtrade code, then english name variants, then code
       return String((t && (t.comtrade || t.name_en || t.label_en || t.name || t.label || t.code)) || '').trim();
     }).filter(Boolean).join('|');
-    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countriesParam)+'&source='+encodeURIComponent(getImportAnalysisSourceKey(source));
+    var flowParam = flow || 'M';
+    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countriesParam)+'&source='+encodeURIComponent(getImportAnalysisSourceKey(source))+'&flow='+encodeURIComponent(flowParam);
     if(window._apiKeys && window._apiKeys.comtrade){
       url += '&key='+encodeURIComponent(window._apiKeys.comtrade);
     }
@@ -12831,7 +12843,7 @@ function initImportAnalysisComtradeOnly(){
   var chartCard = document.getElementById('importBarChart');
   var chartTitle = chartCard ? chartCard.closest('.tcard') : null;
   var chartHead = chartTitle ? chartTitle.querySelector('.tc-title') : null;
-  if(chartHead) chartHead.textContent = count+" Davlat Import Hajmi (2021-2024)";
+  if(chartHead) chartHead.textContent = count + (window._lastImportFlow === 'X' ? ' Davlat Eksport Hajmi (2021-2024)' : ' Davlat Import Hajmi (2021-2024)');
 
   var wbLoading = document.getElementById('wbLoading');
   var wbCard = wbLoading ? wbLoading.closest('.tcard') : null;
@@ -13198,6 +13210,87 @@ function handleImportSourceChange(){
   handleImportProductChange();
 }
 
+
+async function renderUzbExportSection(prod, hsCode, sourceKey){
+  var wrap = document.getElementById('finderUzbExportWrap');
+  var body = document.getElementById('uzb-export-body');
+  var title = document.getElementById('uzbExportTitle');
+  if(!wrap || !body) return;
+
+  wrap.style.display = 'block';
+  if(title) title.textContent = "O'zbekiston Eksport — " + (prod.name_en || prod.name_uz || '') + ' (HS: ' + hsCode + ')';
+  body.innerHTML = '<div style="padding:1rem;color:var(--text3);font-size:.8rem">⏳ Yuklanmoqda...</div>';
+
+  try {
+    // Fetch UZB (860) export data for this HS code — all world partners
+    var url = COMTRADE_PROXY + '?hs=' + encodeURIComponent(hsCode) +
+      '&year=2023&countries=860&source=' + encodeURIComponent(sourceKey) + '&flow=X';
+    if(window._apiKeys && window._apiKeys.comtrade){
+      url += '&key=' + encodeURIComponent(window._apiKeys.comtrade);
+    }
+    var resp = await fetch(url);
+    var data = await resp.json();
+    var uzb = data && data.countries && data.countries[0];
+
+    if(!uzb || uzb.status !== 'ok' || !(uzb.import_usd > 0)){
+      body.innerHTML = '<div style="padding:1rem;color:var(--text3);font-size:.8rem;text-align:center">O'zbekistonning bu mahsulot bo'yicha eksport ma'lumoti topilmadi.</div>';
+      return;
+    }
+
+    // Year imports table
+    var yi = uzb.year_imports || {};
+    var years = ['2021','2022','2023','2024'];
+    var yRows = years.map(function(y){
+      var v = Number(yi[y]||0);
+      return '<td style="padding:.5rem .8rem;font-weight:'+(v>0?'700':'400')+';color:'+(v>0?'#059669':'var(--text3)')+'">'+
+        (v>0?investAiFmtUsd(v):'—')+'</td>';
+    }).join('');
+
+    // Partner breakdown
+    var partners = (uzb.products||[])
+      .filter(function(p){ return Number(p.partnerCode||0)!==0 && Number(p.value||0)>0; })
+      .sort(function(a,b){ return Number(b.value||0)-Number(a.value||0); });
+
+    var partnerHtml = '';
+    if(partners.length){
+      var top = partners.slice(0,15);
+      partnerHtml = '<div style="margin-top:.75rem"><div style="font-size:.7rem;font-weight:700;color:var(--text3);padding:0 1rem .4rem;text-transform:uppercase">Top eksport yo'nalishlari</div>' +
+        '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:rgba(5,150,105,.06);font-size:.65rem;color:var(--text3);font-weight:700">' +
+        '<th style="padding:.35rem .8rem">#</th><th style="padding:.35rem .8rem">Yil</th><th style="padding:.35rem .8rem">Manzil davlat</th><th style="padding:.35rem .8rem">Eksport ($)</th><th style="padding:.35rem .8rem">Hajm (kg)</th><th style="padding:.35rem .8rem">Narx ($/kg)</th></tr></thead><tbody>' +
+        top.map(function(p,i){
+          var val = Number(p.value||0);
+          var wgt = Number(p.weight||0);
+          var price = (val>0&&wgt>0) ? '$'+(val/wgt>=1?(val/wgt).toFixed(2):(val/wgt).toFixed(4))+'/kg' : '—';
+          return '<tr style="border-top:1px solid rgba(5,150,105,.08);font-size:.78rem">' +
+            '<td style="padding:.4rem .8rem;color:var(--text3)">'+(i+1)+'</td>' +
+            '<td style="padding:.4rem .8rem;font-weight:700">'+escHtml(String(p.period||''))+'</td>' +
+            '<td style="padding:.4rem .8rem;font-weight:600;color:#059669">'+escHtml(p.partner||p.partnerDesc||'—')+'</td>' +
+            '<td style="padding:.4rem .8rem;font-weight:700">'+investAiFmtUsd(val)+'</td>' +
+            '<td style="padding:.4rem .8rem;color:var(--text2)">'+(wgt>0?Number(wgt).toLocaleString('en-US')+' kg':'—')+'</td>' +
+            '<td style="padding:.4rem .8rem;color:#059669;font-weight:600">'+escHtml(price)+'</td>' +
+          '</tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+
+    body.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;padding:.75rem 1rem">' +
+        '<div style="background:rgba(5,150,105,.07);border-radius:10px;padding:.6rem .8rem">' +
+          '<div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;font-weight:700">Jami eksport 2021-2024</div>' +
+          '<div style="font-size:1.1rem;font-weight:800;color:#059669">'+investAiFmtUsd(uzb.import_usd||0)+'</div>' +
+        '</div>' +
+        years.map(function(y){
+          var v = Number(yi[y]||0);
+          return '<div style="background:rgba(5,150,105,.04);border-radius:10px;padding:.6rem .8rem">' +
+            '<div style="font-size:.6rem;color:var(--text3);font-weight:700">'+y+'</div>' +
+            '<div style="font-size:.9rem;font-weight:700;color:'+(v>0?'#059669':'var(--text3)')+'">'+
+            (v>0?investAiFmtUsd(v):'—')+'</div></div>';
+        }).join('') +
+      '</div>' + partnerHtml;
+  } catch(e) {
+    body.innerHTML = '<div style="padding:1rem;color:#EF233C;font-size:.8rem">Eksport ma'lumotini yuklashda xato: ' + escHtml(e.message) + '</div>';
+  }
+}
+
 async function runImportAnalysis(forceRefresh){
   var targetCountries = getImportAnalysisTargetCountries();
   var sourceKey = getImportAnalysisSource();
@@ -13215,9 +13308,11 @@ async function runImportAnalysis(forceRefresh){
   var resultsEl = document.getElementById('importResults');
   var emptyEl = document.getElementById('importEmpty');
   var detailEl = document.getElementById('finderImportDetailWrap');
+  var exportWrap = document.getElementById('finderUzbExportWrap');
   if(resultsEl) resultsEl.style.display = 'block';
   if(emptyEl) emptyEl.style.display = 'none';
   if(detailEl) detailEl.style.display = 'none';
+  if(exportWrap) exportWrap.style.display = 'none';
 
   var hsCode = getExactImportHsCode(prod);
   if(hsCode.length < 2){
@@ -13234,8 +13329,16 @@ async function runImportAnalysis(forceRefresh){
     return;
   }
 
-  toast(sourceLabel+' ma\'lumot olmoqda (HS: '+hsCode+')...');
-  var countries = await fetchComtrade(hsCode, '2023', targetCountries, sourceKey);
+  // "Importyor kompaniyalar" rejimida: O'zbekiston eksportini ko'rsat
+  var finderMode = (document.getElementById('finder-mode')||{}).value || 'exporters';
+  var isImporterMode = finderMode === 'importers';
+  var flow = isImporterMode ? 'X' : 'M';
+  var uzbCountry = [{code:'UZ',name:'Uzbekistan',comtrade:'860'}];
+  var fetchTargets = isImporterMode ? uzbCountry : targetCountries;
+
+  window._lastImportFlow = flow;
+  toast(isImporterMode ? 'O\'zbekiston eksporti yuklanmoqda (HS: '+hsCode+')...' : sourceLabel+' ma\'lumot olmoqda (HS: '+hsCode+')...');
+  var countries = await fetchComtrade(hsCode, '2023', fetchTargets, sourceKey, flow);
 
   if(!countries || !countries.length){
     if(resultsEl) resultsEl.style.display = 'none';
@@ -13252,6 +13355,12 @@ async function runImportAnalysis(forceRefresh){
   var noDataCount = countries.filter(function(c){ return c.status==='no_data'; }).length;
   var limitCount = countries.filter(function(c){ return c.status==='rate_limited'; }).length;
   toast(sourceLabel+': OK '+okCount+', ma\'lumot yo\'q '+noDataCount+', limit '+limitCount);
+
+  // If importer mode: also show UZB export data for this product
+  var finderMode = (document.getElementById('finder-mode')||{}).value || 'importers';
+  if(finderMode === 'importers'){
+    renderUzbExportSection(prod, hsCode, sourceKey);
+  }
 }
 
 function buildWitsDetailRows(countries){
@@ -13463,9 +13572,10 @@ function renderImportResults(countries, prod, source, targetCountries){
   var k2Label = document.getElementById('imp-k2-label');
   var k3Label = document.getElementById('imp-k3-label');
 
-  if(k1Label) k1Label.textContent = 'Jami import 2021-2024';
-  if(k2Label) k2Label.textContent = 'Eng katta bozor';
-  if(k3Label) k3Label.textContent = singleCountry ? '2024 import' : 'Top importyor';
+  var isExpFlow = (window._lastImportFlow === 'X');
+  if(k1Label) k1Label.textContent = isExpFlow ? 'Jami eksport 2021-2024' : 'Jami import 2021-2024';
+  if(k2Label) k2Label.textContent = isExpFlow ? 'Eng katta xaridor' : 'Eng katta bozor';
+  if(k3Label) k3Label.textContent = singleCountry ? (isExpFlow ? '2024 eksport' : '2024 import') : (isExpFlow ? 'Top xaridor' : 'Top importyor');
 
   document.getElementById('imp-k1').textContent = investAiFmtUsd(total);
   document.getElementById('imp-k2').textContent = (biggest.flag||'')+' '+(biggest.name||'—');
