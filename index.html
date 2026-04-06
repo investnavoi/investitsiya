@@ -17861,8 +17861,44 @@ async function buildAiLetterPackage(comp, lang){
     'Example format:\nStrategic Granite Partnership — Navoi, Uzbekistan\n===BODY===\nDear Mr. Schmidt,\n\n[Full letter body with 5-7 paragraphs]\n\nSincerely,\nNavoi Regional Investment and Business Development Office';
 
   var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.72,maxOutputTokens:8192}};
-  var data2 = await callGemini(body2);
-  var letterRaw = geminiText(data2);
+  // Use streaming to get full letter without truncation
+  var letterRaw = await (async function(){
+    var key = getGeminiKey();
+    if(!key) throw new Error('Gemini API kalit yo\'q.');
+    var models = typeof GEMINI_MODELS !== 'undefined' ? GEMINI_MODELS : ['gemini-2.0-flash'];
+    for(var mi=0;mi<models.length;mi++){
+      try{
+        var streamUrl = 'https://generativelanguage.googleapis.com/v1beta/models/'+models[mi]+':streamGenerateContent?alt=sse&key='+key;
+        var resp = await fetch(streamUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body2)});
+        if(!resp.ok) continue;
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder();
+        var full = '';
+        var buf = '';
+        while(true){
+          var chunk = await reader.read();
+          if(chunk.done) break;
+          buf += decoder.decode(chunk.value, {stream:true});
+          var lines = buf.split('\n');
+          buf = lines.pop();
+          for(var li=0;li<lines.length;li++){
+            var line = lines[li].trim();
+            if(!line.startsWith('data:')) continue;
+            var dataStr = line.slice(5).trim();
+            if(!dataStr || dataStr==='[DONE]') continue;
+            try{
+              var payload = JSON.parse(dataStr);
+              full += extractGeminiStreamText(payload);
+            }catch(e){}
+          }
+        }
+        if(full) return full;
+      }catch(e){ console.warn('Streaming xato:', e); }
+    }
+    // Fallback to non-streaming
+    var data2f = await callGemini(body2);
+    return geminiText(data2f);
+  })();
   var letterSubject = 'Investment Opportunity in Navoi, Uzbekistan';
   var letterBody = letterRaw;
   var sepIdx = letterRaw.indexOf('===BODY===');
