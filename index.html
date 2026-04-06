@@ -13925,6 +13925,10 @@ function renderImportResults(countries, prod, source, targetCountries){
   var topExporterShare = total > 0 && topExporter && topExporter.value ? Math.round((topExporter.value / total) * 100) : 0;
   var topImporter = biggest;
   var topImporterShare = total > 0 && topImporter.import_usd ? Math.round((topImporter.import_usd / total) * 100) : 0;
+  var isImporterMode = getImportAnalysisFinderMode() === 'importers';
+  var topExporterCard = isImporterMode ? topImporter : topExporter;
+  var topImporterCard = isImporterMode ? topExporter : topImporter;
+  var topImporterCardShare = isImporterMode ? topExporterShare : topImporterShare;
   var singleCountry = okCountries.length === 1;
   var compactChartAmounts = countries.length > 3;
   var k1Label = document.getElementById('imp-k1-label');
@@ -13938,12 +13942,18 @@ function renderImportResults(countries, prod, source, targetCountries){
     : 'Top importyor';
 
   document.getElementById('imp-k1').textContent = investAiFmtUsd(total);
-  document.getElementById('imp-k2').textContent = topExporter
+  document.getElementById('imp-k2').textContent = topExporterCard
     ? ((topExporter.flag || '') + ' ' + (topExporter.label || topExporter.name || '—')).trim()
     : ((biggest.flag||'')+' '+(biggest.name||'—'));
+  if(topExporterCard){
+    document.getElementById('imp-k2').textContent = ((topExporterCard.flag || '') + ' ' + (topExporterCard.label || topExporterCard.name || '—')).trim();
+  }
   document.getElementById('imp-k3').textContent = singleCountry
     ? investAiFmtUsd(Number((((topImporter.year_imports || {})['2024']) || ((topImporter.year_imports || {})['2023']) || topImporter.import_usd || 0)))
     : (topImporter.name ? ((topImporter.flag||'')+' '+topImporter.name+' • '+topImporterShare+'%') : '—');
+  if(!singleCountry && topImporterCard && topImporterCard.name){
+    document.getElementById('imp-k3').textContent = (((topImporterCard.flag||'')+' '+topImporterCard.name+' • '+topImporterCardShare+'%')).trim();
+  }
   document.getElementById('imp-k4').textContent = source;
 
   var maxVal = Math.max.apply(null, okCountries.length ? okCountries.map(function(c){return c.import_usd||0;}) : [0]);
