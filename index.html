@@ -167,7 +167,9 @@ async function loadFromFirestore(){
     await loadApiKeys();
     await fbLoadSettings();
     renderAll();
-    renderOverview();
+    // Restore page from URL hash after Firebase load
+    var _fbHash = (window.location.hash || '').replace('#','').trim();
+    showPage(['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings'].indexOf(_fbHash) !== -1 ? _fbHash : (currentPage || 'overview'));
     if(typeof applyTranslations==='function') applyTranslations();
     console.log('✅ Firebase: ma\'lumotlar yuklandi. Jami:', totalDocs);
   } catch(e){
@@ -175,7 +177,8 @@ async function loadFromFirestore(){
     const loadEl = document.getElementById('fb-loading');
     if(loadEl) loadEl.style.display = 'none';
     renderAll();
-    renderOverview();
+    var _fbHash2 = (window.location.hash || '').replace('#','').trim();
+    showPage(['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings'].indexOf(_fbHash2) !== -1 ? _fbHash2 : (currentPage || 'overview'));
     if(typeof applyTranslations==='function') applyTranslations();
   }
 }
