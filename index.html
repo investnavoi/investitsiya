@@ -1162,7 +1162,7 @@ input[type="time"]{-webkit-appearance:none;}
   <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
   <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Kompaniya qidiruvi</span></button>
   <button class="sb-tab" id="tab-investor" onclick="showPage('investor')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investorco">Investorlar bazasi</span><span class="sb-badge" id="badge-investorco">0</span></button>
-  <button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Oureach statistikasi</span></button>
+<button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Outreach statistikasi</span></button>
   <button class="sb-tab" id="tab-trade" onclick="showPage('trade')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Jahon tashqi savdosi</span></button>
   <button class="sb-tab" id="tab-forums" onclick="showPage('forums')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_forums">Forumlar</span><span class="sb-badge" id="badge-forums">0</span></button>
   <div class="sidebar-divider"></div>
@@ -2166,8 +2166,8 @@ input[type="time"]{-webkit-appearance:none;}
 <div class="page" id="page-pipeline">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
-      <div><div class="pg-title">📋 Oureach statistikasi — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
-      <button class="btn btn-ghost btn-sm" onclick="resetAllPipeline()" style="color:#EF233C">🗑 Oureach statistikasini tozalash</button>
+<div><div class="pg-title">📋 Outreach statistikasi — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
+<button class="btn btn-ghost btn-sm" onclick="resetAllPipeline()" style="color:#EF233C">🗑 Outreach statistikasini tozalash</button>
     </div>
     <div class="mailbox-shell">
       <div class="mailbox-head">
@@ -3728,7 +3728,7 @@ function showPage(id){
     products:'Mahsulotlar',
     import:'Import Tahlili',
     finder:'Kompaniya qidiruvi',
-    pipeline:'Oureach statistikasi',
+pipeline:'Outreach statistikasi',
     trade:'Jahon tashqi savdosi',
     settings:'Sozlamalar',
     admin:'Admin Panel'
@@ -12403,7 +12403,7 @@ function getImportAnalysisLabels(){
   }
   return {
     totalKpi: "Jami import 2021-2024",
-    biggestKpi: "Top importyor",
+    biggestKpi: "Top eksportyor",
     chartTitleSuffix: "Import Hajmi (2021-2024)",
     emptyText: "Tanlangan davlatlar bo'yicha import ma'lumotlari topilmadi",
     sourceLabel: "Ma'lumot manbasi",
@@ -12572,7 +12572,7 @@ function renderImportResults(countries, prod, source){
   var fastest = countries.slice().sort(function(a,b){return (b.trend_pct||0)-(a.trend_pct||0);})[0] || {};
   var labels = (typeof getImportAnalysisLabels === 'function')
     ? getImportAnalysisLabels()
-    : { totalKpi:'Jami import 2021-2024', biggestKpi:'Top importyor' };
+    : { totalKpi:'Jami import 2021-2024', biggestKpi:'Top eksportyor' };
   var k1Label = document.getElementById('imp-k1-label');
   var k2Label = document.getElementById('imp-k2-label');
   if(k1Label) k1Label.textContent = labels.totalKpi;
@@ -13105,7 +13105,7 @@ function resetAllPipeline(){
     if(typeof fbSave==='function') fbSave('investorCompanies', c);
   });
   renderPipeline();
-  toast('🗑 Oureach statistikasi tozalandi — barcha kompaniyalar "Yangi" holatiga qaytarildi');
+toast('🗑 Outreach statistikasi tozalandi — barcha kompaniyalar "Yangi" holatiga qaytarildi');
 }
 
 function clearWorldBankData(){
@@ -13806,6 +13806,31 @@ function renderImportResults(countries, prod, source, targetCountries){
   var biggest = okCountries.slice().sort(function(a, b){
     return (b.import_usd || 0) - (a.import_usd || 0);
   })[0] || {};
+  var exporterTotals = {};
+  okCountries.forEach(function(country){
+    var rows = Array.isArray(country.products) ? country.products : [];
+    rows.forEach(function(row){
+      if(isImportWorldRow(row)) return;
+      var exporterName = String(row && (row.partner || row.partnerDesc || '') || '').trim();
+      var exporterValue = Number(row && row.value || 0) || 0;
+      if(!exporterName || !(exporterValue > 0)) return;
+      if(!exporterTotals[exporterName]){
+        exporterTotals[exporterName] = {
+          name: exporterName,
+          value: 0,
+          flag: getFinderCountryFlag(exporterName) || '',
+          label: getFinderCountryLabel(exporterName) || exporterName
+        };
+      }
+      exporterTotals[exporterName].value += exporterValue;
+    });
+  });
+  var topExporter = Object.keys(exporterTotals).map(function(name){
+    return exporterTotals[name];
+  }).sort(function(a, b){
+    return (b.value || 0) - (a.value || 0);
+  })[0] || null;
+  var topExporterShare = total > 0 && topExporter && topExporter.value ? Math.round((topExporter.value / total) * 100) : 0;
   var topImporter = biggest;
   var topImporterShare = total > 0 && topImporter.import_usd ? Math.round((topImporter.import_usd / total) * 100) : 0;
   var singleCountry = okCountries.length === 1;
@@ -13818,10 +13843,12 @@ function renderImportResults(countries, prod, source, targetCountries){
   if(k2Label) k2Label.textContent = labels.biggestKpi;
   if(k3Label) k3Label.textContent = singleCountry
     ? (getImportAnalysisFinderMode() === 'importers' ? '2024 eksport' : '2024 import')
-    : labels.biggestKpi;
+    : 'Top importyor';
 
   document.getElementById('imp-k1').textContent = investAiFmtUsd(total);
-  document.getElementById('imp-k2').textContent = (biggest.flag||'')+' '+(biggest.name||'—');
+  document.getElementById('imp-k2').textContent = topExporter
+    ? ((topExporter.flag || '') + ' ' + (topExporter.label || topExporter.name || '—')).trim()
+    : ((biggest.flag||'')+' '+(biggest.name||'—'));
   document.getElementById('imp-k3').textContent = singleCountry
     ? investAiFmtUsd(Number((((topImporter.year_imports || {})['2024']) || ((topImporter.year_imports || {})['2023']) || topImporter.import_usd || 0)))
     : (topImporter.name ? ((topImporter.flag||'')+' '+topImporter.name+' • '+topImporterShare+'%') : '—');
