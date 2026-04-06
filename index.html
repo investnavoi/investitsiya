@@ -1128,6 +1128,9 @@ input[type="time"]{-webkit-appearance:none;}
 .csd-item:hover{background:rgba(67,97,238,.06);color:var(--text);}
 .csd-item:last-child{border-bottom:none;}
 .csd-item.selected{background:rgba(67,97,238,.1);color:var(--blue);font-weight:600;}
+.tg-reply-badge{display:inline-flex;align-items:center;border-radius:6px;padding:3px 8px;font-size:.68rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.tg-reply-badge.new{background:#059669;color:#fff}
+.tg-reply-badge.seen{background:#E0F2FE;color:#0369A1;font-weight:600}
 </style>
 </head>
 <body>
@@ -1368,8 +1371,8 @@ input[type="time"]{-webkit-appearance:none;}
 
     <!-- MAHALLIY TADBIRKORLAR — tepada, yig'iladigan -->
     <div class="tcard" id="productsSectionsCard" style="margin-bottom:1rem">
-      <div class="tc-head" style="cursor:pointer" onclick="toggleEntrepreneurs()">
-        <div class="tc-title">🏭 Mahalliy Tadbirkorlar (<span id="entr-count">0</span>) <span id="entr-toggle-icon" style="font-size:.7rem">▼</span></div>
+      <div class="tc-head" style="cursor:pointer" onclick="toggleAllEntrepreneurs()">
+        <div class="tc-title">🏭 Mahalliy Tadbirkorlar (<span id="entr-count">0</span>) <span id="entr-toggle-icon" style="font-size:.7rem">▲</span></div>
         <div style="display:flex;gap:.5rem" onclick="event.stopPropagation()">
           <span id="entrSelectedCount" style="font-size:.7rem;color:var(--text3);display:inline-flex;align-items:center">0 ta tanlangan</span>
           <label class="btn btn-sm" style="background:#059669;color:#fff;border:none;cursor:pointer">
@@ -1383,7 +1386,7 @@ input[type="time"]{-webkit-appearance:none;}
           <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('entrepreneurs')" style="color:#EF233C">🗑</button>
         </div>
       </div>
-      <div id="entrBody" style="display:none">
+      <div id="entrBody" style="display:block">
         <!-- Drop zone -->
         <div id="entrDropZone" style="margin:8px;padding:.6rem;border:2px dashed var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s"
           ondragover="event.preventDefault();this.style.borderColor='#059669';this.style.background='rgba(5,150,105,.05)'"
@@ -11332,11 +11335,13 @@ function renderEntrepreneurs(){
     var stIcon = renderEntrepreneurTgStatusHtml(e, tgMeta);
     var replyCheckBtn = '<button class="btn btn-sm" onclick="checkSingleTelegramReply(\''+e.id+'\')" style="background:#2563EB;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="Telegram javobini tekshirish">💬</button>';
 
-    var replyBadge = (e.tgReplyText && !e.tgReplySeen)
-      ? '<div style="display:flex;align-items:center;gap:4px"><span style="display:inline-flex;align-items:center;gap:3px;background:#059669;color:#fff;border-radius:6px;padding:3px 8px;font-size:.68rem;font-weight:700;cursor:pointer" onclick="showEntrepreneurReply(''+e.id+'')">● Yangi javob</span></div>'
+    // replyBadge built safely via data attribute to avoid apostrophe issues
+    var replyBadgeHtml = e.tgReplyText && !e.tgReplySeen
+      ? '<span class="tg-reply-badge new" data-eid="'+escHtml(String(e.id))+'">● Yangi javob</span>'
       : (e.tgReplyText
-          ? '<div style="display:flex;align-items:center;gap:4px"><span style="display:inline-flex;align-items:center;gap:3px;background:#E0F2FE;color:#0369A1;border-radius:6px;padding:3px 8px;font-size:.68rem;font-weight:600;cursor:pointer" title="'+escHtml(e.tgReplyText.slice(0,120))+'" onclick="showEntrepreneurReply(''+e.id+'')">💬 '+escHtml(e.tgReplyText.slice(0,30))+(e.tgReplyText.length>30?'...':'')+'</span></div>'
+          ? '<span class="tg-reply-badge seen" data-eid="'+escHtml(String(e.id))+'" title="'+escHtml(e.tgReplyText.slice(0,120))+'">💬 '+escHtml(e.tgReplyText.slice(0,30))+(e.tgReplyText.length>30?'...':'')+'</span>'
           : '<span style="color:var(--text3);font-size:.65rem">—</span>');
+    var replyBadge = replyBadgeHtml;
     var checked = hasSavedSelection ? _entrSelectedIds.indexOf(String(e.id)) !== -1 : !!e.matchedForum;
     var nameCell = '<span id="nm-display-'+e.id+'" style="cursor:pointer" onclick="editEntName(\''+e.id+'\')" title="Bosib tahrirlang"><b>'+escHtml(e.name||'—')+'</b> ✏️</span>'+
       '<div id="nm-edit-'+e.id+'" style="display:none;align-items:center;gap:4px;flex-wrap:wrap">'+
@@ -11366,6 +11371,14 @@ function renderEntrepreneurs(){
   }).join('');
   updateEntrepreneurSelectedCount();
   checkForumAlerts();
+  // Delegate clicks on reply badges
+  var tbody = document.querySelector('#entr-tbody, tbody[id*="entr"]') || document.getElementById('entr-table-wrap');
+  if(tbody){
+    tbody.onclick = tbody.onclick || function(ev){
+      var badge = ev.target.closest('.tg-reply-badge');
+      if(badge && badge.dataset.eid) showEntrepreneurReply(badge.dataset.eid);
+    };
+  }
 }
 
 function editEntName(id){
@@ -11780,14 +11793,14 @@ function matchForumsToEntrepreneurs(){
   toast('🔗 '+matched+' ta tadbirkor forumga moslashtirildi! ('+(entrList.length-matched)+' ta mos kelmadi)');
 }
 
-function toggleEntrepreneurs(){
+function toggleAllEntrepreneurs(){
   var body=document.getElementById('entrBody');
   var icon=document.getElementById('entr-toggle-icon');
   if(!body) return;
   if(body.style.display==='none'){body.style.display='block';if(icon)icon.textContent='▲';}
   else{body.style.display='none';if(icon)icon.textContent='▼';}
 }
-window.toggleEntrepreneurs = toggleEntrepreneurs;
+window.toggleAllEntrepreneurs = toggleAllEntrepreneurs;
 
 var _currentModalForum = '';
 
