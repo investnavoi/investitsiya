@@ -1162,14 +1162,14 @@ input[type="time"]{-webkit-appearance:none;}
   </div>
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-label">Outreach</div>
-  <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
-  <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Kompaniya qidiruvi</span></button>
+  <button class="sb-tab" id="tab-products" onclick="showPage('products')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_products">Mahsulotlar</span><span class="sb-badge" id="badge-products">0</span></button>
+  <button class="sb-tab" id="tab-finder" onclick="showPage('finder')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_finder">Kompaniya qidiruvi</span></button>
   <button class="sb-tab" id="tab-investor" onclick="showPage('investor')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_investorco">Investorlar bazasi</span><span class="sb-badge" id="badge-investorco">0</span></button>
-<button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Outreach statistikasi</span></button>
-  <button class="sb-tab" id="tab-trade" onclick="showPage('trade')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Jahon tashqi savdosi</span></button>
+<button class="sb-tab" id="tab-pipeline" onclick="showPage('pipeline')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_pipeline">Outreach statistikasi</span></button>
+  <button class="sb-tab" id="tab-trade" onclick="showPage('trade')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_trade">Jahon tashqi savdosi</span></button>
   <button class="sb-tab" id="tab-forums" onclick="showPage('forums')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_forums">Forumlar</span><span class="sb-badge" id="badge-forums">0</span></button>
   <div class="sidebar-divider"></div>
-  <button class="sb-tab" id="tab-settings" onclick="showPage('settings')"><span class="sb-tab-icon"></span><span class="sb-tab-label">Sozlamalar</span></button>
+  <button class="sb-tab" id="tab-settings" onclick="showPage('settings')"><span class="sb-tab-icon"></span><span class="sb-tab-label" data-i18n="nav_settings">Sozlamalar</span></button>
   <button class="sb-tab admin-tab" id="tab-admin" onclick="openAdminOrLogin()"><span class="sb-tab-icon"></span><span class="sb-tab-label" id="adminTabLabel" data-i18n="nav_login">Admin</span></button>
 </div>
 
@@ -1213,18 +1213,18 @@ input[type="time"]{-webkit-appearance:none;}
 <div class="page active" id="page-overview">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:block">
-      <div class="pg-title">Umumiy ma'lumotlar</div>
-      <div class="pg-sub">Barcha bo'limlar bo'yicha umumlashtirilgan hisobot</div>
+      <div class="pg-title" data-i18n="page_overview_title">Umumiy ma'lumotlar</div>
+      <div class="pg-sub" data-i18n="page_overview_sub">Barcha bo'limlar bo'yicha umumlashtirilgan hisobot</div>
     </div>
     <div class="sum-card">
       <div class="sum-tag" id="sumTag">📋 OYLIK HISOBOT</div>
       <div class="sum-txt" id="sumTxt">Ma'lumotlar yuklanmoqda...</div>
     </div>
     <div class="kpi-grid">
-      <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label">Investorlar Tashriflari</div><div class="kpi-val" id="ov-k1">0</div><div class="kpi-trend" id="ov-t1">Bu oy</div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">💻</div><div class="kpi-label">Zoom Uchrashuvlar</div><div class="kpi-val" id="ov-k2">0</div><div class="kpi-trend" id="ov-t2">Bu oy</div></div>
-      <div class="kpi-card c3"><div class="kpi-icon">🗓</div><div class="kpi-label">Forumlar</div><div class="kpi-val" id="ov-k3">0</div><div class="kpi-trend" id="ov-t3">Bu oy</div></div>
-      <div class="kpi-card c4"><div class="kpi-icon">🏢</div><div class="kpi-label">Mahalliy Bizneslar</div><div class="kpi-val" id="ov-k4">0</div><div class="kpi-trend">Ro'yxatda</div></div>
+      <div class="kpi-card c1"><div class="kpi-icon">🌍</div><div class="kpi-label" data-i18n="ov_k1_lbl">Investorlar Tashriflari</div><div class="kpi-val" id="ov-k1">0</div><div class="kpi-trend" data-i18n="lbl_this_month" id="ov-t1">Bu oy</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">💻</div><div class="kpi-label" data-i18n="ov_k2_lbl">Zoom Uchrashuvlar</div><div class="kpi-val" id="ov-k2">0</div><div class="kpi-trend" data-i18n="lbl_this_month" id="ov-t2">Bu oy</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">🗓</div><div class="kpi-label" data-i18n="ov_k3_lbl">Forumlar</div><div class="kpi-val" id="ov-k3">0</div><div class="kpi-trend" data-i18n="lbl_this_month" id="ov-t3">Bu oy</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">🏢</div><div class="kpi-label" data-i18n="ov_k4_lbl">Mahalliy Bizneslar</div><div class="kpi-val" id="ov-k4">0</div><div class="kpi-trend" data-i18n="lbl_listed">Ro'yxatda</div></div>
     </div>
     <div class="two-col">
       <div class="widget">
@@ -1756,10 +1756,10 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: MAHSULOTLAR (M1: Data Engine) ===== -->
 <div class="page" id="page-products">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">📦 Mahsulotlar Katalogi</div><div class="pg-sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
+    <div class="pg-head"><div class="pg-title" data-i18n="page_products_title">📦 Mahsulotlar Katalogi</div><div class="pg-sub" data-i18n="page_products_sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
     <div class="kpi-grid">
-      <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()"><div class="kpi-icon">⛏️</div><div class="kpi-label">Resurs va imkoniyatlar</div><div class="kpi-val" id="pr-k1">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label">Xomashyo negizidagi mahsulotlar</div><div class="kpi-val" id="pr-k2">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()"><div class="kpi-icon">⛏️</div><div class="kpi-label" data-i18n="pr_k1_lbl">Resurs va imkoniyatlar</div><div class="kpi-val" id="pr-k1">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label" data-i18n="pr_k2_lbl">Xomashyo negizidagi mahsulotlar</div><div class="kpi-val" id="pr-k2">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
       <div class="kpi-card c3" style="overflow:visible">
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;align-items:end;margin-bottom:.95rem">
           <div style="grid-column:1 / -1;height:92px;display:flex;align-items:center;justify-content:center">
@@ -1781,10 +1781,10 @@ input[type="time"]{-webkit-appearance:none;}
             <img src="maps/pakistan-cropped.png" alt="Pokiston" style="max-width:100%;max-height:100%;object-fit:contain;transform:scale(1.14);transform-origin:center">
           </div>
         </div>
-        <div style="font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:.4rem">Eksport yo'nalishlari</div>
+        <div style="font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:.4rem" data-i18n="pr_k3_lbl">Eksport yo'nalishlari</div>
         <div id="pr-k3" style="font-family:'Sora',sans-serif;font-size:2.8rem;font-weight:800;line-height:1;color:#d97706">12<span style="font-size:1.1rem;font-weight:700"> ta</span></div>
       </div>
-      <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label">Aniqlangan maqsadli kompaniyalar</div><div class="kpi-val" id="pr-k4">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label" data-i18n="pr_k4_lbl">Aniqlangan maqsadli kompaniyalar</div><div class="kpi-val" id="pr-k4">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
     </div>
 
     <div class="tcard" id="rawMaterialsCard" style="margin-bottom:1rem;display:none">
@@ -1903,7 +1903,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: COMPANY FINDER (M3) ===== -->
 <div class="page" id="page-finder">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">🔍 Kompaniya qidiruvi</div><div class="pg-sub">Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish</div></div>
+    <div class="pg-head"><div class="pg-title" data-i18n="page_finder_title">🔍 Kompaniya qidiruvi</div><div class="pg-sub" data-i18n="page_finder_sub">Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish</div></div>
 
     <div class="form-card" style="margin-bottom:1.2rem">
       <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:1rem;padding:0 0 1rem 0;border-bottom:1px solid var(--border)">
@@ -2168,7 +2168,7 @@ input[type="time"]{-webkit-appearance:none;}
 <div class="page" id="page-pipeline">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
-<div><div class="pg-title">📋 Outreach statistikasi — Investorlar Kanban</div><div class="pg-sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
+<div><div class="pg-title" data-i18n="page_pipeline_title">📋 Outreach statistikasi — Investorlar Kanban</div><div class="pg-sub" data-i18n="page_pipeline_sub">Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha</div></div>
 <button class="btn btn-ghost btn-sm" onclick="resetAllPipeline()" style="color:#EF233C">🗑 Outreach statistikasini tozalash</button>
     </div>
     <div class="mailbox-shell">
@@ -2312,7 +2312,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: GLOBAL TRADE DATA ===== -->
 <div class="page" id="page-trade">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">🌐 Xalqaro Savdo Ma'lumotlari</div><div class="pg-sub">196 davlatning barcha import/eksport mahsulotlari — UN Comtrade · WTO · WITS (World Bank)</div></div>
+    <div class="pg-head"><div class="pg-title" data-i18n="page_trade_title">🌐 Xalqaro Savdo Ma'lumotlari</div><div class="pg-sub">196 davlatning barcha import/eksport mahsulotlari — UN Comtrade · WTO · WITS (World Bank)</div></div>
 
     <div class="form-card" style="margin-bottom:1rem">
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end">
@@ -2401,7 +2401,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: SOZLAMALAR (Settings) ===== -->
 <div class="page" id="page-settings">
   <div style="max-width:1200px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">⚙️ Sozlamalar</div><div class="pg-sub">Navoiy IEZ tariflari, API kalitlar, tizim sozlamalari</div></div>
+    <div class="pg-head"><div class="pg-title" data-i18n="page_settings_title">⚙️ Sozlamalar</div><div class="pg-sub" data-i18n="page_settings_sub">Navoiy IEZ tariflari, API kalitlar, tizim sozlamalari</div></div>
 
     <!-- Navoiy IEZ tariflari -->
     <div class="form-card" style="margin-bottom:1.2rem">
@@ -2486,7 +2486,6 @@ Vercel Environment Variables:<br>
 
 <!-- ADMIN -->
 <div class="page" id="page-admin">
-  <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head">
       <div>
         <div class="pg-title" data-i18n="admin_panel">⚙️ Admin Panel</div>
@@ -2764,7 +2763,6 @@ Vercel Environment Variables:<br>
       </div>
     </div>
 
-  </div>
 </div>
 
 <!-- ===== BULK SCHEDULE MODAL ===== -->
@@ -3190,68 +3188,34 @@ Vercel Environment Variables:<br>
 </div>
 
 <!-- ===== IJRO INTIZOMI WIDGET ===== -->
-<div class="ij-widget" id="ijWidget">
-  <div class="ij-panel" id="ijPanel">
-    <div class="ij-panel-head">
-      <div class="ij-panel-icon">📋</div>
-      <div>
-        <div class="ij-panel-title">Ijro Intizomi</div>
-        <div class="ij-panel-date" id="ijDate"></div>
-      </div>
-      <button class="ij-close" onclick="toggleIjWidget()">✕</button>
-    </div>
-    <div class="ij-total-row">
-      <div>
-        <div class="ij-total-label">Bugun jami yopilgan</div>
-        <div style="font-size:.58rem;color:var(--text2)" id="ijDateSmall"></div>
-      </div>
-      <div class="ij-total-num" id="ijTotal">0</div>
-    </div>
-    <div class="ij-items">
-      <div class="ij-lock-overlay" id="ijLockOverlay">
-        <div class="ij-lock-box">
-          <div style="font-size:2rem">🔐</div>
-          <div class="ij-lock-text">Ma'lumotlarni o'zgartirish uchun admin sifatida kiring</div>
-          <button class="ij-lock-btn" onclick="toggleIjWidget();openAdminOrLogin()">Kirish →</button>
-        </div>
-      </div>
-      <div class="ij-item">
-        <div class="ij-item-left"><div class="ij-item-dot" style="background:#EF233C"></div><div class="ij-item-name">Prezident topshiriqlari</div></div>
-        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('prez',-1)">−</button><input class="ij-input" id="ij-prez" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('prez',1)">+</button></div>
-      </div>
-      <div class="ij-item">
-        <div class="ij-item-left"><div class="ij-item-dot" style="background:#7209B7"></div><div class="ij-item-name">PA topshiriqlari</div></div>
-        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('pa',-1)">−</button><input class="ij-input" id="ij-pa" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('pa',1)">+</button></div>
-      </div>
-      <div class="ij-item">
-        <div class="ij-item-left"><div class="ij-item-dot" style="background:#4361EE"></div><div class="ij-item-name">VM topshiriqlari</div></div>
-        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('vm',-1)">−</button><input class="ij-input" id="ij-vm" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('vm',1)">+</button></div>
-      </div>
-      <div class="ij-item">
-        <div class="ij-item-left"><div class="ij-item-dot" style="background:#059669"></div><div class="ij-item-name">HK topshiriqlari</div></div>
-        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('komissiya',-1)">−</button><input class="ij-input" id="ij-komissiya" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('komissiya',1)">+</button></div>
-      </div>
-      <div class="ij-item">
-        <div class="ij-item-left"><div class="ij-item-dot" style="background:#d97706"></div><div class="ij-item-name">YTT xatlar</div></div>
-        <div class="ij-item-ctrl"><button class="ij-btn-dec" onclick="ijChange('yuqari',-1)">−</button><input class="ij-input" id="ij-yuqari" type="number" min="0" value="0" onchange="ijUpdate()"><button class="ij-btn-inc" onclick="ijChange('yuqari',1)">+</button></div>
-      </div>
-    </div>
-    <div class="ij-chart">
-      <div class="ij-chart-title">Kunlik ko'rsatkichlar</div>
-      <div class="ij-bars" id="ijBars"></div>
-    </div>
-    <div class="ij-btn-row">
-      <button class="ij-save-btn" onclick="ijSave()" data-i18n="btn_save">💾 Saqlash</button>
-      <button class="ij-reset-btn" onclick="ijReset()">🔄</button>
-    </div>
-  </div>
-  <div class="ij-toggle" onclick="toggleIjWidget()">
-    <div class="ij-toggle-icon">📋</div>
-    <div class="ij-toggle-label">Ijro<br>Intizomi</div>
-    <div class="ij-toggle-total" id="ijTotalBadge">0</div>
-    <div class="ij-toggle-arrow" id="ijArrow">‹</div>
-  </div>
-</div>
+<button id="geminiFloatBtn" onclick="showPage('investor');document.getElementById('tab-investor').click()" title="AI Yordamchi" style="position:fixed;right:1.2rem;bottom:1.5rem;z-index:300;width:58px;height:58px;border-radius:50%;border:none;cursor:pointer;padding:0;background:transparent;box-shadow:0 4px 20px rgba(67,97,238,.35);transition:transform .2s,box-shadow .2s;" onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 8px 28px rgba(67,97,238,.5)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 20px rgba(67,97,238,.35)'">
+  <svg viewBox="0 0 58 58" xmlns="http://www.w3.org/2000/svg" width="58" height="58">
+    <defs>
+      <radialGradient id="gBg" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#1a237e"/>
+        <stop offset="100%" stop-color="#0d1b4b"/>
+      </radialGradient>
+    </defs>
+    <circle cx="29" cy="29" r="29" fill="url(#gBg)"/>
+    <!-- Robot face -->
+    <rect x="14" y="18" width="30" height="22" rx="5" fill="#4FC3F7" opacity=".95"/>
+    <rect x="18" y="22" width="8" height="6" rx="2" fill="#fff"/>
+    <rect x="32" y="22" width="8" height="6" rx="2" fill="#fff"/>
+    <rect x="20" y="24" width="4" height="3" rx="1" fill="#1565C0"/>
+    <rect x="34" y="24" width="4" height="3" rx="1" fill="#1565C0"/>
+    <rect x="19" y="33" width="20" height="3" rx="1.5" fill="#fff" opacity=".7"/>
+    <!-- Antenna -->
+    <line x1="29" y1="18" x2="29" y2="12" stroke="#4FC3F7" stroke-width="2"/>
+    <circle cx="29" cy="11" r="2.5" fill="#29B6F6"/>
+    <!-- Ears -->
+    <rect x="10" y="24" width="4" height="8" rx="2" fill="#4FC3F7"/>
+    <rect x="44" y="24" width="4" height="8" rx="2" fill="#4FC3F7"/>
+    <!-- Gemini star glow -->
+    <circle cx="29" cy="47" r="4" fill="#4361EE" opacity=".9"/>
+    <path d="M29 44 L30 47 L29 50 L28 47 Z" fill="#fff" opacity=".9"/>
+    <path d="M26 47 L29 46 L32 47 L29 48 Z" fill="#fff" opacity=".9"/>
+  </svg>
+</button>
 
 <!-- TOASTS -->
 <div class="toast-wrap" id="toastWrap"></div>
@@ -3276,6 +3240,29 @@ const TRANSLATIONS = {
     btn_cancel:"Bekor qilish", ph_country_search:"🔍  Davlat qidirish...",
     title_import_detail:"Batafsil import ma'lumotlari",
     hint_click_card:"Batafsil statistikani ko'rish uchun kartalardan birini bosing",
+    page_overview_title:"Umumiy ma'lumotlar", page_overview_sub:"Barcha bo'limlar bo'yicha umumlashtirilgan hisobot",
+    page_products_title:"📦 Mahsulotlar Katalogi", page_products_sub:"30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari",
+    page_finder_title:"🔍 Kompaniya qidiruvi", page_finder_sub:"Atrofimizdagi davlatlarga import qilayotgan kompaniyalarni topish",
+    page_pipeline_title:"📋 Outreach statistikasi — Investorlar Kanban", page_pipeline_sub:"Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha",
+    page_trade_title:"🌐 Xalqaro Savdo Ma'lumotlari", page_settings_title:"⚙️ Sozlamalar", page_settings_sub:"Navoiy IEZ tariflari, API kalitlar, tizim sozlamalari",
+    ov_k1_lbl:"Investorlar Tashriflari", ov_k2_lbl:"Zoom Uchrashuvlar",
+    ov_k3_lbl:"Forumlar", ov_k4_lbl:"Mahalliy Bizneslar",
+    lbl_this_month:"Bu oy", lbl_listed:"Ro'yxatda",
+    pr_k1_lbl:"Resurs va imkoniyatlar", pr_k2_lbl:"Xomashyo negizidagi mahsulotlar",
+    pr_k3_lbl:"Eksport yo'nalishlari", pr_k4_lbl:"Aniqlangan maqsadli kompaniyalar",
+    lbl_unit_ta:"ta",
+    page_overview_title:"Обзор", page_overview_sub:"Сводный отчёт по всем разделам",
+    page_products_title:"📦 Каталог продуктов", page_products_sub:"30 видов сырья, 450+ продуктов — производственные возможности Навои",
+    page_finder_title:"🔍 Поиск компаний", page_finder_sub:"Поиск компаний-импортёров в соседних странах",
+    page_pipeline_title:"📋 Статистика охвата — Канбан", page_pipeline_sub:"Отслеживание всех лидов — от поиска компании до MOU",
+    page_trade_title:"🌐 Мировые торговые данные", page_settings_title:"⚙️ Настройки", page_settings_sub:"Тарифы Navoi IEZ, API ключи, системные настройки",
+    ov_k1_lbl:"Визиты инвесторов", ov_k2_lbl:"Zoom встречи",
+    ov_k3_lbl:"Форумы", ov_k4_lbl:"Местный бизнес",
+    lbl_this_month:"В этом месяце", lbl_listed:"В реестре",
+    pr_k1_lbl:"Ресурсы и возможности", pr_k2_lbl:"Продукты на основе сырья",
+    pr_k3_lbl:"Экспортные направления", pr_k4_lbl:"Выявленные целевые компании",
+    lbl_unit_ta:"ед.",
+    nav_products:"Mahsulotlar", nav_finder:"Kompaniya qidiruvi", nav_pipeline:"Outreach statistikasi", nav_trade:"Jahon tashqi savdosi", nav_settings:"Sozlamalar",
     nav_overview:"Umumiy ma'lumotlar", nav_investors:"Investorlar Tashriflari",
     nav_local:"Mahalliy Tadbirkorlar", nav_zoom:"Zoom Uchrashuvlar",
     nav_forums:"Forumlar", nav_investorco:"Investorlar bazasi", nav_login:"Kirish",
@@ -3331,6 +3318,7 @@ const TRANSLATIONS = {
     btn_cancel:"Отмена", ph_country_search:"🔍  Поиск страны...",
     title_import_detail:"Подробные данные импорта",
     hint_click_card:"Нажмите на карточку для просмотра статистики",
+    nav_products:"Mahsulotlar", nav_finder:"Поиск компаний", nav_pipeline:"Статистика охвата", nav_trade:"Мировая торговля", nav_settings:"Настройки",
     nav_overview:"Обзор", nav_investors:"Визиты инвесторов",
     nav_local:"Местные предприниматели", nav_zoom:"Zoom встречи",
     nav_forums:"Форумы", nav_investorco:"База инвесторов", nav_login:"Войти",
@@ -3384,6 +3372,18 @@ const TRANSLATIONS = {
     btn_cancel:"Cancel", ph_country_search:"🔍  Search country...",
     title_import_detail:"Import detail data",
     hint_click_card:"Click a card to view detailed statistics",
+    page_overview_title:"Overview", page_overview_sub:"Summary report across all sections",
+    page_products_title:"📦 Product Catalog", page_products_sub:"30 raw materials, 450+ products — Navoiy production opportunities",
+    page_finder_title:"🔍 Company Search", page_finder_sub:"Find companies importing to neighboring countries",
+    page_pipeline_title:"📋 Outreach Statistics — Kanban", page_pipeline_sub:"Track all leads from company search to MOU",
+    page_trade_title:"🌐 World Trade Data", page_settings_title:"⚙️ Settings", page_settings_sub:"Navoiy IEZ tariffs, API keys, system settings",
+    ov_k1_lbl:"Investor Visits", ov_k2_lbl:"Zoom Meetings",
+    ov_k3_lbl:"Forums", ov_k4_lbl:"Local Business",
+    lbl_this_month:"This month", lbl_listed:"Listed",
+    pr_k1_lbl:"Resources & Opportunities", pr_k2_lbl:"Raw Material Products",
+    pr_k3_lbl:"Export Directions", pr_k4_lbl:"Target Companies Found",
+    lbl_unit_ta:"units",
+    nav_products:"Products", nav_finder:"Company Search", nav_pipeline:"Outreach Statistics", nav_trade:"World Trade", nav_settings:"Settings",
     nav_overview:"Overview", nav_investors:"Investor Visits",
     nav_local:"Local Entrepreneurs", nav_zoom:"Zoom Meetings",
     nav_forums:"Forums", nav_investorco:"Investor Database", nav_login:"Login",
