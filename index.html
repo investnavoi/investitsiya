@@ -1988,7 +1988,7 @@ input[type="time"]{-webkit-appearance:none;}
             </div>
             <div class="tcard" style="margin-bottom:1rem">
               <div class="tc-head">
-                <div class="tc-title">🏦 13 Davlat Iqtisodiy Ko'rsatkichlari (World Bank)</div>
+                <div class="tc-title" id="wbSectionTitle">🏦 Tanlangan Davlatlar Iqtisodiy Ko'rsatkichlari (World Bank)</div>
                 <div style="display:flex;gap:.5rem">
                   <button class="btn btn-blue btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
                   <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
@@ -2006,7 +2006,7 @@ input[type="time"]{-webkit-appearance:none;}
                 </table></div>
                 <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API + ILOSTAT API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
               </div>
-              <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — 13 davlat iqtisodiy ma'lumotlari yuklanadi</p></div>
+              <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — tanlangan davlatlar iqtisodiy ma'lumotlari yuklanadi</p></div>
             </div>
           </div>
         </div>
@@ -12636,6 +12636,104 @@ var UZB_DATA = {
   gdp_per_capita: 2255, industry_pct: 28.6, avg_wage: 400, electricity: 0.03, population: 36.0
 };
 
+var WB_COUNTRY_LIST_CACHE = null;
+var WB_COUNTRY_NAME_ALIASES = {
+  'russia': 'russian federation',
+  'rossiya': 'russian federation',
+  'kyrgyzstan': 'kyrgyz republic',
+  "qirg'iziston": 'kyrgyz republic',
+  'qirgiziston': 'kyrgyz republic',
+  'iran': 'iran, islamic rep.',
+  'eron': 'iran, islamic rep.',
+  'egypt': 'egypt, arab rep.',
+  'dr congo': 'congo, dem. rep.',
+  'congo': 'congo, rep.',
+  'ivory coast': "cote d'ivoire",
+  'south korea': 'korea, rep.',
+  'north korea': "korea, dem. people's rep.",
+  'laos': 'lao pdr',
+  'syria': 'syrian arab republic',
+  'gambia': 'gambia, the',
+  'bahamas': 'bahamas, the',
+  'slovakia': 'slovak republic',
+  'czech republic': 'czechia',
+  'turkey': 'turkiye',
+  'turkiya': 'turkiye',
+  'brunei': 'brunei darussalam',
+  'vatican city': 'holy see',
+  'palestine': 'west bank and gaza',
+  'saint kitts and nevis': 'st. kitts and nevis',
+  'saint lucia': 'st. lucia',
+  'saint vincent and the grenadines': 'st. vincent and the grenadines',
+  'yemen': 'yemen, rep.'
+};
+
+function normalizeWbCountryName(value){
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+async function getWorldBankCountryList(){
+  if(WB_COUNTRY_LIST_CACHE) return WB_COUNTRY_LIST_CACHE;
+  try{
+    var resp = await fetch(WORLDBANK_PROXY + '?meta=countries');
+    if(!resp.ok) return [];
+    var data = await resp.json();
+    WB_COUNTRY_LIST_CACHE = Array.isArray(data && data.countries) ? data.countries : [];
+    return WB_COUNTRY_LIST_CACHE;
+  }catch(e){
+    console.log('WB country meta fetch error:', e);
+    return [];
+  }
+}
+
+function getWorldBankIso3Alias(name){
+  var normalized = normalizeWbCountryName(name);
+  return INVESTOR_GEO_ALIASES[normalized] || '';
+}
+
+function buildSelectedWorldBankCountries(countryList){
+  var selectedTargets = getImportAnalysisTargetCountries();
+  var byName = {};
+  (countryList || []).forEach(function(country){
+    if(!country || !country.name) return;
+    byName[normalizeWbCountryName(country.name)] = country;
+  });
+  var rows = [];
+  selectedTargets.forEach(function(target){
+    var rawName = target && (target.name || target.label) ? (target.name || target.label) : '';
+    if(!rawName) return;
+    var normalizedName = normalizeWbCountryName(rawName);
+    var labelName = normalizeWbCountryName(target.label || rawName);
+    var aliasName = WB_COUNTRY_NAME_ALIASES[normalizedName] || WB_COUNTRY_NAME_ALIASES[labelName] || '';
+    var matched = byName[normalizedName] || byName[labelName] || (aliasName ? byName[aliasName] : null);
+    var iso3 = getWorldBankIso3Alias(rawName) || getWorldBankIso3Alias(target.label || '');
+    var wbCode = (matched && (matched.iso3 || matched.iso2)) || iso3 || '';
+    if(!wbCode) return;
+    rows.push({
+      iso: (matched && matched.iso3) || iso3 || wbCode,
+      wbCode: wbCode,
+      name: target.label || rawName,
+      rawName: rawName,
+      flag: target.flag || getFinderCountryFlag(rawName) || '🏳️'
+    });
+  });
+  return rows.filter(function(country, idx, arr){
+    return arr.findIndex(function(item){ return item.wbCode === country.wbCode; }) === idx;
+  });
+}
+
+function getWorldBankValue(map, country){
+  if(!map || !country) return null;
+  return map[country.iso] || map[country.wbCode] || null;
+}
+
 async function fetchWBIndicator(countryCodes, indicator){
   try {
     var url = WORLDBANK_PROXY+'?country='+encodeURIComponent(countryCodes)+'&indicator='+encodeURIComponent(indicator)+'&format=json&date=2020:2024&per_page=500';
@@ -12646,9 +12744,18 @@ async function fetchWBIndicator(countryCodes, indicator){
     if(data[1]){
       data[1].forEach(function(r){
         if(r.value !== null){
-          var iso = r.countryiso3code || r.country?.id;
-          if(!result[iso] || parseInt(r.date) > parseInt(result[iso].year)){
-            result[iso] = {value: r.value, year: r.date};
+          var iso3 = r.countryiso3code || '';
+          var iso2 = (r.country && r.country.id) ? r.country.id : '';
+          [iso3, iso2].filter(Boolean).forEach(function(key){
+            if(!result[key] || parseInt(r.date) > parseInt(result[key].year)){
+              result[key] = {value: r.value, year: r.date};
+            }
+          });
+          if(r.country && r.country.value){
+            var nameKey = normalizeWbCountryName(r.country.value);
+            if(nameKey && (!result[nameKey] || parseInt(r.date) > parseInt(result[nameKey].year))){
+              result[nameKey] = {value: r.value, year: r.date};
+            }
           }
         }
       });
@@ -12797,6 +12904,189 @@ async function loadWorldBankData(){
 
   toast('✅ 12 davlat iqtisodiy ma\'lumotlari yuklandi! (World Bank)');
 }
+
+loadWorldBankData = async function(){
+  var wbEmpty = document.getElementById('wbEmpty');
+  var wbLoading = document.getElementById('wbLoading');
+  var wbData = document.getElementById('wbData');
+  var titleEl = document.getElementById('wbSectionTitle');
+  var kpiGrid = document.getElementById('wbKpiGrid');
+  var tbody = document.getElementById('wb-tbody');
+
+  if(wbEmpty) wbEmpty.style.display = 'none';
+  if(wbLoading) wbLoading.style.display = 'block';
+  if(wbData) wbData.style.display = 'none';
+
+  var countryList = await getWorldBankCountryList();
+  var selectedCountries = buildSelectedWorldBankCountries(countryList);
+  var selectedCount = selectedCountries.length;
+
+  if(titleEl){
+    titleEl.textContent = "🏦 " + selectedCount + " Davlat Iqtisodiy Ko'rsatkichlari (World Bank)";
+  }
+
+  if(!selectedCount){
+    if(wbLoading) wbLoading.style.display = 'none';
+    if(wbData) wbData.style.display = 'none';
+    if(wbEmpty) wbEmpty.style.display = 'block';
+    toast("🌍 Avval Maqsad davlatlar bo'limidan kamida 1 ta davlat tanlang");
+    return;
+  }
+
+  toast("🏦 World Bank API'dan " + selectedCount + " davlat ma'lumoti yuklanmoqda...");
+
+  var uniqueCodes = [];
+  selectedCountries.forEach(function(country){
+    if(country && country.wbCode && uniqueCodes.indexOf(country.wbCode) === -1) uniqueCodes.push(country.wbCode);
+  });
+  if(uniqueCodes.indexOf('UZB') === -1) uniqueCodes.push('UZB');
+  var codes = uniqueCodes.join(';');
+
+  var results = await Promise.all([
+    fetchWBIndicator(codes, 'NY.GDP.PCAP.CD'),
+    fetchWBIndicator(codes, 'NV.IND.TOTL.ZS'),
+    fetchWBIndicator(codes, 'SP.POP.TOTL'),
+    fetchWBIndicator(codes, 'SL.IND.EMPL.ZS'),
+    fetchWBIndicator(codes, 'NE.IMP.GNFS.CD'),
+    fetchIlostatWages(codes)
+  ]);
+
+  var gdpData = results[0] || {};
+  var indData = results[1] || {};
+  var popData = results[2] || {};
+  var emplData = results[3] || {};
+  var impData = results[4] || {};
+  var wageData = results[5] || {};
+  var cachedRows = (((DB||{}).worldBankData||{}).countries || []);
+  var cachedByIso = {};
+  cachedRows.forEach(function(r){
+    if(r && r.iso) cachedByIso[r.iso] = r;
+    if(r && r.wbCode) cachedByIso[r.wbCode] = r;
+  });
+
+  if(wbLoading) wbLoading.style.display = 'none';
+  if(wbData) wbData.style.display = 'block';
+
+  var uzbCountry = { iso:'UZB', wbCode:'UZB' };
+  var uzbGdpEntry = getWorldBankValue(gdpData, uzbCountry);
+  var uzbIndEntry = getWorldBankValue(indData, uzbCountry);
+  var uzbPopEntry = getWorldBankValue(popData, uzbCountry);
+  if(uzbGdpEntry) UZB_DATA.gdp_per_capita = Math.round(uzbGdpEntry.value);
+  if(uzbIndEntry) UZB_DATA.industry_pct = Math.round(uzbIndEntry.value * 10) / 10;
+  if(uzbPopEntry) UZB_DATA.population = Math.round(uzbPopEntry.value / 1e6 * 10) / 10;
+
+  var s = DB.settings || {};
+  UZB_DATA.avg_wage = s.maosh || 400;
+  UZB_DATA.electricity = s.elektr || 0.03;
+
+  var rows = selectedCountries.map(function(c){
+    var cached = cachedByIso[c.iso] || cachedByIso[c.wbCode] || {};
+    var fallback = WB_FALLBACK[c.iso] || WB_FALLBACK[c.wbCode] || {};
+    var gdpEntry = getWorldBankValue(gdpData, c);
+    var indEntry = getWorldBankValue(indData, c);
+    var popEntry = getWorldBankValue(popData, c);
+    var emplEntry = getWorldBankValue(emplData, c);
+    var impEntry = getWorldBankValue(impData, c);
+    var gdp = gdpEntry ? Math.round(gdpEntry.value) : '—';
+    var ind = indEntry ? Math.round(indEntry.value * 10) / 10 : '—';
+    var pop = popEntry ? Math.round(popEntry.value / 1e6 * 10) / 10 : '—';
+    var empl = emplEntry ? Math.round(emplEntry.value * 10) / 10 : '—';
+    var imp = impEntry ? Math.round(impEntry.value / 1e9 * 10) / 10 : '—';
+    var wageMeta = wageData[c.iso] && !wageData[c.iso].error ? wageData[c.iso] : null;
+    var officialWage = wageMeta && typeof wageMeta.value === 'number' && !isNaN(wageMeta.value) ? Math.round(wageMeta.value) : '—';
+
+    if(gdp === '—' && typeof cached.gdp === 'number') gdp = cached.gdp;
+    if(gdp === '—' && typeof fallback.gdp === 'number') gdp = fallback.gdp;
+    if(ind === '—' && typeof cached.ind === 'number') ind = cached.ind;
+    if(ind === '—' && typeof fallback.ind === 'number') ind = fallback.ind;
+    if(pop === '—' && typeof cached.pop === 'number') pop = cached.pop;
+    if(pop === '—' && typeof fallback.pop === 'number') pop = fallback.pop;
+    if(empl === '—' && typeof cached.empl === 'number') empl = cached.empl;
+    if(empl === '—' && typeof fallback.empl === 'number') empl = fallback.empl;
+    if(imp === '—' && typeof cached.imp === 'number') imp = cached.imp;
+    if(imp === '—' && typeof fallback.imp === 'number') imp = fallback.imp;
+    if(officialWage === '—' && typeof cached.wage === 'number') officialWage = cached.wage;
+    if(officialWage === '—' && typeof fallback.wage === 'number') officialWage = fallback.wage;
+
+    var estElec = gdp !== '—' ? (gdp > 10000 ? 0.15 : gdp > 5000 ? 0.08 : gdp > 2000 ? 0.05 : 0.03) : '—';
+    var wageRatio = (officialWage !== '—' && officialWage > 0) ? Math.round(officialWage / UZB_DATA.avg_wage * 10) / 10 + 'x' : '—';
+    var elecRatio = (estElec !== '—' && UZB_DATA.electricity > 0) ? Math.round(estElec / UZB_DATA.electricity * 10) / 10 + 'x' : '—';
+
+    return {
+      iso: c.iso,
+      wbCode: c.wbCode,
+      code: c.code || '',
+      name: c.name,
+      flag: c.flag || '',
+      gdp: gdp,
+      ind: ind,
+      pop: pop,
+      empl: empl,
+      imp: imp,
+      wage: officialWage,
+      wageYear: wageMeta ? wageMeta.year : '',
+      wageBasis: wageMeta ? wageMeta.currencyLabel : '',
+      estElec: estElec,
+      wageRatio: wageRatio,
+      elecRatio: elecRatio
+    };
+  });
+
+  var totalPop = rows.reduce(function(sum, row){ return sum + (typeof row.pop === 'number' ? row.pop : 0); }, 0);
+  var totalImp = rows.reduce(function(sum, row){ return sum + (typeof row.imp === 'number' ? row.imp : 0); }, 0);
+  var avgGdpRows = rows.filter(function(row){ return typeof row.gdp === 'number'; });
+  var avgGdpVal = avgGdpRows.length ? Math.round(avgGdpRows.reduce(function(sum, row){ return sum + row.gdp; }, 0) / avgGdpRows.length) : 0;
+  var totalPopDisplay = totalPop > 0 ? Math.round(totalPop) + ' mln' : '—';
+  var avgGdpDisplay = avgGdpVal > 0 ? '$' + avgGdpVal.toLocaleString() : '—';
+  var totalImpDisplay = totalImp > 0 ? '$' + Math.round(totalImp) + 'B' : '—';
+
+  if(kpiGrid){
+    kpiGrid.innerHTML =
+      '<div style="padding:.8rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">🌍</div><div style="font-size:.6rem;color:var(--text3)">' + selectedCount + ' davlat aholisi</div><div style="font-size:1rem;font-weight:800;color:var(--text)">' + totalPopDisplay + '</div></div>'+
+      '<div style="padding:.8rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">💰</div><div style="font-size:.6rem;color:var(--text3)">O\'rtacha YaIM/kishi</div><div style="font-size:1rem;font-weight:800;color:var(--text)">' + avgGdpDisplay + '</div></div>'+
+      '<div style="padding:.8rem;background:var(--bg2);border-radius:10px;text-align:center"><div style="font-size:1.3rem">📦</div><div style="font-size:.6rem;color:var(--text3)">Jami import</div><div style="font-size:1rem;font-weight:800;color:var(--text)">' + totalImpDisplay + '</div></div>'+
+      '<div style="padding:.8rem;background:linear-gradient(135deg,rgba(5,150,105,.1),rgba(6,214,160,.1));border-radius:10px;text-align:center;border:1px solid rgba(5,150,105,.3)"><div style="font-size:1.3rem">UZ</div><div style="font-size:.6rem;color:var(--text3)">Navoiy IEZ ish haqi</div><div style="font-size:1rem;font-weight:800;color:#059669">$' + UZB_DATA.avg_wage + '/oy</div></div>';
+  }
+
+  if(tbody){
+    tbody.innerHTML = rows
+      .sort(function(a,b){ return (typeof b.gdp === 'number' ? b.gdp : 0) - (typeof a.gdp === 'number' ? a.gdp : 0); })
+      .map(function(r, i){
+        var wageColor = r.wageRatio !== '—' && parseFloat(r.wageRatio) > 2 ? '#059669' : 'var(--text)';
+        return '<tr>'+
+          '<td>' + (i + 1) + '</td>'+
+          '<td>' + r.flag + ' <b>' + r.name + '</b></td>'+
+          '<td style="font-weight:700">' + (typeof r.gdp === 'number' ? '$' + r.gdp.toLocaleString() : r.gdp) + '</td>'+
+          '<td>' + (typeof r.ind === 'number' ? r.ind + '%' : r.ind) + '</td>'+
+          '<td>' + (typeof r.wage === 'number' ? '$' + r.wage.toLocaleString() : r.wage) + '</td>'+
+          '<td>' + (typeof r.estElec === 'number' ? '~$' + r.estElec : r.estElec) + '</td>'+
+          '<td>' + (typeof r.pop === 'number' ? r.pop + 'M' : r.pop) + '</td>'+
+          '<td style="color:' + wageColor + ';font-weight:700">' + (r.wageRatio !== '—' ? '👷 ' + r.wageRatio + ' | ⚡ ' + r.elecRatio : '—') + '</td>'+
+          '</tr>';
+      }).join('');
+
+    tbody.innerHTML += '<tr style="background:linear-gradient(135deg,rgba(5,150,105,.05),rgba(6,214,160,.05));font-weight:700">'+
+      '<td>🏆</td><td>uz Navoiy IEZ</td>'+
+      '<td>$' + UZB_DATA.gdp_per_capita.toLocaleString() + '</td>'+
+      '<td>' + UZB_DATA.industry_pct + '%</td>'+
+      '<td style="color:#059669">$' + UZB_DATA.avg_wage + '</td>'+
+      '<td style="color:#059669">$' + UZB_DATA.electricity + '</td>'+
+      '<td>' + UZB_DATA.population + 'M</td>'+
+      '<td style="color:#059669;font-weight:800">✅ ENG ARZON</td></tr>';
+  }
+
+  DB.worldBankData = {
+    countries: rows,
+    selectedCountries: selectedCountries.map(function(c){
+      return { iso: c.iso, wbCode: c.wbCode, name: c.name, rawName: c.rawName, flag: c.flag, code: c.code || '' };
+    }),
+    updated: new Date().toISOString(),
+    uzb: UZB_DATA
+  };
+  if(typeof fbSave === 'function') fbSave('worldBankData', DB.worldBankData);
+
+  toast("✅ " + selectedCount + " davlat iqtisodiy ma'lumoti yuklandi! (World Bank)");
+};
 
 function resetAllPipeline(){
   if(!confirm('Barcha kompaniyalarning pipeline holatini "Yangi" ga qaytarish tasdiqlaysizmi?')) return;
@@ -13506,7 +13796,9 @@ function renderImportResults(countries, prod, source, targetCountries){
 
   var okCountries = countries.filter(function(c){ return c.status === 'ok'; });
   var total = okCountries.reduce(function(s,c){return s+(c.import_usd||0);},0);
-  var biggest = okCountries[0] || {};
+  var biggest = okCountries.slice().sort(function(a, b){
+    return (b.import_usd || 0) - (a.import_usd || 0);
+  })[0] || {};
   var topImporter = biggest;
   var topImporterShare = total > 0 && topImporter.import_usd ? Math.round((topImporter.import_usd / total) * 100) : 0;
   var singleCountry = okCountries.length === 1;
@@ -13516,7 +13808,7 @@ function renderImportResults(countries, prod, source, targetCountries){
   var k3Label = document.getElementById('imp-k3-label');
 
   if(k1Label) k1Label.textContent = labels.totalKpi;
-  if(k2Label) k2Label.textContent = 'Eng katta bozor';
+  if(k2Label) k2Label.textContent = labels.biggestKpi;
   if(k3Label) k3Label.textContent = singleCountry
     ? (getImportAnalysisFinderMode() === 'importers' ? '2024 eksport' : '2024 import')
     : labels.biggestKpi;
