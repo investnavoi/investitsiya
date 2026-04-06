@@ -13074,6 +13074,11 @@ function renderCountryImportAccordion(countries, getCountryMeta){
     var label = escHtml(meta.label || country.name || '\u2014');
     var countryTotal = country.status === 'ok' ? formatImportDetailUsd(country.import_usd) : '\u2014';
     var countryVolume = country.status === 'ok' ? formatImportDetailTons(country.volume_tons, true) : '\u2014';
+    var yi = country.year_imports || {};
+    var cv21 = Number(yi['2021']||0), cv24 = Number(yi['2024']||0);
+    var countryCagr = (cv21 > 0 && cv24 > 0) ? (Math.pow(cv24/cv21, 1/3) - 1) * 100 : null;
+    var countryCagrFmt = countryCagr !== null ? (countryCagr >= 0 ? '+' : '') + countryCagr.toFixed(1) + '%' : '\u2014';
+    var countryCagrColor = countryCagr !== null ? (countryCagr >= 0 ? '#059669' : '#EF233C') : 'var(--text3)';
     var rows = Array.isArray(country.products) ? country.products.slice() : [];
     var yearBlocks = years.map(function(year){
       var yearRows = rows.filter(function(row){
@@ -13152,7 +13157,7 @@ function renderCountryImportAccordion(countries, getCountryMeta){
           '<span class="import-country-arrow">\u25b6</span>' +
           '<span class="import-country-name">' + flag + label + '</span>' +
         '</div>' +
-        '<div class="import-country-meta"><span class="import-country-total">' + escHtml(countryTotal) + '</span><span class="import-country-volume">' + escHtml(countryVolume) + '</span></div>' +
+        '<div class="import-country-meta"><span class="import-country-total">' + escHtml(countryTotal) + '</span><span style="font-size:.78rem;font-weight:700;color:' + countryCagrColor + ';min-width:3.5rem;text-align:right">' + escHtml(countryCagrFmt) + '</span><span class="import-country-volume">' + escHtml(countryVolume) + '</span></div>' +
       '</summary>' +
       '<div class="import-country-years">' + yearBlocks + '</div>' +
     '</details>';
