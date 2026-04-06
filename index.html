@@ -1980,7 +1980,10 @@ input[type="time"]{-webkit-appearance:none;}
             <div class="tcard" style="margin-bottom:1rem">
               <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
               <div id="import-detail-container" style="overflow:visible">
-                <div id="import-detail-body" class="import-detail-accordion"></div>
+                <table style="width:100%;border-collapse:collapse">
+                  <thead id="import-thead"><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
+                  <tbody id="import-tbody"></tbody>
+                </table>
               </div>
             </div>
             <div class="tcard" style="margin-bottom:1rem">
@@ -13264,7 +13267,108 @@ function renderWitsImportDetailTable(countries, getTargetMeta){
 }
 
 function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
-  renderCountryImportAccordion(countries, getTargetMeta);
+  var theadEl = document.getElementById('import-thead');
+  var tb = document.getElementById('import-tbody');
+  if(!theadEl || !tb) return;
+  var tableEl = tb.parentNode;
+  Array.from(tableEl.querySelectorAll('tbody[data-extra]')).forEach(function(el){ el.remove(); });
+
+  var hasProducts = countries.some(function(c){
+    return (c.products||[]).some(function(p){
+      return Number(p.partnerCode!==undefined?p.partnerCode:-1)!==0 && (p.value||p.weight);
+    });
+  });
+
+  if(hasProducts){
+    // Reporter > Year > flat rows accordion
+    theadEl.innerHTML = '';
+    tb.innerHTML = '';
+    var sorted = countries.slice().sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
+    sorted.forEach(function(c,ci){
+      var tc = getTargetMeta(c);
+      var totalFmt = c.status==='ok' ? investAiFmtUsd(c.import_usd||0) : '—';
+      var vol = c.volume_tons>0?(c.volume_tons>999?Math.round(c.volume_tons/1000)+'K t':Math.round(c.volume_tons)+'t'):'—';
+      var flag = tc.flag?tc.flag+' ':'';
+      var rHead=document.createElement('tbody'); rHead.setAttribute('data-extra','1');
+      var rTr=document.createElement('tr');
+      rTr.style.cssText='cursor:pointer;background:var(--bg2);border-top:2px solid var(--border)';
+      rTr.innerHTML='<td colspan="7" style="padding:.75rem 1rem"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:.8rem"><span class="r-arrow" style="color:#4361EE;font-size:.8rem;display:inline-block;transition:transform .2s">►</span><b style="font-size:.92rem;color:var(--text)">'+escHtml(flag)+escHtml(tc.label||c.name||'')+'</b></div><div style="display:flex;gap:2rem;align-items:center"><b style="color:#4361EE;font-size:.88rem">'+escHtml(totalFmt)+'</b><span style="color:var(--text3);font-size:.78rem">'+escHtml(vol)+'</span></div></div></td>';
+      rHead.appendChild(rTr);
+      var rBody=document.createElement('tbody'); rBody.setAttribute('data-extra','1'); rBody.style.display='none';
+      var byYear={};
+      (c.products||[]).forEach(function(p){
+        if(Number(p.partnerCode!==undefined?p.partnerCode:-1)===0) return;
+        if(!p.value&&!p.weight) return;
+        var yr=String(p.period||'');
+        if(!byYear[yr]) byYear[yr]=[];
+        byYear[yr].push(p);
+      });
+      Object.keys(byYear).sort(function(a,b){return Number(b)-Number(a);}).forEach(function(yr){
+        var yRows=byYear[yr].sort(function(a,b){return (b.value||0)-(a.value||0);});
+        var yTotal=yRows.reduce(function(s,r){return s+Number(r.value||0);},0);
+        var yWgt=yRows.reduce(function(s,r){return s+Number(r.weight||r.quantity||0);},0);
+        var yTotalFmt=yTotal>0?'$'+Number(yTotal.toFixed(0)).toLocaleString('en-US'):'—';
+        var yWgtFmt=yWgt>999?Math.round(yWgt/1000)+'K t':Math.round(yWgt)+'t';
+        var yTr=document.createElement('tr');
+        yTr.style.cssText='cursor:pointer;background:rgba(67,97,238,.05)';
+        yTr.innerHTML='<td colspan="7" style="padding:.55rem 1rem .55rem 2.5rem"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:.6rem"><span class="y-arrow" style="color:var(--text3);font-size:.65rem;display:inline-block;transition:transform .2s">►</span><b style="color:var(--text2);font-size:.82rem">'+escHtml(yr)+'</b><span style="font-size:.65rem;color:var(--text3)">'+yRows.length+' ta manba</span></div><div style="display:flex;gap:1.2rem"><b style="font-size:.78rem">'+escHtml(yTotalFmt)+'</b><span style="color:var(--text3);font-size:.72rem">'+escHtml(yWgtFmt)+'</span></div></div></td>';
+        rBody.appendChild(yTr);
+        var colTr=document.createElement('tr');
+        colTr.style.cssText='display:none;background:rgba(67,97,238,.08);font-size:.65rem;color:var(--text3);font-weight:700';
+        colTr.innerHTML='<th style="padding:.35rem .8rem .35rem 4rem">#</th><th style="padding:.35rem .8rem">Period</th><th style="padding:.35rem .8rem">Reporter</th><th style="padding:.35rem .8rem">Partner</th><th style="padding:.35rem .8rem">Import ($)</th><th style="padding:.35rem .8rem">Hajm (kg)</th><th style="padding:.35rem .8rem">Amal</th>';
+        rBody.appendChild(colTr);
+        var dataRows=[colTr];
+        yRows.forEach(function(row,ri){
+          var rFmt=Number(row.value||0)>0?'$'+Number(Number(row.value||0).toFixed(3)).toLocaleString('en-US'):'—';
+          var wFmt=Number(row.weight||0)>0?Number(row.weight||0).toLocaleString('en-US')+' kg':'—';
+          var partner=row.partner||row.partnerDesc||'';
+          var dTr=document.createElement('tr');
+          dTr.style.cssText='display:none;font-size:.8rem;border-top:1px solid rgba(67,97,238,.07)';
+          dTr.innerHTML='<td style="padding:.5rem .8rem .5rem 4rem;color:var(--text3)">'+(ri+1)+'</td><td style="padding:.5rem .8rem;font-weight:700">'+escHtml(yr)+'</td><td style="padding:.5rem .8rem">'+escHtml(c.name||'')+'</td><td style="padding:.5rem .8rem;font-weight:600;color:#4361EE">'+escHtml(partner||'—')+'</td><td style="padding:.5rem .8rem;font-weight:700">'+escHtml(rFmt)+'</td><td style="padding:.5rem .8rem;color:var(--text2)">'+escHtml(wFmt)+'</td><td style="padding:.5rem .8rem"><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>';
+          dTr.querySelector('button').addEventListener('click',function(){goToFinder(this.dataset.pid,this.dataset.code);});
+          dataRows.push(dTr);
+          rBody.appendChild(dTr);
+        });
+        yTr.addEventListener('click',function(e){
+          e.stopPropagation();
+          var isOpen=colTr.style.display!=='none';
+          dataRows.forEach(function(r){r.style.display=isOpen?'none':'';});
+          var arrow=this.querySelector('.y-arrow');
+          if(arrow) arrow.style.transform=isOpen?'':'rotate(90deg)';
+        });
+      });
+      rTr.addEventListener('click',function(){
+        var isOpen=rBody.style.display!=='none';
+        rBody.style.display=isOpen?'none':'';
+        var arrow=this.querySelector('.r-arrow');
+        if(arrow) arrow.style.transform=isOpen?'':'rotate(90deg)';
+      });
+      tableEl.appendChild(rHead);
+      tableEl.appendChild(rBody);
+    });
+    return;
+  }
+
+  // Fallback: yillar bo'yicha summary
+  theadEl.innerHTML='<tr><th>#</th><th>Davlat</th><th>Jami</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Hajm</th><th>Amal</th></tr>';
+  tb.innerHTML='';
+  countries.forEach(function(c,i){
+    var tc=getTargetMeta(c);
+    var yi=c.year_imports||{}, ys=c.year_statuses||{};
+    function fmtY(y){
+      var st=ys[y]||c.status||'no_data',val=Number(yi[y]||0);
+      if(st==='ok'&&val>0) return '<b>'+investAiFmtShortUsd(val)+'</b>';
+      if(st==='rate_limited') return '<span style="color:#d97706;font-size:.65rem">limit</span>';
+      if(st==='error') return '<span style="color:#EF233C;font-size:.65rem">xato</span>';
+      return '<span style="color:var(--text3)">—</span>';
+    }
+    var total=c.status==='ok'?investAiFmtUsd(c.import_usd||0):'—';
+    var vol=c.volume_tons>0?(c.volume_tons>999?Math.round(c.volume_tons/1000)+'K t':Math.round(c.volume_tons)+'t'):'—';
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+(i+1)+'</td><td style="font-weight:600">'+(tc.flag?escHtml(tc.flag)+' ':'')+escHtml(tc.label||c.name||'')+'</td><td style="font-weight:800;color:#4361EE">'+total+'</td><td>'+fmtY('2021')+'</td><td>'+fmtY('2022')+'</td><td>'+fmtY('2023')+'</td><td>'+fmtY('2024')+'</td><td>'+escHtml(vol)+'</td><td><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>';
+    tr.querySelector('button').addEventListener('click',function(){goToFinder(this.dataset.pid,this.dataset.code);});
+    tb.appendChild(tr);
+  });
 }
 
 function countryHasImportDisplayData(country){
