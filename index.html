@@ -10969,6 +10969,7 @@ function showEntrepreneurReply(id){
     toast('ℹ️ Telegram javobi topilmadi','info');
     return;
   }
+  markTgReplySeen(id);
   alert(
     'Telegram javobi\n\n' +
     'Ism / kompaniya: ' + (ent.name||'—') + '\n' +
@@ -11043,6 +11044,16 @@ async function checkTelegramReplies(options){
   }
 }
 window.checkTelegramReplies = checkTelegramReplies;
+
+function markTgReplySeen(id){
+  var ent = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
+  if(ent && ent.tgReplyText){
+    ent.tgReplySeen = true;
+    if(typeof fbSave==='function') fbSave('entrepreneurs', ent);
+    renderEntrepreneurs();
+  }
+}
+window.markTgReplySeen = markTgReplySeen;
 
 async function checkSingleTelegramReply(id){
   var ent = (DB.entrepreneurs||[]).find(function(item){ return item.id===id; });
@@ -11321,8 +11332,13 @@ function renderEntrepreneurs(){
     var stIcon = renderEntrepreneurTgStatusHtml(e, tgMeta);
     var replyCheckBtn = '<button class="btn btn-sm" onclick="checkSingleTelegramReply(\''+e.id+'\')" style="background:#2563EB;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="Telegram javobini tekshirish">💬</button>';
     var replyViewBtn = e.tgReplyText
-      ? '<button class="btn btn-sm" onclick="showEntrepreneurReply(\''+e.id+'\')" style="background:#7C3AED;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="Telegram javobini ko\'rish">👁</button>'
+      ? '<button class="btn btn-sm" onclick="showEntrepreneurReply(\''+e.id+'\')" style="background:#7C3AED;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="'+escHtml(e.tgReplyText.slice(0,80))+'">👁</button>'
       : '';
+    var replyBadge = (e.tgReplyText && !e.tgReplySeen)
+      ? '<span style="display:inline-flex;align-items:center;gap:3px;background:#059669;color:#fff;border-radius:6px;padding:2px 7px;font-size:.65rem;font-weight:700;margin-right:3px">● Yangi javob</span>'
+      : (e.tgReplyText
+          ? '<span style="display:inline-flex;align-items:center;gap:3px;background:#E0F2FE;color:#0369A1;border-radius:6px;padding:2px 7px;font-size:.65rem;font-weight:600;margin-right:3px" title="'+escHtml(e.tgReplyText.slice(0,120))+'">💬 Javob bor</span>'
+          : '');
     var checked = hasSavedSelection ? _entrSelectedIds.indexOf(String(e.id)) !== -1 : !!e.matchedForum;
     var nameCell = '<span id="nm-display-'+e.id+'" style="cursor:pointer" onclick="editEntName(\''+e.id+'\')" title="Bosib tahrirlang"><b>'+escHtml(e.name||'—')+'</b> ✏️</span>'+
       '<div id="nm-edit-'+e.id+'" style="display:none;align-items:center;gap:4px;flex-wrap:wrap">'+
@@ -11344,6 +11360,7 @@ function renderEntrepreneurs(){
       '<td style="font-size:.6rem;color:#4361EE">'+(e.matchedForum||'—')+'</td>'+
       '<td style="font-size:.65rem">'+stIcon+'</td>'+
       '<td style="white-space:nowrap">'+
+        replyBadge+
         replyCheckBtn+
         replyViewBtn+
         '<button class="btn btn-sm" onclick="sendSingleTg(\''+e.id+'\')" style="background:#0088cc;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="Telegram xabar"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 14.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/></svg></button>'+
@@ -11456,9 +11473,45 @@ async function sendSingleTg(id){
   var result = await sendTgMessage(ent.phone, msg, ent.name);
   applyTgResultToEntrepreneur(ent, result);
   renderEntrepreneurs();
-  if(result.ok) toast('📲 ✅ '+ent.name+' ('+ent.phone+') ga xabar yuborildi!'+(result.user?' TG: '+result.user:'')); 
-  else toast('❌ '+ent.name+': '+result.error,'error');
+  if(result.ok){
+    toast('📲 ✅ '+ent.name+' ('+ent.phone+') ga xabar yuborildi!'+(result.user?' TG: '+result.user:''));
+    startTgReplyPolling(id);
+  } else {
+    toast('❌ '+ent.name+': '+result.error,'error');
+  }
 }
+
+// Auto-polling: 30s intervals, max 20 times (10 min) per contact
+var _tgPollingTimers = {};
+function startTgReplyPolling(id){
+  if(_tgPollingTimers[id]) clearInterval(_tgPollingTimers[id]);
+  var attempts = 0;
+  var maxAttempts = 20;
+  _tgPollingTimers[id] = setInterval(async function(){
+    attempts++;
+    var ent = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
+    if(!ent || attempts > maxAttempts){
+      clearInterval(_tgPollingTimers[id]);
+      delete _tgPollingTimers[id];
+      return;
+    }
+    // Already got reply — stop polling
+    if(ent.tgReplyText && ent.tgReplySeen){
+      clearInterval(_tgPollingTimers[id]);
+      delete _tgPollingTimers[id];
+      return;
+    }
+    var res = await checkTelegramReplies({ids:[id], silent:true});
+    if(res && res.updated > 0){
+      // New reply arrived
+      var updated = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
+      toast('💬 '+( updated ? updated.name : 'Tadbirkor')+' dan Telegram javobi keldi!', 'success');
+      clearInterval(_tgPollingTimers[id]);
+      delete _tgPollingTimers[id];
+    }
+  }, 30000); // 30 seconds
+}
+window.startTgReplyPolling = startTgReplyPolling;
 
 async function sendTelegramToSelected(){
   var list = getSelectedEntrepreneurs();
