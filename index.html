@@ -1512,15 +1512,8 @@ input[type="time"]{-webkit-appearance:none;}
               <th>T/r</th>
               <th data-i18n="col_company">Kompaniya</th>
               <th data-i18n="col_company_location">Kompaniya manzili</th>
-              <th data-i18n="col_field" style="min-width:420px">Soha</th>
-              <th>Batafsil</th>
-              <th data-i18n="col_emailstatus">Email holati</th>
-              <th data-i18n="col_actions">Amal</th>
-            </tr>
-            <tr>
-              <th colspan="4" style="background:#fff;border-right:1px solid var(--border)"></th>
-              <th style="padding:8px 10px;background:#f8fbff;position:relative;overflow:visible">
-                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <th data-i18n="col_field" style="min-width:420px;padding:0;overflow:visible;position:relative">
+                <div style="display:flex;align-items:center;gap:6px;padding:0 6px">
                   <div class="custom-select-wrap" id="investor-soha-filter-wrap" style="min-width:0;flex:1">
                     <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()" style="margin:0;height:34px;display:flex;align-items:center;padding:0 12px;font-size:.8rem;font-weight:700">— Barcha sohalar —</div>
                     <input type="hidden" id="investor-soha-filter-select" value="">
@@ -1529,12 +1522,18 @@ input[type="time"]{-webkit-appearance:none;}
                   <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none;padding:6px 10px;white-space:nowrap">Tozalash</button>
                 </div>
               </th>
-              <th colspan="3" style="background:#fff"></th>
+              <th>Batafsil</th>
+              <th data-i18n="col_emailstatus">Email holati</th>
+              <th data-i18n="col_actions">Amal</th>
+            </tr>
+            <tr>
+
             </tr>
           </thead>
           <tbody id="ic-tbody"></tbody>
         </table>
         </div>
+        <div id="ic-pagination" style="display:none;padding:0 1rem"></div>
       </div>
     </div>
 
@@ -6034,6 +6033,8 @@ function investorCompanyMatchesProductFilter(rec, product){
   });
 }
 
+var _icPage = _icPage || 1;
+var IC_PAGE_SIZE = 15;
 function renderInvestorCompanies(){
   const allCo=DB.investorCompanies||[];
   var productFilter = _investorProductFilterId
@@ -6076,7 +6077,35 @@ function renderInvestorCompanies(){
     if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
     return;
   }
-  tb.innerHTML=co.map((r,i)=>{
+  // Pagination
+  var icTotalPages = Math.max(1, Math.ceil(co.length / IC_PAGE_SIZE));
+  if(_icPage > icTotalPages) _icPage = icTotalPages;
+  if(_icPage < 1) _icPage = 1;
+  var icStart = (_icPage - 1) * IC_PAGE_SIZE;
+  var icEnd = icStart + IC_PAGE_SIZE;
+  var coPage = co.slice(icStart, icEnd);
+
+  // Pagination controls
+  var paginEl = document.getElementById('ic-pagination');
+  if(paginEl){
+    if(icTotalPages > 1){
+      var pages = [];
+      for(var p=1;p<=icTotalPages;p++){
+        var isActive = p === _icPage;
+        pages.push('<button onclick="_icPage='+p+';renderInvestorCompanies()" style="min-width:2rem;padding:4px 8px;border:1px solid '+(isActive?'#4361EE':'var(--border)')+';border-radius:6px;background:'+(isActive?'#4361EE':'var(--bg)')+';color:'+(isActive?'#fff':'var(--text)')+';font-size:.75rem;font-weight:'+(isActive?'700':'400')+';cursor:pointer">'+p+'</button>');
+      }
+      var prevBtn = '<button onclick="if(_icPage>1){_icPage--;renderInvestorCompanies();}" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.75rem;cursor:pointer">&#8592;</button>';
+      var nextBtn = '<button onclick="if(_icPage<'+icTotalPages+'){_icPage++;renderInvestorCompanies();}" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.75rem;cursor:pointer">&#8594;</button>';
+      paginEl.innerHTML = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:.75rem 0">'+prevBtn+pages.join('')+nextBtn+'<span style="font-size:.72rem;color:var(--text3);margin-left:6px">'+co.length+' ta / '+_icPage+'-bet</span></div>';
+      paginEl.style.display = 'block';
+    } else {
+      paginEl.innerHTML = '';
+      paginEl.style.display = 'none';
+    }
+  }
+
+  tb.innerHTML=coPage.map((r,i)=>{
+    var i = icStart + i;
     var isAiOpen = (typeof _investorAiOpen !== 'undefined' && _investorAiOpen) && String((typeof _investorAiTargetId !== 'undefined' ? _investorAiTargetId : '')||'') === String(r.id);
     var isSohaEdit = String(_investorSohaEditId || '') === String(r.id);
     var locationText = getInvestorCompanyLocation(r);
@@ -17853,12 +17882,12 @@ async function buildAiLetterPackage(comp, lang){
     '- Use ONLY figures from the data above — do not invent numbers\n'+
     '- Tone: professional, warm, compelling and specific\n'+
     '- Do NOT use bullet points or headers inside the letter body — write in flowing prose paragraphs\n'+
-    '- Sign as: Navoi Regional Investment and Business Development Office, Navoi, Republic of Uzbekistan\n\n'+
+    '- Sign as:\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov\n\n'+
     'FORMAT OUTPUT:\n'+
     'First line: email subject (no "Subject:" prefix)\n'+
     'Second line: ===BODY===\n'+
     'Then: full letter body\n\n'+
-    'Example format:\nStrategic Granite Partnership — Navoi, Uzbekistan\n===BODY===\nDear Mr. Schmidt,\n\n[Full letter body with 5-7 paragraphs]\n\nSincerely,\nNavoi Regional Investment and Business Development Office';
+    'Example format:\nStrategic Granite Partnership — Navoi, Uzbekistan\n===BODY===\nDear Mr. Schmidt,\n\n[Full letter body with 5-7 paragraphs]\n\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov';
 
   var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.72,maxOutputTokens:8192}};
   // Use streaming to get full letter without truncation
