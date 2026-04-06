@@ -1140,7 +1140,7 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- Firebase loading overlay -->
 <div id="fb-loading" style="display:none;position:fixed;inset:0;background:rgba(15,22,41,.85);z-index:99999;align-items:center;justify-content:center;flex-direction:column;gap:1rem">
   <div style="width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#4361EE;border-radius:50%;animation:spin .8s linear infinite"></div>
-  <div style="color:#fff;font-size:.9rem;font-weight:600">Firebase ma'lumotlari yuklanmoqda...</div>
+  <div style="color:#fff;font-size:.9rem;font-weight:600" data-i18n="fb_loading">Firebase ma'lumotlari yuklanmoqda...</div>
 </div>
 
 <!-- ===== SIDEBAR DESIGN ===== -->
@@ -1153,7 +1153,7 @@ input[type="time"]{-webkit-appearance:none;}
   <div class="sidebar-divider"></div>
   <div class="sb-group" id="sb-group-sections">
     <button class="sb-group-head" id="sb-group-head-sections" type="button" onclick="toggleSidebarGroup('sections')">
-      <span class="sb-group-head-main"><span class="sb-group-emoji">🗂</span><span class="sb-group-title">Bo'lim ma'lumotlari</span></span>
+      <span class="sb-group-head-main"><span class="sb-group-emoji">🗂</span><span class="sb-group-title" data-i18n="nav_dept">Bo'lim ma'lumotlari</span></span>
       <span class="sb-group-caret">▾</span>
     </button>
     <div class="sb-group-body" id="sb-group-body-sections">
@@ -1194,7 +1194,7 @@ input[type="time"]{-webkit-appearance:none;}
           <div class="notif-bell" onclick="toggleNotifPanel()" title="Email xabarnomalar">🔔<div class="notif-dot" id="notifDot"></div><div class="notif-count" id="notifCount">0</div></div>
           <div class="notif-panel" id="notifPanel">
             <div class="notif-panel-head"><span class="notif-panel-title">📧 Email Javoblar</span><div class="notif-panel-actions"><span id="gmailStatus" style="font-size:.6rem;color:rgba(200,215,255,.6)">Ulanmagan</span><button class="notif-gmail-btn" id="gmailConnectBtn" onclick="openGmailSetup()">Gmail ulash</button></div></div>
-            <div class="notif-list" id="notifList"><div class="notif-empty">Gmail'ga ulaning - javoblar shu yerda ko'rinadi</div></div>
+            <div class="notif-list" id="notifList"><div class="notif-empty" data-i18n="gmail_connect">Gmail'ga ulaning - javoblar shu yerda ko'rinadi</div></div>
             <div class="notif-footer"><span style="font-size:.62rem;color:var(--text3)" id="notifLastCheck">Tekshirilmagan</span><div style="display:flex;gap:.4rem;align-items:center"><select id="pollIntervalSelect" onchange="changePollInterval()" style="font-size:.6rem;padding:2px 6px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer"><option value="30">30s</option><option value="60" selected>1 daq</option><option value="120">2 daq</option><option value="300">5 daq</option><option value="0">O'chiq</option></select><button class="btn btn-ghost btn-sm" onclick="forceRecheckGmail()" style="font-size:.6rem;padding:3px 8px" title="Tozalab qayta tekshirish">↻</button><button class="btn btn-ghost btn-sm" onclick="checkGmailReplies(true)" style="font-size:.6rem;padding:3px 8px">🔄</button></div></div>
           </div>
         </div>
@@ -1364,7 +1364,7 @@ input[type="time"]{-webkit-appearance:none;}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
         <div>
           <div style="font-size:1.05rem;font-weight:700;color:var(--text)">🌍 2026-yil Xalqaro Investitsiya Forumlari</div>
-          <div style="font-size:.72rem;color:var(--text3);margin-top:2px">Mintaqalar bo'yicha rejalashtirilgan yirik tadbirlar</div>
+          <div style="font-size:.72rem;color:var(--text3);margin-top:2px" data-i18n="region_forums">Mintaqalar bo'yicha rejalashtirilgan yirik tadbirlar</div>
         </div>
         <div style="font-size:.68rem;color:var(--text3)" id="intl-total-count"></div>
       </div>
@@ -1480,7 +1480,7 @@ input[type="time"]{-webkit-appearance:none;}
             🤖 AI xat yozish
           </button>
           <button class="btn btn-blue btn-sm" onclick="sendBulkEmail()" id="bulkSendBtn" style="display:none">
-            <span data-i18n="btn_bulk_send">📧 Tanlanganlarga yuborish</span>
+            <span data-i18n="btn_bulk_send" data-i18n="btn_send_selected">📧 Tanlanganlarga yuborish</span>
           </button>
           <button class="btn btn-sm" onclick="openBulkScheduleModal()" id="bulkSchedBtn" style="display:none;background:linear-gradient(135deg,#7209B7,#4361EE);color:#fff;border:none">
             📅 Barchasiga rejalashtirish
@@ -1560,7 +1560,7 @@ input[type="time"]{-webkit-appearance:none;}
     <div id="investorAiWorkspace" class="tcard" style="display:none;margin-top:1rem">
       <div class="tc-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
         <div>
-          <div class="tc-title">📧 Investor uchun AI tahlil va xat</div>
+          <div class="tc-title" data-i18n="btn_ai_letter">📧 Investor uchun AI tahlil va xat</div>
           <div id="invAiCompanyMeta" style="font-size:.72rem;color:var(--text3);margin-top:3px">Investor tanlang</div>
         </div>
         <div style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap">
@@ -1606,7 +1606,7 @@ input[type="time"]{-webkit-appearance:none;}
       </div>
 
       <div id="invAiTariffCard" class="tcard" style="display:none;margin:0 1rem 1rem 1rem">
-        <div class="tc-head"><div class="tc-title" id="invAiTariffTitle">🛃 Bojxona tarifi — mahsulot bo'yicha 13 davlat</div></div>
+        <div class="tc-head"><div class="tc-title" id="invAiTariffTitle" data-i18n="lbl_tariff_13">🛃 Bojxona tarifi — mahsulot bo'yicha 13 davlat</div></div>
         <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem" id="invAiTariffGrid"></div>
         <div class="tscroll" style="padding:0 1rem 1rem">
           <table>
@@ -1761,8 +1761,8 @@ input[type="time"]{-webkit-appearance:none;}
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="pg-head"><div class="pg-title" data-i18n="page_products_title">📦 Mahsulotlar Katalogi</div><div class="pg-sub" data-i18n="page_products_sub">30 ta xomashyo, 450+ mahsulot — Navoiy ishlab chiqarish imkoniyatlari</div></div>
     <div class="kpi-grid">
-      <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()"><div class="kpi-icon">⛏️</div><div class="kpi-label" data-i18n="pr_k1_lbl">Resurs va imkoniyatlar</div><div class="kpi-val" id="pr-k1">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
-      <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label" data-i18n="pr_k2_lbl">Xomashyo negizidagi mahsulotlar</div><div class="kpi-val" id="pr-k2">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c1" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.style.outline='2.5px solid #4361EE';el.style.boxShadow='0 0 0 4px rgba(67,97,238,.18)';setTimeout(function(){el.style.outline='';el.style.boxShadow='';},1800);el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()"><div class="kpi-icon">⛏️</div><div class="kpi-label" data-i18n="pr_k1_lbl">Resurs va imkoniyatlar</div><div class="kpi-val" id="pr-k1">0<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-label" data-i18n="pr_k2_lbl">Xomashyo negizidagi mahsulotlar</div><div class="kpi-val" id="pr-k2">0<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
       <div class="kpi-card c3" style="overflow:visible">
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;align-items:end;margin-bottom:.95rem">
           <div style="grid-column:1 / -1;height:92px;display:flex;align-items:center;justify-content:center">
@@ -1785,15 +1785,15 @@ input[type="time"]{-webkit-appearance:none;}
           </div>
         </div>
         <div style="font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:.4rem" data-i18n="pr_k3_lbl">Eksport yo'nalishlari</div>
-        <div id="pr-k3" style="font-family:'Sora',sans-serif;font-size:2.8rem;font-weight:800;line-height:1;color:#d97706">12<span style="font-size:1.1rem;font-weight:700"> ta</span></div>
+        <div id="pr-k3" style="font-family:'Sora',sans-serif;font-size:2.8rem;font-weight:800;line-height:1;color:#d97706">12<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> ta</span></div>
       </div>
-      <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label" data-i18n="pr_k4_lbl">Aniqlangan maqsadli kompaniyalar</div><div class="kpi-val" id="pr-k4">0<span style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">🔍</div><div class="kpi-label" data-i18n="pr_k4_lbl">Aniqlangan maqsadli kompaniyalar</div><div class="kpi-val" id="pr-k4">0<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> ta</span></div></div>
     </div>
 
     <div class="tcard" id="rawMaterialsCard" style="margin-bottom:1rem;display:none">
-      <div class="tc-head"><div class="tc-title">🗂 Mahsulot bo'limlari</div>
+      <div class="tc-head"><div class="tc-title" data-i18n="lbl_products_section">🗂 Mahsulot bo'limlari</div>
         <div style="display:flex;gap:.5rem">
-          <button class="btn btn-blue btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo'shish</button>
+          <button class="btn btn-blue btn-sm" onclick="showAddRawModal()" data-i18n="btn_add_raw">➕ Xomashyo qo'shish</button>
           <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('rawMaterials')" style="color:#EF233C">🗑 Tozalash</button>
         </div>
       </div>
@@ -1829,9 +1829,9 @@ input[type="time"]{-webkit-appearance:none;}
 <!-- ===== PAGE: IMPORT TAHLILI (M2: Analysis Engine) ===== -->
 <div class="page" id="page-import">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
-    <div class="pg-head"><div class="pg-title">📊 Import Tahlili</div><div class="pg-sub">Mahsulot tahlili endi Kompaniya qidiruvi bo'limiga ko'chirildi</div></div>
+    <div class="pg-head"><div class="pg-title">📊 Import Tahlili</div><div class="pg-sub" data-i18n="lbl_analysis_moved_sub">Mahsulot tahlili endi Kompaniya qidiruvi bo'limiga ko'chirildi</div></div>
     <div class="tcard">
-      <div class="tc-head"><div class="tc-title">ℹ️ Tahlil funksiyasi ko'chirildi</div></div>
+      <div class="tc-head"><div class="tc-title" data-i18n="lbl_analysis_moved">ℹ️ Tahlil funksiyasi ko'chirildi</div></div>
       <div class="tc-empty" style="padding:3rem">
         <div class="tc-empty-icon">🔍</div>
         <p>Mahsulot tahlili endi Kompaniya qidiruvi ichida ko'rsatiladi. Avval mahsulot tahlil qilinadi, keyin pastda maqsad davlatlar va kompaniya qidirish funksiyalari ishlaydi.</p>
@@ -1918,7 +1918,7 @@ input[type="time"]{-webkit-appearance:none;}
             </label>
             <label style="display:flex;align-items:center;justify-content:center;gap:10px;padding:.25rem 0;font-size:.74rem;font-weight:700;color:var(--text);cursor:pointer;background:transparent">
               <input type="checkbox" id="finder-filter-expansion">
-              <span>Kengayish istagida bo'lgan</span>
+              <span data-i18n="lbl_wishing_expand">Kengayish istagida bo'lgan</span>
             </label>
           </div>
         </div>
@@ -1999,7 +1999,7 @@ input[type="time"]{-webkit-appearance:none;}
                   <button class="btn btn-ghost btn-sm" onclick="clearWorldBankData()" style="color:#EF233C">🗑</button>
                 </div>
               </div>
-              <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
+              <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)" data-i18n="wb_loading">⏳ World Bank API'dan ma'lumot olmoqda...</div>
               <div id="wbData" style="display:none">
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
                 <div class="tscroll"><table>
@@ -2011,7 +2011,7 @@ input[type="time"]{-webkit-appearance:none;}
                 </table></div>
                 <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API + ILOSTAT API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
               </div>
-              <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — tanlangan davlatlar iqtisodiy ma'lumotlari yuklanadi</p></div>
+              <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p data-i18n="lbl_wb_refresh">"🔄 Yangilash" bosing — tanlangan davlatlar iqtisodiy ma'lumotlari yuklanadi</p></div>
             </div>
           </div>
         </div>
@@ -2066,7 +2066,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="tc-head">
           <div class="tc-title">🏢 Topilgan kompaniyalar (<span id="finder-result-count">0</span>)</div>
           <div style="display:flex;gap:.5rem">
-            <button class="btn btn-blue btn-sm" onclick="saveFinderResults()">💾 Bazaga saqlash</button>
+            <button class="btn btn-blue btn-sm" onclick="saveFinderResults()" data-i18n="btn_save_db">💾 Bazaga saqlash</button>
             <button class="btn btn-sm" onclick="aiLetterAll()" style="background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none">📧 Barchasiga AI xat</button>
             <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('investorCompanies')" style="color:#EF233C">🗑</button>
           </div>
@@ -2182,7 +2182,7 @@ input[type="time"]{-webkit-appearance:none;}
             <div class="mailbox-title-main" data-i18n="mb_title">Mailboxes Connected</div>
             <div class="mailbox-pill" id="mb-connected-pill">0 / 0</div>
           </div>
-          <div class="mailbox-sub" id="mb-sub">Reply-to email, Gmail ulanishi va yuborish tayyorligi shu yerda boshqariladi.</div>
+          <div class="mailbox-sub" id="mb-sub" data-i18n="lbl_reply_manage">Reply-to email, Gmail ulanishi va yuborish tayyorligi shu yerda boshqariladi.</div>
         </div>
         <div style="display:flex;gap:.55rem;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="refreshMailboxPanel()">🔄 Yangilash</button>
@@ -2430,7 +2430,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group span-2"><label class="form-label">Apollo API Key</label><input class="form-input" id="set-apollo-key" type="password" placeholder="API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">apollo.io dan oling</div></div>
         <div class="form-group span-2"><label class="form-label">SeaRates API Key</label><input class="form-input" id="set-searates-key" type="password" placeholder="SeaRates API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">searates.com/integrations dan oling (bepul tier — 100 so'rov/oy)</div></div>
         <div class="form-group span-2"><label class="form-label">🌐 UN Comtrade Subscription Key</label><input class="form-input" id="set-comtrade-key" type="password" placeholder="UN Comtrade subscription key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">comtradeplus.un.org → Sign Up → Subscription → Get Key (bepul: 500 so'rov/kun, 100K qator). <b>Kalitsiz ham ishlaydi</b> (100 so'rov/kun, 500 qator)</div></div>
-        <div class="form-group span-2"><label class="form-label">📊 PPTX Template (Prezentatsiya namunasi)</label><div style="display:flex;gap:.5rem;align-items:center"><button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:#4361EE;color:#fff;border:none">📁 Template yuklash (.pptx)</button><span id="pptx-template-status" style="font-size:.6rem;color:var(--text3)">Yuklanmagan</span></div><div style="font-size:.55rem;color:var(--text3);margin-top:4px">Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi</div></div>
+        <div class="form-group span-2"><label class="form-label">📊 PPTX Template (Prezentatsiya namunasi)</label><div style="display:flex;gap:.5rem;align-items:center"><button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:#4361EE;color:#fff;border:none">📁 Template yuklash (.pptx)</button><span id="pptx-template-status" style="font-size:.6rem;color:var(--text3)">Yuklanmagan</span></div><div style="font-size:.55rem;color:var(--text3);margin-top:4px" data-i18n="lbl_pptx_hint">Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi</div></div>
       </div>
     </div>
     <!-- Telegram MTProto status -->
@@ -2446,7 +2446,7 @@ Vercel Environment Variables:<br>
         <div class="form-group span-2"><label class="form-label">PPTX Template URL</label><input class="form-input" id="set-pptx-url" type="url" placeholder="https://investnavoi.github.io/investitsiya/template_english.pptx"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">GitHub Pages'da template_english.pptx faylini host qiling | <a href="#" onclick="uploadPptxTemplate();return false" style="color:#4361EE">yoki kompyuterdan yuklang</a></div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Bot Token (guruhga yuborish uchun)</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling — guruhga xabar uchun</div></div>
         <div class="form-group span-2"><label class="form-label">Telegram Chat ID (guruh)</label><input class="form-input" id="set-tg-chatid" placeholder="-1001234567890"></div>
-<div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:.8rem"><label class="form-label">📲 Telegram MTProto — telefonga to'g'ridan-to'g'ri xabar</label><div style="font-size:.55rem;color:var(--text3);margin-bottom:.5rem">Bu sozlamalar Vercel env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.</div></div>
+<div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:.8rem"><label class="form-label">📲 Telegram MTProto — telefonga to'g'ridan-to'g'ri xabar</label><div style="font-size:.55rem;color:var(--text3);margin-bottom:.5rem" data-i18n="lbl_settings_vercel">Bu sozlamalar Vercel env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.</div></div>
         <div class="form-group"><label class="form-label">TG API ID</label><input class="form-input" id="set-tg-apiid" placeholder="12345678"><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
         <div class="form-group"><label class="form-label">TG API Hash</label><input class="form-input" id="set-tg-apihash" type="password" placeholder="abc123..."><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
         <div class="form-group span-2"><label class="form-label">TG Session String</label><input class="form-input" id="set-tg-session" type="password" placeholder="1BAAOMTQ5LjE1M..."><div style="font-size:.55rem;color:var(--text3)">generate-session.mjs dan oling (bir marta ishga tushiring)</div></div>
@@ -2492,7 +2492,7 @@ Vercel Environment Variables:<br>
     <div class="pg-head">
       <div>
         <div class="pg-title" data-i18n="admin_panel">⚙️ Admin Panel</div>
-        <div class="pg-sub" data-i18n="admin_sub">Ma'lumotlarni qo'shish, tahrirlash va o'chirish</div>
+        <div class="pg-sub" data-i18n="admin_sub" data-i18n="admin_sub2">Ma'lumotlarni qo'shish, tahrirlash va o'chirish</div>
       </div>
       <button class="btn btn-ghost" onclick="logoutAdmin()" data-i18n="btn_logout">🚪 Chiqish</button>
     </div>
@@ -2518,7 +2518,7 @@ Vercel Environment Variables:<br>
             <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(this)">
             <div class="excel-drop-icon">📊</div>
             <div class="excel-drop-text">Excel faylni shu yerga tashlang yoki bosing</div>
-            <div class="excel-drop-sub">.xlsx yoki .xls format • Namuna fayl ustuni tartibida bo'lishi kerak</div>
+            <div class="excel-drop-sub">.xlsx yoki .xls format • Columns must match the template</div>
           </div>
           <div class="excel-col-hint">
             <div class="excel-col-hint-title">📋 Kutilayotgan ustun tartibi:</div>
@@ -2537,7 +2537,7 @@ Vercel Environment Variables:<br>
             <div class="excel-preview-info" id="excelPreviewInfo">0 ta qator topildi</div>
             <div style="display:flex;gap:.5rem">
               <button class="btn btn-ghost btn-sm" type="button" onclick="cancelExcelUpload()" data-i18n="btn_cancel">✕ Bekor qilish</button>
-              <button class="btn btn-blue btn-sm" type="button" id="excelImportBtn" onclick="importExcelData()">✅ Yuklash va qo'shish</button>
+              <button class="btn btn-blue btn-sm" type="button" id="excelImportBtn" onclick="importExcelData()" data-i18n="btn_upload_add">✅ Yuklash va qo'shish</button>
             </div>
           </div>
           <div class="tscroll" style="max-height:240px">
@@ -2640,7 +2640,7 @@ Vercel Environment Variables:<br>
               <div class="zm-media-drop" id="zmMediaDrop" onclick="document.getElementById('zmMediaInput').click()">
                 <input type="file" id="zmMediaInput" accept="image/*,video/*" multiple style="display:none" onchange="handleAdminZoomMedia(this)">
                 <div style="font-size:1.6rem">📎</div>
-                <div style="font-size:.75rem;font-weight:700;color:var(--text)">Rasm yoki video qo'shish</div>
+                <div style="font-size:.75rem;font-weight:700;color:var(--text)" data-i18n="lbl_add_photo">Rasm yoki video qo'shish</div>
                 <div style="font-size:.62rem;color:var(--text3)">JPG, PNG, MP4 • bir nechtasini birdan tanlash mumkin</div>
               </div>
               <div class="zm-url-row">
@@ -2686,7 +2686,7 @@ Vercel Environment Variables:<br>
             <select class="form-select" id="fr-turi"><option value="">Tanlang</option><option>Xalqaro forum</option><option>Milliy forum</option><option>Ko'rgazma / Yarmarka</option><option>B2B uchrashuv</option><option>Mintaqaviy tadbir</option></select>
           </div>
           <div class="form-group"><label class="form-label">Ishtirok holati <span class="req">*</span></label>
-            <select class="form-select" id="fr-holat"><option value="">Tanlang</option><option>✅ Ishtirok tasdiqlangan</option><option>⏳ Delegatsiya tuzilmoqda</option><option>🔧 Tayyorgarlik bosqichida</option><option>❌ Ishtirok yo'q</option></select>
+            <select class="form-select" id="fr-holat"><option value="">Tanlang</option><option>✅ Ishtirok tasdiqlangan</option><option>⏳ Delegatsiya tuzilmoqda</option><option>🔧 Tayyorgarlik bosqichida</option><option data-i18n="lbl_no_participation">❌ Ishtirok yo'q</option></select>
           </div>
           <div class="form-group span-3"><label class="form-label">Tadbir ta'rifi <span class="req">*</span></label><textarea class="form-textarea" id="fr-desc" placeholder="Forum haqida..."></textarea></div>
           <div class="form-group span-3"><label class="form-label">Izoh</label><input class="form-input" id="fr-izoh" placeholder="Bo'lim xodimlari, delegatsiya..."></div>
@@ -2831,7 +2831,7 @@ Vercel Environment Variables:<br>
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-blue" onclick="saveBulkSchedule()">✅ Barchasiga saqlash</button>
+        <button class="btn btn-blue" onclick="saveBulkSchedule()" data-i18n="btn_save_all">✅ Barchasiga saqlash</button>
         <button class="btn btn-ghost" onclick="closeBulkScheduleModal()">Bekor</button>
       </div>
     </div>
@@ -2939,7 +2939,7 @@ Vercel Environment Variables:<br>
       <div class="login-logo-icon">🔐</div>
       <div>
         <div class="login-title">Admin Kirish</div>
-        <div class="login-sub">Faqat vakolatli xodim uchun</div>
+        <div class="login-sub" data-i18n="lbl_admin_only">Faqat vakolatli xodim uchun</div>
       </div>
     </div>
     <div class="login-field">
@@ -2964,7 +2964,7 @@ Vercel Environment Variables:<br>
     </div>
     <p style="font-size:.81rem;color:var(--text3);margin-bottom:1.4rem;line-height:1.7" id="deleteMsg"></p>
     <div style="display:flex;gap:.6rem">
-      <button class="btn btn-danger" id="deleteConfirmBtn" onclick="confirmDelete()">🗑 Ha, o'chirish</button>
+      <button class="btn btn-danger" id="deleteConfirmBtn" onclick="confirmDelete()" data-i18n="btn_delete_yes">🗑 Ha, o'chirish</button>
       <button class="btn btn-ghost" onclick="closeDeleteModal()" data-i18n="btn_cancel">Bekor qilish</button>
     </div>
   </div>
@@ -3026,7 +3026,7 @@ Vercel Environment Variables:<br>
         </div>
         <!-- Media grid -->
         <div id="zdMediaGrid" class="zoom-media-grid">
-          <div class="zoom-media-empty">📁 Hali media fayl yo'q</div>
+          <div class="zoom-media-empty" data-i18n="lbl_no_media">📁 Hali media fayl yo'q</div>
         </div>
       </div>
     </div>
@@ -3086,7 +3086,7 @@ Vercel Environment Variables:<br>
         </div>
         <!-- Add doc form (hidden by default) -->
         <div id="fdDocForm" style="display:none;background:var(--bg2);border-radius:8px;padding:.8rem;margin-bottom:.8rem;border:1px solid var(--border)">
-          <div style="font-size:.7rem;color:var(--text3);margin-bottom:.5rem;font-weight:600">Yangi hujjat qo'shish</div>
+          <div style="font-size:.7rem;color:var(--text3);margin-bottom:.5rem;font-weight:600" data-i18n="lbl_add_doc">Yangi hujjat qo'shish</div>
           <input class="form-input" id="fdDocName" placeholder="Hujjat nomi (ixtiyoriy — avtomatik olinadi)" style="font-size:.73rem;margin-bottom:.4rem">
           <!-- File upload -->
           <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;background:var(--card);border:1.5px dashed var(--border);border-radius:8px;padding:.6rem .8rem;margin-bottom:.5rem;transition:border-color .2s" id="fdFileLabel">
@@ -3101,7 +3101,7 @@ Vercel Environment Variables:<br>
         </div>
         <!-- Document list -->
         <div id="fdDocList" style="display:flex;flex-direction:column;gap:.5rem">
-          <div style="font-size:.72rem;color:var(--text3);text-align:center;padding:1rem">📁 Hujjat qo'shilmagan</div>
+          <div style="font-size:.72rem;color:var(--text3);text-align:center;padding:1rem" data-i18n="lbl_no_doc">📁 Hujjat qo'shilmagan</div>
         </div>
       </div>
     </div>
@@ -3124,7 +3124,7 @@ Vercel Environment Variables:<br>
         <select class="form-select" id="fed-turi"><option>Xalqaro forum</option><option>Milliy forum</option><option>Ko'rgazma / Yarmarka</option><option>B2B uchrashuv</option><option>Mintaqaviy tadbir</option><option>Forum</option></select>
       </div>
       <div class="form-group"><label class="form-label">Holat</label>
-        <select class="form-select" id="fed-holat"><option>✅ Ishtirok tasdiqlangan</option><option>⏳ Delegatsiya tuzilmoqda</option><option>🔧 Tayyorgarlik bosqichida</option><option>❌ Ishtirok yo'q</option></select>
+        <select class="form-select" id="fed-holat"><option>✅ Ishtirok tasdiqlangan</option><option>⏳ Delegatsiya tuzilmoqda</option><option>🔧 Tayyorgarlik bosqichida</option><option data-i18n="lbl_no_participation">❌ Ishtirok yo'q</option></select>
       </div>
       <div class="form-group span-2"><label class="form-label">Ta'rif</label><textarea class="form-textarea" id="fed-desc" rows="3"></textarea></div>
       <div class="form-group span-2"><label class="form-label">Izoh / Delegatsiya</label><input class="form-input" id="fed-izoh"></div>
@@ -3257,6 +3257,48 @@ const TRANSLATIONS = {
     page_pipeline_title:"📋 Outreach statistikasi — Investorlar Kanban", page_pipeline_sub:"Barcha leadlarni kuzating — kompaniya topilgandan MOU gacha",
     page_trade_title:"🌐 Xalqaro Savdo Ma'lumotlari", page_settings_title:"⚙️ Sozlamalar", page_settings_sub:"Navoiy IEZ tariflari, API kalitlar, tizim sozlamalari",
     lbl_zoom_meeting:"Zoom uchrashuvi",
+    fb_loading:"Firebase ma'lumotlari yuklanmoqda...",
+    nav_dept:"Bo'lim ma'lumotlari",
+    gmail_connect:"Gmail'ga ulaning - javoblar shu yerda ko'rinadi",
+    region_forums:"Mintaqalar bo'yicha rejalashtirilgan yirik tadbirlar",
+    btn_send_selected:"📧 Tanlanganlarga yuborish",
+    btn_ai_letter:"📧 Investor uchun AI tahlil va xat",
+    hint_click_card2:"Batafsil statistikani ko'rish uchun kartalardan birini bosing",
+    lbl_tariff_13:"🛃 Bojxona tarifi — mahsulot bo'yicha 13 davlat",
+    lbl_export_dir:"Eksport yo'nalishlari",
+    lbl_analysis_moved:"ℹ️ Tahlil funksiyasi ko'chirildi",
+    lbl_analysis_moved_sub:"Mahsulot tahlili endi Kompaniya qidiruvi bo'limiga ko'chirildi",
+    btn_save_all:"✅ Barchasiga saqlash",
+    btn_save_firebase:tr('btn_save_firebase'),
+    btn_upload_add:"✅ Yuklash va qo'shish",
+    btn_add_raw:"➕ Xomashyo qo'shish",
+    btn_add_new:"➕ Yangi qo'shish",
+    btn_delete_yes:"🗑 Ha, o'chirish",
+    btn_delete_all_lbl:"🗑 Hammasini o'chirish",
+    btn_save_db:"💾 Bazaga saqlash",
+    lbl_no_media:tr('lbl_no_media'),
+    lbl_no_doc:"📁 Hujjat qo'shilmagan",
+    lbl_click_file:"📂 Fayl tanlash uchun bosing",
+    lbl_products_section:"🗂 Mahsulot bo'limlari",
+    lbl_no_participation:"❌ Ishtirok yo'q",
+    lbl_wishing_expand:"Kengayish istagida bo'lgan",
+    lbl_excel_format:".xlsx yoki .xls format • Columns must match the template",
+    lbl_admin_only:"Faqat vakolatli xodim uchun",
+    lbl_excel_upload_title:tr('lbl_excel_upload_title'),
+    wb_loading:tr('wb_loading'),
+    comtrade_loading:tr('comtrade_loading'),
+    lbl_gmail_setup:"Email javoblarini avtomatik ko'rish uchun bir marta sozlang",
+    lbl_add_photo:"Rasm yoki video qo'shish",
+    lbl_add_doc:"Yangi hujjat qo'shish",
+    lbl_event_desc:"Tadbir ta'rifi",
+    lbl_available_data:"Mavjud ma'lumotlarni",
+    lbl_settings_vercel:"Bu sozlamalar Vercel env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.",
+    lbl_pptx_hint:"Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi",
+    lbl_ai_hint:"Navoiy viloyati uchun xomashyo bo'yicha AI-powered trade analysis va investitsiya tavsiyasi",
+    lbl_wb_refresh:""🔄 Yangilash" bosing — tanlangan davlatlar iqtisodiy ma'lumotlari yuklanadi",
+    lbl_reply_manage:"Reply-to email, Gmail ulanishi va yuborish tayyorligi shu yerda boshqariladi.",
+    admin_sub2:"Ma'lumotlarni qo'shish, tahrirlash va o'chirish",
+    lbl_products_section_info:"🗂 Mahsulot bo'limlari",
     ov_sector_title:"📈 Soha bo'yicha taqsimot", ov_activity_title:"⚡ Oxirgi faoliyat",
     ov_no_activity:"Hali faoliyat yo'q", ov_no_data_yet:"Ma'lumot kiritilagach ko'rinadi",
     ov_k1_lbl:"Investorlar Tashriflari", ov_k2_lbl:"Zoom Uchrashuvlar",
@@ -3279,6 +3321,48 @@ const TRANSLATIONS = {
     page_pipeline_title:"📋 Статистика охвата — Канбан", page_pipeline_sub:"Отслеживание всех лидов — от поиска компании до MOU",
     page_trade_title:"🌐 Мировые торговые данные", page_settings_title:"⚙️ Настройки", page_settings_sub:"Тарифы Navoi IEZ, API ключи, системные настройки",
     lbl_zoom_meeting:"Zoom встреча",
+    fb_loading:"Загрузка данных Firebase...",
+    nav_dept:"Данные отдела",
+    gmail_connect:"Подключите Gmail - ответы появятся здесь",
+    region_forums:"Крупные мероприятия по регионам",
+    btn_send_selected:"📧 Отправить выбранным",
+    btn_ai_letter:"📧 AI анализ и письмо инвестору",
+    hint_click_card2:"Нажмите на карточку для просмотра статистики",
+    lbl_tariff_13:"🛃 Таможенный тариф — 13 стран по продукту",
+    lbl_export_dir:"Экспортные направления",
+    lbl_analysis_moved:"ℹ️ Функция анализа перемещена",
+    lbl_analysis_moved_sub:"Анализ продукта перенесён в раздел Поиска компаний",
+    btn_save_all:"✅ Сохранить все",
+    btn_save_firebase:"✅ Сохранить всё в Firebase",
+    btn_upload_add:"✅ Загрузить и добавить",
+    btn_add_raw:"➕ Добавить сырьё",
+    btn_add_new:"➕ Добавить новый",
+    btn_delete_yes:"🗑 Да, удалить",
+    btn_delete_all_lbl:"🗑 Удалить всё",
+    btn_save_db:"💾 Сохранить в базу",
+    lbl_no_media:"📁 Медиафайлов пока нет",
+    lbl_no_doc:"📁 Документ не добавлен",
+    lbl_click_file:"📂 Нажмите для выбора файла",
+    lbl_products_section:"🗂 Разделы продуктов",
+    lbl_no_participation:"❌ Нет участия",
+    lbl_wishing_expand:"Желающие расширяться",
+    lbl_excel_format:".xlsx yoki .xls format • Колонки должны быть в правильном порядке",
+    lbl_admin_only:"Только для уполномоченных сотрудников",
+    lbl_excel_upload_title:"Загрузка данных из Excel",
+    wb_loading:"⏳ Загрузка данных World Bank API...",
+    comtrade_loading:"Загрузка данных UN Comtrade API...",
+    lbl_gmail_setup:"Настройте один раз для автоматического просмотра ответов",
+    lbl_add_photo:"Добавить фото или видео",
+    lbl_add_doc:"Добавить новый документ",
+    lbl_event_desc:"Описание мероприятия",
+    lbl_available_data:"Имеющиеся данные",
+    lbl_settings_vercel:"Эти настройки добавляются в Vercel env. Можно также добавить в Firebase.",
+    lbl_pptx_hint:"Загрузите шаблон презентации — для каждого продукта будет создана аналогичная",
+    lbl_ai_hint:"AI-анализ торговли сырьём и инвестиционные рекомендации для Навоийской области",
+    lbl_wb_refresh:"Нажмите «🔄 Обновить» — загрузятся экономические данные выбранных стран",
+    lbl_reply_manage:"Управление reply-to email, подключением Gmail и готовностью к отправке.",
+    admin_sub2:"Добавление, редактирование и удаление данных",
+    lbl_products_section_info:"🗂 Разделы продуктов",
     ov_sector_title:"📈 По отраслям", ov_activity_title:"⚡ Последняя активность",
     ov_no_activity:"Активности пока нет", ov_no_data_yet:"Появится после ввода данных",
     ov_k1_lbl:"Визиты инвесторов", ov_k2_lbl:"Zoom встречи",
@@ -3411,6 +3495,48 @@ const TRANSLATIONS = {
     page_pipeline_title:"📋 Outreach Statistics — Kanban", page_pipeline_sub:"Track all leads from company search to MOU",
     page_trade_title:"🌐 World Trade Data", page_settings_title:"⚙️ Settings", page_settings_sub:"Navoiy IEZ tariffs, API keys, system settings",
     lbl_zoom_meeting:"Zoom meeting",
+    fb_loading:"Loading Firebase data...",
+    nav_dept:"Department Data",
+    gmail_connect:"Connect Gmail - replies will show here",
+    region_forums:"Major events by region",
+    btn_send_selected:"📧 Send to Selected",
+    btn_ai_letter:"📧 AI analysis & letter for investor",
+    hint_click_card2:"Click a card to view detailed statistics",
+    lbl_tariff_13:"🛃 Customs tariff — 13 countries by product",
+    lbl_export_dir:"Export Directions",
+    lbl_analysis_moved:"ℹ️ Analysis function moved",
+    lbl_analysis_moved_sub:"Product analysis moved to Company Search",
+    btn_save_all:"✅ Save All",
+    btn_save_firebase:"✅ Save All to Firebase",
+    btn_upload_add:"✅ Upload and Add",
+    btn_add_raw:"➕ Add Raw Material",
+    btn_add_new:"➕ Add New",
+    btn_delete_yes:"🗑 Yes, delete",
+    btn_delete_all_lbl:"🗑 Delete All",
+    btn_save_db:"💾 Save to Database",
+    lbl_no_media:"📁 No media files yet",
+    lbl_no_doc:"📁 No document added",
+    lbl_click_file:"📂 Click to select file",
+    lbl_products_section:"🗂 Product Sections",
+    lbl_no_participation:"❌ No participation",
+    lbl_wishing_expand:"Looking to expand",
+    lbl_excel_format:".xlsx or .xls format • Columns must match the template",
+    lbl_admin_only:"Authorized staff only",
+    lbl_excel_upload_title:"Upload data from Excel",
+    wb_loading:"⏳ Loading World Bank API data...",
+    comtrade_loading:"Loading UN Comtrade API data...",
+    lbl_gmail_setup:"Set up once to automatically view email replies",
+    lbl_add_photo:"Add photo or video",
+    lbl_add_doc:"Add new document",
+    lbl_event_desc:"Event description",
+    lbl_available_data:"Available data",
+    lbl_settings_vercel:"These settings go into Vercel env. Can also be added to Firebase.",
+    lbl_pptx_hint:"Upload a presentation template — each product will use the same design",
+    lbl_ai_hint:"AI-powered trade analysis and investment recommendations for Navoiy region",
+    lbl_wb_refresh:"Click '🔄 Refresh' — economic data for selected countries will load",
+    lbl_reply_manage:"Manage reply-to email, Gmail connection and sending readiness here.",
+    admin_sub2:"Add, edit and delete data",
+    lbl_products_section_info:"🗂 Product Sections",
     ov_sector_title:"📈 By Sector", ov_activity_title:"⚡ Recent Activity",
     ov_no_activity:"No activity yet", ov_no_data_yet:"Will appear after data entry",
     ov_k1_lbl:"Investor Visits", ov_k2_lbl:"Zoom Meetings",
@@ -3492,6 +3618,10 @@ function applyTranslations(){
     const key = el.getAttribute('data-i18n-ph');
     const val = tr(key);
     if(val) el.placeholder = val;
+  });
+  // Update unit suffix spans
+  document.querySelectorAll('.unit-ta').forEach(el=>{
+    el.textContent = ' ' + tr('lbl_unit_ta');
   });
   // Translate titles
   document.querySelectorAll('[data-i18n-title]').forEach(el=>{
@@ -3818,23 +3948,16 @@ function showPage(id){
   if(window.history && window.history.replaceState){
     window.history.replaceState(null, '', '#'+id);
   }
-  const titles={
-    overview:"Umumiy ma'lumotlar",
-    investors:'Investorlar tashriflari',
-    local:'Mahalliy tadbirkorlar',
-    zoom:'Zoom uchrashuvlar',
-    forums:'Forumlar',
-    investor:'Investorlar bazasi',
-    products:'Mahsulotlar',
-    import:'Import Tahlili',
-    finder:'Kompaniya qidiruvi',
-pipeline:'Outreach statistikasi',
-    trade:'Jahon tashqi savdosi',
-    settings:'Sozlamalar',
-    admin:'Admin Panel'
-  };
   const titleEl=document.getElementById('topbarTitle');
-  if(titleEl) titleEl.textContent=titles[id]||id;
+  if(titleEl){
+    const titleKeys={
+      overview:'page_overview_title', investors:'nav_investors', local:'nav_local',
+      zoom:'nav_zoom', forums:'nav_forums', investor:'nav_investorco',
+      products:'nav_products', finder:'nav_finder', pipeline:'nav_pipeline',
+      trade:'nav_trade', settings:'nav_settings', admin:'admin_panel'
+    };
+    titleEl.textContent = tr(titleKeys[id] || id) || id;
+  }
   if(id==='overview')renderOverview();
   else if(id==='investors')renderInvestors();
   else if(id==='local')renderLocal();
@@ -7969,7 +8092,7 @@ function resetDropZone(){
     <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(this)">
     <div class="excel-drop-icon">📊</div>
     <div class="excel-drop-text">Excel faylni shu yerga tashlang yoki bosing</div>
-    <div class="excel-drop-sub">.xlsx yoki .xls format • Namuna fayl ustuni tartibida bo'lishi kerak</div>`;
+    <div class="excel-drop-sub">.xlsx yoki .xls format • Columns must match the template</div>`;
 }
 
 // Drag & drop support
@@ -8667,7 +8790,7 @@ window.addEventListener('load', ()=>{
   <div class="email-modal-box" style="max-width:520px">
     <button class="modal-close-btn" onclick="closeGmailSetup()" style="position:absolute;top:1rem;right:1rem">✕</button>
     <div class="email-modal-title">🔗 Gmail Xabarnomalarini Ulash</div>
-    <div class="email-modal-sub">Email javoblarini avtomatik ko'rish uchun bir marta sozlang</div>
+    <div class="email-modal-sub" data-i18n="lbl_gmail_setup">Email javoblarini avtomatik ko'rish uchun bir marta sozlang</div>
 
     <!-- Step 1: My email -->
     <div style="margin-top:1rem;background:rgba(6,214,160,.06);border-radius:10px;padding:.9rem;border-left:3px solid #059669">
@@ -9180,7 +9303,7 @@ function renderProducts(){
   var prods = DB.products||[];
   document.getElementById('pr-k1').innerHTML = rms.length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
   document.getElementById('pr-k2').innerHTML = prods.length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
-  document.getElementById('pr-k4').innerHTML = (DB.investorCompanies||[]).length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
+  document.getElementById('pr-k4').innerHTML = (DB.investorCompanies||[]).length+'<span class="unit-ta" style="font-size:1.1rem;font-weight:700"> '+tr('lbl_unit_ta')+'</span>';
   document.getElementById('badge-products').textContent = prods.length;
   syncProductSections(rms, prods);
 
