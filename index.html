@@ -3733,6 +3733,12 @@ function initGroupedNav(){
   host.innerHTML='';
   host.appendChild(shell);
   host.dataset.grouped='1';
+  // Restore page from URL hash on load
+  var initHash = (window.location.hash || '').replace('#','').trim();
+  var validPages = ['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings','admin'];
+  if(initHash && validPages.indexOf(initHash) !== -1){
+    currentPage = initHash;
+  }
   syncNavGroups(currentPage || 'overview');
 }
 
@@ -3772,6 +3778,10 @@ function showPage(id){
   const tb=document.getElementById('tab-'+id);
   if(tb)tb.classList.add('active');
   currentPage=id;
+  // Update URL hash without triggering hashchange
+  if(window.history && window.history.replaceState){
+    window.history.replaceState(null, '', '#'+id);
+  }
   const titles={
     overview:"Umumiy ma'lumotlar",
     investors:'Investorlar tashriflari',
@@ -3875,7 +3885,9 @@ function logoutAdmin(){
   applyAdminUI(false);
   renderInvestorCompanies();
   toast('🚪 Chiqildi');
-  showPage('overview');
+  var initHash = (window.location.hash || '').replace('#','').trim();
+  var validPages2 = ['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings'];
+  showPage(initHash && validPages2.indexOf(initHash) !== -1 ? initHash : 'overview');
 }
 function applyAdminUI(admin){
   document.getElementById('navAvatar').textContent = admin ? 'A' : 'B';
@@ -7925,6 +7937,13 @@ function resetDropZone(){
 }
 
 // Drag & drop support
+window.addEventListener('hashchange', function(){
+  var hash = (window.location.hash || '').replace('#','').trim();
+  var validPages = ['overview','investors','local','zoom','forums','investor','products','finder','pipeline','trade','settings'];
+  if(hash && validPages.indexOf(hash) !== -1 && hash !== currentPage){
+    showPage(hash);
+  }
+});
 document.addEventListener('DOMContentLoaded', () => {
   const zone = document.getElementById('excelDropZone');
   if(!zone) return;
