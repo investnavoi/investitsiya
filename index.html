@@ -16294,6 +16294,8 @@ function isApolloObviousMismatch(entity, prod){
 }
 
 function isApolloEntityRelevant(entity, prod){
+  // Extra people from same company — company already passed filter
+  if(entity._isExtra) return true;
   if(isApolloObviousMismatch(entity, prod)) return false;
   var signals = getApolloProductSignals(prod);
   var strictSignals = getApolloStrictCategorySignals(prod);
@@ -16394,9 +16396,13 @@ function finderMatchesTarget13Signal(item, meta){
 }
 
 function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
-  var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
+  var filtered = found.filter(function(item){ 
+    if(item._isExtra) return true; // same company already passed
+    return isApolloEntityRelevant(item, prod); 
+  });
   if(!filtered.length){
     filtered = found.filter(function(item){
+      if(item._isExtra) return true;
       return !isApolloObviousMismatch(item, prod) && String(item.soha || '').trim();
     });
   }
@@ -16875,6 +16881,22 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         organization_ids:[item._orgId]
       });
       orgPeople = normalizeApolloArray(pp2Data, ['people','contacts']);
+      // If fewer than 4 people, try also without org filter using company name
+      if(orgPeople.length < 4 && item.kompaniya){
+        try {
+          var pp2b = await apolloRequestJson({
+            search_type:'people', page:1, per_page:10,
+            api_key:apolloKey,
+            q_keywords: item.kompaniya
+          });
+          normalizeApolloArray(pp2b, ['people','contacts']).forEach(function(p){
+            var pOrg = (p.organization && p.organization.name) || p.organization_name || '';
+            if(apolloCompanyKey(pOrg) === compKey && !orgPeople.some(function(op){ return op.id===p.id; })){
+              orgPeople.push(p);
+            }
+          });
+        } catch(e2b){ /* silent */ }
+      }
     } catch(e2){ continue; }
 
 
@@ -16897,15 +16919,23 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       }
     });
 
-    // If fewer than 2 found from role groups, fill from any remaining
-    if(selectedPeople.length < 2){
+    // If fewer than 3 found from role groups, fill from any remaining with contact
+    if(selectedPeople.length < 3){
       orgPeople.sort(function(a,b){ return scorePerson(b) - scorePerson(a); });
       orgPeople.forEach(function(p){
-        if(selectedPeople.length >= 3) return;
+        if(selectedPeople.length >= 4) return;
+        if(selectedPeople.some(function(sp){ return sp.id === p.id; })) return;
+        if(p.email || p.has_email === true || p.has_direct_phone === 'Yes' || p.has_direct_phone === 'Maybe'){
+          selectedPeople.push(p);
+        }
+      });
+    }
+    // Still < 2? Take any person regardless of contact
+    if(selectedPeople.length < 2){
+      orgPeople.forEach(function(p){
+        if(selectedPeople.length >= 4) return;
         if(!selectedPeople.some(function(sp){ return sp.id === p.id; })){
-          if(p.email || p.has_email === true || p.has_direct_phone === 'Yes'){
-            selectedPeople.push(p);
-          }
+          selectedPeople.push(p);
         }
       });
     }
