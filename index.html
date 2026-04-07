@@ -2071,7 +2071,7 @@ input[type="time"]{-webkit-appearance:none;}
         <!-- Country tabs -->
         <div id="finderCountryTabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto"></div>
         <div class="tscroll"><table>
-          <thead><tr style="background:var(--bg2)"><th style="width:32px">☑</th><th style="width:28px">#</th><th>Kompaniya</th><th>Davlat</th><th>Shahar</th><th>Rahbar / Email</th><th>Soha</th><th id="finder-volume-head" style="width:90px">Daromad</th><th style="width:70px">Xodimlar</th><th style="width:55px">Score</th><th style="width:80px">Amal</th></tr></thead>
+          <thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Shahar</th><th>Rahbar</th><th>Soha</th><th id="finder-volume-head">Import hajmi</th><th>Score</th><th>Amal</th></tr></thead>
           <tbody id="finder-tbody"></tbody>
         </table></div>
       </div>
@@ -5915,6 +5915,42 @@ function renderPersonNameWithPhoto(name, photoUrl, extraHtml, size){
   if(extraHtml) html += extraHtml;
   html += '</div></div>';
   return html;
+}
+
+function renderFinderContactsHtml(contacts){
+  var list = Array.isArray(contacts) ? contacts.slice(0,4) : [];
+  if(!list.length){
+    return '<span style="color:var(--text3)">—</span>';
+  }
+  return '<div style="display:flex;flex-direction:column;gap:8px">' + list.map(function(contact){
+    var extras = '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(contact.title||'')+'</div>';
+    extras += contact.email
+      ? '<div style="font-size:.58rem;color:#0ea5e9;margin-top:2px">'+escHtml(contact.email)+'</div>'
+      : '<div style="font-size:.55rem;color:var(--text3)">— Email yo\'q</div>';
+    extras += contact.telefon
+      ? '<div style="font-size:.55rem;color:#059669;margin-top:2px">'+escHtml(contact.telefon)+'</div>'
+      : '<div style="font-size:.55rem;color:var(--text3)">— Tel yo\'q</div>';
+    return renderPersonNameWithPhoto(contact.name, contact.photoUrl, extras, 24);
+  }).join('') + '</div>';
+}
+
+function getFinderDisplayContacts(item){
+  if(item && Array.isArray(item.contacts) && item.contacts.length){
+    return item.contacts.slice(0,4);
+  }
+  if(!item) return [];
+  var fallback = {
+    name: String(item.rahbar || '').trim(),
+    title: String(item.lavozim || '').trim(),
+    email: String(item.email || '').trim(),
+    telefon: String(item.telefon || '').trim(),
+    photoUrl: String(item.photoUrl || item.photo_url || '').trim(),
+    linkedin: String(item.linkedin || '').trim()
+  };
+  if(!fallback.name && !fallback.email && !fallback.telefon && !fallback.title){
+    return [];
+  }
+  return [fallback];
 }
 
 function closeInvestorDetailModal(){
@@ -15880,12 +15916,16 @@ function getImportAnalysisTargetCountries(){
 function getFinderSourceSelection(){
   var continents = _finderSourceContinents.slice();
   var countries = _finderSourceCountries.slice();
+  var blockedCountries = getFinderBlockedSourceCountries();
   var effectiveCountries = [];
   if(countries.length){
-    effectiveCountries = countries.slice();
+    effectiveCountries = countries.filter(function(country){
+      return blockedCountries.indexOf(country) === -1;
+    });
   } else {
     continents.forEach(function(cont){
       (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(country){
+        if(blockedCountries.indexOf(country) !== -1) return;
         if(effectiveCountries.indexOf(country) === -1) effectiveCountries.push(country);
       });
     });
@@ -16131,20 +16171,24 @@ function getApolloPreferredKeywords(prod){
 }
 
 function dedupeFinderResults(){
-  var seen = new Set();
-  _finderResults = (_finderResults || []).filter(function(r){
-    if(!String(r.kompaniya || '').trim()) return false;
-    // Dedupe by company+person combination
-    var key = [apolloCompanyKey(r.kompaniya), (r.rahbar||'').toLowerCase(), r.davlat||'', _finderMode||''].join('|');
-    if(seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  var map = new Map();
+  (_finderResults || []).forEach(function(item){
+    if(!item || !String(item.kompaniya || '').trim()) return;
+    var key = [apolloCompanyKey(item.kompaniya), apolloNormalizeText(item.davlat), _finderMode || item.finderMode || ''].join('|');
+    if(!map.has(key)){
+      map.set(key, item);
+      return;
+    }
+    apolloMergeFinderItem(map.get(key), item, { mode:_finderMode || item.finderMode || 'importers' });
+  });
+  _finderResults = Array.from(map.values()).filter(function(item){
+    return !!String(item.kompaniya || '').trim();
   });
 }
 
 function mapApolloPersonToFinderResult(p, country, meta){
   var org = p.organization || {};
-  return {
+  var item = {
     id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
     kompaniya:org.name || p.organization_name || '',
     rahbar:((p.first_name||'')+' '+(p.last_name||'')).trim(),
@@ -16153,18 +16197,27 @@ function mapApolloPersonToFinderResult(p, country, meta){
     email:p.email||'',
     telefon:'',
     davlat:country,
-    shahar:'',
+    shahar:org.city || p.city || '',
     soha:org.industry || org.industry_tag || org.primary_industry || '',
     linkedin:'',
-    website:'',
+    website:apolloAbsoluteUrl(org.website_url || org.website || ''),
     description:org.short_description || org.organization_headline || org.headline || '',
     keywords:Array.isArray(org.keywords) ? org.keywords.join(' ') : (org.keywords || ''),
     xodimlar:Number(org.estimated_num_employees || org.num_employees || org.employee_count || 0) || 0,
     import_volume:'',
     score:Math.floor(Math.random()*20)+75,
     manba:'Apollo',
-    finderMode:meta.mode
+    finderMode:meta.mode,
+    contacts:[],
+    _contactCandidates:[],
+    _contactsBootstrapped:true,
+    _orgId:String(org.id || org.organization_id || '').trim(),
+    _personId:String(p.id || '').trim(),
+    _hasEmail:!!(p.email || p.has_email)
   };
+  apolloMergeContactCandidate(item, apolloPersonToContact(p, org));
+  apolloApplyCompanyContacts(item);
+  return item;
 }
 
 function normalizeApolloArray(data, keys){
@@ -16207,7 +16260,11 @@ function mapApolloOrganizationToFinderResult(org, country, meta){
     score:Math.floor(Math.random()*10)+82,
     manba:'Apollo Org',
     finderMode:meta.mode,
-    apolloOrgId:org.id || org.organization_id || org.account_id || ''
+    apolloOrgId:org.id || org.organization_id || org.account_id || '',
+    _orgId:String(org.id || org.organization_id || org.account_id || '').trim(),
+    contacts:[],
+    _contactCandidates:[],
+    _contactsBootstrapped:true
   };
 }
 
@@ -16217,6 +16274,310 @@ function apolloNormalizeText(value){
 
 function apolloCompanyKey(name){
   return apolloNormalizeText(name || '').replace(/\b(co|company|corp|corporation|ltd|llc|inc|group|holding|holdings|limited|plc|sa|ag|gmbh|pte|pty)\b/g,'').replace(/\s+/g,' ').trim();
+}
+
+function apolloNormalizePhone(value){
+  return String(value || '').replace(/[^\d+]/g,'').trim();
+}
+
+function apolloExtractPhoneList(person){
+  var out = [];
+  var seen = new Set();
+  function pushPhone(value){
+    var raw = String(value || '').trim();
+    var norm = apolloNormalizePhone(raw);
+    if(!norm || seen.has(norm)) return;
+    seen.add(norm);
+    out.push(raw);
+  }
+  if(Array.isArray((person || {}).phone_numbers)){
+    person.phone_numbers.forEach(function(ph){
+      if(!ph) return;
+      pushPhone(ph.sanitized_number || ph.number || ph.raw_number || ph.phone_number || '');
+    });
+  }
+  [
+    person && person.phone,
+    person && person.mobile_phone,
+    person && person.direct_phone,
+    person && person.work_phone,
+    person && person.sanitized_phone,
+    person && person.home_phone
+  ].forEach(pushPhone);
+  if(person && person.organization && person.organization.primary_phone){
+    pushPhone(person.organization.primary_phone.sanitized_number || person.organization.primary_phone.number || '');
+  }
+  return out;
+}
+
+function apolloRoleBucket(title){
+  var text = apolloNormalizeText(title || '');
+  if(/chief executive|ceo|founder|owner|president|managing director|general director|country manager|regional director|executive|chairman|managing partner|head of company/.test(text)) return 'executive';
+  if(/sales|export|commercial|account manager|business development|market development|marketing|commercial director|trade manager|sales manager/.test(text)) return 'sales';
+  if(/technical|technician|engineer|operations|production|quality|chemist|research|laboratory|plant|factory|manufacturing|procurement|purchase|purchasing|sourcing|supply chain/.test(text)) return 'technical';
+  return 'other';
+}
+
+function apolloScoreContact(contact){
+  var score = 0;
+  if(contact.email) score += 10;
+  if(contact.telefon) score += 9;
+  if(contact.name) score += 2;
+  if(contact.photoUrl) score += 1;
+  if(contact.bucket === 'executive') score += 5;
+  else if(contact.bucket === 'sales') score += 4;
+  else if(contact.bucket === 'technical') score += 4;
+  else score += 1;
+  return score;
+}
+
+function apolloPersonToContact(person, org){
+  var phones = apolloExtractPhoneList(person);
+  var contact = {
+    personId: String((person && person.id) || '').trim(),
+    name: (((person && person.first_name) || '') + ' ' + ((person && (person.last_name || person.last_name_obfuscated)) || '')).trim(),
+    title: String((person && person.title) || '').trim(),
+    email: String((person && person.email) || '').trim(),
+    telefon: String(phones[0] || '').trim(),
+    phones: phones,
+    photoUrl: String((person && (person.photo_url || person.photoUrl)) || '').trim(),
+    linkedin: String((person && person.linkedin_url) || '').trim(),
+    bucket: apolloRoleBucket(person && person.title),
+    organizationId: String((org && org.id) || '').trim()
+  };
+  contact.score = apolloScoreContact(contact);
+  return contact;
+}
+
+function apolloEnsureContactBuckets(item){
+  if(!item._contactCandidates) item._contactCandidates = [];
+  if(!item.contacts) item.contacts = [];
+  if(item._contactsBootstrapped) return;
+  item._contactsBootstrapped = true;
+  var bootstrap = {
+    personId: String(item._personId || '').trim(),
+    name: String(item.rahbar || '').trim(),
+    title: String(item.lavozim || '').trim(),
+    email: String(item.email || '').trim(),
+    telefon: String(item.telefon || '').trim(),
+    phones: item.telefon ? [String(item.telefon).trim()] : [],
+    photoUrl: String(item.photoUrl || item.photo_url || '').trim(),
+    linkedin: String(item.linkedin || '').trim(),
+    bucket: apolloRoleBucket(item.lavozim || '')
+  };
+  if(bootstrap.personId || bootstrap.name || bootstrap.email || bootstrap.telefon){
+    bootstrap.score = apolloScoreContact(bootstrap);
+    item._contactCandidates.push(bootstrap);
+  }
+}
+
+function apolloContactKey(contact){
+  return [
+    String((contact && contact.personId) || '').trim(),
+    apolloNormalizeText((contact && contact.name) || ''),
+    apolloNormalizeText((contact && contact.title) || ''),
+    String((contact && contact.email) || '').trim().toLowerCase(),
+    apolloNormalizePhone((contact && contact.telefon) || '')
+  ].join('|');
+}
+
+function apolloMergeContactCandidate(item, candidate){
+  if(!item || !candidate) return;
+  apolloEnsureContactBuckets(item);
+  if(!candidate.personId && !candidate.name && !candidate.email && !candidate.telefon) return;
+  candidate.bucket = candidate.bucket || apolloRoleBucket(candidate.title || '');
+  candidate.phones = Array.isArray(candidate.phones) ? candidate.phones.filter(Boolean) : (candidate.telefon ? [candidate.telefon] : []);
+  candidate.telefon = String(candidate.telefon || candidate.phones[0] || '').trim();
+  candidate.score = apolloScoreContact(candidate);
+  var key = apolloContactKey(candidate);
+  var existing = item._contactCandidates.find(function(c){
+    return apolloContactKey(c) === key || (candidate.personId && c.personId && c.personId === candidate.personId);
+  });
+  if(existing){
+    existing.name = existing.name || candidate.name || '';
+    existing.title = existing.title || candidate.title || '';
+    existing.email = existing.email || candidate.email || '';
+    existing.telefon = existing.telefon || candidate.telefon || '';
+    existing.photoUrl = existing.photoUrl || candidate.photoUrl || '';
+    existing.linkedin = existing.linkedin || candidate.linkedin || '';
+    existing.bucket = existing.bucket || candidate.bucket || 'other';
+    existing.phones = Array.from(new Set([].concat(existing.phones || [], candidate.phones || []).filter(Boolean)));
+    if(!existing.telefon && existing.phones.length) existing.telefon = existing.phones[0];
+    existing.score = apolloScoreContact(existing);
+    return;
+  }
+  item._contactCandidates.push(candidate);
+}
+
+function apolloChooseCompanyContacts(candidates){
+  var valid = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
+    return String(contact.email || '').trim() || String(contact.telefon || '').trim();
+  }).sort(function(a,b){
+    return (b.score || 0) - (a.score || 0);
+  });
+  var chosen = [];
+  var seen = new Set();
+  ['executive','sales','technical'].forEach(function(bucket){
+    var match = valid.find(function(contact){
+      var key = apolloContactKey(contact);
+      return contact.bucket === bucket && !seen.has(key);
+    });
+    if(match){
+      chosen.push(match);
+      seen.add(apolloContactKey(match));
+    }
+  });
+  valid.forEach(function(contact){
+    if(chosen.length >= 4) return;
+    var key = apolloContactKey(contact);
+    if(seen.has(key)) return;
+    chosen.push(contact);
+    seen.add(key);
+  });
+  if(chosen.length < 2 && valid.length >= 2){
+    chosen = valid.slice(0,4);
+  }
+  return chosen.slice(0,4);
+}
+
+function apolloContactRoleKey(contact){
+  if(!contact) return '';
+  var titleKey = apolloNormalizeText(contact.title || '');
+  if(titleKey) return 'title:' + titleKey;
+  var bucketKey = apolloRoleBucket(contact.title || '');
+  if(bucketKey && bucketKey !== 'other') return 'bucket:' + bucketKey;
+  return '';
+}
+
+function apolloHasMinimumContactCoverage(item){
+  var contacts = getFinderDisplayContacts(item).filter(function(contact){
+    return String(contact && contact.email || '').trim() || String(contact && contact.telefon || '').trim();
+  });
+  if(contacts.length < 2) return false;
+  var roleKeys = new Set();
+  contacts.forEach(function(contact){
+    var roleKey = apolloContactRoleKey(contact);
+    if(roleKey) roleKeys.add(roleKey);
+  });
+  return roleKeys.size >= 2;
+}
+
+function apolloApplyCompanyContacts(item){
+  if(!item) return item;
+  apolloEnsureContactBuckets(item);
+  item.contacts = apolloChooseCompanyContacts(item._contactCandidates || []);
+  var primary = item.contacts[0] || null;
+  if(primary){
+    item.rahbar = primary.name || item.rahbar || '';
+    item.lavozim = primary.title || item.lavozim || '';
+    item.email = primary.email || item.email || '';
+    item.telefon = primary.telefon || item.telefon || '';
+    item.photoUrl = primary.photoUrl || item.photoUrl || item.photo_url || '';
+    item.photo_url = item.photoUrl;
+    item.linkedin = primary.linkedin || item.linkedin || '';
+    item._personId = primary.personId || item._personId || '';
+  }
+  return item;
+}
+
+function apolloFindCompanyItem(found, companyName, country){
+  var companyKey = apolloCompanyKey(companyName);
+  var countryKey = apolloNormalizeText(country);
+  if(!companyKey) return null;
+  return (found || []).find(function(item){
+    return apolloCompanyKey(item.kompaniya) === companyKey &&
+      apolloNormalizeText(item.davlat) === countryKey;
+  }) || null;
+}
+
+function apolloMergeFinderItem(target, source, meta){
+  if(!target || !source) return target || source;
+  apolloEnsureContactBuckets(target);
+  apolloEnsureContactBuckets(source);
+  (source._contactCandidates || []).forEach(function(contact){
+    apolloMergeContactCandidate(target, Object.assign({}, contact));
+  });
+  (source.contacts || []).forEach(function(contact){
+    apolloMergeContactCandidate(target, Object.assign({}, contact));
+  });
+  if(source._personId || source.rahbar || source.email || source.telefon){
+    apolloMergeContactCandidate(target, {
+      personId: String(source._personId || '').trim(),
+      name: String(source.rahbar || '').trim(),
+      title: String(source.lavozim || '').trim(),
+      email: String(source.email || '').trim(),
+      telefon: String(source.telefon || '').trim(),
+      phones: source.telefon ? [String(source.telefon).trim()] : [],
+      photoUrl: String(source.photoUrl || source.photo_url || '').trim(),
+      linkedin: String(source.linkedin || '').trim(),
+      bucket: apolloRoleBucket(source.lavozim || '')
+    });
+  }
+  ['kompaniya','davlat','shahar','soha','linkedin','website','description','keywords','daromad','tpilyil','manba'].forEach(function(key){
+    target[key] = target[key] || source[key] || '';
+  });
+  target.finderMode = target.finderMode || source.finderMode || ((meta && meta.mode) || '');
+  target._orgId = String(target._orgId || source._orgId || source.apolloOrgId || '').trim();
+  target.apolloOrgId = target.apolloOrgId || source.apolloOrgId || target._orgId || '';
+  target._personId = String(target._personId || source._personId || '').trim();
+  target._hasEmail = target._hasEmail || source._hasEmail || false;
+  target.score = Math.max(Number(target.score || 0) || 0, Number(source.score || 0) || 0);
+  target.xodimlar = Number(target.xodimlar || 0) || Number(source.xodimlar || 0) || 0;
+  target.photoUrl = target.photoUrl || target.photo_url || source.photoUrl || source.photo_url || '';
+  target.photo_url = target.photoUrl;
+  apolloApplyCompanyContacts(target);
+  return target;
+}
+
+function apolloUpsertFinderItem(found, item, meta){
+  if(!item || !String(item.kompaniya || '').trim()) return null;
+  var existing = apolloFindCompanyItem(found, item.kompaniya, item.davlat);
+  if(existing){
+    return apolloMergeFinderItem(existing, item, meta);
+  }
+  apolloApplyCompanyContacts(item);
+  found.push(item);
+  return item;
+}
+
+async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
+  if(!item) return item;
+  apolloEnsureContactBuckets(item);
+  var candidates = (item._contactCandidates || []).slice().sort(function(a,b){
+    return (b.score || 0) - (a.score || 0);
+  });
+  var targets = [];
+  candidates.forEach(function(contact){
+    if(targets.length >= maxEnrich) return;
+    if(!contact.personId) return;
+    if(targets.some(function(existing){ return existing.personId === contact.personId; })) return;
+    if(contact.email && contact.telefon) return;
+    targets.push(contact);
+  });
+  for(var i=0; i<targets.length; i++){
+    try {
+      var enrData = await apolloRequestJson({
+        search_type:'people_enrichment',
+        api_key:apolloKey,
+        id:targets[i].personId,
+        reveal_personal_emails:true
+      });
+      var person = enrData.person || null;
+      if(!person) continue;
+      var merged = apolloPersonToContact(person, person.organization || {});
+      apolloMergeContactCandidate(item, merged);
+      if(person.organization){
+        item.soha = item.soha || person.organization.industry || '';
+        item.website = item.website || apolloAbsoluteUrl(person.organization.website_url || person.organization.website || '');
+        item.shahar = item.shahar || person.organization.city || person.city || '';
+        item.xodimlar = item.xodimlar || Number(person.organization.estimated_num_employees || 0) || 0;
+        item.daromad = item.daromad || person.organization.organization_revenue_printed || person.organization.annual_revenue_printed || '';
+        item.tpilyil = item.tpilyil || person.organization.founded_year || '';
+      }
+    } catch(_enrichErr){}
+  }
+  apolloApplyCompanyContacts(item);
+  return item;
 }
 
 function getApolloProductSignals(prod){
@@ -16294,8 +16655,6 @@ function isApolloObviousMismatch(entity, prod){
 }
 
 function isApolloEntityRelevant(entity, prod){
-  // Extra people from same company — company already passed filter
-  if(entity._isExtra) return true;
   if(isApolloObviousMismatch(entity, prod)) return false;
   var signals = getApolloProductSignals(prod);
   var strictSignals = getApolloStrictCategorySignals(prod);
@@ -16396,13 +16755,9 @@ function finderMatchesTarget13Signal(item, meta){
 }
 
 function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
-  var filtered = found.filter(function(item){ 
-    if(item._isExtra) return true; // same company already passed
-    return isApolloEntityRelevant(item, prod); 
-  });
+  var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
   if(!filtered.length){
     filtered = found.filter(function(item){
-      if(item._isExtra) return true;
       return !isApolloObviousMismatch(item, prod) && String(item.soha || '').trim();
     });
   }
@@ -16416,34 +16771,52 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
   if(strategy.target13){
     filtered = filtered.filter(function(item){ return finderMatchesTarget13Signal(item, meta); });
   }
-  // Dedup by company+person (allow multiple people per company)
-  var seenPeople = new Set();
-  var seenCompanies = {};
-  var result = [];
-  filtered.forEach(function(item){
-    var compKey = apolloCompanyKey(item.kompaniya);
-    if(!compKey) return;
-    var personKey = compKey + '|' + (item.rahbar||'').toLowerCase().trim();
-    if(seenPeople.has(personKey)) return;
-    seenPeople.add(personKey);
-    // Count people per company — max 4
-    seenCompanies[compKey] = (seenCompanies[compKey] || 0) + 1;
-    if(seenCompanies[compKey] > 4) return;
-    result.push(item);
-  });
-  // Limit to perCountry unique companies
-  var compCount = {};
-  return result.filter(function(item){
-    var k = apolloCompanyKey(item.kompaniya);
-    if(!compCount[k]) compCount[k] = 0;
-    compCount[k]++;
-    // First person of each company counts toward perCountry limit
-    if(compCount[k] === 1){
-      var uniqueComps = Object.keys(compCount).length;
-      if(uniqueComps > perCountry) return false;
-    }
+  var seen = new Set();
+  var unique = filtered.filter(function(item){
+    var key = [apolloCompanyKey(item.kompaniya), apolloNormalizeText(item.davlat)].join('|');
+    if(!apolloCompanyKey(item.kompaniya)) return false;
+    if(seen.has(key)) return false;
+    seen.add(key);
     return true;
+  }).sort(function(a,b){
+    return getFinderDisplayContacts(b).length - getFinderDisplayContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
   });
+  var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
+  if(strong.length >= perCountry){
+    return strong.slice(0, perCountry);
+  }
+  return unique.slice(0, perCountry);
+}
+
+function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
+  var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
+  if(!filtered.length){
+    filtered = found.filter(function(item){
+      return !isApolloObviousMismatch(item, prod) && String(item.soha || '').trim();
+    });
+  }
+  strategy = strategy || {top100:false, expansion:false, target13:false};
+  if(strategy.top100){
+    filtered = filtered.filter(function(item){ return finderMatchesTop100Signal(item); });
+  }
+  if(strategy.expansion){
+    filtered = filtered.filter(function(item){ return finderMatchesExpansionSignal(item); });
+  }
+  if(strategy.target13){
+    filtered = filtered.filter(function(item){ return finderMatchesTarget13Signal(item, meta); });
+  }
+  var seen = new Set();
+  var unique = filtered.filter(function(item){
+    var key = [apolloCompanyKey(item.kompaniya), apolloNormalizeText(item.davlat)].join('|');
+    if(!apolloCompanyKey(item.kompaniya)) return false;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort(function(a,b){
+    return getFinderDisplayContacts(b).length - getFinderDisplayContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
+  });
+  var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
+  return strong.slice(0, perCountry);
 }
 
 function apolloNeedContactCoverage(found, perCountry){
@@ -16729,322 +17102,194 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var found = [];
   var lastError = null;
   var hadSuccess = false;
+  function dedupeStrings(list){
+    return Array.from(new Set((list || []).map(function(v){ return String(v || '').trim(); }).filter(Boolean)));
+  }
+  function roleTitleList(bucket, fallback){
+    var picked = dedupeStrings([].concat(
+      (getProductSpecificTitles(prod, meta.mode) || []).filter(function(title){ return apolloRoleBucket(title) === bucket; }),
+      (meta.apolloTitles || []).filter(function(title){ return apolloRoleBucket(title) === bucket; }),
+      fallback || []
+    ));
+    return picked.slice(0, 10);
+  }
+  async function searchPeopleAndMerge(item, titles, limit, maxPages){
+    var pages = Math.max(1, Number(maxPages || 2) || 1);
+    for(var page=1; page<=pages; page++){
+      var req = {
+        search_type:'people',
+        page:page,
+        per_page:limit || 8,
+        api_key:apolloKey,
+        contact_email_status:['verified','likely to engage','unavailable']
+      };
+      if(item && item._orgId){
+        req.organization_ids = [item._orgId];
+      } else {
+        req.organization_locations = [country];
+        req.q_keywords = item && item.kompaniya ? item.kompaniya : kw1;
+      }
+      if(Array.isArray(titles) && titles.length){
+        req.person_titles = titles.slice(0, 10);
+      }
+      var data = await apolloRequestJson(req);
+      hadSuccess = true;
+      var mergedAny = false;
+      normalizeApolloArray(data, ['people','contacts']).forEach(function(person){
+        var org = person.organization || {};
+        var companyName = org.name || person.organization_name || (item && item.kompaniya) || '';
+        if(!companyName) return;
+        if(item && item.kompaniya && apolloCompanyKey(companyName) !== apolloCompanyKey(item.kompaniya)) return;
+        apolloMergeContactCandidate(item, apolloPersonToContact(person, Object.assign({}, org, { id:(org && org.id) || item._orgId || '' })));
+        mergedAny = true;
+        if(org){
+          item._orgId = item._orgId || String(org.id || '').trim();
+          item.shahar = item.shahar || org.city || person.city || '';
+          item.soha = item.soha || org.industry || org.industry_tag || '';
+          item.website = item.website || apolloAbsoluteUrl(org.website_url || org.website || '');
+          item.description = item.description || org.short_description || '';
+          item.xodimlar = item.xodimlar || Number(org.estimated_num_employees || 0) || 0;
+          item.daromad = item.daromad || org.organization_revenue_printed || org.annual_revenue_printed || '';
+          item.tpilyil = item.tpilyil || org.founded_year || '';
+        }
+      });
+      apolloApplyCompanyContacts(item);
+      if(getFinderDisplayContacts(item).length >= 4 || !mergedAny){
+        break;
+      }
+    }
+  }
 
-  // ═══ STEP 1: People Search — mahsulotga mos titles bilan (aniqroq natija) ═══
-  var productTitles = getProductSpecificTitles(prod, meta.mode);
+  var executiveTitles = roleTitleList('executive', ['CEO','Chief Executive Officer','Founder','Owner','President','Managing Director','General Director']);
+  var salesTitles = roleTitleList('sales', ['Sales Director','Sales Manager','Export Manager','Commercial Director','Business Development Manager','Account Manager']);
+  var technicalTitles = roleTitleList('technical', ['Technical Director','Technical Manager','Chief Engineer','Engineer','Technician','Operations Manager','Production Manager','Plant Manager','Procurement Manager']);
+  var broadTitles = dedupeStrings([].concat(
+    executiveTitles,
+    salesTitles,
+    technicalTitles,
+    getProductSpecificTitles(prod, meta.mode) || [],
+    meta.apolloTitles || [],
+    meta.apolloFallbackTitles || []
+  ));
   var peopleSets = [
-    productTitles.slice(0, 5),
-    productTitles.slice(5, 10),
-    meta.apolloTitles
-  ].filter(function(s){ return s && s.length; });
+    executiveTitles.concat(salesTitles.slice(0, 2)),
+    technicalTitles.concat(salesTitles.slice(2, 5)),
+    broadTitles.slice(0, 8),
+    broadTitles.slice(8, 16)
+  ].map(dedupeStrings).filter(function(set){ return set.length; });
 
+  // ═══ STEP 1: People Search — kompaniyalarni topish va kontaktlarni yig‘ish ═══
   for(var psi=0; psi<peopleSets.length; psi++){
-    var _uc0=found.reduce(function(a,f){if(a.indexOf(apolloCompanyKey(f.kompaniya))===-1)a.push(apolloCompanyKey(f.kompaniya));return a;},[]);
-    if(_uc0.length>=perCountry) break;
+    if(found.length >= Math.max(perCountry * 2, perCountry + 2)) break;
     try {
       var prodKwTags = getProductKeywordTags(prod);
       var psReq = {
-        search_type:'people', page:1, per_page:Math.max(perCountry*2, 10),
+        search_type:'people',
+        page:1,
+        per_page:Math.max(perCountry * 6, 24),
         api_key:apolloKey,
         organization_locations:[country],
         person_titles: peopleSets[psi],
-        q_organization_keyword_tags: prodKwTags.length ? prodKwTags : [kw1].filter(Boolean),
-        contact_email_status:['verified','likely to engage']
+        q_organization_keyword_tags: prodKwTags.length ? prodKwTags : [kw1].filter(Boolean)
       };
       var psData = await apolloRequestJson(psReq);
       hadSuccess = true;
-      normalizeApolloArray(psData, ['people','contacts']).forEach(function(p){
-        var org = p.organization || {};
-        var name = org.name || p.organization_name || '';
+      normalizeApolloArray(psData, ['people','contacts']).forEach(function(person){
+        var org = person.organization || {};
+        var name = org.name || person.organization_name || '';
         if(!name) return;
-        // Allow up to 3 people per company, but skip exact duplicate person
-        var sameCompCount = found.filter(function(f){ return apolloCompanyKey(f.kompaniya)===apolloCompanyKey(name); }).length;
-        if(sameCompCount >= 3) return;
-        var personKey = (p.first_name||'')+(p.last_name||'')+(p.title||'');
-        if(found.some(function(f){ return apolloCompanyKey(f.kompaniya)===apolloCompanyKey(name) && (f.rahbar||'')===(((p.first_name||'')+' '+(p.last_name||'')).trim()); })) return;
-        if(sameCompCount === 0 && !isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
-        found.push({
-          id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-          kompaniya:name,
-          rahbar:((p.first_name||'')+' '+(p.last_name||'')).trim(),
-          lavozim:p.title||'',
-          photoUrl:p.photo_url||'',
-          email:p.email||'',
-          telefon:'',
-          davlat:country, shahar:org.city||p.city||'',
-          soha:org.industry||'',
-          linkedin:p.linkedin_url||'',
-          website:apolloAbsoluteUrl(org.website_url||org.website||''),
-          description:org.short_description||'',
-          xodimlar:Number(org.estimated_num_employees||0)||0,
-          daromad:org.organization_revenue_printed||'',
-          tpilyil:org.founded_year||'',
-          import_volume:'', score:Math.floor(Math.random()*10)+82,
-          manba:'Apollo', finderMode:meta.mode,
-          _orgId:org.id||'',
-          _personId:p.id||'',
-          _hasEmail:p.has_email||false
-        });
-        if(p.email) found[found.length-1].email = p.email;
+        if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
+        apolloUpsertFinderItem(found, mapApolloPersonToFinderResult(person, country, meta), meta);
       });
-    } catch(e){ lastError=e; if(apolloIsFatalError(e)) throw e; }
+    } catch(e){ lastError = e; if(apolloIsFatalError(e)) throw e; }
   }
 
-  // ═══ STEP 1b: Org Search fallback (agar people search yetarli natija bermasa) ═══
+  // ═══ STEP 1b: Organization Search fallback ═══
   if(found.length < perCountry){
     var kwSets = [[kw1,'manufacturer'],[kw1,'supplier'],[kw1],[kw2]];
     var seenKwSets = {};
     kwSets = kwSets.filter(function(s){
-      var k = s.slice().sort().join('|');
-      if(seenKwSets[k]) return false;
-      seenKwSets[k] = true; return true;
+      var key = s.slice().sort().join('|');
+      if(seenKwSets[key]) return false;
+      seenKwSets[key] = true;
+      return true;
     });
     for(var ki=0; ki<kwSets.length; ki++){
-      var _uc1=found.reduce(function(a,f){if(a.indexOf(apolloCompanyKey(f.kompaniya))===-1)a.push(apolloCompanyKey(f.kompaniya));return a;},[]);
-      if(_uc1.length>=perCountry) break;
+      if(found.length >= Math.max(perCountry * 2, perCountry + 2)) break;
       try {
-        var apoReqBody = {
-          search_type:'organizations', page:1,
-          per_page:Math.max(perCountry*2, 10),
-          api_key:apolloKey, organization_locations:[country],
+        var apData = await apolloRequestJson({
+          search_type:'organizations',
+          page:1,
+          per_page:Math.max(perCountry * 3, 12),
+          api_key:apolloKey,
+          organization_locations:[country],
           q_organization_keyword_tags:kwSets[ki],
           q_keywords:kwSets[ki].join(' ')
-        };
-        var apData = await apolloRequestJson(apoReqBody);
+        });
         hadSuccess = true;
         normalizeApolloArray(apData, ['organizations','accounts','companies']).forEach(function(org){
           var name = org.name || '';
           if(!name || name.length > 100 || /\|/.test(name)) return;
-          if(found.some(function(f){ return apolloCompanyKey(f.kompaniya)===apolloCompanyKey(name); })) return;
           if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
-          found.push({
-            id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-            kompaniya:name, rahbar:'',
-            lavozim:meta.mode==='exporters'?'Exportyor kompaniya':'Importyor kompaniya',
-            email:'', telefon:org.phone||(org.primary_phone&&org.primary_phone.number)||'',
-            davlat:country, shahar:org.city||org.state||'',
-            soha:org.industry||org.industry_tag||'',
-            linkedin:org.linkedin_url||'',
-            website:apolloAbsoluteUrl(org.website_url||org.website||''),
-            description:org.short_description||'',
-            xodimlar:Number(org.estimated_num_employees||0)||0,
-            daromad:org.organization_revenue_printed||org.annual_revenue_printed||'',
-            tpilyil:org.founded_year||'',
-            import_volume:'', score:Math.floor(Math.random()*10)+82,
-            manba:'Apollo', finderMode:meta.mode, _orgId:org.id||''
-          });
+          apolloUpsertFinderItem(found, mapApolloOrganizationToFinderResult(org, country, meta), meta);
         });
-      } catch(e){ lastError=e; if(apolloIsFatalError(e)) throw e; }
+      } catch(eOrg){ lastError = eOrg; if(apolloIsFatalError(eOrg)) throw eOrg; }
     }
   }
 
-  // ═══ STEP 2: Har kompaniya uchun 2-4 ta odam topish ═══
-  // Unique companies with their orgId
-  var processedOrgs = {};
-  var foundCopy = found.slice(); // snapshot before adding extras
+  // ═══ STEP 2: Har bir kompaniya uchun 2–4 kontakt yig‘ish ═══
+  var candidates = found.slice().sort(function(a,b){
+    return (Number(b.score || 0) - Number(a.score || 0));
+  }).slice(0, Math.max(perCountry * 2, 8));
 
-  for(var fi2=0; fi2<foundCopy.length; fi2++){
-    var item2 = foundCopy[fi2];
-    var compKey2 = apolloCompanyKey(item2.kompaniya);
-    if(processedOrgs[compKey2]) continue;
-    if(!item2._orgId && !item2.kompaniya) continue;
-    processedOrgs[compKey2] = true;
-
-    var orgPeople2 = [];
+  for(var fi=0; fi<candidates.length; fi++){
+    var item = candidates[fi];
     try {
-      // Search by organization_id if available
-      var pp2Req = {
-        search_type:'people', page:1, per_page:10,
-        api_key:apolloKey,
-        contact_email_status:['verified','likely to engage','unavailable']
-      };
-      if(item2._orgId){
-        pp2Req.organization_ids = [item2._orgId];
+      if(item._orgId){
+        if(getFinderDisplayContacts(item).length < 4) await searchPeopleAndMerge(item, executiveTitles, 8, 2);
+        if(getFinderDisplayContacts(item).length < 4) await searchPeopleAndMerge(item, salesTitles, 8, 2);
+        if(getFinderDisplayContacts(item).length < 4) await searchPeopleAndMerge(item, technicalTitles, 8, 2);
+        if(getFinderDisplayContacts(item).length < 4) await searchPeopleAndMerge(item, broadTitles.slice(0, 10), 12, 2);
+        if(getFinderDisplayContacts(item).length < 2) await searchPeopleAndMerge(item, [], 16, 2);
       } else {
-        pp2Req.q_keywords = item2.kompaniya;
+        await searchPeopleAndMerge(item, broadTitles.slice(0, 10), 16, 2);
+        if(getFinderDisplayContacts(item).length < 2) await searchPeopleAndMerge(item, [], 16, 2);
       }
-      var pp2Data = await apolloRequestJson(pp2Req);
-      orgPeople2 = normalizeApolloArray(pp2Data, ['people','contacts']);
-    } catch(e2){ continue; }
-
-
-
-    if(!orgPeople2.length) continue;
-
-    // Score: email > has_email > phone > has_phone > anything
-    function scoreP(p){
-      var s = 0;
-      if(p.email) s += 20;
-      if(p.has_email === true || p.has_email === 'true') s += 10;
-      if(p.has_direct_phone === 'Yes') s += 8;
-      if(p.has_direct_phone === 'Maybe') s += 3;
-      if(p.phone_numbers && p.phone_numbers.length) s += 5;
-      return s;
+      await apolloEnrichCompanyContacts(item, apolloKey, 4);
+      apolloApplyCompanyContacts(item);
+    } catch(ePeople){
+      console.log('Contact coverage for '+item.kompaniya+': '+ePeople.message);
+      if(apolloIsFatalError(ePeople)) throw ePeople;
     }
-
-    // Pick people from 3 role groups
-    var ROLES = [
-      ['ceo','founder','chairman','president','owner','director general','managing director','general manager'],
-      ['export manager','sales manager','business development','commercial director','international sales','trade manager'],
-      ['technical','operations','production','quality','supply chain','procurement','purchasing','logistics']
-    ];
-
-    var picked = [];
-    var usedIds = {};
-
-    // First: update the base item (fi2) with best person
-    orgPeople2.sort(function(a,b){ return scoreP(b)-scoreP(a); });
-    var basePerson = orgPeople2[0];
-    if(basePerson){
-      // Always update _personId for enrichment
-      item2._personId = item2._personId || basePerson.id || '';
-      if(!item2.rahbar || item2.rahbar === 'Exportyor kompaniya' || item2.rahbar === 'Importyor kompaniya'){
-        item2.rahbar = ((basePerson.first_name||'')+' '+(basePerson.last_name||basePerson.last_name_obfuscated||'')).trim();
-        item2.lavozim = basePerson.title || '';
-        item2.photoUrl = basePerson.photo_url || '';
-      }
-      if(!item2.email && basePerson.email) item2.email = basePerson.email;
-      usedIds[basePerson.id] = true;
-    }
-
-    // Then pick from each role group
-    ROLES.forEach(function(roleKws){
-      if(picked.length >= 3) return;
-      var candidates = orgPeople2.filter(function(p){
-        if(usedIds[p.id]) return false;
-        var t = (p.title||'').toLowerCase();
-        return roleKws.some(function(kw){ return t.indexOf(kw) !== -1; });
-      });
-      candidates.sort(function(a,b){ return scoreP(b)-scoreP(a); });
-      var best = candidates[0];
-      if(best){ picked.push(best); usedIds[best.id] = true; }
-    });
-
-    // Fill remaining slots from any person with contact
-    orgPeople2.forEach(function(p){
-      if(picked.length >= 3) return;
-      if(usedIds[p.id]) return;
-      if(scoreP(p) > 0){ picked.push(p); usedIds[p.id] = true; }
-    });
-
-    // Still < 2? Take anyone
-    orgPeople2.forEach(function(p){
-      if(picked.length >= 3) return;
-      if(usedIds[p.id]) return;
-      picked.push(p); usedIds[p.id] = true;
-    });
-
-    // Add picked people as extra rows in found
-    picked.forEach(function(ep){
-      var epName = ((ep.first_name||'')+' '+(ep.last_name||ep.last_name_obfuscated||'')).trim();
-      // Skip if already same person as base item
-      if(epName && epName === item2.rahbar) return;
-      // Skip duplicate
-      if(found.some(function(f){ return apolloCompanyKey(f.kompaniya)===compKey2 && f.rahbar===epName; })) return;
-
-      found.push({
-        id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-        kompaniya:item2.kompaniya,
-        website:item2.website,
-        davlat:item2.davlat,
-        shahar:(ep.city||ep.state||item2.shahar||''),
-        soha:item2.soha,
-        xodimlar:item2.xodimlar,
-        daromad:item2.daromad,
-        tpilyil:item2.tpilyil,
-        linkedin:ep.linkedin_url||'',
-        description:item2.description,
-        rahbar:epName,
-        lavozim:ep.title||'',
-        photoUrl:ep.photo_url||'',
-        email:ep.email||'',
-        telefon:'',
-        import_volume:'',
-        score:item2.score,
-        manba:'Apollo',
-        finderMode:item2.finderMode,
-        _orgId:item2._orgId,
-        _personId:ep.id||'',
-        _hasEmail:ep.has_email||false,
-        _isExtra:true
-      });
-    });
   }
 
-
-  // ═══ STEP 3: Bulk Enrichment — email + tel (Pro, max 10 ta/so'rov) ═══
-  var enrichQueue = found.filter(function(f){
-    return f._personId && (!f.email || !f.telefon);
-  });
-
-  // Batch bo'lib 10 tadan yuborish
-  for(var bi=0; bi<enrichQueue.length; bi+=10){
-    var batch = enrichQueue.slice(bi, bi+10);
-    try {
-      var bulkDetails = batch.map(function(f){
-        return {
-          id: f._personId,
-          name: f.rahbar || undefined,
-          organization_name: f.kompaniya || undefined
-        };
-      });
-      var bulkData = await apolloRequestJson({
-        search_type:'bulk_people_enrichment',
-        api_key:apolloKey,
-        details: bulkDetails,
-        reveal_personal_emails: true,
-        reveal_phone_number: true
-      });
-      var matches = (bulkData.matches || []);
-      matches.forEach(function(ep2){
-        // Find matching item by personId
-        var eItem = batch.find(function(f){ return f._personId === ep2.id; });
-        if(!eItem || !ep2) return;
-        if(ep2.email) eItem.email = ep2.email;
-        if(ep2.first_name) eItem.rahbar = ((ep2.first_name||'')+' '+(ep2.last_name||'')).trim();
-        if(ep2.title) eItem.lavozim = ep2.title;
-        if(ep2.photo_url) eItem.photoUrl = ep2.photo_url;
-        if(ep2.linkedin_url) eItem.linkedin = ep2.linkedin_url;
-        var phones = (ep2.phone_numbers||[]).map(function(ph){ return ph.sanitized_number||ph.number||''; }).filter(Boolean);
-        if(phones.length) eItem.telefon = phones[0];
-        if(ep2.organization){
-          if(!eItem.soha) eItem.soha = ep2.organization.industry || '';
-          if(!eItem.xodimlar) eItem.xodimlar = ep2.organization.estimated_num_employees || 0;
-          if(!eItem.daromad) eItem.daromad = ep2.organization.organization_revenue_printed || '';
-          if(!eItem.website) eItem.website = apolloAbsoluteUrl(ep2.organization.website_url||'');
-        }
-      });
-    } catch(bulkErr){ /* silent */ }
-  }
-
-  // Domain taxmini o'chirildi
-
-    // ═══ STEP 4: Fallback — oddiy People Search ═══
+  // ═══ STEP 3: Fallback — hali hech narsa topilmagan bo‘lsa people search ═══
   if(!found.length){
     try {
       var fbData = await apolloRequestJson({
-        search_type:'people', page:1, per_page:Math.max(perCountry*3,15),
-        api_key:apolloKey, person_titles:meta.apolloTitles.concat(meta.apolloFallbackTitles||[]),
-        organization_locations:[country]
+        search_type:'people',
+        page:1,
+        per_page:Math.max(perCountry * 5, 20),
+        api_key:apolloKey,
+        person_titles:broadTitles.slice(0, 10),
+        organization_locations:[country],
+        q_organization_keyword_tags:getProductKeywordTags(prod)
       });
       hadSuccess = true;
-      normalizeApolloArray(fbData, ['people','contacts']).forEach(function(p){
-        var org = p.organization || {};
-        var compName = org.name || ''; if(!compName) return;
-        found.push({
-          id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-          kompaniya:compName, rahbar:((p.first_name||'')+' '+(p.last_name||p.last_name_obfuscated||'')).trim(),
-          photoUrl:p.photo_url || p.photoUrl || '',
-          lavozim:p.title||'', email:p.email||'', telefon:'',
-          davlat:country, shahar:p.city||'', soha:org.industry||'',
-          linkedin:p.linkedin_url||'', website:apolloAbsoluteUrl(org.website_url||''),
-          xodimlar:Number(org.estimated_num_employees||0)||0,
-          daromad:'', tpilyil:'', import_volume:'',
-          score:Math.floor(Math.random()*15)+70,
-          manba:'Apollo', finderMode:meta.mode, _personId:p.id||''
-        });
+      normalizeApolloArray(fbData, ['people','contacts']).forEach(function(person){
+        var org = person.organization || {};
+        var compName = org.name || person.organization_name || '';
+        if(!compName) return;
+        if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
+        apolloUpsertFinderItem(found, mapApolloPersonToFinderResult(person, country, meta), meta);
       });
-    } catch(e3){ lastError=e3; if(apolloIsFatalError(e3)) throw e3; }
+      for(var gi=0; gi<found.length; gi++){
+        try {
+          await apolloEnrichCompanyContacts(found[gi], apolloKey, 4);
+          apolloApplyCompanyContacts(found[gi]);
+        } catch(_fallbackEnrichErr){}
+      }
+    } catch(e3){ lastError = e3; if(apolloIsFatalError(e3)) throw e3; }
   }
 
   if(!found.length && !hadSuccess && lastError) throw lastError;
@@ -17277,77 +17522,41 @@ async function runCompanyFinder(source){
 function renderFinderTable(results){
   updateFinderModeUI();
   var tb = document.getElementById('finder-tbody');
+  var meta = getFinderModeMeta(_finderMode||'importers');
+  tb.innerHTML = results.sort(function(a,b){return (b.score||0)-(a.score||0);}).map(function(r,i){
+    var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
+    return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td><b>'+r.kompaniya+'</b>'+(r.website?'<div style="font-size:.55rem;color:var(--text3)">'+r.website+'</div>':'')+'</td>'+
+      '<td>'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>'+
+      '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
+      '<td>'+renderPersonNameWithPhoto(r.rahbar, r.photoUrl || r.photo_url, '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.lavozim||'')+'</div>'+(r.email?'<div style="font-size:.58rem;color:#0ea5e9;margin-top:2px">'+escHtml(r.email)+'</div>':'<div style="font-size:.55rem;color:var(--text3)">— Email yo\'q</div>'), 24)+'</td>'+
+      '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
+      '<td style="font-size:.65rem">'+(r.daromad||'—')+'</td>'+
+      '<td style="font-size:.65rem">'+(r.xodimlar||'—')+'</td>'+
+      '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
+      '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat" style="font-size:.58rem;padding:3px 8px">📧</button></td></tr>';
+  }).join('');
+}
 
-  // Group by company preserving order
-  var companyOrder = [];
-  var companyMap = {}; // key -> {base, people:[]}
-  results.sort(function(a,b){ return (b.score||0)-(a.score||0); }).forEach(function(r){
-    var key = apolloCompanyKey(r.kompaniya);
-    if(!key) return;
-    if(!companyMap[key]){
-      companyMap[key] = { base:r, people:[] };
-      companyOrder.push(key);
-    }
-    companyMap[key].people.push(r);
-  });
-
-  var html = '';
-  var compIdx = 0;
-
-  companyOrder.forEach(function(compKey){
-    var grp = companyMap[compKey];
-    var base = grp.base;
-    // Only show people with email OR phone OR personId
-    var people = grp.people.filter(function(p){
-      return p.email || p.telefon || p._personId;
-    });
-    if(!people.length) people = grp.people.slice(0,1); // fallback: show at least 1
-    people = people.slice(0,4); // max 4
-
-    var scoreColor = base.score>=80?'#059669':base.score>=60?'#FFB703':'#EF233C';
-    var rowspan = people.length;
-    compIdx++;
-
-    people.forEach(function(person, pi){
-      var emailHtml = person.email
-        ? '<a href="mailto:'+escHtml(person.email)+'" style="color:#0ea5e9;font-size:.63rem">'+escHtml(person.email)+'</a>'
-        : '<span style="color:var(--text3);font-size:.6rem">—</span>';
-      var phoneHtml = person.telefon
-        ? '<div style="font-size:.6rem;color:#059669;margin-top:1px">📞 '+escHtml(person.telefon)+'</div>' : '';
-
-      var personCell = renderPersonNameWithPhoto(
-        person.rahbar, person.photoUrl || person.photo_url,
-        '<div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">'+escHtml(person.lavozim||'')+'</div>'+
-        emailHtml + phoneHtml, 28
-      );
-
-      var personIdx = results.indexOf(person);
-      var actionBtn = '<button class="btn btn-blue btn-sm" onclick="goToAiLetter('+personIdx+')" style="font-size:.58rem;padding:3px 7px">📧 Xat</button>';
-
-      if(pi === 0){
-        html += '<tr style="border-top:2px solid var(--border)">'+
-          '<td rowspan="'+rowspan+'"><input type="checkbox" class="fc-check" data-idx="'+compIdx+'" checked></td>'+
-          '<td rowspan="'+rowspan+'" style="font-weight:700">'+compIdx+'</td>'+
-          '<td rowspan="'+rowspan+'"><b>'+escHtml(base.kompaniya)+'</b>'+
-            (base.website?'<div style="font-size:.55rem;color:var(--text3)">'+escHtml(base.website)+'</div>':'')+
-          '</td>'+
-          '<td rowspan="'+rowspan+'">'+getFinderCountryFlag(base.davlat)+' '+getFinderCountryLabel(base.davlat)+'</td>'+
-          '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+(base.shahar||'—')+'</td>'+
-          '<td style="border-left:1px solid var(--border)">'+personCell+'</td>'+
-          '<td rowspan="'+rowspan+'" style="font-size:.65rem">'+(base.soha||'—')+'</td>'+
-          '<td rowspan="'+rowspan+'" style="font-size:.65rem">'+(base.daromad||'—')+'</td>'+
-          '<td rowspan="'+rowspan+'" style="font-size:.65rem">'+(base.xodimlar||'—')+'</td>'+
-          '<td rowspan="'+rowspan+'"><span style="font-weight:800;color:'+scoreColor+'">'+base.score+'</span></td>'+
-          '<td>'+actionBtn+'</td></tr>';
-      } else {
-        html += '<tr style="border-top:1px dashed var(--border)">'+
-          '<td style="border-left:1px solid var(--border)">'+personCell+'</td>'+
-          '<td>'+actionBtn+'</td></tr>';
-      }
-    });
-  });
-
-  tb.innerHTML = html || '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text3)">Natija topilmadi</td></tr>';
+function renderFinderTable(results){
+  updateFinderModeUI();
+  var tb = document.getElementById('finder-tbody');
+  if(!tb) return;
+  tb.innerHTML = results.sort(function(a,b){ return (b.score||0)-(a.score||0); }).map(function(r,i){
+    var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
+    return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td><b>'+r.kompaniya+'</b>'+(r.website?'<div style="font-size:.55rem;color:var(--text3)">'+r.website+'</div>':'')+'</td>'+
+      '<td>'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>'+
+      '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
+      '<td>'+renderFinderContactsHtml(getFinderDisplayContacts(r))+'</td>'+
+      '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
+      '<td style="font-size:.65rem">'+(r.daromad||'—')+'</td>'+
+      '<td style="font-size:.65rem">'+(r.xodimlar||'—')+'</td>'+
+      '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
+      '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat" style="font-size:.58rem;padding:3px 8px">📧</button></td></tr>';
+  }).join('');
 }
 
 function filterFinderByCountry(country){
@@ -17431,7 +17640,7 @@ function saveFinderResults(){
 }
 
 function goToAiLetter(idx){
-  var comp = _finderResults[idx] || _finderResults.find(function(r,i){ return i===idx; });
+  var comp = _finderResults[idx];
   if(!comp) return;
   var finderSel = document.getElementById('finder-product-select');
   var currentProd = (DB.products||[]).find(function(p){ return String(p.id) === String((finderSel||{}).value || ''); });
