@@ -16086,6 +16086,45 @@ function getApolloPreferredKeywords(prod){
   if(/lime|quicklime|slaked lime|cao|caoh/.test(normalized)) pushAll(['lime','quicklime','hydrated lime','construction materials']);
   if(/sulfur|sulphur|acid/.test(normalized)) pushAll(['sulfur','sulphur','acid','chemical']);
 
+  // Ceramic & tile products (HS 6905, 6907, 6908 etc)
+  if(/roof.*tile|tile.*roof|ceramic.*tile|keramika|roofing/.test(normalized)) pushAll(['roofing tiles','ceramic tiles','roof tiles','clay tiles','terracotta tiles','tile manufacturer','building ceramics']);
+  if(/ceramic|keram|porcelain/.test(normalized)) pushAll(['ceramics','ceramic tiles','porcelain tiles','tile manufacturer','ceramic products']);
+  if(/brick|g'isht/.test(normalized)) pushAll(['brick','clay brick','construction brick','building materials']);
+  if(/glass|oyna/.test(normalized)) pushAll(['glass','float glass','glass products','glazing']);
+  if(/fiber|fibre|composite/.test(normalized)) pushAll(['fiber','composite materials','construction composite']);
+  if(/insulation|izol/.test(normalized)) pushAll(['insulation','thermal insulation','building insulation']);
+  if(/pipe|truba/.test(normalized)) pushAll(['pipes','construction pipes','plumbing','drainage']);
+  if(/wire|kabel|cable/.test(normalized)) pushAll(['cable','wire','electrical cable','construction cable']);
+  if(/steel|po'lat|metal/.test(normalized)) pushAll(['steel','metal products','construction steel','structural steel']);
+  if(/wood|yog'och|timber/.test(normalized)) pushAll(['wood','timber','lumber','wooden products']);
+  if(/cotton|paxta/.test(normalized)) pushAll(['cotton','raw cotton','cotton fiber','textile']);
+  if(/textile|to'qima/.test(normalized)) pushAll(['textile','fabric','garment','apparel']);
+  if(/chemical|kimyo/.test(normalized)) pushAll(['chemical','industrial chemical','specialty chemical']);
+  if(/plastic|polimer/.test(normalized)) pushAll(['plastic','polymer','PVC','polyethylene']);
+  if(/rubber|rezina/.test(normalized)) pushAll(['rubber','industrial rubber','rubber products']);
+  if(/paper|qog'oz/.test(normalized)) pushAll(['paper','packaging','cardboard']);
+  if(/food|oziq|grain|bug'doy|wheat|flour|un/.test(normalized)) pushAll(['food processing','grain','flour','food manufacturer']);
+  if(/oil|yog|petroleum/.test(normalized)) pushAll(['oil','petroleum products','lubricant']);
+  if(/solar|quyosh|energy/.test(normalized)) pushAll(['solar','renewable energy','solar panels']);
+  if(/fertilizer|o'g'it/.test(normalized)) pushAll(['fertilizer','agrochemical','crop nutrition']);
+  if(/gold|oltin|silver|kumush|precious/.test(normalized)) pushAll(['gold','silver','precious metals','mining']);
+  if(/copper|mis|aluminum|alyumin/.test(normalized)) pushAll(['copper','aluminum','non-ferrous metals']);
+  if(/uranium|uran/.test(normalized)) pushAll(['uranium','nuclear','mining']);
+
+  // Add HS code as keyword if available
+  if(prod && prod.hs_code){
+    var hs = String(prod.hs_code).replace(/\D/g,'').slice(0,6);
+    if(hs) pushAll([hs]);
+  }
+
+  // Always add product English name variations
+  if(prod && prod.name_en){
+    var nameEn = prod.name_en.toLowerCase();
+    // Add singular/plural and common industry terms
+    var words = nameEn.split(/[\s,\/\-]+/).filter(function(w){ return w.length > 3; });
+    words.forEach(function(w){ if(keywords.indexOf(w) === -1) keywords.push(w); });
+  }
+
   return keywords.slice(0, 8);
 }
 
@@ -16426,19 +16465,39 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var hadSuccess = false;
 
   // ═══ STEP 1: Organization Search (BEPUL) ═══
-  // q_organization_keyword_tags — har bir keyword alohida!
+  // q_organization_keyword_tags — product-specific keywords with fallbacks
+  var modeKw = meta.mode==='exporters' ? 'exporter' : 'importer';
   var kwSets = [
-    [kw1, meta.mode==='exporters'?'export':'import'],
+    // Most specific: product name + export/import direction
+    [kw1, modeKw],
+    // Product name + manufacturer/supplier
+    [kw1, 'manufacturer'],
+    [kw1, 'supplier'],
+    // Just product name
     [kw1],
-    [kw2, 'manufacturer', 'supplier']
+    // Secondary keyword + manufacturer
+    [kw2, 'manufacturer'],
+    // Secondary keyword alone
+    [kw2]
   ];
+  // Filter out duplicate keyword sets
+  var seenKwSets = {};
+  kwSets = kwSets.filter(function(s){
+    var k = s.sort().join('|');
+    if(seenKwSets[k]) return false;
+    seenKwSets[k] = true;
+    return true;
+  });
   for(var ki=0; ki<kwSets.length; ki++){
     try {
-      var apData = await apolloRequestJson({
+      var apoReqBody = {
         search_type:'organizations', page:1, per_page:Math.max(perCountry*2, 10),
         api_key:apolloKey, organization_locations:[country],
         q_organization_keyword_tags:kwSets[ki]
-      });
+      };
+      // Add product name as free-text keyword search for better matching
+      if(kw1) apoReqBody.q_keywords = kwSets[ki].join(' ');
+      var apData = await apolloRequestJson(apoReqBody);
       hadSuccess = true;
       var orgs = normalizeApolloArray(apData, ['organizations','accounts','companies']);
       orgs.forEach(function(org){
