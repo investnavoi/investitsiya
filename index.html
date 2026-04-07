@@ -16530,27 +16530,34 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     var item = found[fi];
     if(!item._orgId) continue;
     try {
+      // Search more people per org to find one with email/phone
       var ppData = await apolloRequestJson({
-        search_type:'people', page:1, per_page:3,
+        search_type:'people', page:1, per_page:10,
         api_key:apolloKey,
         person_titles:meta.apolloTitles,
         organization_ids:[item._orgId]
       });
       var people = normalizeApolloArray(ppData, ['people','contacts']);
-      // has_email:true bo'lgan birinchi odamni tanlash
+      // Priority: has_email AND has_direct_phone > has_email > has_phone > any
       var bestCeo = null;
-      for(var pi=0; pi<people.length; pi++){
-        if(people[pi].has_email === true || people[pi].has_email === 'true'){
-          bestCeo = people[pi]; break;
-        }
-      }
-      if(!bestCeo && people.length) bestCeo = people[0];
+      var scored = people.map(function(p){
+        var s = 0;
+        if(p.has_email === true || p.has_email === 'true') s += 10;
+        if(p.has_direct_phone === 'Yes' || p.has_direct_phone === true) s += 5;
+        if(p.has_direct_phone === 'Maybe') s += 2;
+        if(p.email) s += 8;
+        if(p.phone_numbers && p.phone_numbers.length) s += 4;
+        return {p:p, s:s};
+      }).sort(function(a,b){ return b.s - a.s; });
+      if(scored.length) bestCeo = scored[0].p;
       if(bestCeo){
         item.rahbar = ((bestCeo.first_name||'')+' '+(bestCeo.last_name||bestCeo.last_name_obfuscated||'')).trim();
         item.lavozim = bestCeo.title || item.lavozim;
         item.photoUrl = bestCeo.photo_url || bestCeo.photoUrl || item.photoUrl || '';
         item._personId = bestCeo.id || '';
         item._hasEmail = bestCeo.has_email || false;
+        // Immediately grab email if already exposed
+        if(bestCeo.email) item.email = bestCeo.email;
       }
     } catch(e2){ console.log('People search for '+item.kompaniya+': '+e2.message); }
   }
@@ -16558,6 +16565,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   // ═══ STEP 3: People Enrichment — to'liq ism + email (AVTOMATIK, 1 kredit) ═══
   for(var ei=0; ei<Math.min(found.length, perCountry, 10); ei++){
     var eItem = found[ei];
+    if(eItem.email) continue; // already have email, skip
     if(!eItem._personId) continue;
     try {
       var enrData = await apolloRequestJson({
@@ -16583,6 +16591,58 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         }
       }
     } catch(enrErr){ console.log('Enrich '+eItem.kompaniya+': '+enrErr.message); }
+  }
+
+  // ═══ STEP 3b: Companies still without email — search specifically for people with email ═══
+  for(var si=0; si<Math.min(found.length, perCountry, 10); si++){
+    var sItem = found[si];
+    if(sItem.email) continue; // already has email
+    try {
+      // Search people with email available for this org
+      var ppEmail = await apolloRequestJson({
+        search_type:'people', page:1, per_page:5,
+        api_key:apolloKey,
+        organization_ids: sItem._orgId ? [sItem._orgId] : undefined,
+        q_keywords: sItem.kompaniya
+      });
+      var emailPeople = normalizeApolloArray(ppEmail, ['people','contacts']);
+      // Find first with email directly exposed
+      var withEmail = emailPeople.find(function(p){ return !!p.email; });
+      if(withEmail){
+        if(!sItem.rahbar) sItem.rahbar = ((withEmail.first_name||'')+' '+(withEmail.last_name||'')).trim();
+        if(!sItem.lavozim) sItem.lavozim = withEmail.title || '';
+        sItem.email = withEmail.email;
+        sItem._personId = sItem._personId || withEmail.id || '';
+        if(!sItem.photoUrl) sItem.photoUrl = withEmail.photo_url || '';
+      } else if(emailPeople.length && !sItem._personId){
+        // Try enrichment on first person found
+        var fp = emailPeople[0];
+        sItem.rahbar = sItem.rahbar || ((fp.first_name||'')+' '+(fp.last_name||'')).trim();
+        sItem.lavozim = sItem.lavozim || fp.title || '';
+        sItem._personId = fp.id || '';
+      }
+    } catch(e3b){ /* silent */ }
+  }
+
+  // ═══ STEP 3c: Enrich remaining people without email ═══
+  for(var ri=0; ri<Math.min(found.length, perCountry, 10); ri++){
+    var rItem = found[ri];
+    if(rItem.email || !rItem._personId) continue;
+    // Only enrich if we don't already have email from Step 3
+    try {
+      var rEnr = await apolloRequestJson({
+        search_type:'people_enrichment', api_key:apolloKey,
+        id:rItem._personId, reveal_personal_emails:true
+      });
+      var rPerson = rEnr.person || null;
+      if(rPerson && rPerson.email){
+        rItem.email = rPerson.email;
+        if(!rItem.rahbar && rPerson.first_name) rItem.rahbar = ((rPerson.first_name||'')+' '+(rPerson.last_name||'')).trim();
+        if(!rItem.lavozim) rItem.lavozim = rPerson.title || '';
+        var rPhones = (rPerson.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean);
+        if(rPhones.length && !rItem.telefon) rItem.telefon = rPhones.join(', ');
+      }
+    } catch(e3c){ /* silent */ }
   }
 
   // ═══ STEP 4: Fallback — oddiy People Search ═══
