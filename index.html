@@ -16456,6 +16456,70 @@ async function apolloRequestJson(payload){
   return json || {};
 }
 
+function getProductIndustryTags(prod){
+  var hsCode = String((prod && prod.hs_code) || '').replace(/\D/g,'');
+  var ch = hsCode.slice(0,2);
+  // Apollo industry_tag_ids — real Apollo internal IDs
+  // Source: Apollo /account_stages and /labels API
+  var TAG_MAP = {
+    '28': ['5567cd4773696439b10b0000','5567cd4773696439b10b0001'], // chemicals, industrial chemicals
+    '29': ['5567cd4773696439b10b0000'], // chemicals
+    '30': ['5567cd4673696439b10b0000','5567ce1a7369644d39040000'], // pharmaceuticals, biotechnology
+    '31': ['5567cd4773696439b10b0000','55718d5b69702d0ae06b0000'], // chemicals, agriculture
+    '52': ['5567cd4673696439b10b0100','5567cd4673696439b10b0101'], // textiles, apparel & fashion
+    '55': ['5567cd4673696439b10b0100','5567cd4673696439b10b0101'],
+    '68': ['5567cd4673696439b10b0200','5567cd4773696439b10b0200'], // construction, building materials
+    '69': ['5567cd4673696439b10b0200','5567cd4773696439b10b0200'],
+    '72': ['5567cd4773696439b10b0300','5567cd4773696439b10b0301'], // mining & metals, industrial
+    '73': ['5567cd4773696439b10b0300'],
+    '84': ['5567cd4773696439b10b0400','5567cd4773696439b10b0401'], // industrial machinery, manufacturing
+    '85': ['5567cd4773696439b10b0400','5567cd4673696439b10b0500'], // machinery, electrical
+    '87': ['5567cd4673696439b10b0600'], // automotive
+    '10': ['55718d5b69702d0ae06b0000','5567cd4773696439b10b0700'], // agriculture, food production
+    '11': ['5567cd4773696439b10b0700','55718d5b69702d0ae06b0000'],
+    '15': ['5567cd4773696439b10b0700'],
+  };
+  return TAG_MAP[ch] || [];
+}
+
+// Apollo keyword_tags map per HS chapter
+function getProductKeywordTags(prod){
+  var hsCode = String((prod && prod.hs_code) || '').replace(/\D/g,'');
+  var ch = hsCode.slice(0,2);
+  var prodName = ((prod && prod.name_en) || '').toLowerCase();
+
+  var KEYWORD_MAP = {
+    '28': ['chemical','industrial chemical','specialty chemical','chemical manufacturer'],
+    '29': ['chemical','organic chemical','fine chemical','specialty chemical'],
+    '30': ['pharmaceutical','medicine','drug','medicament','pharma','healthcare','biotechnology'],
+    '31': ['fertilizer','agrochemical','crop nutrition','plant nutrition'],
+    '52': ['cotton','textile','fabric','yarn','cotton fiber'],
+    '55': ['textile','synthetic fiber','fabric','yarn','apparel'],
+    '68': ['stone','building materials','construction materials','granite','marble'],
+    '69': ['ceramic','tiles','building materials','construction','porcelain'],
+    '70': ['glass','float glass','building materials'],
+    '72': ['steel','iron','metal','structural steel'],
+    '73': ['metal products','steel fabrication','construction steel'],
+    '84': ['machinery','industrial equipment','manufacturing equipment'],
+    '85': ['electrical','electronics','electrical equipment'],
+    '87': ['automotive','vehicle','auto parts','transport'],
+    '10': ['grain','wheat','agriculture','cereal','food'],
+    '15': ['vegetable oil','edible oil','food processing'],
+    '39': ['plastic','polymer','PVC','packaging'],
+    '40': ['rubber','industrial rubber','rubber products'],
+    '71': ['gold','silver','jewelry','precious metals','gems'],
+  };
+
+  var tags = KEYWORD_MAP[ch] ? KEYWORD_MAP[ch].slice() : [];
+  // Add product name words
+  if(prod && prod.name_en){
+    prod.name_en.toLowerCase().split(/[\s,\/\-]+/).forEach(function(w){
+      if(w.length > 4 && tags.indexOf(w) === -1) tags.push(w);
+    });
+  }
+  return tags.slice(0, 6);
+}
+
 function getProductSpecificTitles(prod, mode){
   var hsCode = String((prod && prod.hs_code) || '').replace(/\D/g,'');
   var ch = hsCode.slice(0,2);
@@ -16555,6 +16619,27 @@ function isOrgRelevantToProduct(org, keywords, prod){
 
   var map = CHAPTER_MAP[hsChapter];
 
+  // ── Hard reject by HS chapter ──
+  // If we know the HS chapter, block industries that can NEVER match
+  var CHAPTER_HARD_BLOCK = {
+    '30': ['automotive','machinery','food & beverages','retail','apparel','fashion','textile','construction','mining','real estate','oil & energy','utilities','transportation','logistics'],
+    '28': ['automotive','food & beverages','retail','apparel','fashion','textile','real estate','oil & energy','utilities'],
+    '29': ['automotive','food & beverages','retail','apparel','fashion','textile','real estate'],
+    '31': ['automotive','machinery','retail','apparel','fashion','textile','real estate','oil & energy'],
+    '69': ['automotive','pharmaceutical','food & beverages','retail','apparel','fashion','textile','oil & energy','financial'],
+    '68': ['automotive','pharmaceutical','food & beverages','retail','apparel','fashion','textile','oil & energy'],
+    '72': ['pharmaceutical','food & beverages','retail','apparel','fashion'],
+    '52': ['automotive','pharmaceutical','machinery','mining','construction','oil & energy','financial'],
+    '55': ['automotive','pharmaceutical','machinery','mining','construction','oil & energy'],
+    '84': ['pharmaceutical','food & beverages','retail','apparel','fashion','textile'],
+    '10': ['automotive','pharmaceutical','machinery','textile','construction','oil & energy'],
+  };
+  var hardBlock = CHAPTER_HARD_BLOCK[hsChapter] || [];
+  if(hardBlock.length && orgIndustry){
+    var isHardBlocked = hardBlock.some(function(b){ return orgIndustry.indexOf(b) !== -1; });
+    if(isHardBlocked) return false;
+  }
+
   // Always block clearly irrelevant industries regardless of product
   var ALWAYS_BLOCK = ['information technology & services','software','internet','accounting','insurance','legal services','staffing & recruiting','human resources','marketing & advertising','public relations & communications','newspapers','broadcast media','online media','gambling & casinos','sports','entertainment','religious institutions','government administration','political organization','think tanks','non-profit organization management'];
   var isAlwaysBlock = ALWAYS_BLOCK.some(function(b){ return orgIndustry.indexOf(b) !== -1; });
@@ -16629,14 +16714,15 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   for(var psi=0; psi<peopleSets.length; psi++){
     if(found.length >= perCountry) break;
     try {
-      var psData = await apolloRequestJson({
+      var prodKwTags = getProductKeywordTags(prod);
+      var psReq = {
         search_type:'people', page:1, per_page:Math.max(perCountry*3, 15),
         api_key:apolloKey,
         organization_locations:[country],
         person_titles: peopleSets[psi],
-        q_organization_keyword_tags: [kw1].filter(Boolean),
-        q_keywords: kw1
-      });
+        q_organization_keyword_tags: prodKwTags.length ? prodKwTags : [kw1].filter(Boolean)
+      };
+      var psData = await apolloRequestJson(psReq);
       hadSuccess = true;
       normalizeApolloArray(psData, ['people','contacts']).forEach(function(p){
         var org = p.organization || {};
