@@ -16829,7 +16829,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   ];
 
   var companiesProcessed = {};
-  for(var fi=0; fi<found.length; fi++){
+  function scorePerson(p){
+
+    for(var fi=0; fi<found.length; fi++){
     var item = found[fi];
     var compKey = apolloCompanyKey(item.kompaniya);
     if(companiesProcessed[compKey]) continue;
@@ -16846,16 +16848,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       orgPeople = normalizeApolloArray(pp2Data, ['people','contacts']);
     } catch(e2){ continue; }
 
-    // Score each person: higher = has email/phone
-    function scorePerson(p){
-      var s = 0;
-      if(p.email) s += 15;
-      if(p.has_email === true || p.has_email === 'true') s += 10;
-      if(p.has_direct_phone === 'Yes') s += 8;
-      if(p.has_direct_phone === 'Maybe') s += 3;
-      if(p.phone_numbers && p.phone_numbers.length) s += 5;
-      return s;
-    }
+
 
     // For each role group, pick best person with contact info
     var selectedPeople = [];
@@ -17261,7 +17254,7 @@ function renderFinderTable(results){
 
       var emailHtml = person.email
         ? '<a href="mailto:'+escHtml(person.email)+'" style="color:#0ea5e9;font-size:.62rem">'+escHtml(person.email)+'</a>'
-        : '<span style="color:var(--text3);font-size:.6rem">— Email yo'q</span>';
+        : '<span style="color:var(--text3);font-size:.6rem">— Email yo\u02bcq</span>';
       var phoneHtml = person.telefon
         ? '<div style="font-size:.6rem;color:#059669">📞 '+escHtml(person.telefon)+'</div>' : '';
 
