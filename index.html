@@ -16099,7 +16099,9 @@ function getApolloPreferredKeywords(prod){
   if(/wood|yog'och|timber/.test(normalized)) pushAll(['wood','timber','lumber','wooden products']);
   if(/cotton|paxta/.test(normalized)) pushAll(['cotton','raw cotton','cotton fiber','textile']);
   if(/textile|to'qima/.test(normalized)) pushAll(['textile','fabric','garment','apparel']);
+  if(/medicament|medicine|pharmaceutical|drug|dori|tablet|capsule|injection/.test(normalized)) pushAll(['pharmaceutical','medicine','drug manufacturer','medicaments','pharma','healthcare','API manufacturer']);
   if(/chemical|kimyo/.test(normalized)) pushAll(['chemical','industrial chemical','specialty chemical']);
+  if(/organic.*chem|inorganic.*chem/.test(normalized)) pushAll(['chemical','specialty chemical','fine chemical']);
   if(/plastic|polimer/.test(normalized)) pushAll(['plastic','polymer','PVC','polyethylene']);
   if(/rubber|rezina/.test(normalized)) pushAll(['rubber','industrial rubber','rubber products']);
   if(/paper|qog'oz/.test(normalized)) pushAll(['paper','packaging','cardboard']);
@@ -16455,39 +16457,100 @@ async function apolloRequestJson(payload){
 }
 
 function isOrgRelevantToProduct(org, keywords, prod){
-  // Build searchable text from org data
-  var fields = [
+  var orgText = [
     org.name || '',
     org.industry || '',
     org.industry_tag || '',
     org.short_description || '',
     org.organization_headline || '',
-    (org.keywords || []).join(' '),
-    (org.industry_tag_ids || []).join(' ')
+    Array.isArray(org.keywords) ? org.keywords.join(' ') : (org.keywords || '')
   ].join(' ').toLowerCase();
 
-  // Product keywords to match against
-  var allKws = (keywords || []).slice();
-  if(prod && prod.name_en) allKws = allKws.concat(prod.name_en.toLowerCase().split(/[\s,\/\-]+/).filter(function(w){return w.length>3;}));
-  if(prod && prod.hs_code) allKws.push(String(prod.hs_code).replace(/\D/g,'').slice(0,4));
-
-  // If any product keyword matches org data — relevant
-  var matched = allKws.some(function(kw){
-    return kw && fields.indexOf(kw.toLowerCase()) !== -1;
-  });
-  if(matched) return true;
-
-  // Generic companies (IT, software, consulting) without any product match — skip
-  var genericIndustries = ['information technology','software','internet','consulting','financial services','accounting','insurance','legal','staffing','human resources','marketing','advertising','media','publishing','telecommunications'];
   var orgIndustry = (org.industry || '').toLowerCase();
-  var isGeneric = genericIndustries.some(function(g){ return orgIndustry.indexOf(g) !== -1; });
-  if(isGeneric) return false;
 
-  // If org has no industry info — allow (can't determine relevance)
-  if(!orgIndustry) return true;
+  // Determine product category from HS code and name
+  var hsCode = String((prod && prod.hs_code) || '').replace(/\D/g,'');
+  var hsChapter = hsCode.slice(0,2);
+  var prodName = ((prod && prod.name_en) || '').toLowerCase();
 
-  // Otherwise allow — better to include borderline than exclude valid ones
-  return true;
+  // ── Map HS chapters to allowed/blocked industries ──
+  var CHAPTER_MAP = {
+    // Chemicals, pharma, medicaments
+    '28':{ allow:['chemical','pharmaceutical','biotechnology','laboratory','medical','drug','health care'], block:['automotive','machinery','food','construction','textile','mining','real estate','retail'] },
+    '29':{ allow:['chemical','pharmaceutical','specialty chemical','organic chemical','laboratory'], block:['automotive','food','construction','textile','mining'] },
+    '30':{ allow:['pharmaceutical','medical','biotechnology','health care','drug','medicine','clinical'], block:['automotive','machinery','food','construction','textile','mining','real estate'] },
+    '31':{ allow:['fertilizer','agrochemical','chemical','agriculture','farming'], block:['automotive','machinery','construction','textile','mining'] },
+    // Building materials
+    '25':{ allow:['mining','minerals','construction','building materials','quarry','stone'], block:['automotive','pharmaceutical','food','textile'] },
+    '26':{ allow:['mining','metals','minerals','ore','steel'], block:['automotive','pharmaceutical','food','textile'] },
+    '68':{ allow:['construction','building materials','stone','ceramics','glass','ceramics'], block:['automotive','pharmaceutical','food','textile'] },
+    '69':{ allow:['ceramics','building materials','construction','tiles','porcelain'], block:['automotive','pharmaceutical','food','textile'] },
+    '70':{ allow:['glass','construction','building materials'], block:['automotive','pharmaceutical','food','textile'] },
+    // Metals
+    '72':{ allow:['steel','metal','iron','manufacturing','industrial'], block:['pharmaceutical','food','textile'] },
+    '73':{ allow:['metal','steel','manufacturing','construction','industrial'], block:['pharmaceutical','food','textile'] },
+    '74':{ allow:['copper','metal','manufacturing','electrical'], block:['pharmaceutical','food','textile'] },
+    '76':{ allow:['aluminum','metal','manufacturing'], block:['pharmaceutical','food','textile'] },
+    // Textiles
+    '50':{ allow:['textile','fabric','apparel','garment','fashion'], block:['automotive','pharmaceutical','mining','construction'] },
+    '51':{ allow:['textile','fabric','apparel','garment'], block:['automotive','pharmaceutical','mining','construction'] },
+    '52':{ allow:['cotton','textile','fabric','apparel','garment'], block:['automotive','pharmaceutical','mining','construction'] },
+    '55':{ allow:['textile','fabric','apparel','fiber','yarn'], block:['automotive','pharmaceutical','mining','construction'] },
+    // Food
+    '10':{ allow:['food','grain','agriculture','farming','milling'], block:['automotive','pharmaceutical','mining','textile','construction'] },
+    '11':{ allow:['food','flour','milling','agriculture','grain'], block:['automotive','pharmaceutical','mining','textile','construction'] },
+    '15':{ allow:['food','oil','fats','agriculture'], block:['automotive','pharmaceutical','mining','textile','construction'] },
+    // Machinery
+    '84':{ allow:['machinery','manufacturing','industrial','engineering','equipment'], block:['pharmaceutical','food & beverages','textile','mining'] },
+    '85':{ allow:['electrical','electronics','manufacturing','industrial','equipment'], block:['pharmaceutical','food & beverages','mining'] },
+    // Automotive/transport
+    '87':{ allow:['automotive','vehicle','transport','manufacturing','machinery'], block:['pharmaceutical','food','textile','mining'] },
+    // Energy/solar
+    '85s':{ allow:['solar','energy','renewable','electrical','electronics'], block:[] },
+    // Plastics/rubber
+    '39':{ allow:['plastic','polymer','chemical','manufacturing','packaging'], block:['automotive','pharmaceutical','food','mining'] },
+    '40':{ allow:['rubber','chemical','manufacturing','industrial'], block:['pharmaceutical','food','mining'] },
+    // Paper
+    '48':{ allow:['paper','packaging','printing','publishing','cardboard'], block:['automotive','pharmaceutical','mining'] },
+    // Mining/precious
+    '26':{ allow:['mining','metals','minerals'], block:['pharmaceutical','food','textile'] },
+    '71':{ allow:['jewelry','precious metals','mining','gold','gems'], block:['automotive','pharmaceutical','food','textile'] },
+  };
+
+  var map = CHAPTER_MAP[hsChapter];
+
+  // Always block clearly irrelevant industries regardless of product
+  var ALWAYS_BLOCK = ['information technology & services','software','internet','accounting','insurance','legal services','staffing & recruiting','human resources','marketing & advertising','public relations & communications','newspapers','broadcast media','online media','gambling & casinos','sports','entertainment','religious institutions','government administration','political organization','think tanks','non-profit organization management'];
+  var isAlwaysBlock = ALWAYS_BLOCK.some(function(b){ return orgIndustry.indexOf(b) !== -1; });
+  if(isAlwaysBlock) return false;
+
+  if(map){
+    // Check if industry matches allowed list — if so, definitely relevant
+    var isAllowed = map.allow.some(function(a){ return orgIndustry.indexOf(a) !== -1; });
+    if(isAllowed) return true;
+
+    // Check if industry is in block list for this product category
+    var isBlocked = map.block.some(function(b){ return orgIndustry.indexOf(b) !== -1; });
+    if(isBlocked){
+      // Last chance: check if product keyword appears in org name/description
+      var kwMatch = (keywords || []).some(function(kw){
+        return kw && orgText.indexOf(kw.toLowerCase()) !== -1;
+      });
+      return kwMatch;
+    }
+  }
+
+  // No HS map or no industry — check keyword match
+  var allKws = (keywords || []).filter(function(k){ return k && k.length > 3; });
+  if(allKws.length){
+    var matched = allKws.some(function(kw){ return orgText.indexOf(kw.toLowerCase()) !== -1; });
+    if(matched) return true;
+    // If we have good keywords but no match, and org has industry — borderline reject
+    if(orgIndustry && orgIndustry.length > 3) return false;
+  }
+
+  // No industry info — allow
+  return !orgIndustry;
 }
 
 function guessEmailFromDomain(fullName, website){
