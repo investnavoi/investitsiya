@@ -16972,57 +16972,52 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   }
 
 
-  // ═══ STEP 3: Enrichment — email + tel raqam (Pro kredit) ═══
-  // Faqat email yo'q odamlar uchun, max 15 ta
+  // ═══ STEP 3: Bulk Enrichment — email + tel (Pro, max 10 ta/so'rov) ═══
   var enrichQueue = found.filter(function(f){
-    // Enrich if: no email OR no phone (to get both)
     return f._personId && (!f.email || !f.telefon);
-  }).slice(0, 15);
+  });
 
-  for(var ei=0; ei<enrichQueue.length; ei++){
-    var eItem = enrichQueue[ei];
+  // Batch bo'lib 10 tadan yuborish
+  for(var bi=0; bi<enrichQueue.length; bi+=10){
+    var batch = enrichQueue.slice(bi, bi+10);
     try {
-      var enrData = await apolloRequestJson({
-        search_type:'people_enrichment',
-        api_key:apolloKey,
-        id:eItem._personId,
-        reveal_personal_emails:true,
-        reveal_phone_number:true
+      var bulkDetails = batch.map(function(f){
+        return {
+          id: f._personId,
+          name: f.rahbar || undefined,
+          organization_name: f.kompaniya || undefined
+        };
       });
-      var ep2 = enrData.person || null;
-      if(ep2){
-        // Always take email and phone from enrichment (override existing)
+      var bulkData = await apolloRequestJson({
+        search_type:'bulk_people_enrichment',
+        api_key:apolloKey,
+        details: bulkDetails,
+        reveal_personal_emails: true,
+        reveal_phone_number: true
+      });
+      var matches = (bulkData.matches || []);
+      matches.forEach(function(ep2){
+        // Find matching item by personId
+        var eItem = batch.find(function(f){ return f._personId === ep2.id; });
+        if(!eItem || !ep2) return;
         if(ep2.email) eItem.email = ep2.email;
         if(ep2.first_name) eItem.rahbar = ((ep2.first_name||'')+' '+(ep2.last_name||'')).trim();
         if(ep2.title) eItem.lavozim = ep2.title;
         if(ep2.photo_url) eItem.photoUrl = ep2.photo_url;
         if(ep2.linkedin_url) eItem.linkedin = ep2.linkedin_url;
-        // Telefon raqam
-        var phones = [];
-        if(ep2.phone_numbers && ep2.phone_numbers.length){
-          phones = ep2.phone_numbers.map(function(ph){ return ph.sanitized_number||ph.number||''; }).filter(Boolean);
-        }
+        var phones = (ep2.phone_numbers||[]).map(function(ph){ return ph.sanitized_number||ph.number||''; }).filter(Boolean);
         if(phones.length) eItem.telefon = phones[0];
-        // Org info
         if(ep2.organization){
           if(!eItem.soha) eItem.soha = ep2.organization.industry || '';
           if(!eItem.xodimlar) eItem.xodimlar = ep2.organization.estimated_num_employees || 0;
           if(!eItem.daromad) eItem.daromad = ep2.organization.organization_revenue_printed || '';
           if(!eItem.website) eItem.website = apolloAbsoluteUrl(ep2.organization.website_url||'');
         }
-      }
-    } catch(enrErr){ /* silent */ }
+      });
+    } catch(bulkErr){ /* silent */ }
   }
 
-  // Domain taxmini — hali ham email yo'q bo'lsa
-  found.forEach(function(f){
-    if(!f.email && f.rahbar && f.website &&
-       f.rahbar.indexOf(' ') !== -1 &&
-       f.rahbar !== 'Exportyor kompaniya' && f.rahbar !== 'Importyor kompaniya'){
-      var g = guessEmailFromDomain(f.rahbar, f.website);
-      if(g) f.email = g + ' (taxmin)';
-    }
-  });
+  // Domain taxmini o'chirildi
 
     // ═══ STEP 4: Fallback — oddiy People Search ═══
   if(!found.length){
