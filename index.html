@@ -16456,6 +16456,42 @@ async function apolloRequestJson(payload){
   return json || {};
 }
 
+function getProductSpecificTitles(prod, mode){
+  var hsCode = String((prod && prod.hs_code) || '').replace(/\D/g,'');
+  var ch = hsCode.slice(0,2);
+  var prodName = ((prod && prod.name_en) || '').toLowerCase();
+  var modePrefix = mode === 'exporters' ? ['Export Manager','Sales Export Manager'] : ['Import Manager','Procurement Manager','Purchasing Manager'];
+
+  // HS chapter based titles
+  var TITLE_MAP = {
+    '30':['Pharmaceutical Sales Manager','Medical Sales Representative','Pharma Export Manager','Drug Registration Manager','Regulatory Affairs Manager','Healthcare Business Development','Pharma Product Manager','Clinical Sales Manager'],
+    '28':['Chemical Sales Manager','Industrial Chemical Export Manager','Chemical Business Development','Specialty Chemical Manager','Chemical Product Manager'],
+    '29':['Chemical Sales Manager','Organic Chemistry Manager','Chemical Export Manager','Specialty Chemical Business Development'],
+    '31':['Agrochemical Sales Manager','Fertilizer Export Manager','Agricultural Sales Manager','Crop Nutrition Manager'],
+    '69':['Ceramic Sales Manager','Tile Export Manager','Building Materials Sales','Construction Materials Manager','Ceramic Product Manager'],
+    '68':['Building Materials Sales Manager','Stone Export Manager','Construction Materials Export','Marble Sales Manager'],
+    '72':['Steel Sales Manager','Metal Export Manager','Steel Trading Manager','Iron Steel Business Development'],
+    '73':['Metal Products Sales Manager','Steel Fabrication Manager','Construction Steel Manager'],
+    '52':['Cotton Export Manager','Textile Sales Manager','Cotton Trading Manager','Fiber Export Manager'],
+    '55':['Textile Export Manager','Fabric Sales Manager','Yarn Export Manager','Synthetic Fiber Manager'],
+    '84':['Machinery Sales Manager','Equipment Export Manager','Industrial Equipment Sales','Manufacturing Equipment Manager'],
+    '85':['Electrical Equipment Sales','Electronics Export Manager','Industrial Electronics Manager'],
+    '87':['Automotive Sales Manager','Vehicle Export Manager','Auto Parts Manager'],
+    '10':['Grain Export Manager','Commodity Trading Manager','Agricultural Export Manager','Wheat Trading Manager'],
+    '15':['Vegetable Oil Export Manager','Food Industry Sales Manager','Edible Oil Manager'],
+  };
+
+  var titles = modePrefix.slice();
+  if(TITLE_MAP[ch]){
+    titles = titles.concat(TITLE_MAP[ch]);
+  }
+  // Always add general sales titles as fallback
+  titles = titles.concat(['Sales Manager','Business Development Manager','Commercial Director','Managing Director','CEO','Founder','Export Director','International Sales Manager']);
+  // Dedupe
+  var seen = {};
+  return titles.filter(function(t){ if(seen[t]) return false; seen[t]=true; return true; });
+}
+
 function isOrgRelevantToProduct(org, keywords, prod){
   var orgText = [
     org.name || '',
@@ -16582,67 +16618,103 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var lastError = null;
   var hadSuccess = false;
 
-  // ═══ STEP 1: Organization Search (BEPUL) ═══
-  // q_organization_keyword_tags — product-specific keywords with fallbacks
-  var modeKw = meta.mode==='exporters' ? 'exporter' : 'importer';
-  var kwSets = [
-    // Most specific: product name + export/import direction
-    [kw1, modeKw],
-    // Product name + manufacturer/supplier
-    [kw1, 'manufacturer'],
-    [kw1, 'supplier'],
-    // Just product name
-    [kw1],
-    // Secondary keyword + manufacturer
-    [kw2, 'manufacturer'],
-    // Secondary keyword alone
-    [kw2]
-  ];
-  // Filter out duplicate keyword sets
-  var seenKwSets = {};
-  kwSets = kwSets.filter(function(s){
-    var k = s.sort().join('|');
-    if(seenKwSets[k]) return false;
-    seenKwSets[k] = true;
-    return true;
-  });
-  for(var ki=0; ki<kwSets.length; ki++){
+  // ═══ STEP 1: People Search — mahsulotga mos titles bilan (aniqroq natija) ═══
+  var productTitles = getProductSpecificTitles(prod, meta.mode);
+  var peopleSets = [
+    productTitles.slice(0, 5),
+    productTitles.slice(5, 10),
+    meta.apolloTitles
+  ].filter(function(s){ return s && s.length; });
+
+  for(var psi=0; psi<peopleSets.length; psi++){
+    if(found.length >= perCountry) break;
     try {
-      var apoReqBody = {
-        search_type:'organizations', page:1, per_page:Math.max(perCountry*2, 10),
-        api_key:apolloKey, organization_locations:[country],
-        q_organization_keyword_tags:kwSets[ki]
-      };
-      // Add product name as free-text keyword search for better matching
-      if(kw1) apoReqBody.q_keywords = kwSets[ki].join(' ');
-      var apData = await apolloRequestJson(apoReqBody);
+      var psData = await apolloRequestJson({
+        search_type:'people', page:1, per_page:Math.max(perCountry*3, 15),
+        api_key:apolloKey,
+        organization_locations:[country],
+        person_titles: peopleSets[psi],
+        q_organization_keyword_tags: [kw1].filter(Boolean),
+        q_keywords: kw1
+      });
       hadSuccess = true;
-      var orgs = normalizeApolloArray(apData, ['organizations','accounts','companies']);
-      orgs.forEach(function(org){
-        var name = org.name || '';
-        if(!name || name.length > 100 || /\|/.test(name)) return;
-        if(found.some(function(f){ return apolloCompanyKey(f.kompaniya)===apolloCompanyKey(name); })) return;
-        // ── Relevance check: skip if clearly unrelated to product ──
+      normalizeApolloArray(psData, ['people','contacts']).forEach(function(p){
+        var org = p.organization || {};
+        var name = org.name || p.organization_name || '';
+        if(!name || found.some(function(f){ return apolloCompanyKey(f.kompaniya)===apolloCompanyKey(name); })) return;
         if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
         found.push({
           id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-          kompaniya:name, rahbar:'', lavozim:meta.mode==='exporters'?'Exportyor kompaniya':'Importyor kompaniya',
-          email:'', telefon:org.phone||(org.primary_phone&&org.primary_phone.number)||'',
-          davlat:country, shahar:org.city||org.state||'',
-          soha:org.industry||org.industry_tag||'',
-          linkedin:org.linkedin_url||'',
+          kompaniya:name,
+          rahbar:((p.first_name||'')+' '+(p.last_name||'')).trim(),
+          lavozim:p.title||'',
+          photoUrl:p.photo_url||'',
+          email:p.email||'',
+          telefon:'',
+          davlat:country, shahar:org.city||p.city||'',
+          soha:org.industry||'',
+          linkedin:p.linkedin_url||'',
           website:apolloAbsoluteUrl(org.website_url||org.website||''),
           description:org.short_description||'',
           xodimlar:Number(org.estimated_num_employees||0)||0,
-          daromad:org.organization_revenue_printed||org.annual_revenue_printed||'',
+          daromad:org.organization_revenue_printed||'',
           tpilyil:org.founded_year||'',
           import_volume:'', score:Math.floor(Math.random()*10)+82,
           manba:'Apollo', finderMode:meta.mode,
-          _orgId:org.id||''
+          _orgId:org.id||'',
+          _personId:p.id||'',
+          _hasEmail:p.has_email||false
         });
+        if(p.email) found[found.length-1].email = p.email;
       });
-      if(found.length >= perCountry) break;
     } catch(e){ lastError=e; if(apolloIsFatalError(e)) throw e; }
+  }
+
+  // ═══ STEP 1b: Org Search fallback (agar people search yetarli natija bermasa) ═══
+  if(found.length < perCountry){
+    var kwSets = [[kw1,'manufacturer'],[kw1,'supplier'],[kw1],[kw2]];
+    var seenKwSets = {};
+    kwSets = kwSets.filter(function(s){
+      var k = s.slice().sort().join('|');
+      if(seenKwSets[k]) return false;
+      seenKwSets[k] = true; return true;
+    });
+    for(var ki=0; ki<kwSets.length; ki++){
+      if(found.length >= perCountry) break;
+      try {
+        var apoReqBody = {
+          search_type:'organizations', page:1,
+          per_page:Math.max(perCountry*2, 10),
+          api_key:apolloKey, organization_locations:[country],
+          q_organization_keyword_tags:kwSets[ki],
+          q_keywords:kwSets[ki].join(' ')
+        };
+        var apData = await apolloRequestJson(apoReqBody);
+        hadSuccess = true;
+        normalizeApolloArray(apData, ['organizations','accounts','companies']).forEach(function(org){
+          var name = org.name || '';
+          if(!name || name.length > 100 || /\|/.test(name)) return;
+          if(found.some(function(f){ return apolloCompanyKey(f.kompaniya)===apolloCompanyKey(name); })) return;
+          if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
+          found.push({
+            id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+            kompaniya:name, rahbar:'',
+            lavozim:meta.mode==='exporters'?'Exportyor kompaniya':'Importyor kompaniya',
+            email:'', telefon:org.phone||(org.primary_phone&&org.primary_phone.number)||'',
+            davlat:country, shahar:org.city||org.state||'',
+            soha:org.industry||org.industry_tag||'',
+            linkedin:org.linkedin_url||'',
+            website:apolloAbsoluteUrl(org.website_url||org.website||''),
+            description:org.short_description||'',
+            xodimlar:Number(org.estimated_num_employees||0)||0,
+            daromad:org.organization_revenue_printed||org.annual_revenue_printed||'',
+            tpilyil:org.founded_year||'',
+            import_volume:'', score:Math.floor(Math.random()*10)+82,
+            manba:'Apollo', finderMode:meta.mode, _orgId:org.id||''
+          });
+        });
+      } catch(e){ lastError=e; if(apolloIsFatalError(e)) throw e; }
+    }
   }
 
   // ═══ STEP 2: People Search — organization_ids bilan CEO topish (BEPUL) ═══
