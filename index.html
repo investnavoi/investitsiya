@@ -16454,6 +16454,25 @@ async function apolloRequestJson(payload){
   return json || {};
 }
 
+function guessEmailFromDomain(fullName, website){
+  // Extract domain from website
+  var domain = '';
+  try {
+    var url = website.replace(/^https?:\/\//,'').split('/')[0];
+    domain = url.replace(/^www\./, '');
+  } catch(e){ return ''; }
+  if(!domain || domain.length < 4) return '';
+  // Build email formats: first.last@domain or first@domain
+  var parts = fullName.trim().split(/\s+/);
+  if(parts.length < 1) return '';
+  var first = (parts[0]||'').toLowerCase().replace(/[^a-z]/g,'');
+  var last = (parts[parts.length-1]||'').toLowerCase().replace(/[^a-z]/g,'');
+  if(!first) return '';
+  // Most common format: first.last@domain
+  if(last && last !== first) return first + '.' + last + '@' + domain;
+  return first + '@' + domain;
+}
+
 async function apolloFinderSearchCountry(prod, country, perCountry, meta, sourceScope, targetCountries, strategy){
   var apolloKey = getApolloApiKey();
   if(!apolloKey) throw new Error('Apollo API key topilmadi. Sozlamalar sahifasiga kiriting.');
@@ -16535,7 +16554,8 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         search_type:'people', page:1, per_page:10,
         api_key:apolloKey,
         person_titles:meta.apolloTitles,
-        organization_ids:[item._orgId]
+        organization_ids:[item._orgId],
+        contact_email_status:['verified','likely to engage','unavailable']
       });
       var people = normalizeApolloArray(ppData, ['people','contacts']);
       // Priority: has_email AND has_direct_phone > has_email > has_phone > any
@@ -16588,6 +16608,10 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
           eItem.daromad = person.organization.organization_revenue_printed || person.organization.annual_revenue_printed || eItem.daromad || '';
           eItem.tpilyil = person.organization.founded_year || eItem.tpilyil || '';
           eItem.website = eItem.website || apolloAbsoluteUrl(person.organization.website_url||'');
+        }
+        // If still no email but have name + website — guess corporate email
+        if(!eItem.email && eItem.rahbar && eItem.website){
+          eItem.email = guessEmailFromDomain(eItem.rahbar, eItem.website);
         }
       }
     } catch(enrErr){ console.log('Enrich '+eItem.kompaniya+': '+enrErr.message); }
@@ -16644,6 +16668,14 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       }
     } catch(e3c){ /* silent */ }
   }
+
+  // ═══ STEP 3d: Guess email from domain for remaining ═══
+  found.forEach(function(item){
+    if(!item.email && item.rahbar && item.website && item.rahbar !== 'Exportyor kompaniya' && item.rahbar !== 'Importyor kompaniya'){
+      var guessed = guessEmailFromDomain(item.rahbar, item.website);
+      if(guessed) item.email = guessed + ' (taxmin)';
+    }
+  });
 
   // ═══ STEP 4: Fallback — oddiy People Search ═══
   if(!found.length){
