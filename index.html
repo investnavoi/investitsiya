@@ -15741,27 +15741,28 @@ function getFinderCountSettings(){
   };
 }
 
-function getFinderBlockedTargetCountries(){
-  return getFinderSourceSelection().effectiveCountries.slice();
+function getFinderBlockedSourceCountries(){
+  return (_finderTargetCountries || []).slice();
 }
 
-function isFinderTargetBlocked(name){
-  return getFinderBlockedTargetCountries().indexOf(name) !== -1;
+function isFinderSourceCountryBlocked(name){
+  return getFinderBlockedSourceCountries().indexOf(name) !== -1;
 }
 
-function syncFinderTargetAgainstSource(){
-  var blocked = getFinderBlockedTargetCountries();
+function syncFinderSourceAgainstTarget(){
+  var blocked = getFinderBlockedSourceCountries();
   if(!blocked.length) return;
-  _finderTargetCountries = _finderTargetCountries.filter(function(country){
+  _finderSourceCountries = _finderSourceCountries.filter(function(country){
     return blocked.indexOf(country) === -1;
   });
 }
 
 function toggleFinderTargetCountry(name){
-  if(isFinderTargetBlocked(name)) return;
   var idx = _finderTargetCountries.indexOf(name);
   if(idx >= 0) _finderTargetCountries.splice(idx,1);
   else _finderTargetCountries.push(name);
+  syncFinderSourceAgainstTarget();
+  renderFinderSourceFilters();
   renderFinderTargetFilters();
 }
 
@@ -15776,10 +15777,6 @@ function toggleFinderTargetGroupAll(name){
   else groupCountries = (FINDER_SOURCE_REGIONS[name] || []).filter(function(country){
     return FINDER_ALWAYS_TARGET_COUNTRIES.indexOf(country) === -1;
   });
-  var blockedCountries = getFinderBlockedTargetCountries();
-  groupCountries = groupCountries.filter(function(country){
-    return blockedCountries.indexOf(country) === -1;
-  });
   if(!groupCountries.length) return;
   var allSelected = groupCountries.every(function(country){
     return _finderTargetCountries.indexOf(country) !== -1;
@@ -15793,16 +15790,16 @@ function toggleFinderTargetGroupAll(name){
       if(_finderTargetCountries.indexOf(country) === -1) _finderTargetCountries.push(country);
     });
   }
+  syncFinderSourceAgainstTarget();
+  renderFinderSourceFilters();
   renderFinderTargetFilters();
 }
 
 function renderFinderTargetFilters(){
   var wrap = document.getElementById('finderCountries');
   if(!wrap) return;
-  syncFinderTargetAgainstSource();
   var searchEl = document.getElementById('finderTargetSearch');
   var search = searchEl ? searchEl.value.toLowerCase().trim() : '';
-  var blockedCountries = getFinderBlockedTargetCountries();
   var groups = [{name:'Maqsad davlatlar', countries:FINDER_ALWAYS_TARGET_COUNTRIES.slice(), isCore:true}];
   Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
     groups.push({
@@ -15814,13 +15811,12 @@ function renderFinderTargetFilters(){
   wrap.innerHTML = '';
   groups.forEach(function(group){
     var allC = group.countries;
-    var availableC = allC.filter(function(c){ return blockedCountries.indexOf(c)===-1; });
     var filteredC = allC.filter(function(c){
       return !search || c.toLowerCase().indexOf(search)!==-1 || getFinderCountryLabel(c).toLowerCase().indexOf(search)!==-1;
     });
     if(search && filteredC.length===0) return;
-    var selCount = availableC.filter(function(c){ return _finderTargetCountries.indexOf(c)!==-1; }).length;
-    var allChecked = availableC.length>0 && selCount===availableC.length;
+    var selCount = allC.filter(function(c){ return _finderTargetCountries.indexOf(c)!==-1; }).length;
+    var allChecked = allC.length>0 && selCount===allC.length;
     var someChecked = selCount>0 && !allChecked;
     var isOpen = !!_finderTargetOpenGroups[group.name] || search.length>0;
     var div = document.createElement('div');
@@ -15831,7 +15827,7 @@ function renderFinderTargetFilters(){
     var left = document.createElement('span');
     left.style.cssText = 'display:flex;align-items:center;gap:8px';
     var cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.checked = allChecked; cb.indeterminate = someChecked; cb.disabled = availableC.length===0; cb.style.cursor = availableC.length===0 ? 'not-allowed' : 'pointer';
+    cb.type = 'checkbox'; cb.checked = allChecked; cb.indeterminate = someChecked; cb.style.cursor = 'pointer';
     cb.addEventListener('click', function(e){ e.stopPropagation(); });
     cb.addEventListener('change', function(){ toggleFinderTargetGroupAll(group.name); renderFinderTargetFilters(); });
     var nameSpan = document.createElement('span');
@@ -15841,7 +15837,7 @@ function renderFinderTargetFilters(){
     right.style.cssText = 'display:flex;align-items:center;gap:8px';
     var countSpan = document.createElement('span');
     countSpan.style.cssText = 'font-size:.62rem;color:var(--text3)';
-    countSpan.textContent = selCount+'/'+availableC.length;
+    countSpan.textContent = selCount+'/'+allC.length;
     var arrowSpan = document.createElement('span');
     arrowSpan.style.cssText = 'font-size:.65rem;color:#4361EE';
     arrowSpan.textContent = isOpen ? '\u25BC' : '\u25BA';
@@ -15852,12 +15848,11 @@ function renderFinderTargetFilters(){
       var list = document.createElement('div');
       list.style.cssText = 'padding:8px 10px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:.35rem';
       filteredC.forEach(function(country){
-        var blocked = blockedCountries.indexOf(country)!==-1;
         var checked = _finderTargetCountries.indexOf(country)!==-1;
         var lbl = document.createElement('label');
-        lbl.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(blocked?'rgba(148,163,184,.10)':checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:'+(blocked?'not-allowed':'pointer')+';border:1px solid '+(blocked?'rgba(148,163,184,.25)':checked?'rgba(67,97,238,.35)':'var(--border)')+';opacity:'+(blocked?'.55':'1');
+        lbl.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:pointer;border:1px solid '+(checked?'rgba(67,97,238,.35)':'var(--border)');
         var ccb = document.createElement('input');
-        ccb.type = 'checkbox'; ccb.checked = checked; ccb.disabled = blocked;
+        ccb.type = 'checkbox'; ccb.checked = checked;
         ccb.addEventListener('click', function(e){ e.stopPropagation(); });
         ccb.addEventListener('change', (function(c){ return function(){ toggleFinderTargetCountry(c); renderFinderTargetFilters(); }; })(country));
         lbl.appendChild(ccb);
@@ -15914,21 +15909,17 @@ function clearFinderSourceFilters(){
   _finderSourceCountries = [];
   var searchEl = document.getElementById('finderSourceSearch');
   if(searchEl) searchEl.value = '';
-  syncFinderTargetAgainstSource();
-  renderFinderTargetFilters();
   renderFinderSourceFilters();
 }
 
 function toggleFinderSourceContinentAll(name){
-  var allCountries = FINDER_SOURCE_REGIONS[name]||[];
-  var allChecked = allCountries.every(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
+  var allCountries = (FINDER_SOURCE_REGIONS[name]||[]).filter(function(c){ return !isFinderSourceCountryBlocked(c); });
+  var allChecked = allCountries.length>0 && allCountries.every(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
   if(allChecked){
     allCountries.forEach(function(c){ var i=_finderSourceCountries.indexOf(c); if(i>=0)_finderSourceCountries.splice(i,1); });
   } else {
     allCountries.forEach(function(c){ if(_finderSourceCountries.indexOf(c)===-1)_finderSourceCountries.push(c); });
   }
-  syncFinderTargetAgainstSource();
-  renderFinderTargetFilters();
   renderFinderSourceFilters();
 }
 
@@ -15936,17 +15927,14 @@ function toggleFinderSourceContinent(name){
   var idx = _finderSourceContinents.indexOf(name);
   if(idx >= 0) _finderSourceContinents.splice(idx,1);
   else _finderSourceContinents.push(name);
-  syncFinderTargetAgainstSource();
-  renderFinderTargetFilters();
   renderFinderSourceFilters();
 }
 
 function toggleFinderSourceCountry(name){
+  if(isFinderSourceCountryBlocked(name)) return;
   var idx = _finderSourceCountries.indexOf(name);
   if(idx >= 0) _finderSourceCountries.splice(idx,1);
   else _finderSourceCountries.push(name);
-  syncFinderTargetAgainstSource();
-  renderFinderTargetFilters();
   renderFinderSourceFilters();
 }
 
@@ -15958,15 +15946,18 @@ function renderFinderSourceFilters(){
   var meta = getFinderModeMeta((document.getElementById('finder-mode')||{}).value || 'importers');
   wrap.style.display = meta.mode === 'exporters' ? 'block' : 'none';
   if(meta.mode !== 'exporters') return;
+  syncFinderSourceAgainstTarget();
   var searchEl = document.getElementById('finderSourceSearch');
   var search = searchEl ? searchEl.value.toLowerCase().trim() : '';
+  var blockedCountries = getFinderBlockedSourceCountries();
   chipsEl.innerHTML = '';
   Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
     var allC = FINDER_SOURCE_REGIONS[cont]||[];
+    var availableC = allC.filter(function(c){ return blockedCountries.indexOf(c)===-1; });
     var filteredC = allC.filter(function(c){ return !search || c.toLowerCase().indexOf(search)!==-1; });
     if(search && filteredC.length===0) return;
-    var allChecked = allC.length>0 && allC.every(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
-    var someChecked = !allChecked && allC.some(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
+    var allChecked = availableC.length>0 && availableC.every(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
+    var someChecked = !allChecked && availableC.some(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
     var isOpen = someChecked || allChecked || search.length>0;
     var div = document.createElement('div');
     div.style.cssText = 'border:1px solid '+(someChecked||allChecked?'rgba(67,97,238,.35)':'var(--border)')+';border-radius:12px;overflow:hidden;background:'+(someChecked||allChecked?'rgba(67,97,238,.06)':'rgba(255,255,255,.75)');
@@ -15978,7 +15969,7 @@ function renderFinderSourceFilters(){
     var left = document.createElement('span');
     left.style.cssText = 'display:flex;align-items:center;gap:8px';
     var cb = document.createElement('input');
-    cb.type='checkbox'; cb.checked=allChecked; cb.indeterminate=someChecked; cb.style.cursor='pointer';
+    cb.type='checkbox'; cb.checked=allChecked; cb.indeterminate=someChecked; cb.disabled = availableC.length===0; cb.style.cursor = availableC.length===0 ? 'not-allowed' : 'pointer';
     cb.addEventListener('click', function(e){ e.stopPropagation(); });
     cb.addEventListener('change', function(){ toggleFinderSourceContinentAll(cont); });
     var nameSpan = document.createElement('span');
@@ -15986,18 +15977,19 @@ function renderFinderSourceFilters(){
     left.appendChild(cb); left.appendChild(nameSpan);
     var right = document.createElement('span');
     right.style.cssText = 'font-size:.62rem;color:var(--text3)';
-    right.textContent = allC.length+' ta davlat';
+    right.textContent = availableC.length+' ta davlat';
     hdr.appendChild(left); hdr.appendChild(right);
     div.appendChild(hdr);
     bodyDiv.style.cssText = 'padding:8px 10px;border-top:1px solid var(--border);display:'+(isOpen?'block':'none');
     var chips = document.createElement('div');
     chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:.35rem';
     filteredC.forEach(function(country){
+      var blocked = blockedCountries.indexOf(country)!==-1;
       var checked = _finderSourceCountries.indexOf(country)!==-1;
       var lbl = document.createElement('label');
-      lbl.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:pointer;border:1px solid '+(checked?'rgba(67,97,238,.35)':'var(--border)');
+      lbl.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(blocked?'rgba(148,163,184,.10)':checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:'+(blocked?'not-allowed':'pointer')+';border:1px solid '+(blocked?'rgba(148,163,184,.25)':checked?'rgba(67,97,238,.35)':'var(--border)')+';opacity:'+(blocked?'.55':'1');
       var ccb = document.createElement('input');
-      ccb.type='checkbox'; ccb.checked=checked;
+      ccb.type='checkbox'; ccb.checked=checked; ccb.disabled=blocked;
       ccb.addEventListener('click', function(e){ e.stopPropagation(); });
       ccb.addEventListener('change', (function(c){ return function(){ toggleFinderSourceCountry(c); }; })(country));
       lbl.appendChild(ccb);
