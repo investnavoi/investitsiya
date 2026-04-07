@@ -16744,7 +16744,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     try {
       var prodKwTags = getProductKeywordTags(prod);
       var psReq = {
-        search_type:'people', page:1, per_page:Math.max(perCountry*3, 15),
+        search_type:'people', page:1, per_page:Math.max(perCountry*2, 6),
         api_key:apolloKey,
         organization_locations:[country],
         person_titles: peopleSets[psi],
@@ -16837,196 +16837,149 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     }
   }
 
-  // ═══ STEP 2: Har kompaniya uchun 3 ta odam (CEO, Sales, Texnik) topish ═══
-  // Unique companies found in Step 1
-  var uniqueOrgIds = [];
-  var orgMap = {}; // orgKey -> [found items]
-  found.forEach(function(item){
-    var key = apolloCompanyKey(item.kompaniya);
-    if(!orgMap[key]) { orgMap[key] = []; uniqueOrgIds.push(key); }
-    orgMap[key].push(item);
-  });
+  // ═══ STEP 2: Har kompaniya uchun 2-4 ta odam topish ═══
+  // Unique companies with their orgId
+  var processedOrgs = {};
+  var foundCopy = found.slice(); // snapshot before adding extras
 
-  // For each unique company, search 3 different role groups
-  var ROLE_GROUPS = [
-    ['CEO','Founder','Managing Director','General Manager','President','Chairman'],
-    ['Export Manager','Sales Manager','Business Development Manager','Commercial Director','International Sales'],
-    ['Technical Director','Operations Manager','Production Manager','Quality Manager','Supply Chain Manager','Procurement Manager','Purchasing Manager']
-  ];
+  for(var fi2=0; fi2<foundCopy.length; fi2++){
+    var item2 = foundCopy[fi2];
+    var compKey2 = apolloCompanyKey(item2.kompaniya);
+    if(processedOrgs[compKey2]) continue;
+    if(!item2._orgId && !item2.kompaniya) continue;
+    processedOrgs[compKey2] = true;
 
-  var companiesProcessed = {};
-
-  function scorePerson(p){
-    var s = 0;
-    if(p.email) s += 15;
-    if(p.has_email === true || p.has_email === 'true') s += 10;
-    if(p.has_direct_phone === 'Yes') s += 8;
-    if(p.has_direct_phone === 'Maybe') s += 3;
-    if(p.phone_numbers && p.phone_numbers.length) s += 5;
-    return s;
-  }
-
-  for(var fi=0; fi<found.length; fi++){
-    var item = found[fi];
-    var compKey = apolloCompanyKey(item.kompaniya);
-    if(companiesProcessed[compKey]) continue;
-    if(!item._orgId) continue;
-    companiesProcessed[compKey] = true;
-
-    var orgPeople = []; // all people found for this org
+    var orgPeople2 = [];
     try {
-      var pp2Data = await apolloRequestJson({
-        search_type:'people', page:1, per_page:25,
-        api_key:apolloKey,
-        organization_ids:[item._orgId]
-      });
-      orgPeople = normalizeApolloArray(pp2Data, ['people','contacts']);
-      // If fewer than 4 people, try also without org filter using company name
-      if(orgPeople.length < 4 && item.kompaniya){
-        try {
-          var pp2b = await apolloRequestJson({
-            search_type:'people', page:1, per_page:10,
-            api_key:apolloKey,
-            q_keywords: item.kompaniya
-          });
-          normalizeApolloArray(pp2b, ['people','contacts']).forEach(function(p){
-            var pOrg = (p.organization && p.organization.name) || p.organization_name || '';
-            if(apolloCompanyKey(pOrg) === compKey && !orgPeople.some(function(op){ return op.id===p.id; })){
-              orgPeople.push(p);
-            }
-          });
-        } catch(e2b){ /* silent */ }
+      // Search by organization_id if available
+      var pp2Req = {
+        search_type:'people', page:1, per_page:5,
+        api_key:apolloKey
+      };
+      if(item2._orgId){
+        pp2Req.organization_ids = [item2._orgId];
+      } else {
+        pp2Req.q_keywords = item2.kompaniya;
       }
+      var pp2Data = await apolloRequestJson(pp2Req);
+      orgPeople2 = normalizeApolloArray(pp2Data, ['people','contacts']);
     } catch(e2){ continue; }
 
 
 
-    // For each role group, pick best person with contact info
-    var selectedPeople = [];
-    ROLE_GROUPS.forEach(function(roleGroup){
-      var candidates = orgPeople.filter(function(p){
-        var title = (p.title || '').toLowerCase();
-        return roleGroup.some(function(r){ return title.indexOf(r.toLowerCase()) !== -1; });
-      });
-      // Sort by contact availability
-      candidates.sort(function(a,b){ return scorePerson(b) - scorePerson(a); });
-      // Pick first with email or phone
-      var best = candidates.find(function(p){
-        return p.email || p.has_email === true || p.has_direct_phone === 'Yes' || (p.phone_numbers && p.phone_numbers.length);
-      }) || candidates[0];
-      if(best && !selectedPeople.some(function(sp){ return sp.id === best.id; })){
-        selectedPeople.push(best);
+    if(!orgPeople2.length) continue;
+
+    // Score: email > has_email > phone > has_phone > anything
+    function scoreP(p){
+      var s = 0;
+      if(p.email) s += 20;
+      if(p.has_email === true || p.has_email === 'true') s += 10;
+      if(p.has_direct_phone === 'Yes') s += 8;
+      if(p.has_direct_phone === 'Maybe') s += 3;
+      if(p.phone_numbers && p.phone_numbers.length) s += 5;
+      return s;
+    }
+
+    // Pick people from 3 role groups
+    var ROLES = [
+      ['ceo','founder','chairman','president','owner','director general','managing director','general manager'],
+      ['export manager','sales manager','business development','commercial director','international sales','trade manager'],
+      ['technical','operations','production','quality','supply chain','procurement','purchasing','logistics']
+    ];
+
+    var picked = [];
+    var usedIds = {};
+
+    // First: update the base item (fi2) with best person
+    orgPeople2.sort(function(a,b){ return scoreP(b)-scoreP(a); });
+    var basePerson = orgPeople2[0];
+    if(basePerson){
+      if(!item2.rahbar || item2.rahbar === 'Exportyor kompaniya' || item2.rahbar === 'Importyor kompaniya'){
+        item2.rahbar = ((basePerson.first_name||'')+' '+(basePerson.last_name||basePerson.last_name_obfuscated||'')).trim();
+        item2.lavozim = basePerson.title || '';
+        item2.photoUrl = basePerson.photo_url || '';
+        item2._personId = basePerson.id || '';
+        if(basePerson.email) item2.email = basePerson.email;
       }
+      usedIds[basePerson.id] = true;
+    }
+
+    // Then pick from each role group
+    ROLES.forEach(function(roleKws){
+      if(picked.length >= 3) return;
+      var candidates = orgPeople2.filter(function(p){
+        if(usedIds[p.id]) return false;
+        var t = (p.title||'').toLowerCase();
+        return roleKws.some(function(kw){ return t.indexOf(kw) !== -1; });
+      });
+      candidates.sort(function(a,b){ return scoreP(b)-scoreP(a); });
+      var best = candidates[0];
+      if(best){ picked.push(best); usedIds[best.id] = true; }
     });
 
-    // If fewer than 3 found from role groups, fill from any remaining with contact
-    if(selectedPeople.length < 3){
-      orgPeople.sort(function(a,b){ return scorePerson(b) - scorePerson(a); });
-      orgPeople.forEach(function(p){
-        if(selectedPeople.length >= 4) return;
-        if(selectedPeople.some(function(sp){ return sp.id === p.id; })) return;
-        if(p.email || p.has_email === true || p.has_direct_phone === 'Yes' || p.has_direct_phone === 'Maybe'){
-          selectedPeople.push(p);
-        }
-      });
-    }
-    // Still < 2? Take any person regardless of contact
-    if(selectedPeople.length < 2){
-      orgPeople.forEach(function(p){
-        if(selectedPeople.length >= 4) return;
-        if(!selectedPeople.some(function(sp){ return sp.id === p.id; })){
-          selectedPeople.push(p);
-        }
-      });
-    }
+    // Fill remaining slots from any person with contact
+    orgPeople2.forEach(function(p){
+      if(picked.length >= 3) return;
+      if(usedIds[p.id]) return;
+      if(scoreP(p) > 0){ picked.push(p); usedIds[p.id] = true; }
+    });
 
-    // Skip company if less than 1 person with contact info
-    if(selectedPeople.length === 0) continue;
+    // Still < 2? Take anyone
+    orgPeople2.forEach(function(p){
+      if(picked.length >= 3) return;
+      if(usedIds[p.id]) return;
+      picked.push(p); usedIds[p.id] = true;
+    });
 
-    // Update first found item with first person
-    var baseItem = orgMap[compKey][0];
-    var firstPerson = selectedPeople[0];
-    baseItem.rahbar = ((firstPerson.first_name||'')+' '+(firstPerson.last_name||firstPerson.last_name_obfuscated||'')).trim();
-    baseItem.lavozim = firstPerson.title || '';
-    baseItem.photoUrl = firstPerson.photo_url || '';
-    baseItem._personId = firstPerson.id || '';
-    if(firstPerson.email) baseItem.email = firstPerson.email;
+    // Add picked people as extra rows in found
+    picked.forEach(function(ep){
+      var epName = ((ep.first_name||'')+' '+(ep.last_name||ep.last_name_obfuscated||'')).trim();
+      // Skip if already same person as base item
+      if(epName && epName === item2.rahbar) return;
+      // Skip duplicate
+      if(found.some(function(f){ return apolloCompanyKey(f.kompaniya)===compKey2 && f.rahbar===epName; })) return;
 
-    // Add additional people as new entries (rows)
-    for(var pi=1; pi<Math.min(selectedPeople.length, 3); pi++){
-      var extraPerson = selectedPeople[pi];
-      var extraName = ((extraPerson.first_name||'')+' '+(extraPerson.last_name||extraPerson.last_name_obfuscated||'')).trim();
-      // Check not already in found
-      if(found.some(function(f){ return apolloCompanyKey(f.kompaniya)===compKey && f.rahbar===extraName; })) continue;
       found.push({
         id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-        kompaniya:baseItem.kompaniya,
-        website:baseItem.website,
-        davlat:baseItem.davlat,
-        shahar:extraPerson.city || baseItem.shahar || '',
-        soha:baseItem.soha,
-        xodimlar:baseItem.xodimlar,
-        daromad:baseItem.daromad,
-        tpilyil:baseItem.tpilyil,
-        linkedin:extraPerson.linkedin_url || '',
-        description:baseItem.description,
-        rahbar:extraName,
-        lavozim:extraPerson.title || '',
-        photoUrl:extraPerson.photo_url || '',
-        email:extraPerson.email || '',
+        kompaniya:item2.kompaniya,
+        website:item2.website,
+        davlat:item2.davlat,
+        shahar:(ep.city||ep.state||item2.shahar||''),
+        soha:item2.soha,
+        xodimlar:item2.xodimlar,
+        daromad:item2.daromad,
+        tpilyil:item2.tpilyil,
+        linkedin:ep.linkedin_url||'',
+        description:item2.description,
+        rahbar:epName,
+        lavozim:ep.title||'',
+        photoUrl:ep.photo_url||'',
+        email:ep.email||'',
         telefon:'',
         import_volume:'',
-        score:baseItem.score - pi,
+        score:item2.score,
         manba:'Apollo',
-        finderMode:baseItem.finderMode,
-        _orgId:baseItem._orgId,
-        _personId:extraPerson.id || '',
-        _hasEmail:extraPerson.has_email || false,
+        finderMode:item2.finderMode,
+        _orgId:item2._orgId,
+        _personId:ep.id||'',
+        _hasEmail:ep.has_email||false,
         _isExtra:true
       });
-    }
+    });
   }
 
-  // ═══ STEP 3: Enrichment — email yo'q odamlar uchun ═══
-  var enrichTargets = found.filter(function(f){ return !f.email && f._personId; }).slice(0, 15);
-  for(var ei=0; ei<enrichTargets.length; ei++){
-    var eItem = enrichTargets[ei];
-    try {
-      var enrData = await apolloRequestJson({
-        search_type:'people_enrichment', api_key:apolloKey,
-        id:eItem._personId, reveal_personal_emails:true
-      });
-      var person = enrData.person || null;
-      if(person){
-        if(person.first_name) eItem.rahbar = ((person.first_name||'')+' '+(person.last_name||'')).trim();
-        eItem.lavozim = person.title || eItem.lavozim;
-        eItem.photoUrl = person.photo_url || eItem.photoUrl || '';
-        eItem.email = person.email || '';
-        eItem.linkedin = person.linkedin_url || eItem.linkedin || '';
-        eItem.shahar = person.city || person.state || eItem.shahar || '';
-        var phones = (person.phone_numbers||[]).map(function(ph){return ph.sanitized_number||ph.number||'';}).filter(Boolean);
-        if(phones.length) eItem.telefon = phones.join(', ');
-        if(!eItem.email && eItem.rahbar && eItem.website){
-          eItem.email = guessEmailFromDomain(eItem.rahbar, eItem.website) + ' (taxmin)';
-        }
-      }
-    } catch(enrErr){ /* silent */ }
-  }
 
-  // ═══ STEP 3b: Hali ham email yo'q — domain taxmini ═══
-  found.forEach(function(item){
-    if(!item.email && item.rahbar && item.website &&
-       item.rahbar !== 'Exportyor kompaniya' && item.rahbar !== 'Importyor kompaniya' &&
-       item.rahbar.indexOf(' ') !== -1){
-      item.email = guessEmailFromDomain(item.rahbar, item.website) + ' (taxmin)';
+  // Domain taxmini (bepul — kredit sarflamaydi)
+  found.forEach(function(f){
+    if(!f.email && f.rahbar && f.website &&
+       f.rahbar.indexOf(' ') !== -1 &&
+       f.rahbar !== 'Exportyor kompaniya' && f.rahbar !== 'Importyor kompaniya'){
+      var g = guessEmailFromDomain(f.rahbar, f.website);
+      if(g) f.email = g + ' (taxmin)';
     }
   });
 
-  // Remove entries without any contact info (no email, no phone, no personId)
-  found = found.filter(function(f){
-    return f.email || f.telefon || f._personId || !f._isExtra;
-  });
-  // ═══ STEP 4: Fallback — oddiy People Search ═══
+    // ═══ STEP 4: Fallback — oddiy People Search ═══
   if(!found.length){
     try {
       var fbData = await apolloRequestJson({
