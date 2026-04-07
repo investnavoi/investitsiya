@@ -1128,9 +1128,6 @@ input[type="time"]{-webkit-appearance:none;}
 .csd-item:hover{background:rgba(67,97,238,.06);color:var(--text);}
 .csd-item:last-child{border-bottom:none;}
 .csd-item.selected{background:rgba(67,97,238,.1);color:var(--blue);font-weight:600;}
-.tg-reply-badge{display:inline-flex;align-items:center;border-radius:6px;padding:3px 8px;font-size:.68rem;font-weight:700;cursor:pointer;white-space:nowrap}
-.tg-reply-badge.new{background:#059669;color:#fff}
-.tg-reply-badge.seen{background:#E0F2FE;color:#0369A1;font-weight:600}
 </style>
 </head>
 <body>
@@ -1371,8 +1368,8 @@ input[type="time"]{-webkit-appearance:none;}
 
     <!-- MAHALLIY TADBIRKORLAR — tepada, yig'iladigan -->
     <div class="tcard" id="productsSectionsCard" style="margin-bottom:1rem">
-      <div class="tc-head" style="cursor:pointer" onclick="toggleAllEntrepreneurs()">
-        <div class="tc-title">🏭 Mahalliy Tadbirkorlar (<span id="entr-count">0</span>) <span id="entr-toggle-icon" style="font-size:.7rem">▲</span></div>
+      <div class="tc-head" style="cursor:pointer" onclick="toggleEntrepreneurs()">
+        <div class="tc-title">🏭 Mahalliy Tadbirkorlar (<span id="entr-count">0</span>) <span id="entr-toggle-icon" style="font-size:.7rem">▼</span></div>
         <div style="display:flex;gap:.5rem" onclick="event.stopPropagation()">
           <span id="entrSelectedCount" style="font-size:.7rem;color:var(--text3);display:inline-flex;align-items:center">0 ta tanlangan</span>
           <label class="btn btn-sm" style="background:#059669;color:#fff;border:none;cursor:pointer">
@@ -1380,13 +1377,13 @@ input[type="time"]{-webkit-appearance:none;}
             <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEntrepreneurs(this)">
           </label>
           <button class="btn btn-blue btn-sm" onclick="matchForumsToEntrepreneurs()">🔗 Moslashtirish</button>
-          <button class="btn btn-sm" id="entrBulkTgBtn" onclick="sendTelegramToSelected()" style="background:linear-gradient(135deg,#2563EB,#3B82F6);color:#fff;border:none;padding:8px 16px;font-size:.82rem" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 14.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/></svg>Tanlanganlarga</button>
-          <button class="btn btn-sm" onclick="sendTelegramToMatched()" style="background:linear-gradient(135deg,#0088cc,#229ED9);color:#fff;border:none;padding:8px 16px;font-size:.82rem"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 14.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/></svg>Telegram</button>
-          <button class="btn btn-sm" onclick="checkTelegramReplies()" style="background:linear-gradient(135deg,#0EA5E9,#2563EB);color:#fff;border:none;padding:8px 16px;font-size:.82rem">💬 Javoblarni tekshirish</button>
+          <button class="btn btn-sm" id="entrBulkTgBtn" onclick="sendTelegramToSelected()" style="background:linear-gradient(135deg,#2563EB,#3B82F6);color:#fff;border:none" disabled>📲 Tanlanganlarga</button>
+          <button class="btn btn-sm" onclick="sendTelegramToMatched()" style="background:linear-gradient(135deg,#0088cc,#229ED9);color:#fff;border:none">📲 Telegram</button>
+          <button class="btn btn-sm" onclick="checkTelegramReplies()" style="background:linear-gradient(135deg,#0EA5E9,#2563EB);color:#fff;border:none">💬 Javoblarni tekshirish</button>
           <button class="btn btn-ghost btn-sm" onclick="clearAllConfirm('entrepreneurs')" style="color:#EF233C">🗑</button>
         </div>
       </div>
-      <div id="entrBody" style="display:block">
+      <div id="entrBody" style="display:none">
         <!-- Drop zone -->
         <div id="entrDropZone" style="margin:8px;padding:.6rem;border:2px dashed var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s"
           ondragover="event.preventDefault();this.style.borderColor='#059669';this.style.background='rgba(5,150,105,.05)'"
@@ -1398,7 +1395,7 @@ input[type="time"]{-webkit-appearance:none;}
         </div>
         <!-- Jadval -->
         <div class="tscroll" style="max-height:450px;overflow-y:auto"><table>
-          <thead><tr><th><input type="checkbox" id="entrCheckAll" onchange="toggleAllEntrepreneurs(this)" title="Hammasini belgilash"></th><th>#</th><th>Ism / Kompaniya</th><th>Tuman</th><th>📞 Telefon</th><th>Faoliyat</th><th>$M</th><th>Mos forum</th><th>📨</th><th>Javob</th><th></th></tr></thead>
+          <thead><tr><th><input type="checkbox" id="entrCheckAll" onchange="toggleAllEntrepreneurs(this)" title="Hammasini belgilash"></th><th>#</th><th>Ism / Kompaniya</th><th>Tuman</th><th>📞 Telefon</th><th>Faoliyat</th><th>$M</th><th>Mos forum</th><th>📨</th><th></th></tr></thead>
           <tbody id="entr-tbody"></tbody>
         </table></div>
         <div style="padding:.3rem .8rem;font-size:.5rem;color:var(--text3)">💡 Hukumat formati (№,Туман,Компания,Лойиҳа,Қиймати,Тел) yoki Oddiy (Ism,Telefon,Faoliyat)</div>
@@ -1515,8 +1512,15 @@ input[type="time"]{-webkit-appearance:none;}
               <th>T/r</th>
               <th data-i18n="col_company">Kompaniya</th>
               <th data-i18n="col_company_location">Kompaniya manzili</th>
-              <th style="min-width:420px;padding:0;overflow:visible;position:relative">
-                <div style="display:flex;align-items:center;gap:6px;padding:0 6px">
+              <th data-i18n="col_field" style="min-width:420px">Soha</th>
+              <th>Batafsil</th>
+              <th data-i18n="col_emailstatus">Email holati</th>
+              <th data-i18n="col_actions">Amal</th>
+            </tr>
+            <tr>
+              <th colspan="4" style="background:#fff;border-right:1px solid var(--border)"></th>
+              <th style="padding:8px 10px;background:#f8fbff;position:relative;overflow:visible">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
                   <div class="custom-select-wrap" id="investor-soha-filter-wrap" style="min-width:0;flex:1">
                     <div class="custom-select-display form-input" id="investor-soha-filter-display" onclick="toggleInvestorProductDropdown()" style="margin:0;height:34px;display:flex;align-items:center;padding:0 12px;font-size:.8rem;font-weight:700">— Barcha sohalar —</div>
                     <input type="hidden" id="investor-soha-filter-select" value="">
@@ -1525,18 +1529,12 @@ input[type="time"]{-webkit-appearance:none;}
                   <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none;padding:6px 10px;white-space:nowrap">Tozalash</button>
                 </div>
               </th>
-              <th>Batafsil</th>
-              <th data-i18n="col_emailstatus">Email holati</th>
-              <th data-i18n="col_actions">Amal</th>
-            </tr>
-            <tr>
-
+              <th colspan="3" style="background:#fff"></th>
             </tr>
           </thead>
           <tbody id="ic-tbody"></tbody>
         </table>
         </div>
-        <div id="ic-pagination" style="display:none;padding:0 1rem"></div>
       </div>
     </div>
 
@@ -1980,7 +1978,7 @@ input[type="time"]{-webkit-appearance:none;}
           <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem;height:100%"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
           <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
             <div class="tcard" style="margin-bottom:1rem">
-              <div class="tc-head"><div class="tc-title" id="import-detail-title">Batafsil import ma'lumotlari</div></div>
+              <div class="tc-head"><div class="tc-title">Batafsil import ma'lumotlari</div></div>
               <div id="import-detail-container" style="overflow:visible">
                 <table style="width:100%;border-collapse:collapse">
                   <thead id="import-thead"><tr><th>#</th><th>Davlat</th><th>Import ($)</th><th>Trend</th><th>Hajm (t)</th><th>Amal</th></tr></thead>
@@ -6036,8 +6034,6 @@ function investorCompanyMatchesProductFilter(rec, product){
   });
 }
 
-var _icPage = _icPage || 1;
-var IC_PAGE_SIZE = 15;
 function renderInvestorCompanies(){
   const allCo=DB.investorCompanies||[];
   var productFilter = _investorProductFilterId
@@ -6080,35 +6076,7 @@ function renderInvestorCompanies(){
     if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
     return;
   }
-  // Pagination
-  var icTotalPages = Math.max(1, Math.ceil(co.length / IC_PAGE_SIZE));
-  if(_icPage > icTotalPages) _icPage = icTotalPages;
-  if(_icPage < 1) _icPage = 1;
-  var icStart = (_icPage - 1) * IC_PAGE_SIZE;
-  var icEnd = icStart + IC_PAGE_SIZE;
-  var coPage = co.slice(icStart, icEnd);
-
-  // Pagination controls
-  var paginEl = document.getElementById('ic-pagination');
-  if(paginEl){
-    if(icTotalPages > 1){
-      var pages = [];
-      for(var p=1;p<=icTotalPages;p++){
-        var isActive = p === _icPage;
-        pages.push('<button onclick="_icPage='+p+';renderInvestorCompanies()" style="min-width:2rem;padding:4px 8px;border:1px solid '+(isActive?'#4361EE':'var(--border)')+';border-radius:6px;background:'+(isActive?'#4361EE':'var(--bg)')+';color:'+(isActive?'#fff':'var(--text)')+';font-size:.75rem;font-weight:'+(isActive?'700':'400')+';cursor:pointer">'+p+'</button>');
-      }
-      var prevBtn = '<button onclick="if(_icPage>1){_icPage--;renderInvestorCompanies();}" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.75rem;cursor:pointer">&#8592;</button>';
-      var nextBtn = '<button onclick="if(_icPage<'+icTotalPages+'){_icPage++;renderInvestorCompanies();}" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.75rem;cursor:pointer">&#8594;</button>';
-      paginEl.innerHTML = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:.75rem 0">'+prevBtn+pages.join('')+nextBtn+'<span style="font-size:.72rem;color:var(--text3);margin-left:6px">'+co.length+' ta / '+_icPage+'-bet</span></div>';
-      paginEl.style.display = 'block';
-    } else {
-      paginEl.innerHTML = '';
-      paginEl.style.display = 'none';
-    }
-  }
-
-  tb.innerHTML=coPage.map((r,i)=>{
-    var i = icStart + i;
+  tb.innerHTML=co.map((r,i)=>{
     var isAiOpen = (typeof _investorAiOpen !== 'undefined' && _investorAiOpen) && String((typeof _investorAiTargetId !== 'undefined' ? _investorAiTargetId : '')||'') === String(r.id);
     var isSohaEdit = String(_investorSohaEditId || '') === String(r.id);
     var locationText = getInvestorCompanyLocation(r);
@@ -10972,7 +10940,6 @@ function showEntrepreneurReply(id){
     toast('ℹ️ Telegram javobi topilmadi','info');
     return;
   }
-  markTgReplySeen(id);
   alert(
     'Telegram javobi\n\n' +
     'Ism / kompaniya: ' + (ent.name||'—') + '\n' +
@@ -11047,16 +11014,6 @@ async function checkTelegramReplies(options){
   }
 }
 window.checkTelegramReplies = checkTelegramReplies;
-
-function markTgReplySeen(id){
-  var ent = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
-  if(ent && ent.tgReplyText){
-    ent.tgReplySeen = true;
-    if(typeof fbSave==='function') fbSave('entrepreneurs', ent);
-    renderEntrepreneurs();
-  }
-}
-window.markTgReplySeen = markTgReplySeen;
 
 async function checkSingleTelegramReply(id){
   var ent = (DB.entrepreneurs||[]).find(function(item){ return item.id===id; });
@@ -11333,15 +11290,10 @@ function renderEntrepreneurs(){
   tb.innerHTML = list.map(function(e,i){
     var tgMeta = getEntrepreneurTgStatusMeta(e, tgCooldown);
     var stIcon = renderEntrepreneurTgStatusHtml(e, tgMeta);
-    var replyCheckBtn = '<button class="btn btn-sm" onclick="checkSingleTelegramReply(\''+e.id+'\')" style="background:#2563EB;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="Telegram javobini tekshirish">💬</button>';
-
-    // replyBadge built safely via data attribute to avoid apostrophe issues
-    var replyBadgeHtml = e.tgReplyText && !e.tgReplySeen
-      ? '<span class="tg-reply-badge new" data-eid="'+escHtml(String(e.id))+'">● Yangi javob</span>'
-      : (e.tgReplyText
-          ? '<span class="tg-reply-badge seen" data-eid="'+escHtml(String(e.id))+'" title="'+escHtml(e.tgReplyText.slice(0,120))+'">💬 '+escHtml(e.tgReplyText.slice(0,30))+(e.tgReplyText.length>30?'...':'')+'</span>'
-          : '<span style="color:var(--text3);font-size:.65rem">—</span>');
-    var replyBadge = replyBadgeHtml;
+    var replyCheckBtn = '<button class="btn btn-sm" onclick="checkSingleTelegramReply(\''+e.id+'\')" style="background:#2563EB;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram javobini tekshirish">💬</button>';
+    var replyViewBtn = e.tgReplyText
+      ? '<button class="btn btn-sm" onclick="showEntrepreneurReply(\''+e.id+'\')" style="background:#7C3AED;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram javobini ko\'rish">👁</button>'
+      : '';
     var checked = hasSavedSelection ? _entrSelectedIds.indexOf(String(e.id)) !== -1 : !!e.matchedForum;
     var nameCell = '<span id="nm-display-'+e.id+'" style="cursor:pointer" onclick="editEntName(\''+e.id+'\')" title="Bosib tahrirlang"><b>'+escHtml(e.name||'—')+'</b> ✏️</span>'+
       '<div id="nm-edit-'+e.id+'" style="display:none;align-items:center;gap:4px;flex-wrap:wrap">'+
@@ -11362,23 +11314,15 @@ function renderEntrepreneurs(){
       '<td style="font-size:.7rem;font-weight:700;color:#059669">'+(e.projectValue?'$'+e.projectValue+'M':'—')+'</td>'+
       '<td style="font-size:.6rem;color:#4361EE">'+(e.matchedForum||'—')+'</td>'+
       '<td style="font-size:.65rem">'+stIcon+'</td>'+
-      '<td style="font-size:.72rem;min-width:90px">'+replyBadge+'</td>'+
       '<td style="white-space:nowrap">'+
         replyCheckBtn+
-        '<button class="btn btn-sm" onclick="sendSingleTg(\''+e.id+'\')" style="background:#0088cc;color:#fff;border:none;font-size:.72rem;padding:5px 9px;margin-right:2px" title="Telegram xabar"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 14.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/></svg></button>'+
-        '<button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')" style="font-size:.72rem;padding:5px 9px">🗑</button>'+
+        replyViewBtn+
+        '<button class="btn btn-sm" onclick="sendSingleTg(\''+e.id+'\')" style="background:#0088cc;color:#fff;border:none;font-size:.55rem;padding:2px 6px;margin-right:2px" title="Telegram xabar">📲</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deleteEntrepreneur(\''+e.id+'\')" style="font-size:.55rem;padding:2px 6px">🗑</button>'+
       '</td></tr>';
   }).join('');
   updateEntrepreneurSelectedCount();
   checkForumAlerts();
-  // Delegate clicks on reply badges
-  var tbody = document.querySelector('#entr-tbody, tbody[id*="entr"]') || document.getElementById('entr-table-wrap');
-  if(tbody){
-    tbody.onclick = tbody.onclick || function(ev){
-      var badge = ev.target.closest('.tg-reply-badge');
-      if(badge && badge.dataset.eid) showEntrepreneurReply(badge.dataset.eid);
-    };
-  }
 }
 
 function editEntName(id){
@@ -11483,45 +11427,9 @@ async function sendSingleTg(id){
   var result = await sendTgMessage(ent.phone, msg, ent.name);
   applyTgResultToEntrepreneur(ent, result);
   renderEntrepreneurs();
-  if(result.ok){
-    toast('📲 ✅ '+ent.name+' ('+ent.phone+') ga xabar yuborildi!'+(result.user?' TG: '+result.user:''));
-    startTgReplyPolling(id);
-  } else {
-    toast('❌ '+ent.name+': '+result.error,'error');
-  }
+  if(result.ok) toast('📲 ✅ '+ent.name+' ('+ent.phone+') ga xabar yuborildi!'+(result.user?' TG: '+result.user:'')); 
+  else toast('❌ '+ent.name+': '+result.error,'error');
 }
-
-// Auto-polling: 30s intervals, max 20 times (10 min) per contact
-var _tgPollingTimers = {};
-function startTgReplyPolling(id){
-  if(_tgPollingTimers[id]) clearInterval(_tgPollingTimers[id]);
-  var attempts = 0;
-  var maxAttempts = 20;
-  _tgPollingTimers[id] = setInterval(async function(){
-    attempts++;
-    var ent = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
-    if(!ent || attempts > maxAttempts){
-      clearInterval(_tgPollingTimers[id]);
-      delete _tgPollingTimers[id];
-      return;
-    }
-    // Already got reply — stop polling
-    if(ent.tgReplyText && ent.tgReplySeen){
-      clearInterval(_tgPollingTimers[id]);
-      delete _tgPollingTimers[id];
-      return;
-    }
-    var res = await checkTelegramReplies({ids:[id], silent:true});
-    if(res && res.updated > 0){
-      // New reply arrived
-      var updated = (DB.entrepreneurs||[]).find(function(e){return e.id===id;});
-      toast('💬 '+( updated ? updated.name : 'Tadbirkor')+' dan Telegram javobi keldi!', 'success');
-      clearInterval(_tgPollingTimers[id]);
-      delete _tgPollingTimers[id];
-    }
-  }, 30000); // 30 seconds
-}
-window.startTgReplyPolling = startTgReplyPolling;
 
 async function sendTelegramToSelected(){
   var list = getSelectedEntrepreneurs();
@@ -11793,14 +11701,14 @@ function matchForumsToEntrepreneurs(){
   toast('🔗 '+matched+' ta tadbirkor forumga moslashtirildi! ('+(entrList.length-matched)+' ta mos kelmadi)');
 }
 
-function toggleAllEntrepreneurs(){
+function toggleEntrepreneurs(){
   var body=document.getElementById('entrBody');
   var icon=document.getElementById('entr-toggle-icon');
   if(!body) return;
   if(body.style.display==='none'){body.style.display='block';if(icon)icon.textContent='▲';}
   else{body.style.display='none';if(icon)icon.textContent='▼';}
 }
-window.toggleAllEntrepreneurs = toggleAllEntrepreneurs;
+window.toggleEntrepreneurs = toggleEntrepreneurs;
 
 var _currentModalForum = '';
 
@@ -13861,12 +13769,6 @@ function renderImportResults(countries, prod, source, targetCountries){
   targetCountries = (targetCountries && targetCountries.length) ? targetCountries : getImportAnalysisTargetCountries();
   initImportAnalysisComtradeOnly(targetCountries, getImportAnalysisSourceKey(source));
   var labels = getImportAnalysisLabels();
-  var detailTitleEl = document.getElementById('import-detail-title');
-  if(detailTitleEl){
-    detailTitleEl.textContent = getImportAnalysisFinderMode() === 'importers'
-      ? "Batafsil eksport ma'lumotlari"
-      : "Batafsil import ma'lumotlari";
-  }
   countries = Array.isArray(countries) ? countries.slice() : [];
   countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
   if(!countries.length){
@@ -13931,10 +13833,6 @@ function renderImportResults(countries, prod, source, targetCountries){
   var topExporterShare = total > 0 && topExporter && topExporter.value ? Math.round((topExporter.value / total) * 100) : 0;
   var topImporter = biggest;
   var topImporterShare = total > 0 && topImporter.import_usd ? Math.round((topImporter.import_usd / total) * 100) : 0;
-  var isImporterMode = getImportAnalysisFinderMode() === 'importers';
-  var topExporterCard = isImporterMode ? topImporter : topExporter;
-  var topImporterCard = isImporterMode ? topExporter : topImporter;
-  var topImporterCardShare = isImporterMode ? topExporterShare : topImporterShare;
   var singleCountry = okCountries.length === 1;
   var compactChartAmounts = countries.length > 3;
   var k1Label = document.getElementById('imp-k1-label');
@@ -13948,18 +13846,12 @@ function renderImportResults(countries, prod, source, targetCountries){
     : 'Top importyor';
 
   document.getElementById('imp-k1').textContent = investAiFmtUsd(total);
-  document.getElementById('imp-k2').textContent = topExporterCard
+  document.getElementById('imp-k2').textContent = topExporter
     ? ((topExporter.flag || '') + ' ' + (topExporter.label || topExporter.name || '—')).trim()
     : ((biggest.flag||'')+' '+(biggest.name||'—'));
-  if(topExporterCard){
-    document.getElementById('imp-k2').textContent = ((topExporterCard.flag || '') + ' ' + (topExporterCard.label || topExporterCard.name || '—')).trim();
-  }
   document.getElementById('imp-k3').textContent = singleCountry
     ? investAiFmtUsd(Number((((topImporter.year_imports || {})['2024']) || ((topImporter.year_imports || {})['2023']) || topImporter.import_usd || 0)))
     : (topImporter.name ? ((topImporter.flag||'')+' '+topImporter.name+' • '+topImporterShare+'%') : '—');
-  if(!singleCountry && topImporterCard && topImporterCard.name){
-    document.getElementById('imp-k3').textContent = (((topImporterCard.flag||'')+' '+topImporterCard.name+' • '+topImporterCardShare+'%')).trim();
-  }
   document.getElementById('imp-k4').textContent = source;
 
   var maxVal = Math.max.apply(null, okCountries.length ? okCountries.map(function(c){return c.import_usd||0;}) : [0]);
@@ -15741,28 +15633,10 @@ function getFinderCountSettings(){
   };
 }
 
-function getFinderBlockedSourceCountries(){
-  return (_finderTargetCountries || []).slice();
-}
-
-function isFinderSourceCountryBlocked(name){
-  return getFinderBlockedSourceCountries().indexOf(name) !== -1;
-}
-
-function syncFinderSourceAgainstTarget(){
-  var blocked = getFinderBlockedSourceCountries();
-  if(!blocked.length) return;
-  _finderSourceCountries = _finderSourceCountries.filter(function(country){
-    return blocked.indexOf(country) === -1;
-  });
-}
-
 function toggleFinderTargetCountry(name){
   var idx = _finderTargetCountries.indexOf(name);
   if(idx >= 0) _finderTargetCountries.splice(idx,1);
   else _finderTargetCountries.push(name);
-  syncFinderSourceAgainstTarget();
-  renderFinderSourceFilters();
   renderFinderTargetFilters();
 }
 
@@ -15790,8 +15664,6 @@ function toggleFinderTargetGroupAll(name){
       if(_finderTargetCountries.indexOf(country) === -1) _finderTargetCountries.push(country);
     });
   }
-  syncFinderSourceAgainstTarget();
-  renderFinderSourceFilters();
   renderFinderTargetFilters();
 }
 
@@ -15913,8 +15785,8 @@ function clearFinderSourceFilters(){
 }
 
 function toggleFinderSourceContinentAll(name){
-  var allCountries = (FINDER_SOURCE_REGIONS[name]||[]).filter(function(c){ return !isFinderSourceCountryBlocked(c); });
-  var allChecked = allCountries.length>0 && allCountries.every(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
+  var allCountries = FINDER_SOURCE_REGIONS[name]||[];
+  var allChecked = allCountries.every(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
   if(allChecked){
     allCountries.forEach(function(c){ var i=_finderSourceCountries.indexOf(c); if(i>=0)_finderSourceCountries.splice(i,1); });
   } else {
@@ -15931,7 +15803,6 @@ function toggleFinderSourceContinent(name){
 }
 
 function toggleFinderSourceCountry(name){
-  if(isFinderSourceCountryBlocked(name)) return;
   var idx = _finderSourceCountries.indexOf(name);
   if(idx >= 0) _finderSourceCountries.splice(idx,1);
   else _finderSourceCountries.push(name);
@@ -15946,18 +15817,15 @@ function renderFinderSourceFilters(){
   var meta = getFinderModeMeta((document.getElementById('finder-mode')||{}).value || 'importers');
   wrap.style.display = meta.mode === 'exporters' ? 'block' : 'none';
   if(meta.mode !== 'exporters') return;
-  syncFinderSourceAgainstTarget();
   var searchEl = document.getElementById('finderSourceSearch');
   var search = searchEl ? searchEl.value.toLowerCase().trim() : '';
-  var blockedCountries = getFinderBlockedSourceCountries();
   chipsEl.innerHTML = '';
   Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
     var allC = FINDER_SOURCE_REGIONS[cont]||[];
-    var availableC = allC.filter(function(c){ return blockedCountries.indexOf(c)===-1; });
     var filteredC = allC.filter(function(c){ return !search || c.toLowerCase().indexOf(search)!==-1; });
     if(search && filteredC.length===0) return;
-    var allChecked = availableC.length>0 && availableC.every(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
-    var someChecked = !allChecked && availableC.some(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
+    var allChecked = allC.length>0 && allC.every(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
+    var someChecked = !allChecked && allC.some(function(c){ return _finderSourceCountries.indexOf(c)!==-1; });
     var isOpen = someChecked || allChecked || search.length>0;
     var div = document.createElement('div');
     div.style.cssText = 'border:1px solid '+(someChecked||allChecked?'rgba(67,97,238,.35)':'var(--border)')+';border-radius:12px;overflow:hidden;background:'+(someChecked||allChecked?'rgba(67,97,238,.06)':'rgba(255,255,255,.75)');
@@ -15969,7 +15837,7 @@ function renderFinderSourceFilters(){
     var left = document.createElement('span');
     left.style.cssText = 'display:flex;align-items:center;gap:8px';
     var cb = document.createElement('input');
-    cb.type='checkbox'; cb.checked=allChecked; cb.indeterminate=someChecked; cb.disabled = availableC.length===0; cb.style.cursor = availableC.length===0 ? 'not-allowed' : 'pointer';
+    cb.type='checkbox'; cb.checked=allChecked; cb.indeterminate=someChecked; cb.style.cursor='pointer';
     cb.addEventListener('click', function(e){ e.stopPropagation(); });
     cb.addEventListener('change', function(){ toggleFinderSourceContinentAll(cont); });
     var nameSpan = document.createElement('span');
@@ -15977,19 +15845,18 @@ function renderFinderSourceFilters(){
     left.appendChild(cb); left.appendChild(nameSpan);
     var right = document.createElement('span');
     right.style.cssText = 'font-size:.62rem;color:var(--text3)';
-    right.textContent = availableC.length+' ta davlat';
+    right.textContent = allC.length+' ta davlat';
     hdr.appendChild(left); hdr.appendChild(right);
     div.appendChild(hdr);
     bodyDiv.style.cssText = 'padding:8px 10px;border-top:1px solid var(--border);display:'+(isOpen?'block':'none');
     var chips = document.createElement('div');
     chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:.35rem';
     filteredC.forEach(function(country){
-      var blocked = blockedCountries.indexOf(country)!==-1;
       var checked = _finderSourceCountries.indexOf(country)!==-1;
       var lbl = document.createElement('label');
-      lbl.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(blocked?'rgba(148,163,184,.10)':checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:'+(blocked?'not-allowed':'pointer')+';border:1px solid '+(blocked?'rgba(148,163,184,.25)':checked?'rgba(67,97,238,.35)':'var(--border)')+';opacity:'+(blocked?'.55':'1');
+      lbl.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:'+(checked?'rgba(67,97,238,.12)':'var(--bg2)')+';border-radius:8px;font-size:.68rem;cursor:pointer;border:1px solid '+(checked?'rgba(67,97,238,.35)':'var(--border)');
       var ccb = document.createElement('input');
-      ccb.type='checkbox'; ccb.checked=checked; ccb.disabled=blocked;
+      ccb.type='checkbox'; ccb.checked=checked;
       ccb.addEventListener('click', function(e){ e.stopPropagation(); });
       ccb.addEventListener('change', (function(c){ return function(){ toggleFinderSourceCountry(c); }; })(country));
       lbl.appendChild(ccb);
@@ -17986,52 +17853,16 @@ async function buildAiLetterPackage(comp, lang){
     '- Use ONLY figures from the data above — do not invent numbers\n'+
     '- Tone: professional, warm, compelling and specific\n'+
     '- Do NOT use bullet points or headers inside the letter body — write in flowing prose paragraphs\n'+
-    '- Sign as:\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov\n\n'+
+    '- Sign as: Navoi Regional Investment and Business Development Office, Navoi, Republic of Uzbekistan\n\n'+
     'FORMAT OUTPUT:\n'+
     'First line: email subject (no "Subject:" prefix)\n'+
     'Second line: ===BODY===\n'+
     'Then: full letter body\n\n'+
-    'Example format:\nStrategic Granite Partnership — Navoi, Uzbekistan\n===BODY===\nDear Mr. Schmidt,\n\n[Full letter body with 5-7 paragraphs]\n\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov';
+    'Example format:\nStrategic Granite Partnership — Navoi, Uzbekistan\n===BODY===\nDear Mr. Schmidt,\n\n[Full letter body with 5-7 paragraphs]\n\nSincerely,\nNavoi Regional Investment and Business Development Office';
 
   var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.72,maxOutputTokens:8192}};
-  // Use streaming to get full letter without truncation
-  var letterRaw = await (async function(){
-    var key = getGeminiKey();
-    if(!key) throw new Error('Gemini API kalit yo\'q.');
-    var models = typeof GEMINI_MODELS !== 'undefined' ? GEMINI_MODELS : ['gemini-2.0-flash'];
-    for(var mi=0;mi<models.length;mi++){
-      try{
-        var streamUrl = 'https://generativelanguage.googleapis.com/v1beta/models/'+models[mi]+':streamGenerateContent?alt=sse&key='+key;
-        var resp = await fetch(streamUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body2)});
-        if(!resp.ok) continue;
-        var reader = resp.body.getReader();
-        var decoder = new TextDecoder();
-        var full = '';
-        var buf = '';
-        while(true){
-          var chunk = await reader.read();
-          if(chunk.done) break;
-          buf += decoder.decode(chunk.value, {stream:true});
-          var lines = buf.split('\n');
-          buf = lines.pop();
-          for(var li=0;li<lines.length;li++){
-            var line = lines[li].trim();
-            if(!line.startsWith('data:')) continue;
-            var dataStr = line.slice(5).trim();
-            if(!dataStr || dataStr==='[DONE]') continue;
-            try{
-              var payload = JSON.parse(dataStr);
-              full += extractGeminiStreamText(payload);
-            }catch(e){}
-          }
-        }
-        if(full) return full;
-      }catch(e){ console.warn('Streaming xato:', e); }
-    }
-    // Fallback to non-streaming
-    var data2f = await callGemini(body2);
-    return geminiText(data2f);
-  })();
+  var data2 = await callGemini(body2);
+  var letterRaw = geminiText(data2);
   var letterSubject = 'Investment Opportunity in Navoi, Uzbekistan';
   var letterBody = letterRaw;
   var sepIdx = letterRaw.indexOf('===BODY===');
