@@ -16896,13 +16896,14 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     orgPeople2.sort(function(a,b){ return scoreP(b)-scoreP(a); });
     var basePerson = orgPeople2[0];
     if(basePerson){
+      // Always update _personId for enrichment
+      item2._personId = item2._personId || basePerson.id || '';
       if(!item2.rahbar || item2.rahbar === 'Exportyor kompaniya' || item2.rahbar === 'Importyor kompaniya'){
         item2.rahbar = ((basePerson.first_name||'')+' '+(basePerson.last_name||basePerson.last_name_obfuscated||'')).trim();
         item2.lavozim = basePerson.title || '';
         item2.photoUrl = basePerson.photo_url || '';
-        item2._personId = basePerson.id || '';
-        if(basePerson.email) item2.email = basePerson.email;
       }
+      if(!item2.email && basePerson.email) item2.email = basePerson.email;
       usedIds[basePerson.id] = true;
     }
 
@@ -16974,7 +16975,8 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   // ═══ STEP 3: Enrichment — email + tel raqam (Pro kredit) ═══
   // Faqat email yo'q odamlar uchun, max 15 ta
   var enrichQueue = found.filter(function(f){
-    return !f.email && f._personId;
+    // Enrich if: no email OR no phone (to get both)
+    return f._personId && (!f.email || !f.telefon);
   }).slice(0, 15);
 
   for(var ei=0; ei<enrichQueue.length; ei++){
@@ -16989,6 +16991,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       });
       var ep2 = enrData.person || null;
       if(ep2){
+        // Always take email and phone from enrichment (override existing)
         if(ep2.email) eItem.email = ep2.email;
         if(ep2.first_name) eItem.rahbar = ((ep2.first_name||'')+' '+(ep2.last_name||'')).trim();
         if(ep2.title) eItem.lavozim = ep2.title;
