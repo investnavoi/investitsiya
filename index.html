@@ -16454,6 +16454,42 @@ async function apolloRequestJson(payload){
   return json || {};
 }
 
+function isOrgRelevantToProduct(org, keywords, prod){
+  // Build searchable text from org data
+  var fields = [
+    org.name || '',
+    org.industry || '',
+    org.industry_tag || '',
+    org.short_description || '',
+    org.organization_headline || '',
+    (org.keywords || []).join(' '),
+    (org.industry_tag_ids || []).join(' ')
+  ].join(' ').toLowerCase();
+
+  // Product keywords to match against
+  var allKws = (keywords || []).slice();
+  if(prod && prod.name_en) allKws = allKws.concat(prod.name_en.toLowerCase().split(/[\s,\/\-]+/).filter(function(w){return w.length>3;}));
+  if(prod && prod.hs_code) allKws.push(String(prod.hs_code).replace(/\D/g,'').slice(0,4));
+
+  // If any product keyword matches org data — relevant
+  var matched = allKws.some(function(kw){
+    return kw && fields.indexOf(kw.toLowerCase()) !== -1;
+  });
+  if(matched) return true;
+
+  // Generic companies (IT, software, consulting) without any product match — skip
+  var genericIndustries = ['information technology','software','internet','consulting','financial services','accounting','insurance','legal','staffing','human resources','marketing','advertising','media','publishing','telecommunications'];
+  var orgIndustry = (org.industry || '').toLowerCase();
+  var isGeneric = genericIndustries.some(function(g){ return orgIndustry.indexOf(g) !== -1; });
+  if(isGeneric) return false;
+
+  // If org has no industry info — allow (can't determine relevance)
+  if(!orgIndustry) return true;
+
+  // Otherwise allow — better to include borderline than exclude valid ones
+  return true;
+}
+
 function guessEmailFromDomain(fullName, website){
   // Extract domain from website
   var domain = '';
@@ -16523,6 +16559,8 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         var name = org.name || '';
         if(!name || name.length > 100 || /\|/.test(name)) return;
         if(found.some(function(f){ return apolloCompanyKey(f.kompaniya)===apolloCompanyKey(name); })) return;
+        // ── Relevance check: skip if clearly unrelated to product ──
+        if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
         found.push({
           id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
           kompaniya:name, rahbar:'', lavozim:meta.mode==='exporters'?'Exportyor kompaniya':'Importyor kompaniya',
