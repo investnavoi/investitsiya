@@ -14167,6 +14167,7 @@ function renderImportResults(countries, prod, source, targetCountries){
   var topImporterCardShare = isImporterMode ? topPartnerShare : topReporterShare;
   var topExporter = topExporterCard || topReporter || topPartner || {};
   var topImporter = topImporterCard || topPartner || topReporter || {};
+  var topImporterShare = topImporterCardShare || topPartnerShare || topReporterShare || 0;
   var singleCountry = okCountries.length === 1;
   var compactChartAmounts = countries.length > 3;
   var k1Label = document.getElementById('imp-k1-label');
@@ -17038,7 +17039,10 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
     return getFinderQualifiedContacts(b).length - getFinderQualifiedContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
   });
   var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
-  return strong.slice(0, perCountry);
+  if(strong.length >= perCountry){
+    return strong.slice(0, perCountry);
+  }
+  return unique.slice(0, perCountry);
 }
 
 function apolloNeedContactCoverage(found, perCountry){
