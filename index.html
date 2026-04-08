@@ -17017,8 +17017,11 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
   var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
   if(!filtered.length){
     filtered = found.filter(function(item){
-      return !isApolloObviousMismatch(item, prod) && String(item.soha || '').trim();
+      return !isApolloObviousMismatch(item, prod) && String(item.kompaniya || '').trim();
     });
+  }
+  if(!filtered.length){
+    filtered = found.slice();
   }
   strategy = strategy || {top100:false, expansion:false, target13:false};
   if(strategy.top100){
@@ -17051,8 +17054,11 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
   var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
   if(!filtered.length){
     filtered = found.filter(function(item){
-      return !isApolloObviousMismatch(item, prod) && String(item.soha || '').trim();
+      return !isApolloObviousMismatch(item, prod) && String(item.kompaniya || '').trim();
     });
+  }
+  if(!filtered.length){
+    filtered = found.slice();
   }
   strategy = strategy || {top100:false, expansion:false, target13:false};
   if(strategy.top100){
@@ -17464,8 +17470,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         var org = person.organization || {};
         var name = org.name || person.organization_name || '';
         if(!name) return;
-        if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
-        apolloUpsertFinderItem(found, mapApolloPersonToFinderResult(person, country, meta), meta);
+        var mappedPerson = mapApolloPersonToFinderResult(person, country, meta);
+        if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(mappedPerson, prod)) return;
+        apolloUpsertFinderItem(found, mappedPerson, meta);
       });
     } catch(e){ lastError = e; if(apolloIsFatalError(e)) throw e; }
   }
@@ -17497,11 +17504,34 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
           if(found.length >= candidateCompanyLimit) return;
           var name = org.name || '';
           if(!name || name.length > 100 || /\|/.test(name)) return;
-          if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
-          apolloUpsertFinderItem(found, mapApolloOrganizationToFinderResult(org, country, meta), meta);
+          var mappedOrg = mapApolloOrganizationToFinderResult(org, country, meta);
+          if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(mappedOrg, prod)) return;
+          apolloUpsertFinderItem(found, mappedOrg, meta);
         });
       } catch(eOrg){ lastError = eOrg; if(apolloIsFatalError(eOrg)) throw eOrg; }
     }
+  }
+
+  if(found.length < perCountry){
+    try {
+      var broadOrgData = await apolloRequestJson({
+        search_type:'organizations',
+        page:1,
+        per_page:Math.max(4, discoveryPerPage),
+        api_key:apolloKey,
+        organization_locations:[country],
+        q_keywords:kw1 || kw2
+      });
+      hadSuccess = true;
+      normalizeApolloArray(broadOrgData, ['organizations','accounts','companies']).forEach(function(org){
+        if(found.length >= candidateCompanyLimit) return;
+        var name = org.name || '';
+        if(!name || name.length > 120 || /\|/.test(name)) return;
+        var mappedOrg = mapApolloOrganizationToFinderResult(org, country, meta);
+        if(isApolloObviousMismatch(mappedOrg, prod)) return;
+        apolloUpsertFinderItem(found, mappedOrg, meta);
+      });
+    } catch(eBroadOrg){ lastError = eBroadOrg; if(apolloIsFatalError(eBroadOrg)) throw eBroadOrg; }
   }
 
   // ═══ STEP 2: Har bir kompaniya uchun 2–4 kontakt yig‘ish ═══
@@ -17550,8 +17580,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         var org = person.organization || {};
         var compName = org.name || person.organization_name || '';
         if(!compName) return;
-        if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
-        apolloUpsertFinderItem(found, mapApolloPersonToFinderResult(person, country, meta), meta);
+        var fallbackPerson = mapApolloPersonToFinderResult(person, country, meta);
+        if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(fallbackPerson, prod)) return;
+        apolloUpsertFinderItem(found, fallbackPerson, meta);
       });
       for(var gi=0; gi<found.length; gi++){
         try {
