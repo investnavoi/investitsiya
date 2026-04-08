@@ -2071,7 +2071,7 @@ input[type="time"]{-webkit-appearance:none;}
         <!-- Country tabs -->
         <div id="finderCountryTabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto"></div>
         <div class="tscroll"><table>
-          <thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Shahar</th><th>Kontaktlar</th><th>Soha</th><th id="finder-volume-head">Import hajmi</th><th>Score</th><th>Amal</th></tr></thead>
+<thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Shahar</th><th>Kontaktlar</th><th>Soha</th><th id="finder-volume-head">Import hajmi</th><th>Score</th><th>Batafsil</th><th>Email holati</th><th>Amal</th></tr></thead>
           <tbody id="finder-tbody"></tbody>
         </table></div>
       </div>
@@ -5978,6 +5978,169 @@ function getFinderDisplayContacts(item){
   }
   return [fallback];
 }
+
+function getCurrentFinderProductMeta(){
+  var finderSel = document.getElementById('finder-product-select');
+  var currentProd = (DB.products||[]).find(function(p){
+    return String(p.id) === String((finderSel||{}).value || '');
+  });
+  return {
+    item: currentProd || null,
+    productId: currentProd ? String(currentProd.id || '') : '',
+    productHs: currentProd ? String(currentProd.hs_code || '').replace(/\D/g,'').slice(0,6) : '',
+    productLabel: currentProd ? formatBilingualProductName(currentProd) : ''
+  };
+}
+
+function findFinderContactInvestorRecord(item, contact){
+  var companyKey = String((item && item.kompaniya) || '').trim().toLowerCase();
+  if(!companyKey) return null;
+  var emailKey = String((contact && contact.email) || '').trim().toLowerCase();
+  var phoneKey = String((contact && contact.telefon) || '').trim();
+  var nameKey = String((contact && contact.name) || '').trim().toLowerCase();
+  return (DB.investorCompanies || []).find(function(rec){
+    if(String(rec.kompaniya || '').trim().toLowerCase() !== companyKey) return false;
+    if(emailKey && String(rec.email || '').trim().toLowerCase() === emailKey) return true;
+    if(phoneKey && String(rec.telefon || rec.tel || '').trim() === phoneKey) return true;
+    if(nameKey && String(rec.rahbar || '').trim().toLowerCase() === nameKey) return true;
+    return false;
+  }) || null;
+}
+
+function upsertFinderContactInvestorRecord(record, item, contact, meta){
+  if(!DB.investorCompanies) DB.investorCompanies = [];
+  var rec = record || { id: nextId(DB.investorCompanies) };
+  var created = !record;
+  var today = new Date().toISOString().slice(0,10);
+  rec.kompaniya = item.kompaniya || rec.kompaniya || '';
+  rec.davlat = item.davlat || rec.davlat || '';
+  rec.shahar = item.shahar || rec.shahar || '';
+  rec.website = item.website || rec.website || '';
+  rec.soha = item.mahsulotNomi || (meta && meta.productLabel) || item.soha || rec.soha || '';
+  rec.mahsulotNomi = item.mahsulotNomi || (meta && meta.productLabel) || rec.mahsulotNomi || rec.soha || '';
+  rec.productId = item.productId || (meta && meta.productId) || rec.productId || '';
+  rec.mahsulotProductId = item.mahsulotProductId || rec.mahsulotProductId || rec.productId || (meta && meta.productId) || '';
+  rec.mahsulotHs = item.mahsulotHs || item.productHs || item.hsCode || (meta && meta.productHs) || rec.mahsulotHs || '';
+  rec.productHs = rec.mahsulotHs || rec.productHs || (meta && meta.productHs) || '';
+  rec.holat = rec.holat || 'Yangi';
+  rec.sana = rec.sana || today;
+  rec.emailSent = !!rec.emailSent;
+  rec.manba = item.manba || rec.manba || 'Apollo';
+  rec.score = item.score || rec.score || 0;
+  rec.xodimlar = item.xodimlar || rec.xodimlar || '';
+  rec.daromad = item.daromad || rec.daromad || '';
+  rec.tpilyil = item.tpilyil || rec.tpilyil || '';
+  rec.rahbar = contact.name || rec.rahbar || '';
+  rec.lavozim = contact.title || rec.lavozim || '';
+  rec.email = contact.email || rec.email || '';
+  rec.telefon = contact.telefon || rec.telefon || rec.tel || '';
+  rec.tel = rec.telefon || rec.tel || '';
+  rec.photoUrl = contact.photoUrl || rec.photoUrl || rec.photo_url || '';
+  rec.photo_url = rec.photoUrl || rec.photo_url || '';
+  rec.linkedin = contact.linkedin || rec.linkedin || '';
+  if(created){
+    DB.investorCompanies.push(rec);
+  }
+  if(typeof fbSave === 'function') fbSave('investorCompanies', rec);
+  return rec;
+}
+
+function ensureFinderContactInvestorRecord(resultIdx, contactIdx){
+  var item = (_finderResults || [])[resultIdx];
+  if(!item) return null;
+  var contacts = getFinderQualifiedContacts(item);
+  var contact = contacts[contactIdx];
+  if(!contact) return null;
+  var existing = findFinderContactInvestorRecord(item, contact);
+  return upsertFinderContactInvestorRecord(existing, item, contact, getCurrentFinderProductMeta());
+}
+
+function renderFinderContactEmailStatus(resultIdx, contactIdx, contact){
+  var item = (_finderResults || [])[resultIdx];
+  var rec = item ? findFinderContactInvestorRecord(item, contact) : null;
+  return getEmailStatusBadge(rec || { email: (contact && contact.email) || '', emailSent: false });
+}
+
+function refreshFinderResultTabs(){
+  var tabsEl = document.getElementById('finderCountryTabs');
+  var countEl = document.getElementById('finder-result-count');
+  var list = Array.isArray(_finderResults) ? _finderResults : [];
+  if(countEl) countEl.textContent = list.length;
+  if(!tabsEl) return;
+  var countryGroups = {};
+  list.forEach(function(r){
+    if(!countryGroups[r.davlat]) countryGroups[r.davlat] = [];
+    countryGroups[r.davlat].push(r);
+  });
+  var countryNames = Object.keys(countryGroups);
+  tabsEl.innerHTML = '<div onclick="filterFinderByCountry(\'\')" style="flex:0 0 auto;padding:8px 14px;border-bottom:2px solid #4361EE;cursor:pointer;font-size:.7rem;font-weight:700;background:rgba(67,97,238,.08)">📋 Hammasi ('+list.length+')</div>';
+  countryNames.forEach(function(cn){
+    tabsEl.innerHTML += '<div onclick="filterFinderByCountry(\''+cn+'\')" style="flex:0 0 auto;padding:8px 14px;border-bottom:2px solid transparent;cursor:pointer;font-size:.7rem;font-weight:600">'+getFinderCountryFlag(cn)+' '+getFinderCountryLabel(cn)+' ('+countryGroups[cn].length+')</div>';
+  });
+}
+
+function openFinderContactDetail(resultIdx, contactIdx){
+  var rec = ensureFinderContactInvestorRecord(resultIdx, contactIdx);
+  if(rec && rec.id) openInvestorDetailModal(rec.id);
+}
+
+function openFinderContactAi(resultIdx, contactIdx){
+  var rec = ensureFinderContactInvestorRecord(resultIdx, contactIdx);
+  if(rec && rec.id) goToAiLetterById(rec.id);
+}
+
+function openFinderContactEmail(resultIdx, contactIdx){
+  var rec = ensureFinderContactInvestorRecord(resultIdx, contactIdx);
+  if(rec && rec.id) openEmailModal(rec.id);
+}
+
+function openFinderContactSchedule(resultIdx, contactIdx){
+  var rec = ensureFinderContactInvestorRecord(resultIdx, contactIdx);
+  if(rec && rec.id) openScheduleModal(rec.id);
+}
+
+function deleteFinderContactResult(resultIdx, contactIdx){
+  var item = (_finderResults || [])[resultIdx];
+  if(!item) return;
+  var contacts = getFinderQualifiedContacts(item);
+  var contact = contacts[contactIdx];
+  if(!contact) return;
+  var existing = findFinderContactInvestorRecord(item, contact);
+  if(existing){
+    DB.investorCompanies = (DB.investorCompanies || []).filter(function(rec){
+      return String(rec.id) !== String(existing.id);
+    });
+    if(typeof fbDelete === 'function') fbDelete('investorCompanies', existing.id);
+  }
+  if(Array.isArray(item.contacts) && item.contacts.length){
+    var removed = false;
+    item.contacts = item.contacts.filter(function(candidate){
+      if(removed) return true;
+      var same = apolloContactKey(candidate) === apolloContactKey(contact);
+      if(!same){
+        same = !!contact.email && String(candidate.email || '').trim().toLowerCase() === String(contact.email || '').trim().toLowerCase();
+      }
+      if(same){
+        removed = true;
+        return false;
+      }
+      return true;
+    });
+    apolloApplyCompanyContacts(item);
+  }
+  if(getFinderQualifiedContacts(item).length < 2){
+    _finderResults.splice(resultIdx, 1);
+  }
+  refreshFinderResultTabs();
+  renderFinderTable(_finderResults);
+  toast('Kontakt o\'chirildi', 'info');
+}
+
+window.openFinderContactDetail = openFinderContactDetail;
+window.openFinderContactAi = openFinderContactAi;
+window.openFinderContactEmail = openFinderContactEmail;
+window.openFinderContactSchedule = openFinderContactSchedule;
+window.deleteFinderContactResult = deleteFinderContactResult;
 
 function closeInvestorDetailModal(){
   var modal = document.getElementById('investorDetailModal');
@@ -13985,18 +14148,19 @@ function renderImportResults(countries, prod, source, targetCountries){
       exporterTotals[exporterName].value += exporterValue;
     });
   });
-  var topExporter = Object.keys(exporterTotals).map(function(name){
+  var topPartner = Object.keys(exporterTotals).map(function(name){
     return exporterTotals[name];
   }).sort(function(a, b){
     return (b.value || 0) - (a.value || 0);
   })[0] || null;
-  var topExporterShare = total > 0 && topExporter && topExporter.value ? Math.round((topExporter.value / total) * 100) : 0;
-  var topImporter = biggest;
-  var topImporterShare = total > 0 && topImporter.import_usd ? Math.round((topImporter.import_usd / total) * 100) : 0;
+  var topPartnerShare = total > 0 && topPartner && topPartner.value ? Math.round((topPartner.value / total) * 100) : 0;
+  var topReporter = biggest;
+  var topReporterShare = total > 0 && topReporter.import_usd ? Math.round((topReporter.import_usd / total) * 100) : 0;
   var isImporterMode = getImportAnalysisFinderMode() === 'importers';
-  var topExporterCard = isImporterMode ? topImporter : topExporter;
-  var topImporterCard = isImporterMode ? topExporter : topImporter;
-  var topImporterCardShare = isImporterMode ? topExporterShare : topImporterShare;
+  var topExporterCard = isImporterMode ? topReporter : topPartner;
+  var topExporterCardShare = isImporterMode ? topReporterShare : topPartnerShare;
+  var topImporterCard = isImporterMode ? topPartner : topReporter;
+  var topImporterCardShare = isImporterMode ? topPartnerShare : topReporterShare;
   var singleCountry = okCountries.length === 1;
   var compactChartAmounts = countries.length > 3;
   var k1Label = document.getElementById('imp-k1-label');
@@ -14023,6 +14187,18 @@ function renderImportResults(countries, prod, source, targetCountries){
     document.getElementById('imp-k3').textContent = (((topImporterCard.flag||'')+' '+topImporterCard.name+' • '+topImporterCardShare+'%')).trim();
   }
   document.getElementById('imp-k4').textContent = source;
+  // Final KPI normalization: green card always shows the leading exporter,
+  // yellow card shows the leading importer/counterparty for the current mode.
+  if(k2Label) k2Label.textContent = 'Top eksportyor';
+  if(k3Label) k3Label.textContent = singleCountry
+    ? (isImporterMode ? '2024 import' : '2024 eksport')
+    : 'Top importyor';
+  document.getElementById('imp-k2').textContent = topExporterCard
+    ? ((topExporterCard.flag || '') + ' ' + (topExporterCard.label || topExporterCard.name || 'вЂ”')).trim()
+    : ((topReporter.flag||'')+' '+(topReporter.name||'вЂ”'));
+  document.getElementById('imp-k3').textContent = singleCountry
+    ? investAiFmtUsd(Number(((((topImporterCard && topImporterCard.year_imports) || {})['2024']) || (((topImporterCard && topImporterCard.year_imports) || {})['2023']) || (topImporterCard && (topImporterCard.import_usd || topImporterCard.value)) || 0)))
+    : (topImporterCard && topImporterCard.name ? (((topImporterCard.flag||'')+' '+topImporterCard.name+' вЂў '+topImporterCardShare+'%')).trim() : 'вЂ”');
 
   var maxVal = Math.max.apply(null, okCountries.length ? okCountries.map(function(c){return c.import_usd||0;}) : [0]);
   var chartEl = document.getElementById('importBarChart');
@@ -16466,6 +16642,35 @@ function apolloChooseCompanyContacts(candidates){
   return chosen.slice(0,4);
 }
 
+function apolloChooseEnrichmentTargets(candidates, maxCount){
+  var limit = Math.max(1, Math.min(4, Number(maxCount || 4) || 4));
+  var pool = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
+    return contact && contact.personId && !(contact.email && contact.telefon);
+  }).sort(function(a,b){
+    return (b.score || 0) - (a.score || 0);
+  });
+  var chosen = [];
+  var seen = new Set();
+  ['executive','sales','technical'].forEach(function(bucket){
+    var match = pool.find(function(contact){
+      var key = apolloContactKey(contact);
+      return contact.bucket === bucket && !seen.has(key);
+    });
+    if(match && chosen.length < limit){
+      chosen.push(match);
+      seen.add(apolloContactKey(match));
+    }
+  });
+  pool.forEach(function(contact){
+    if(chosen.length >= limit) return;
+    var key = apolloContactKey(contact);
+    if(seen.has(key)) return;
+    chosen.push(contact);
+    seen.add(key);
+  });
+  return chosen.slice(0, limit);
+}
+
 function apolloContactRoleKey(contact){
   if(!contact) return '';
   var titleKey = apolloNormalizeText(contact.title || '');
@@ -16567,18 +16772,11 @@ function apolloUpsertFinderItem(found, item, meta){
 async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
   if(!item) return item;
   apolloEnsureContactBuckets(item);
-  var candidates = (item._contactCandidates || []).slice().sort(function(a,b){
-    return (b.score || 0) - (a.score || 0);
-  });
-  var targets = [];
-  candidates.forEach(function(contact){
-    if(targets.length >= maxEnrich) return;
-    if(!contact.personId) return;
-    if(targets.some(function(existing){ return existing.personId === contact.personId; })) return;
-    if(contact.email && contact.telefon) return;
-    targets.push(contact);
+  var targets = apolloChooseEnrichmentTargets(item._contactCandidates || [], maxEnrich || 4).filter(function(contact){
+    return !contact._enrichedAttempted;
   });
   for(var i=0; i<targets.length; i++){
+    targets[i]._enrichedAttempted = true;
     try {
       var enrData = await apolloRequestJson({
         search_type:'people_enrichment',
@@ -16590,15 +16788,9 @@ async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
       if(!person) continue;
       var merged = apolloPersonToContact(person, person.organization || {});
       apolloMergeContactCandidate(item, merged);
-      if(person.organization){
-        item.soha = item.soha || person.organization.industry || '';
-        item.website = item.website || apolloAbsoluteUrl(person.organization.website_url || person.organization.website || '');
-        item.shahar = item.shahar || person.organization.city || person.city || '';
-        item.xodimlar = item.xodimlar || Number(person.organization.estimated_num_employees || 0) || 0;
-        item.daromad = item.daromad || person.organization.organization_revenue_printed || person.organization.annual_revenue_printed || '';
-        item.tpilyil = item.tpilyil || person.organization.founded_year || '';
-      }
     } catch(_enrichErr){}
+    apolloApplyCompanyContacts(item);
+    if(apolloHasMinimumContactCoverage(item)) break;
   }
   apolloApplyCompanyContacts(item);
   return item;
@@ -17126,6 +17318,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var found = [];
   var lastError = null;
   var hadSuccess = false;
+  var candidateCompanyLimit = Math.max(2, perCountry);
+  var discoveryPerPage = Math.max(3, Math.min(6, perCountry + 1));
+  var peoplePerPage = 4;
   function dedupeStrings(list){
     return Array.from(new Set((list || []).map(function(v){ return String(v || '').trim(); }).filter(Boolean)));
   }
@@ -17138,14 +17333,14 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     return picked.slice(0, 10);
   }
   async function searchPeopleAndMerge(item, titles, limit, maxPages){
-    var pages = Math.max(1, Number(maxPages || 2) || 1);
+    var pages = Math.max(1, Number(maxPages || 1) || 1);
     for(var page=1; page<=pages; page++){
       var req = {
         search_type:'people',
         page:page,
-        per_page:limit || 8,
+        per_page:limit || peoplePerPage,
         api_key:apolloKey,
-        contact_email_status:['verified','likely to engage','unavailable']
+        contact_email_status:['verified','likely to engage']
       };
       if(item && item._orgId){
         req.organization_ids = [item._orgId];
@@ -17178,7 +17373,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         }
       });
       apolloApplyCompanyContacts(item);
-      if(getFinderDisplayContacts(item).length >= 4 || !mergedAny){
+      if(apolloHasMinimumContactCoverage(item) || getFinderDisplayContacts(item).length >= 4 || !mergedAny){
         break;
       }
     }
@@ -17203,14 +17398,14 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   ].map(dedupeStrings).filter(function(set){ return set.length; });
 
   // ═══ STEP 1: People Search — kompaniyalarni topish va kontaktlarni yig‘ish ═══
-  for(var psi=0; psi<peopleSets.length; psi++){
-    if(found.length >= Math.max(perCountry * 2, perCountry + 2)) break;
+  for(var psi=0; psi<Math.min(2, peopleSets.length); psi++){
+    if(found.length >= candidateCompanyLimit) break;
     try {
       var prodKwTags = getProductKeywordTags(prod);
       var psReq = {
         search_type:'people',
         page:1,
-        per_page:Math.max(perCountry * 6, 24),
+        per_page:discoveryPerPage,
         api_key:apolloKey,
         organization_locations:[country],
         person_titles: peopleSets[psi],
@@ -17219,6 +17414,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       var psData = await apolloRequestJson(psReq);
       hadSuccess = true;
       normalizeApolloArray(psData, ['people','contacts']).forEach(function(person){
+        if(found.length >= candidateCompanyLimit) return;
         var org = person.organization || {};
         var name = org.name || person.organization_name || '';
         if(!name) return;
@@ -17239,12 +17435,12 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       return true;
     });
     for(var ki=0; ki<kwSets.length; ki++){
-      if(found.length >= Math.max(perCountry * 2, perCountry + 2)) break;
+      if(found.length >= candidateCompanyLimit) break;
       try {
         var apData = await apolloRequestJson({
           search_type:'organizations',
           page:1,
-          per_page:Math.max(perCountry * 3, 12),
+          per_page:discoveryPerPage,
           api_key:apolloKey,
           organization_locations:[country],
           q_organization_keyword_tags:kwSets[ki],
@@ -17252,6 +17448,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         });
         hadSuccess = true;
         normalizeApolloArray(apData, ['organizations','accounts','companies']).forEach(function(org){
+          if(found.length >= candidateCompanyLimit) return;
           var name = org.name || '';
           if(!name || name.length > 100 || /\|/.test(name)) return;
           if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
@@ -17264,28 +17461,23 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   // ═══ STEP 2: Har bir kompaniya uchun 2–4 kontakt yig‘ish ═══
   var candidates = found.slice().sort(function(a,b){
     return (Number(b.score || 0) - Number(a.score || 0));
-  }).slice(0, Math.max(perCountry * 2, 8));
+  }).slice(0, candidateCompanyLimit);
 
   for(var fi=0; fi<candidates.length; fi++){
     var item = candidates[fi];
     try {
       if(item._orgId){
-        if(getFinderDisplayContacts(item).length < 4) await searchPeopleAndMerge(item, executiveTitles, 8, 2);
-        if(getFinderDisplayContacts(item).length < 4) await searchPeopleAndMerge(item, salesTitles, 8, 2);
-        if(getFinderDisplayContacts(item).length < 4) await searchPeopleAndMerge(item, technicalTitles, 8, 2);
-        if(getFinderDisplayContacts(item).length < 4) await searchPeopleAndMerge(item, broadTitles.slice(0, 10), 12, 2);
-        if(getFinderDisplayContacts(item).length < 2) await searchPeopleAndMerge(item, [], 16, 2);
+        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, executiveTitles, 2, 1);
+        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, salesTitles, 2, 1);
+        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, technicalTitles, 2, 1);
+        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, broadTitles.slice(0, 4), 2, 1);
       } else {
-        await searchPeopleAndMerge(item, broadTitles.slice(0, 10), 16, 2);
-        if(getFinderDisplayContacts(item).length < 2) await searchPeopleAndMerge(item, [], 16, 2);
+        await searchPeopleAndMerge(item, broadTitles.slice(0, 4), 2, 1);
       }
       await apolloEnrichCompanyContacts(item, apolloKey, 4);
       apolloApplyCompanyContacts(item);
       if(!apolloHasMinimumContactCoverage(item)){
-        await searchPeopleAndMerge(item, broadTitles.slice(0, 12), 16, 2);
-        if(!apolloHasMinimumContactCoverage(item)){
-          await searchPeopleAndMerge(item, [], 20, 2);
-        }
+        await searchPeopleAndMerge(item, broadTitles.slice(0, 6), 2, 1);
         await apolloEnrichCompanyContacts(item, apolloKey, 4);
         apolloApplyCompanyContacts(item);
       }
@@ -17301,9 +17493,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       var fbData = await apolloRequestJson({
         search_type:'people',
         page:1,
-        per_page:Math.max(perCountry * 5, 20),
+        per_page:discoveryPerPage,
         api_key:apolloKey,
-        person_titles:broadTitles.slice(0, 10),
+        person_titles:broadTitles.slice(0, 6),
         organization_locations:[country],
         q_organization_keyword_tags:getProductKeywordTags(prod)
       });
@@ -17317,7 +17509,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       });
       for(var gi=0; gi<found.length; gi++){
         try {
-          await apolloEnrichCompanyContacts(found[gi], apolloKey, 4);
+          if(!apolloHasMinimumContactCoverage(found[gi])){
+            await apolloEnrichCompanyContacts(found[gi], apolloKey, 2);
+          }
           apolloApplyCompanyContacts(found[gi]);
         } catch(_fallbackEnrichErr){}
       }
@@ -17559,12 +17753,7 @@ function renderFinderTable(results){
   results.sort(function(a,b){ return (b.score||0)-(a.score||0); }).forEach(function(r,i){
     var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
     var contacts = getFinderQualifiedContacts(r);
-    if(!contacts.length){
-      contacts = getFinderDisplayContacts(r).slice(0,1);
-    }
-    if(!contacts.length){
-      contacts = [{ name:'—', title:'Kontakt topilmadi', email:'', telefon:'', photoUrl:'' }];
-    }
+    if(contacts.length < 2) return;
     var rowspan = Math.max(1, contacts.length);
     contacts.forEach(function(contact, contactIdx){
       var row = '<tr>';
@@ -17608,6 +17797,48 @@ function filterFinderByCountry(country){
     }
     renderFinderTable(_finderResults.filter(function(r){return r.davlat===country;}));
   }
+}
+
+// Override finder table rendering so each qualified contact gets its own detail/status/action controls.
+function renderFinderTable(results){
+  updateFinderModeUI();
+  var tb = document.getElementById('finder-tbody');
+  if(!tb) return;
+  var rows = [];
+  (results || []).slice().sort(function(a,b){
+    return (b.score || 0) - (a.score || 0);
+  }).forEach(function(r, i){
+    var scoreColor = r.score>=80 ? '#059669' : r.score>=60 ? '#FFB703' : '#EF233C';
+    var contacts = getFinderQualifiedContacts(r);
+    if(contacts.length < 2) return;
+    var rowspan = Math.max(1, contacts.length);
+    contacts.forEach(function(contact, contactIdx){
+      var row = '<tr>';
+      if(contactIdx === 0){
+        row += '<td rowspan="'+rowspan+'"><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>';
+        row += '<td rowspan="'+rowspan+'">'+(i+1)+'</td>';
+        row += '<td rowspan="'+rowspan+'"><b>'+escHtml(r.kompaniya || '—')+'</b>'+(r.website ? '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.website)+'</div>' : '')+'</td>';
+        row += '<td rowspan="'+rowspan+'">'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>';
+        row += '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+escHtml(r.shahar || '—')+'</td>';
+      }
+      row += '<td>'+renderFinderContactCard(contact)+'</td>';
+      if(contactIdx === 0){
+        row += '<td rowspan="'+rowspan+'" style="font-size:.65rem">'+escHtml(r.soha || '—')+'</td>';
+        row += '<td rowspan="'+rowspan+'" style="font-size:.65rem">'+escHtml(r.daromad || '—')+'</td>';
+        row += '<td rowspan="'+rowspan+'"><span style="font-weight:800;color:'+scoreColor+'">'+escHtml(String(r.score || 0))+'</span></td>';
+      }
+      row += '<td><button type="button" onclick="openFinderContactDetail('+i+','+contactIdx+')" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:5px 10px">Batafsil</button></td>';
+      row += '<td>'+renderFinderContactEmailStatus(i, contactIdx, contact)+'</td>';
+      row += '<td><div style="display:flex;gap:6px;align-items:center;white-space:nowrap">'+
+        '<button class="btn btn-sm" onclick="openFinderContactAi('+i+','+contactIdx+')" title="AI tahlil va xat" style="background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none">🤖</button>'+
+        (contact.email ? '<button class="btn btn-blue btn-sm" onclick="openFinderContactEmail('+i+','+contactIdx+')" title="Xat yuborish">📧</button>' : '')+
+        (contact.email ? '<button class="btn btn-sm" onclick="openFinderContactSchedule('+i+','+contactIdx+')" title="Rejalashtirish" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border)">📅</button>' : '')+
+        '<button class="btn btn-danger btn-sm" onclick="deleteFinderContactResult('+i+','+contactIdx+')" title="Kontaktni olib tashlash">🗑</button>'+
+      '</div></td></tr>';
+      rows.push(row);
+    });
+  });
+  tb.innerHTML = rows.join('');
 }
 
 function saveFinderResults(){
