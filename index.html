@@ -5933,6 +5933,18 @@ function getFinderQualifiedContacts(item){
   return getFinderDisplayContacts(item).filter(finderContactIsQualified).slice(0,4);
 }
 
+function getFinderRenderableContacts(item){
+  var display = getFinderDisplayContacts(item).filter(function(contact){
+    return finderContactHasEmail(contact) || finderContactHasPhone(contact);
+  }).slice(0,4);
+  var qualified = display.filter(finderContactIsQualified);
+  return (qualified.length >= 2 ? qualified : display).slice(0,4);
+}
+
+function finderResultIsRenderable(item){
+  return getFinderRenderableContacts(item).length > 0;
+}
+
 function renderFinderContactCard(contact){
   if(!contact){
     return '<span style="color:var(--text3)">—</span>';
@@ -5948,7 +5960,13 @@ function renderFinderContactCard(contact){
 }
 
 function renderFinderContactsHtml(contacts){
-  var list = Array.isArray(contacts) ? contacts.filter(finderContactIsQualified).slice(0,4) : [];
+  var list = Array.isArray(contacts) ? contacts.filter(function(contact){
+    return finderContactHasEmail(contact) || finderContactHasPhone(contact);
+  }).slice(0,4) : [];
+  var qualified = list.filter(finderContactIsQualified);
+  if(qualified.length >= 2){
+    list = qualified.slice(0,4);
+  }
   if(!list.length && Array.isArray(contacts)){
     list = contacts.slice(0,1);
   }
@@ -6048,7 +6066,7 @@ function upsertFinderContactInvestorRecord(record, item, contact, meta){
 function ensureFinderContactInvestorRecord(resultIdx, contactIdx){
   var item = (_finderResults || [])[resultIdx];
   if(!item) return null;
-  var contacts = getFinderQualifiedContacts(item);
+  var contacts = getFinderRenderableContacts(item);
   var contact = contacts[contactIdx];
   if(!contact) return null;
   var existing = findFinderContactInvestorRecord(item, contact);
@@ -6064,7 +6082,7 @@ function renderFinderContactEmailStatus(resultIdx, contactIdx, contact){
 function refreshFinderResultTabs(){
   var tabsEl = document.getElementById('finderCountryTabs');
   var countEl = document.getElementById('finder-result-count');
-  var list = Array.isArray(_finderResults) ? _finderResults : [];
+  var list = (Array.isArray(_finderResults) ? _finderResults : []).filter(finderResultIsRenderable);
   if(countEl) countEl.textContent = list.length;
   if(!tabsEl) return;
   var countryGroups = {};
@@ -6102,7 +6120,7 @@ function openFinderContactSchedule(resultIdx, contactIdx){
 function deleteFinderContactResult(resultIdx, contactIdx){
   var item = (_finderResults || [])[resultIdx];
   if(!item) return;
-  var contacts = getFinderQualifiedContacts(item);
+  var contacts = getFinderRenderableContacts(item);
   var contact = contacts[contactIdx];
   if(!contact) return;
   var existing = findFinderContactInvestorRecord(item, contact);
@@ -17711,6 +17729,8 @@ async function runCompanyFinder(source){
     setTimeout(function(){
       document.getElementById('finderProgress').style.display = 'none';
 
+      _finderResults = (_finderResults || []).filter(finderResultIsRenderable);
+
       if(!_finderResults.length){
         document.getElementById('finderEmpty').style.display = 'block';
         toast('⚠️ Kompaniya topilmadi','error');
@@ -17762,8 +17782,8 @@ function renderFinderTable(results){
   var rows = [];
   results.sort(function(a,b){ return (b.score||0)-(a.score||0); }).forEach(function(r,i){
     var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
-    var contacts = getFinderQualifiedContacts(r);
-    if(contacts.length < 2) return;
+    var contacts = getFinderRenderableContacts(r);
+    if(!contacts.length) return;
     var rowspan = Math.max(1, contacts.length);
     contacts.forEach(function(contact, contactIdx){
       var row = '<tr>';
@@ -17819,8 +17839,8 @@ function renderFinderTable(results){
     return (b.score || 0) - (a.score || 0);
   }).forEach(function(r, i){
     var scoreColor = r.score>=80 ? '#059669' : r.score>=60 ? '#FFB703' : '#EF233C';
-    var contacts = getFinderQualifiedContacts(r);
-    if(contacts.length < 2) return;
+    var contacts = getFinderRenderableContacts(r);
+    if(!contacts.length) return;
     var rowspan = Math.max(1, contacts.length);
     contacts.forEach(function(contact, contactIdx){
       var row = '<tr>';
