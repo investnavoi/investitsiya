@@ -2071,7 +2071,7 @@ input[type="time"]{-webkit-appearance:none;}
         <!-- Country tabs -->
         <div id="finderCountryTabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto"></div>
         <div class="tscroll"><table>
-          <thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Shahar</th><th>Rahbar</th><th>Soha</th><th id="finder-volume-head">Import hajmi</th><th>Score</th><th>Amal</th></tr></thead>
+          <thead><tr><th>☑</th><th>#</th><th>Kompaniya</th><th>Davlat</th><th>Shahar</th><th>Kontaktlar</th><th>Soha</th><th id="finder-volume-head">Import hajmi</th><th>Score</th><th>Amal</th></tr></thead>
           <tbody id="finder-tbody"></tbody>
         </table></div>
       </div>
@@ -5917,20 +5917,46 @@ function renderPersonNameWithPhoto(name, photoUrl, extraHtml, size){
   return html;
 }
 
+function finderContactHasEmail(contact){
+  return !!String(contact && contact.email || '').trim();
+}
+
+function finderContactHasPhone(contact){
+  return !!String(contact && contact.telefon || '').trim();
+}
+
+function finderContactIsQualified(contact){
+  return finderContactHasEmail(contact) && finderContactHasPhone(contact);
+}
+
+function getFinderQualifiedContacts(item){
+  return getFinderDisplayContacts(item).filter(finderContactIsQualified).slice(0,4);
+}
+
+function renderFinderContactCard(contact){
+  if(!contact){
+    return '<span style="color:var(--text3)">—</span>';
+  }
+  var extras = '<div style="font-size:.62rem;color:var(--text3)">'+escHtml(contact.title||'—')+'</div>';
+  extras += finderContactHasEmail(contact)
+    ? '<div style="font-size:.6rem;color:#0ea5e9;margin-top:2px">'+escHtml(contact.email)+'</div>'
+    : '<div style="font-size:.58rem;color:var(--text3)">— Email yo\'q</div>';
+  extras += finderContactHasPhone(contact)
+    ? '<div style="font-size:.58rem;color:#059669;margin-top:2px">'+escHtml(contact.telefon)+'</div>'
+    : '<div style="font-size:.58rem;color:var(--text3)">— Tel yo\'q</div>';
+  return renderPersonNameWithPhoto(contact.name, contact.photoUrl, extras, 28);
+}
+
 function renderFinderContactsHtml(contacts){
-  var list = Array.isArray(contacts) ? contacts.slice(0,4) : [];
+  var list = Array.isArray(contacts) ? contacts.filter(finderContactIsQualified).slice(0,4) : [];
+  if(!list.length && Array.isArray(contacts)){
+    list = contacts.slice(0,1);
+  }
   if(!list.length){
     return '<span style="color:var(--text3)">—</span>';
   }
   return '<div style="display:flex;flex-direction:column;gap:8px">' + list.map(function(contact){
-    var extras = '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(contact.title||'')+'</div>';
-    extras += contact.email
-      ? '<div style="font-size:.58rem;color:#0ea5e9;margin-top:2px">'+escHtml(contact.email)+'</div>'
-      : '<div style="font-size:.55rem;color:var(--text3)">— Email yo\'q</div>';
-    extras += contact.telefon
-      ? '<div style="font-size:.55rem;color:#059669;margin-top:2px">'+escHtml(contact.telefon)+'</div>'
-      : '<div style="font-size:.55rem;color:var(--text3)">— Tel yo\'q</div>';
-    return renderPersonNameWithPhoto(contact.name, contact.photoUrl, extras, 24);
+    return renderFinderContactCard(contact);
   }).join('') + '</div>';
 }
 
@@ -16411,7 +16437,7 @@ function apolloMergeContactCandidate(item, candidate){
 
 function apolloChooseCompanyContacts(candidates){
   var valid = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
-    return String(contact.email || '').trim() || String(contact.telefon || '').trim();
+    return finderContactIsQualified(contact);
   }).sort(function(a,b){
     return (b.score || 0) - (a.score || 0);
   });
@@ -16450,9 +16476,7 @@ function apolloContactRoleKey(contact){
 }
 
 function apolloHasMinimumContactCoverage(item){
-  var contacts = getFinderDisplayContacts(item).filter(function(contact){
-    return String(contact && contact.email || '').trim() || String(contact && contact.telefon || '').trim();
-  });
+  var contacts = getFinderQualifiedContacts(item);
   if(contacts.length < 2) return false;
   var roleKeys = new Set();
   contacts.forEach(function(contact){
@@ -16779,7 +16803,7 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
     seen.add(key);
     return true;
   }).sort(function(a,b){
-    return getFinderDisplayContacts(b).length - getFinderDisplayContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
+    return getFinderQualifiedContacts(b).length - getFinderQualifiedContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
   });
   var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
   if(strong.length >= perCountry){
@@ -16813,7 +16837,7 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
     seen.add(key);
     return true;
   }).sort(function(a,b){
-    return getFinderDisplayContacts(b).length - getFinderDisplayContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
+    return getFinderQualifiedContacts(b).length - getFinderQualifiedContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
   });
   var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
   return strong.slice(0, perCountry);
@@ -16823,7 +16847,7 @@ function apolloNeedContactCoverage(found, perCountry){
   var top = (found || []).slice(0, perCountry);
   if(!top.length) return true;
   var withContact = top.filter(function(item){
-    return String(item.rahbar || '').trim() || String(item.email || '').trim();
+    return getFinderQualifiedContacts(item).length >= 2;
   }).length;
   return withContact < Math.min(top.length, Math.max(1, Math.ceil(perCountry * 0.7)));
 }
@@ -17257,6 +17281,14 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       }
       await apolloEnrichCompanyContacts(item, apolloKey, 4);
       apolloApplyCompanyContacts(item);
+      if(!apolloHasMinimumContactCoverage(item)){
+        await searchPeopleAndMerge(item, broadTitles.slice(0, 12), 16, 2);
+        if(!apolloHasMinimumContactCoverage(item)){
+          await searchPeopleAndMerge(item, [], 20, 2);
+        }
+        await apolloEnrichCompanyContacts(item, apolloKey, 4);
+        apolloApplyCompanyContacts(item);
+      }
     } catch(ePeople){
       console.log('Contact coverage for '+item.kompaniya+': '+ePeople.message);
       if(apolloIsFatalError(ePeople)) throw ePeople;
@@ -17522,41 +17554,38 @@ async function runCompanyFinder(source){
 function renderFinderTable(results){
   updateFinderModeUI();
   var tb = document.getElementById('finder-tbody');
-  var meta = getFinderModeMeta(_finderMode||'importers');
-  tb.innerHTML = results.sort(function(a,b){return (b.score||0)-(a.score||0);}).map(function(r,i){
-    var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
-    return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>'+
-      '<td>'+(i+1)+'</td>'+
-      '<td><b>'+r.kompaniya+'</b>'+(r.website?'<div style="font-size:.55rem;color:var(--text3)">'+r.website+'</div>':'')+'</td>'+
-      '<td>'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>'+
-      '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
-      '<td>'+renderPersonNameWithPhoto(r.rahbar, r.photoUrl || r.photo_url, '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.lavozim||'')+'</div>'+(r.email?'<div style="font-size:.58rem;color:#0ea5e9;margin-top:2px">'+escHtml(r.email)+'</div>':'<div style="font-size:.55rem;color:var(--text3)">— Email yo\'q</div>'), 24)+'</td>'+
-      '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
-      '<td style="font-size:.65rem">'+(r.daromad||'—')+'</td>'+
-      '<td style="font-size:.65rem">'+(r.xodimlar||'—')+'</td>'+
-      '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
-      '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat" style="font-size:.58rem;padding:3px 8px">📧</button></td></tr>';
-  }).join('');
-}
-
-function renderFinderTable(results){
-  updateFinderModeUI();
-  var tb = document.getElementById('finder-tbody');
   if(!tb) return;
-  tb.innerHTML = results.sort(function(a,b){ return (b.score||0)-(a.score||0); }).map(function(r,i){
+  var rows = [];
+  results.sort(function(a,b){ return (b.score||0)-(a.score||0); }).forEach(function(r,i){
     var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
-    return '<tr><td><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>'+
-      '<td>'+(i+1)+'</td>'+
-      '<td><b>'+r.kompaniya+'</b>'+(r.website?'<div style="font-size:.55rem;color:var(--text3)">'+r.website+'</div>':'')+'</td>'+
-      '<td>'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>'+
-      '<td style="font-size:.7rem">'+(r.shahar||'—')+'</td>'+
-      '<td>'+renderFinderContactsHtml(getFinderDisplayContacts(r))+'</td>'+
-      '<td style="font-size:.65rem">'+(r.soha||'—')+'</td>'+
-      '<td style="font-size:.65rem">'+(r.daromad||'—')+'</td>'+
-      '<td style="font-size:.65rem">'+(r.xodimlar||'—')+'</td>'+
-      '<td><span style="font-weight:800;color:'+scoreColor+'">'+r.score+'</span></td>'+
-      '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat" style="font-size:.58rem;padding:3px 8px">📧</button></td></tr>';
-  }).join('');
+    var contacts = getFinderQualifiedContacts(r);
+    if(!contacts.length){
+      contacts = getFinderDisplayContacts(r).slice(0,1);
+    }
+    if(!contacts.length){
+      contacts = [{ name:'—', title:'Kontakt topilmadi', email:'', telefon:'', photoUrl:'' }];
+    }
+    var rowspan = Math.max(1, contacts.length);
+    contacts.forEach(function(contact, contactIdx){
+      var row = '<tr>';
+      if(contactIdx === 0){
+        row += '<td rowspan="'+rowspan+'"><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>';
+        row += '<td rowspan="'+rowspan+'">'+(i+1)+'</td>';
+        row += '<td rowspan="'+rowspan+'"><b>'+escHtml(r.kompaniya||'—')+'</b>'+(r.website?'<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.website)+'</div>':'')+'</td>';
+        row += '<td rowspan="'+rowspan+'">'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>';
+        row += '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+escHtml(r.shahar||'—')+'</td>';
+      }
+      row += '<td>'+renderFinderContactCard(contact)+'</td>';
+      if(contactIdx === 0){
+        row += '<td rowspan="'+rowspan+'" style="font-size:.65rem">'+escHtml(r.soha||'—')+'</td>';
+        row += '<td rowspan="'+rowspan+'" style="font-size:.65rem">'+escHtml(r.daromad||'—')+'</td>';
+        row += '<td rowspan="'+rowspan+'"><span style="font-weight:800;color:'+scoreColor+'">'+escHtml(String(r.score||0))+'</span></td>';
+      }
+      row += '<td style="white-space:nowrap"><button class="btn btn-blue btn-sm" onclick="goToAiLetter('+i+')" title="AI xat" style="font-size:.58rem;padding:3px 8px">📧</button></td></tr>';
+      rows.push(row);
+    });
+  });
+  tb.innerHTML = rows.join('');
 }
 
 function filterFinderByCountry(country){
