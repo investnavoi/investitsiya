@@ -5941,8 +5941,29 @@ function getFinderRenderableContacts(item){
   return (qualified.length >= 2 ? qualified : display).slice(0,4);
 }
 
+function getFinderVisibleContacts(item){
+  var renderable = getFinderRenderableContacts(item);
+  if(renderable.length) return renderable;
+  var display = getFinderDisplayContacts(item).slice(0,4);
+  if(display.length) return display;
+  if(!item) return [];
+  var fallback = {
+    name: String(item.rahbar || item.kompaniya || '').trim(),
+    title: String(item.lavozim || (item.kompaniya ? 'Kompaniya kontakti' : '')).trim(),
+    email: String(item.email || '').trim(),
+    telefon: String(item.telefon || '').trim(),
+    photoUrl: String(item.photoUrl || item.photo_url || '').trim(),
+    linkedin: String(item.linkedin || '').trim()
+  };
+  if(!fallback.name && !fallback.title && !fallback.email && !fallback.telefon){
+    return [];
+  }
+  return [fallback];
+}
+
 function finderResultIsRenderable(item){
-  return getFinderRenderableContacts(item).length > 0;
+  if(getFinderVisibleContacts(item).length > 0) return true;
+  return !!String((item && item.kompaniya) || '').trim();
 }
 
 function renderFinderContactCard(contact){
@@ -6066,7 +6087,7 @@ function upsertFinderContactInvestorRecord(record, item, contact, meta){
 function ensureFinderContactInvestorRecord(resultIdx, contactIdx){
   var item = (_finderResults || [])[resultIdx];
   if(!item) return null;
-  var contacts = getFinderRenderableContacts(item);
+  var contacts = getFinderVisibleContacts(item);
   var contact = contacts[contactIdx];
   if(!contact) return null;
   var existing = findFinderContactInvestorRecord(item, contact);
@@ -6120,7 +6141,7 @@ function openFinderContactSchedule(resultIdx, contactIdx){
 function deleteFinderContactResult(resultIdx, contactIdx){
   var item = (_finderResults || [])[resultIdx];
   if(!item) return;
-  var contacts = getFinderRenderableContacts(item);
+  var contacts = getFinderVisibleContacts(item);
   var contact = contacts[contactIdx];
   if(!contact) return;
   var existing = findFinderContactInvestorRecord(item, contact);
@@ -6146,7 +6167,7 @@ function deleteFinderContactResult(resultIdx, contactIdx){
     });
     apolloApplyCompanyContacts(item);
   }
-  if(getFinderRenderableContacts(item).length < 1){
+  if(getFinderVisibleContacts(item).length < 1){
     _finderResults.splice(resultIdx, 1);
   }
   refreshFinderResultTabs();
@@ -17779,7 +17800,7 @@ function renderFinderTable(results){
   var rows = [];
   results.sort(function(a,b){ return (b.score||0)-(a.score||0); }).forEach(function(r,i){
     var scoreColor = r.score>=80?'#059669':r.score>=60?'#FFB703':'#EF233C';
-    var contacts = getFinderRenderableContacts(r);
+    var contacts = getFinderVisibleContacts(r);
     if(!contacts.length) return;
     var rowspan = Math.max(1, contacts.length);
     contacts.forEach(function(contact, contactIdx){
@@ -17836,7 +17857,7 @@ function renderFinderTable(results){
     return (b.score || 0) - (a.score || 0);
   }).forEach(function(r, i){
     var scoreColor = r.score>=80 ? '#059669' : r.score>=60 ? '#FFB703' : '#EF233C';
-    var contacts = getFinderRenderableContacts(r);
+    var contacts = getFinderVisibleContacts(r);
     if(!contacts.length) return;
     var rowspan = Math.max(1, contacts.length);
     contacts.forEach(function(contact, contactIdx){
