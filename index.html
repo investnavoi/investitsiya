@@ -13499,6 +13499,10 @@ function buildImportTargetKey(targetCountries){
   return 't' + Math.abs(hash).toString(36);
 }
 
+function hashTargetList(items){
+  return buildImportTargetKey(items || []);
+}
+
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
   var sourceScope = getImportAnalysisSourceScopeState();
   return ['importv5', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
@@ -14161,6 +14165,8 @@ function renderImportResults(countries, prod, source, targetCountries){
   var topExporterCardShare = isImporterMode ? topReporterShare : topPartnerShare;
   var topImporterCard = isImporterMode ? topPartner : topReporter;
   var topImporterCardShare = isImporterMode ? topPartnerShare : topReporterShare;
+  var topExporter = topExporterCard || topReporter || topPartner || {};
+  var topImporter = topImporterCard || topPartner || topReporter || {};
   var singleCountry = okCountries.length === 1;
   var compactChartAmounts = countries.length > 3;
   var k1Label = document.getElementById('imp-k1-label');
