@@ -5926,7 +5926,7 @@ function finderContactHasPhone(contact){
 }
 
 function finderContactIsQualified(contact){
-  return finderContactHasEmail(contact) && finderContactHasPhone(contact);
+  return finderContactHasEmail(contact);
 }
 
 function getFinderQualifiedContacts(item){
@@ -5934,36 +5934,17 @@ function getFinderQualifiedContacts(item){
 }
 
 function getFinderRenderableContacts(item){
-  var display = getFinderDisplayContacts(item).filter(function(contact){
-    return finderContactHasEmail(contact) || finderContactHasPhone(contact);
-  }).slice(0,4);
-  var qualified = display.filter(finderContactIsQualified);
-  return (qualified.length >= 2 ? qualified : display).slice(0,4);
+  var qualified = getFinderDisplayContacts(item).filter(finderContactIsQualified).slice(0,4);
+  return qualified.length >= 2 ? qualified : [];
 }
 
 function getFinderVisibleContacts(item){
   var renderable = getFinderRenderableContacts(item);
-  if(renderable.length) return renderable;
-  var display = getFinderDisplayContacts(item).slice(0,4);
-  if(display.length) return display;
-  if(!item) return [];
-  var fallback = {
-    name: String(item.rahbar || item.kompaniya || '').trim(),
-    title: String(item.lavozim || (item.kompaniya ? 'Kompaniya kontakti' : '')).trim(),
-    email: String(item.email || '').trim(),
-    telefon: String(item.telefon || '').trim(),
-    photoUrl: String(item.photoUrl || item.photo_url || '').trim(),
-    linkedin: String(item.linkedin || '').trim()
-  };
-  if(!fallback.name && !fallback.title && !fallback.email && !fallback.telefon){
-    return [];
-  }
-  return [fallback];
+  return renderable.length >= 2 ? renderable : [];
 }
 
 function finderResultIsRenderable(item){
-  if(getFinderVisibleContacts(item).length > 0) return true;
-  return !!String((item && item.kompaniya) || '').trim();
+  return getFinderVisibleContacts(item).length >= 2;
 }
 
 function renderFinderContactCard(contact){
@@ -5981,17 +5962,8 @@ function renderFinderContactCard(contact){
 }
 
 function renderFinderContactsHtml(contacts){
-  var list = Array.isArray(contacts) ? contacts.filter(function(contact){
-    return finderContactHasEmail(contact) || finderContactHasPhone(contact);
-  }).slice(0,4) : [];
-  var qualified = list.filter(finderContactIsQualified);
-  if(qualified.length >= 2){
-    list = qualified.slice(0,4);
-  }
-  if(!list.length && Array.isArray(contacts)){
-    list = contacts.slice(0,1);
-  }
-  if(!list.length){
+  var list = Array.isArray(contacts) ? contacts.filter(finderContactIsQualified).slice(0,4) : [];
+  if(list.length < 2){
     return '<span style="color:var(--text3)">—</span>';
   }
   return '<div style="display:flex;flex-direction:column;gap:8px">' + list.map(function(contact){
@@ -16659,12 +16631,11 @@ function apolloMergeContactCandidate(item, candidate){
 
 function apolloChooseCompanyContacts(candidates){
   var pool = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
-    return finderContactHasEmail(contact) || finderContactHasPhone(contact);
+    return finderContactHasEmail(contact);
   }).sort(function(a,b){
     return (b.score || 0) - (a.score || 0);
   });
-  var valid = pool.filter(finderContactIsQualified);
-  var source = valid.length >= 2 ? valid : pool;
+  var source = pool;
   var chosen = [];
   var seen = new Set();
   ['executive','sales','technical'].forEach(function(bucket){
@@ -16684,16 +16655,14 @@ function apolloChooseCompanyContacts(candidates){
     chosen.push(contact);
     seen.add(key);
   });
-  if(chosen.length < 2 && source.length >= 2){
-    chosen = source.slice(0,4);
-  }
+  if(chosen.length < 2) return [];
   return chosen.slice(0,4);
 }
 
 function apolloChooseEnrichmentTargets(candidates, maxCount){
   var limit = Math.max(1, Math.min(4, Number(maxCount || 4) || 4));
   var pool = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
-    return contact && contact.personId && !(contact.email && contact.telefon);
+    return contact && contact.personId && !finderContactHasEmail(contact);
   }).sort(function(a,b){
     return (b.score || 0) - (a.score || 0);
   });
