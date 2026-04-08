@@ -16660,7 +16660,7 @@ function apolloChooseCompanyContacts(candidates){
 }
 
 function apolloChooseEnrichmentTargets(candidates, maxCount){
-  var limit = Math.max(1, Math.min(4, Number(maxCount || 4) || 4));
+  var limit = Math.max(1, Math.min(8, Number(maxCount || 8) || 8));
   var pool = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
     return contact && contact.personId && !finderContactHasEmail(contact);
   }).sort(function(a,b){
@@ -16784,7 +16784,7 @@ function apolloUpsertFinderItem(found, item, meta){
 async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
   if(!item) return item;
   apolloEnsureContactBuckets(item);
-  var targets = apolloChooseEnrichmentTargets(item._contactCandidates || [], maxEnrich || 4).filter(function(contact){
+  var targets = apolloChooseEnrichmentTargets(item._contactCandidates || [], maxEnrich || 8).filter(function(contact){
     return !contact._enrichedAttempted;
   });
   for(var i=0; i<targets.length; i++){
@@ -17013,10 +17013,7 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
     return getFinderRenderableContacts(b).length - getFinderRenderableContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
   });
   var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
-  if(strong.length >= perCountry){
-    return strong.slice(0, perCountry);
-  }
-  return unique.slice(0, perCountry);
+  return (strong.length ? strong : unique).slice(0, perCountry);
 }
 
 function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
@@ -17050,10 +17047,7 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
     return getFinderRenderableContacts(b).length - getFinderRenderableContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
   });
   var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
-  if(strong.length >= perCountry){
-    return strong.slice(0, perCountry);
-  }
-  return unique.slice(0, perCountry);
+  return (strong.length ? strong : unique).slice(0, perCountry);
 }
 
 function apolloNeedContactCoverage(found, perCountry){
@@ -17339,9 +17333,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var found = [];
   var lastError = null;
   var hadSuccess = false;
-  var candidateCompanyLimit = Math.max(2, perCountry);
-  var discoveryPerPage = Math.max(3, Math.min(6, perCountry + 1));
-  var peoplePerPage = 4;
+  var candidateCompanyLimit = Math.max(6, perCountry * 3);
+  var discoveryPerPage = Math.max(6, Math.min(10, candidateCompanyLimit));
+  var peoplePerPage = 6;
   function dedupeStrings(list){
     return Array.from(new Set((list || []).map(function(v){ return String(v || '').trim(); }).filter(Boolean)));
   }
@@ -17360,8 +17354,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         search_type:'people',
         page:page,
         per_page:limit || peoplePerPage,
-        api_key:apolloKey,
-        contact_email_status:['verified','likely to engage']
+        api_key:apolloKey
       };
       if(item && item._orgId){
         req.organization_ids = [item._orgId];
@@ -17394,7 +17387,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         }
       });
       apolloApplyCompanyContacts(item);
-      if(apolloHasMinimumContactCoverage(item) || getFinderDisplayContacts(item).length >= 4 || !mergedAny){
+      if(apolloHasMinimumContactCoverage(item) || (item._contactCandidates || []).length >= 8 || !mergedAny){
         break;
       }
     }
@@ -17419,7 +17412,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   ].map(dedupeStrings).filter(function(set){ return set.length; });
 
   // ═══ STEP 1: People Search — kompaniyalarni topish va kontaktlarni yig‘ish ═══
-  for(var psi=0; psi<Math.min(2, peopleSets.length); psi++){
+  for(var psi=0; psi<Math.min(3, peopleSets.length); psi++){
     if(found.length >= candidateCompanyLimit) break;
     try {
       var prodKwTags = getProductKeywordTags(prod);
@@ -17504,6 +17497,13 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   }
 
   // ═══ STEP 2: Har bir kompaniya uchun 2–4 kontakt yig‘ish ═══
+  var coverageTitles = dedupeStrings([].concat(
+    executiveTitles,
+    salesTitles,
+    technicalTitles,
+    broadTitles.slice(0, 6)
+  )).slice(0, 12);
+
   var candidates = found.slice().sort(function(a,b){
     return (Number(b.score || 0) - Number(a.score || 0));
   }).slice(0, candidateCompanyLimit);
@@ -17512,18 +17512,20 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     var item = candidates[fi];
     try {
       if(item._orgId){
-        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, executiveTitles, 2, 1);
-        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, salesTitles, 2, 1);
-        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, technicalTitles, 2, 1);
-        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, broadTitles.slice(0, 4), 2, 1);
+        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, coverageTitles, 6, 2);
       } else {
-        await searchPeopleAndMerge(item, broadTitles.slice(0, 4), 2, 1);
+        await searchPeopleAndMerge(item, coverageTitles, 6, 2);
       }
-      await apolloEnrichCompanyContacts(item, apolloKey, 4);
+      await apolloEnrichCompanyContacts(item, apolloKey, 8);
       apolloApplyCompanyContacts(item);
       if(!apolloHasMinimumContactCoverage(item)){
-        await searchPeopleAndMerge(item, broadTitles.slice(0, 6), 2, 1);
-        await apolloEnrichCompanyContacts(item, apolloKey, 4);
+        await searchPeopleAndMerge(item, broadTitles.slice(0, 10), 8, 2);
+        await apolloEnrichCompanyContacts(item, apolloKey, 8);
+        apolloApplyCompanyContacts(item);
+      }
+      if(!apolloHasMinimumContactCoverage(item) && item._orgId){
+        await searchPeopleAndMerge(item, [], 8, 2);
+        await apolloEnrichCompanyContacts(item, apolloKey, 8);
         apolloApplyCompanyContacts(item);
       }
     } catch(ePeople){
@@ -17556,7 +17558,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       for(var gi=0; gi<found.length; gi++){
         try {
           if(!apolloHasMinimumContactCoverage(found[gi])){
-            await apolloEnrichCompanyContacts(found[gi], apolloKey, 2);
+            await apolloEnrichCompanyContacts(found[gi], apolloKey, 6);
           }
           apolloApplyCompanyContacts(found[gi]);
         } catch(_fallbackEnrichErr){}
