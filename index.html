@@ -6099,9 +6099,46 @@ function openFinderContactDetail(resultIdx, contactIdx){
   if(rec && rec.id) openInvestorDetailModal(rec.id);
 }
 
+if(typeof _finderAiOpen === 'undefined') var _finderAiOpen = false;
+if(typeof _finderAiTargetKey === 'undefined') var _finderAiTargetKey = '';
+
 function openFinderContactAi(resultIdx, contactIdx){
   var rec = ensureFinderContactInvestorRecord(resultIdx, contactIdx);
-  if(rec && rec.id) goToAiLetterById(rec.id);
+  if(!rec || !rec.id) return;
+  var targetKey = String(resultIdx) + ':' + String(contactIdx) + ':' + String(rec.id);
+  var switching = String(_finderAiTargetKey || '') !== targetKey || String(_investorAiTargetId || '') !== String(rec.id);
+  if(!switching && _finderAiOpen){
+    closeFinderAiWorkspace();
+    return;
+  }
+  _finderAiOpen = true;
+  _finderAiTargetKey = targetKey;
+  _investorAiTargetId = String(rec.id);
+  _investorAiOpen = true;
+  renderFinderTable(_finderResults);
+  setInvestorAiMeta(rec);
+  if(switching){
+    resetAiScope('investor', 'Kontakt tanlandi. Endi “AI Xat Yozish” tugmasini bosing');
+  }
+  if(rec.aiLetterData && rec.aiLetterData.analysis){
+    hydrateAiScope('investor', rec, {
+      analysis: rec.aiLetterData.analysis,
+      transportSummary: rec.aiLetterData.transportSummary,
+      tariffSummary: rec.aiLetterData.tariffSummary || null,
+      letterSubject: rec.aiLetterData.subject || '',
+      letterBody: rec.aiLetterData.body || '',
+      lang: rec.aiLetterData.lang || 'en',
+      generatedAt: rec.aiLetterData.generatedAt || ''
+    });
+    var dom = getAiScopeDom('investor');
+    if(dom.lang && rec.aiLetterData.lang) dom.lang.value = rec.aiLetterData.lang;
+    refreshInvestorAiOfficialData(rec);
+  }
+  mountInvestorAiWorkspace();
+  var finderMount = document.getElementById('finderAiRowMount');
+  if(finderMount && typeof finderMount.scrollIntoView === 'function'){
+    finderMount.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
 }
 
 function openFinderContactEmail(resultIdx, contactIdx){
@@ -17997,6 +18034,9 @@ function renderFinderTable(results){
     if(!contacts.length) return;
     var rowspan = Math.max(1, contacts.length);
     contacts.forEach(function(contact, contactIdx){
+      var aiRecord = findFinderContactInvestorRecord(r, contact);
+      var aiTargetKey = String(i) + ':' + String(contactIdx) + ':' + String((aiRecord && aiRecord.id) || '');
+      var isFinderAiOpen = !!_finderAiOpen && aiTargetKey === String(_finderAiTargetKey || '');
       var row = '<tr>';
       if(contactIdx === 0){
         row += '<td rowspan="'+rowspan+'"><input type="checkbox" class="fc-check" data-idx="'+i+'" checked></td>';
@@ -18020,6 +18060,15 @@ function renderFinderTable(results){
         '<button class="btn btn-danger btn-sm" onclick="deleteFinderContactResult('+i+','+contactIdx+')" title="Kontaktni olib tashlash">🗑</button>'+
       '</div></td></tr>';
       rows.push(row);
+      if(isFinderAiOpen){
+        rows.push(
+          '<tr class="finder-ai-inline-row">'+
+            '<td colspan="12" style="padding:0;background:rgba(67,97,238,.03)">'+
+              '<div id="finderAiRowMount" style="padding:.85rem 0 .2rem"></div>'+
+            '</td>'+
+          '</tr>'
+        );
+      }
     });
   });
   tb.innerHTML = rows.join('');
@@ -18040,6 +18089,7 @@ function saveFinderResults(){
     });
   });
   toast('✅ '+added+' ta kontakt bazaga saqlandi!');
+  renderFinderTable(_finderResults);
   renderInvestorCompanies();
   renderProducts();
 }
@@ -18053,24 +18103,28 @@ function goToAiLetter(idx){
     return;
   }
   var meta = getCurrentFinderProductMeta();
-  var firstRecord = null;
   contacts.forEach(function(contact){
     var existing = findFinderContactInvestorRecord(comp, contact);
-    var rec = upsertFinderContactInvestorRecord(existing, comp, contact, meta);
-    if(!firstRecord && rec) firstRecord = rec;
+    upsertFinderContactInvestorRecord(existing, comp, contact, meta);
   });
-  if(!firstRecord || !firstRecord.id) return;
-  showPage('investor');
-  setTimeout(function(){
-    renderInvestorCompanies();
-    openInvestorAiWorkspace(firstRecord.id);
-  },300);
+  renderFinderTable(_finderResults);
+  openFinderContactAi(idx, 0);
 }
 
 function aiLetterAll(){
   saveFinderResults();
-  showPage('investor');
-  toast('📧 Investorlar bazasidan kompaniya tanlang va AI tugmasini bosing');
+  if(!_finderResults.length){
+    toast('⚠️ Natija yo\'q','error');
+    return;
+  }
+  var firstIdx = (_finderResults || []).findIndex(function(item){
+    return getFinderVisibleContacts(item).length > 0;
+  });
+  if(firstIdx < 0){
+    toast('⚠️ AI uchun kontakt topilmadi','error');
+    return;
+  }
+  openFinderContactAi(firstIdx, 0);
 }
 
 /* ═══════════════════════════════════════
@@ -18529,7 +18583,7 @@ function getInvestorAiWorkspaceEl(){
 function mountInvestorAiWorkspace(){
   var workspace = getInvestorAiWorkspaceEl();
   if(!workspace) return;
-  var mount = document.getElementById('investorAiRowMount');
+  var mount = document.getElementById('investorAiRowMount') || document.getElementById('finderAiRowMount');
   var dock = document.getElementById('investorAiDock');
   if(_investorAiOpen && mount){
     mount.appendChild(workspace);
@@ -18583,6 +18637,8 @@ function openInvestorAiWorkspace(id){
     toast('⚠️ Investor topilmadi','error');
     return;
   }
+  _finderAiOpen = false;
+  _finderAiTargetKey = '';
   var switching = String(_investorAiTargetId || '') !== String(comp.id);
   if(!switching && _investorAiOpen){
     closeInvestorAiWorkspace();
@@ -18616,12 +18672,25 @@ function openInvestorAiWorkspace(id){
 }
 
 function closeInvestorAiWorkspace(){
+  var hadFinderAi = !!_finderAiOpen;
   _investorAiOpen = false;
+  _finderAiOpen = false;
+  _finderAiTargetKey = '';
   renderInvestorCompanies();
+  if(hadFinderAi && Array.isArray(_finderResults)) renderFinderTable(_finderResults);
+  mountInvestorAiWorkspace();
 }
 
 window.openInvestorAiWorkspace = openInvestorAiWorkspace;
 window.closeInvestorAiWorkspace = closeInvestorAiWorkspace;
+
+function closeFinderAiWorkspace(){
+  _finderAiOpen = false;
+  _finderAiTargetKey = '';
+  _investorAiOpen = false;
+  if(Array.isArray(_finderResults)) renderFinderTable(_finderResults);
+  mountInvestorAiWorkspace();
+}
 
 function renderAiAnalysis(analysis, scope){
   var dom = getAiScopeDom(scope);
