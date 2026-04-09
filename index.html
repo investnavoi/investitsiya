@@ -1527,8 +1527,6 @@ input[type="time"]{-webkit-appearance:none;}
                   <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none;padding:6px 10px;white-space:nowrap">Tozalash</button>
                 </div>
               </th>
-              <th>Eksport hajmi</th>
-              <th>Score</th>
               <th>Batafsil</th>
               <th data-i18n="col_emailstatus">Email holati</th>
               <th data-i18n="col_actions">Amal</th>
@@ -6513,6 +6511,26 @@ function renderInvestorCompanies(){
   if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
 }
 
+function investorWebsiteDomain(value){
+  var site = String(value || '').trim().toLowerCase();
+  if(!site) return '';
+  site = site.replace(/^https?:\/\//, '').replace(/^www\./, '');
+  site = site.split('/')[0] || '';
+  return site;
+}
+
+function getInvestorCompanyGroupKey(rec){
+  rec = rec || {};
+  var companyKey = apolloCompanyKey(rec.kompaniya || '');
+  var countryKey = apolloNormalizeText(rec.davlat || rec.country || '');
+  if(companyKey){
+    return companyKey + '|' + countryKey;
+  }
+  var siteKey = investorWebsiteDomain(rec.website || '');
+  var cityKey = apolloNormalizeText(rec.shahar || rec.city || '');
+  return [siteKey || 'no-company', countryKey, cityKey].join('|');
+}
+
 renderInvestorCompanies = function(){
   const allCo = DB.investorCompanies || [];
   var productFilter = _investorProductFilterId
@@ -6527,12 +6545,7 @@ renderInvestorCompanies = function(){
 
   var allGroupMap = Object.create(null);
   allCo.forEach(function(rec){
-    var key = [
-      String(rec.kompaniya || '').trim().toLowerCase(),
-      String(rec.website || '').trim().toLowerCase(),
-      String(rec.davlat || rec.country || '').trim().toLowerCase(),
-      String(rec.shahar || rec.city || '').trim().toLowerCase()
-    ].join('|');
+    var key = getInvestorCompanyGroupKey(rec);
     allGroupMap[key] = true;
   });
   const total = allCo.reduce(function(s, r){ return s + (parseFloat(r.summa) || 0); }, 0);
@@ -6564,12 +6577,7 @@ renderInvestorCompanies = function(){
   var groupedMap = Object.create(null);
   var grouped = [];
   co.forEach(function(rec){
-    var key = [
-      String(rec.kompaniya || '').trim().toLowerCase(),
-      String(rec.website || '').trim().toLowerCase(),
-      String(rec.davlat || rec.country || '').trim().toLowerCase(),
-      String(rec.shahar || rec.city || '').trim().toLowerCase()
-    ].join('|');
+    var key = getInvestorCompanyGroupKey(rec);
     if(!groupedMap[key]){
       groupedMap[key] = { key: key, records: [] };
       grouped.push(groupedMap[key]);
@@ -6587,7 +6595,7 @@ renderInvestorCompanies = function(){
 
   const tb = document.getElementById('ic-tbody');
   if(!grouped.length){
-    tb.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
+    tb.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
     if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
     return;
   }
@@ -6625,12 +6633,6 @@ renderInvestorCompanies = function(){
     var countryName = String(companyRec.davlat || companyRec.country || '').trim();
     var countryLabel = countryName ? getFinderCountryLabel(countryName) : '';
     var cityText = String(companyRec.shahar || companyRec.city || '').trim();
-    var scoreNum = recs.reduce(function(max, rec){
-      var score = Number(rec && rec.score);
-      if(!Number.isFinite(score)) return max;
-      return Math.max(max, score);
-    }, 0);
-    var scoreColor = scoreNum>=80 ? '#059669' : scoreNum>=60 ? '#FFB703' : '#EF233C';
     var groupIds = recs.map(function(rec){ return String(rec.id); }).join(',');
     var sohaEditRecord = recs.find(function(rec){
       return String(_investorSohaEditId || '') === String(rec.id);
@@ -6650,7 +6652,6 @@ renderInvestorCompanies = function(){
               : '—'));
     var companyHtml = '<b style="color:var(--text)">'+escHtml(companyRec.kompaniya || '—')+'</b>' +
       (companyRec.website ? '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(companyRec.website)+'</div>' : '');
-    var exportVolume = escHtml(String(companyRec.daromad || companyRec.eksportHajmi || companyRec.summa || '—'));
 
     var html = '';
     recs.forEach(function(rec, recIdx){
@@ -6674,8 +6675,6 @@ renderInvestorCompanies = function(){
       html += '<td>'+renderFinderContactCard(contact)+'</td>';
       if(recIdx === 0){
         html += '<td rowspan="'+recs.length+'">'+sohaCell+'</td>';
-        html += '<td rowspan="'+recs.length+'" style="font-size:.7rem">'+exportVolume+'</td>';
-        html += '<td rowspan="'+recs.length+'"><span style="font-weight:800;color:'+scoreColor+'">'+escHtml(String(scoreNum || 0))+'</span></td>';
       }
       html += '<td><button type="button" onclick="openInvestorDetailModal(\''+rec.id+'\')" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:5px 10px">Batafsil</button></td>';
       html += '<td>'+getEmailStatusBadge(rec)+'</td>';
@@ -6691,7 +6690,7 @@ renderInvestorCompanies = function(){
         '</td>';
       html += '</tr>';
       if(isAiOpen){
-        html += '<tr class="investor-ai-inline-row"><td colspan="12" style="padding:0;background:rgba(67,97,238,.03)"><div id="investorAiRowMount" style="padding:.85rem 0 .2rem"></div></td></tr>';
+        html += '<tr class="investor-ai-inline-row"><td colspan="10" style="padding:0;background:rgba(67,97,238,.03)"><div id="investorAiRowMount" style="padding:.85rem 0 .2rem"></div></td></tr>';
       }
     });
     return html;
