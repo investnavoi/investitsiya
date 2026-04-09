@@ -6521,13 +6521,27 @@ function investorWebsiteDomain(value){
 
 function getInvestorCompanyGroupKey(rec){
   rec = rec || {};
-  var companyKey = apolloCompanyKey(rec.kompaniya || '');
-  var countryKey = apolloNormalizeText(rec.davlat || rec.country || '');
+  var normalizeText = (typeof apolloNormalizeText === 'function')
+    ? apolloNormalizeText
+    : function(v){
+        return String(v || '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g,' ')
+          .replace(/\s+/g,' ')
+          .trim();
+      };
+  var companyKey = (typeof apolloCompanyKey === 'function')
+    ? apolloCompanyKey(rec.kompaniya || '')
+    : normalizeText(rec.kompaniya || '')
+        .replace(/\b(co|company|corp|corporation|ltd|llc|inc|group|holding|holdings|limited|plc|sa|ag|gmbh|pte|pty)\b/g,'')
+        .replace(/\s+/g,' ')
+        .trim();
+  var countryKey = normalizeText(rec.davlat || rec.country || '');
   if(companyKey){
     return companyKey + '|' + countryKey;
   }
   var siteKey = investorWebsiteDomain(rec.website || '');
-  var cityKey = apolloNormalizeText(rec.shahar || rec.city || '');
+  var cityKey = normalizeText(rec.shahar || rec.city || '');
   return [siteKey || 'no-company', countryKey, cityKey].join('|');
 }
 
@@ -17140,9 +17154,13 @@ function apolloUpsertFinderItem(found, item, meta){
 async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
   if(!item) return item;
   apolloEnsureContactBuckets(item);
-  var targets = apolloChooseEnrichmentTargets(item._contactCandidates || [], maxEnrich || 2).filter(function(contact){
-    return !contact._enrichedAttempted;
+  if(apolloHasMinimumContactCoverage(item)) return item;
+  var enrichLimit = Math.max(0, Math.min(1, Number(maxEnrich || 1) || 1));
+  if(enrichLimit < 1) return apolloApplyCompanyContacts(item);
+  var targets = apolloChooseEnrichmentTargets(item._contactCandidates || [], enrichLimit).filter(function(contact){
+    return contact && !contact._enrichedAttempted;
   });
+  if(!targets.length) return apolloApplyCompanyContacts(item);
   function getWebsiteDomain(url){
     try {
       var source = String(url || '').trim();
@@ -17153,90 +17171,32 @@ async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
       return '';
     }
   }
-  function buildEnrichmentDetails(contact){
-    var detail = {};
-    var rawName = String(contact && contact.name || '').trim();
-    var parts = rawName ? rawName.split(/\s+/) : [];
-    if(contact && contact.personId) detail.id = String(contact.personId).trim();
-    if(parts[0]) detail.first_name = parts[0];
-    if(parts.length > 1) detail.last_name = parts.slice(1).join(' ');
-    if(contact && contact.email) detail.email = String(contact.email || '').trim();
-    if(item && item.kompaniya) detail.organization_name = String(item.kompaniya || '').trim();
-    var domain = getWebsiteDomain(item && item.website);
-    if(domain) detail.domain = domain;
-    return detail;
+  var contact = targets[0];
+  contact._enrichedAttempted = true;
+  var rawName = String(contact && contact.name || '').trim();
+  var parts = rawName ? rawName.split(/\s+/) : [];
+  var firstName = parts[0] || '';
+  var lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+  if(!firstName && !contact.email && !contact.personId){
+    return apolloApplyCompanyContacts(item);
   }
-  function extractEnrichedPeople(data){
-    var out = [];
-    var pushCandidate = function(entry){
-      if(!entry) return;
-      if(entry.person) return pushCandidate(entry.person);
-      if(entry.match) return pushCandidate(entry.match);
-      if(entry.matched_person) return pushCandidate(entry.matched_person);
-      if(entry.people && Array.isArray(entry.people)) return entry.people.forEach(pushCandidate);
-      out.push(entry);
-    };
-    ['matches','people','contacts','results'].forEach(function(key){
-      var list = data && Array.isArray(data[key]) ? data[key] : [];
-      list.forEach(pushCandidate);
+  try {
+    var singleData = await apolloRequestJson({
+      search_type:'people_enrichment',
+      api_key:apolloKey,
+      id:contact.personId ? String(contact.personId).trim() : '',
+      first_name:firstName,
+      last_name:lastName,
+      email:contact && contact.email ? String(contact.email || '').trim() : '',
+      organization_name:item && item.kompaniya ? String(item.kompaniya || '').trim() : '',
+      organization_domain:getWebsiteDomain(item && item.website)
     });
-    if(!out.length && data && data.person) pushCandidate(data.person);
-    return out;
-  }
-  async function enrichSingleContact(contact){
-    var rawName = String(contact && contact.name || '').trim();
-    var parts = rawName ? rawName.split(/\s+/) : [];
-    var firstName = parts[0] || '';
-    var lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
-    if(!firstName && !contact.email) return false;
-    try {
-      var singleData = await apolloRequestJson({
-        search_type:'people_enrichment',
-        api_key:apolloKey,
-        first_name:firstName,
-        last_name:lastName,
-        email:contact && contact.email ? String(contact.email || '').trim() : '',
-        organization_name:item && item.kompaniya ? String(item.kompaniya || '').trim() : '',
-        organization_domain:getWebsiteDomain(item && item.website)
-      });
-      var person = singleData && singleData.person ? singleData.person : null;
-      if(!person) return false;
+    var person = singleData && singleData.person ? singleData.person : null;
+    if(person){
       var merged = apolloPersonToContact(person, person.organization || {});
       apolloMergeContactCandidate(item, merged);
-      return true;
-    } catch(_singleErr){
-      return false;
     }
-  }
-  var batchSize = 2;
-  for(var start=0; start<targets.length; start += batchSize){
-    var batch = targets.slice(start, start + batchSize).filter(function(contact){
-      return contact && (contact.personId || contact.name || contact.email);
-    });
-    if(!batch.length) continue;
-    batch.forEach(function(contact){ contact._enrichedAttempted = true; });
-    var beforeEmails = apolloCountEmailContacts(item);
-    try {
-      var enrData = await apolloRequestJson({
-        action:'bulk_people_enrichment',
-        api_key:apolloKey,
-        details: batch.map(buildEnrichmentDetails)
-      });
-      extractEnrichedPeople(enrData).forEach(function(person){
-        var merged = apolloPersonToContact(person, person.organization || {});
-        apolloMergeContactCandidate(item, merged);
-      });
-    } catch(_enrichErr){}
-    if(apolloCountEmailContacts(item) <= beforeEmails && !apolloHasMinimumContactCoverage(item)){
-      for(var bi=0; bi<batch.length; bi++){
-        await enrichSingleContact(batch[bi]);
-        apolloApplyCompanyContacts(item);
-        if(apolloHasMinimumContactCoverage(item)) break;
-      }
-    }
-    apolloApplyCompanyContacts(item);
-    if(apolloHasMinimumContactCoverage(item)) break;
-  }
+  } catch(_enrichErr){}
   apolloApplyCompanyContacts(item);
   return item;
 }
@@ -17280,13 +17240,38 @@ function getApolloStrictCategorySignals(prod){
     prod && prod.usage,
     prod && prod.main_sector
   ].filter(Boolean).join(' '));
-  if(/tile|ceramic|porcelain|sanitary/.test(normalized)) return ['tile','tiles','ceramic','porcelain','sanitary ware','building materials','construction materials'];
-  if(/granite|marble|basalt|limestone|dolomite|stone|slab|flagstone|curbstone/.test(normalized)) return ['stone','granite','marble','basalt','limestone','dolomite','quarry','slab','tiles','building materials','construction materials'];
-  if(/cement|clinker|concrete|lime|quicklime|slaked lime/.test(normalized)) return ['cement','clinker','concrete','lime','quicklime','hydrated lime','building materials','construction materials'];
-  if(/gypsum|plaster|board|drywall/.test(normalized)) return ['gypsum','plaster','drywall','board','building materials','construction materials'];
+  if(/tile|ceramic|porcelain|sanitary/.test(normalized)) return ['tile','tiles','ceramic','porcelain','roof tile','wall tile','floor tile','sanitary ware'];
+  if(/granite|marble|basalt|limestone|dolomite|stone|slab|flagstone|curbstone|cut\/sawn|sawn/.test(normalized)) return ['stone','granite','marble','basalt','limestone','dolomite','quarry','slab','sawn','cut stone','processed stone'];
+  if(/cement|clinker|concrete|lime|quicklime|slaked lime/.test(normalized)) return ['cement','clinker','concrete','lime','quicklime','hydrated lime'];
+  if(/gypsum|plaster|board|drywall/.test(normalized)) return ['gypsum','plaster','drywall','board','plasterboard'];
   if(/phosph|superphosphate|fertili/.test(normalized)) return ['phosphate','superphosphate','fertilizer','fertiliser','agrochemical','crop nutrition','chemical'];
   if(/kaolin|clay|bentonite|silica|quartz|feldspar/.test(normalized)) return ['kaolin','clay','bentonite','silica','quartz','feldspar','industrial minerals','ceramic','glass','mining'];
   if(/sulfur|sulphur|acid/.test(normalized)) return ['sulfur','sulphur','acid','chemical'];
+  return [];
+}
+
+function getApolloCoreCommoditySignals(prod){
+  var normalized = apolloNormalizeText([
+    prod && prod.name_en,
+    prod && prod.name_uz,
+    prod && prod.raw_name,
+    prod && prod.description
+  ].filter(Boolean).join(' '));
+  if(/granite|marble|basalt|limestone|dolomite|stone|slab|flagstone|curbstone|cut\/sawn|sawn/.test(normalized)){
+    return ['stone','granite','marble','basalt','limestone','dolomite','quarry','slab','sawn'];
+  }
+  if(/tile|ceramic|porcelain|roof tile|wall tile|floor tile|sanitary/.test(normalized)){
+    return ['tile','ceramic','porcelain','roof tile','wall tile','floor tile'];
+  }
+  if(/cement|clinker|concrete|lime|quicklime|slaked lime/.test(normalized)){
+    return ['cement','clinker','concrete','lime','quicklime','hydrated lime'];
+  }
+  if(/gypsum|plaster|board|drywall/.test(normalized)){
+    return ['gypsum','plaster','drywall','board'];
+  }
+  if(/phosph|superphosphate|fertili/.test(normalized)){
+    return ['phosphate','superphosphate','fertilizer','fertiliser'];
+  }
   return [];
 }
 
@@ -17319,6 +17304,7 @@ function isApolloEntityRelevant(entity, prod){
   if(isApolloObviousMismatch(entity, prod)) return false;
   var signals = getApolloProductSignals(prod);
   var strictSignals = getApolloStrictCategorySignals(prod);
+  var coreSignals = getApolloCoreCommoditySignals(prod);
   if(!signals.tokens.length) return true;
   var text = apolloNormalizeText([
     entity.kompaniya,
@@ -17334,7 +17320,11 @@ function isApolloEntityRelevant(entity, prod){
   if(!text) return false;
   var hits = signals.tokens.filter(function(token){ return text.indexOf(token) !== -1; });
   var strictHits = strictSignals.filter(function(token){ return text.indexOf(apolloNormalizeText(token)) !== -1; });
+  var coreHits = coreSignals.filter(function(token){ return text.indexOf(apolloNormalizeText(token)) !== -1; });
   if(strictSignals.length){
+    if(coreSignals.length){
+      return coreHits.length > 0 || strictHits.length >= 2;
+    }
     return strictHits.length > 0;
   }
   return hits.length > 0;
@@ -17416,48 +17406,21 @@ function finderMatchesTarget13Signal(item, meta){
 }
 
 function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
-  var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
-  if(!filtered.length){
-    filtered = found.filter(function(item){
-      return !isApolloObviousMismatch(item, prod) && String(item.kompaniya || '').trim();
-    });
-  }
-  if(!filtered.length){
-    filtered = found.slice();
-  }
-  strategy = strategy || {top100:false, expansion:false, target13:false};
-  if(strategy.top100){
-    filtered = filtered.filter(function(item){ return finderMatchesTop100Signal(item); });
-  }
-  if(strategy.expansion){
-    filtered = filtered.filter(function(item){ return finderMatchesExpansionSignal(item); });
-  }
-  if(strategy.target13){
-    filtered = filtered.filter(function(item){ return finderMatchesTarget13Signal(item, meta); });
-  }
-  var seen = new Set();
-  var unique = filtered.filter(function(item){
-    var key = [apolloCompanyKey(item.kompaniya), apolloNormalizeText(item.davlat)].join('|');
-    if(!apolloCompanyKey(item.kompaniya)) return false;
-    if(seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).sort(function(a,b){
-    return getFinderRenderableContacts(b).length - getFinderRenderableContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
+  var strictSignals = getApolloStrictCategorySignals(prod);
+  var filtered = (found || []).filter(function(item){
+    if(!String(item && item.kompaniya || '').trim()) return false;
+    if(isApolloObviousMismatch(item, prod)) return false;
+    return isApolloEntityRelevant(item, prod);
   });
-  var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
-  return (strong.length ? strong : unique).slice(0, Math.min(2, perCountry || 2));
-}
-
-function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
-  var filtered = found.filter(function(item){ return isApolloEntityRelevant(item, prod); });
-  if(!filtered.length){
-    filtered = found.filter(function(item){
-      return !isApolloObviousMismatch(item, prod) && String(item.kompaniya || '').trim();
+  // Qat'iy signal bo'lmagan mahsulotlarda yumshoq fallback ruxsat.
+  if(!filtered.length && !strictSignals.length){
+    filtered = (found || []).filter(function(item){
+      return !isApolloObviousMismatch(item, prod) && String(item && item.kompaniya || '').trim();
     });
   }
+  // Qat'iy mahsulotlarda irrelevant kompaniya qaytarmaymiz.
   if(!filtered.length){
-    filtered = found.slice();
+    return [];
   }
   strategy = strategy || {top100:false, expansion:false, target13:false};
   if(strategy.top100){
@@ -17551,7 +17514,6 @@ function getProductIndustryTags(prod){
 function getProductKeywordTags(prod){
   var hsCode = String((prod && prod.hs_code) || '').replace(/\D/g,'');
   var ch = hsCode.slice(0,2);
-  var prodName = ((prod && prod.name_en) || '').toLowerCase();
 
   var KEYWORD_MAP = {
     '28': ['chemical','industrial chemical','specialty chemical','chemical manufacturer'],
@@ -17560,8 +17522,8 @@ function getProductKeywordTags(prod){
     '31': ['fertilizer','agrochemical','crop nutrition','plant nutrition'],
     '52': ['cotton','textile','fabric','yarn','cotton fiber'],
     '55': ['textile','synthetic fiber','fabric','yarn','apparel'],
-    '68': ['stone','building materials','construction materials','granite','marble'],
-    '69': ['ceramic','tiles','building materials','construction','porcelain'],
+    '68': ['stone','granite','marble','limestone','dolomite','quarry','slab','sawn'],
+    '69': ['ceramic','tile','tiles','porcelain','roof tile','wall tile','floor tile'],
     '70': ['glass','float glass','building materials'],
     '72': ['steel','iron','metal','structural steel'],
     '73': ['metal products','steel fabrication','construction steel'],
@@ -17576,10 +17538,19 @@ function getProductKeywordTags(prod){
   };
 
   var tags = KEYWORD_MAP[ch] ? KEYWORD_MAP[ch].slice() : [];
-  // Add product name words
+  var NOISE = {
+    other:1, with:1, from:1, into:1, over:1, under:1, mixed:1, crude:1,
+    rough:1, roughly:1, trimmed:1, product:1, products:1, material:1, materials:1,
+    processed:1, worked:1, thereof:1
+  };
+  // Add product name words (strictly sanitized, skip noisy tokens)
   if(prod && prod.name_en){
-    prod.name_en.toLowerCase().split(/[\s,\/\-]+/).forEach(function(w){
-      if(w.length > 4 && tags.indexOf(w) === -1) tags.push(w);
+    prod.name_en.toLowerCase().split(/[\s,\/\-\(\),]+/).forEach(function(w){
+      w = String(w || '').trim();
+      if(!w || w.length < 4 || w.length > 24) return;
+      if(NOISE[w]) return;
+      if(!/^[a-z0-9]+$/.test(w)) return;
+      if(tags.indexOf(w) === -1) tags.push(w);
     });
   }
   return tags.slice(0, 6);
@@ -17637,6 +17608,14 @@ function isOrgRelevantToProduct(org, keywords, prod){
   var hsCode = String((prod && prod.hs_code) || '').replace(/\D/g,'');
   var hsChapter = hsCode.slice(0,2);
   var prodName = ((prod && prod.name_en) || '').toLowerCase();
+  var strictSignals = getApolloStrictCategorySignals(prod).map(function(token){
+    return apolloNormalizeText(token);
+  }).filter(Boolean);
+  // HS 25/26/68/69: mahsulot mosligi qat'iy bo'lsin (stone/tile/mineral yo'nalishlar)
+  if(['25','26','68','69'].indexOf(hsChapter) !== -1 && strictSignals.length){
+    var strictSignalHit = strictSignals.some(function(token){ return orgText.indexOf(token) !== -1; });
+    if(!strictSignalHit) return false;
+  }
 
   // ── Map HS chapters to allowed/blocked industries ──
   var CHAPTER_MAP = {
@@ -17731,12 +17710,17 @@ function isOrgRelevantToProduct(org, keywords, prod){
   if(allKws.length){
     var matched = allKws.some(function(kw){ return orgText.indexOf(kw.toLowerCase()) !== -1; });
     if(matched) return true;
-    // If we have good keywords but no match, and org has industry — borderline reject
-    if(orgIndustry && orgIndustry.length > 3) return false;
+    var strictMatched = strictSignals.some(function(token){ return orgText.indexOf(token) !== -1; });
+    if(strictMatched) return true;
+    // If we have good keywords but no match — reject (including unknown industry)
+    return false;
   }
 
-  // No industry info — allow
-  return !orgIndustry;
+  if(strictSignals.length){
+    return strictSignals.some(function(token){ return orgText.indexOf(token) !== -1; });
+  }
+  // If no reliable product signals exist, keep only orgs that at least have industry metadata.
+  return !!orgIndustry;
 }
 
 function guessEmailFromDomain(fullName, website){
@@ -17764,12 +17748,19 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var preferredKeywords = getApolloPreferredKeywords(prod);
   var kw1 = preferredKeywords[0] || ((prod && prod.name_en) || '');
   var kw2 = preferredKeywords[1] || kw1;
+  var strictSignals = getApolloStrictCategorySignals(prod).slice(0, 4);
+  var strictQuery = [kw1].concat(strictSignals).filter(Boolean).join(' ');
+  var productKeywordTags = getProductKeywordTags(prod);
+  var productIndustryTags = getProductIndustryTags(prod);
   var found = [];
   var lastError = null;
   var hadSuccess = false;
-  var candidateCompanyLimit = Math.max(2, Math.min(4, perCountry * 2));
-  var discoveryPerPage = Math.max(4, Math.min(6, candidateCompanyLimit * 2));
-  var peoplePerPage = 4;
+  var enablePeopleDiscovery = false;
+  var enableBroadOrgFallback = false;
+  var enableFallbackPeople = false;
+  var candidateCompanyLimit = Math.max(1, Math.min(2, Number(perCountry || 2) || 2));
+  var discoveryPerPage = Math.max(4, Math.min(8, candidateCompanyLimit * 4));
+  var peoplePerPage = 2;
   function dedupeStrings(list){
     return Array.from(new Set((list || []).map(function(v){ return String(v || '').trim(); }).filter(Boolean)));
   }
@@ -17794,7 +17785,11 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         req.organization_ids = [item._orgId];
       } else {
         req.organization_locations = [country];
-        req.q_keywords = item && item.kompaniya ? item.kompaniya : kw1;
+        req.q_organization_keyword_tags = productKeywordTags.length ? productKeywordTags : [kw1].filter(Boolean);
+        req.q_keywords = item && item.kompaniya ? item.kompaniya : strictQuery;
+      }
+      if(productIndustryTags.length){
+        req.q_organization_industry_tag_ids = productIndustryTags;
       }
       if(Array.isArray(titles) && titles.length){
         req.person_titles = titles.slice(0, 6);
@@ -17848,12 +17843,11 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   ].map(dedupeStrings).filter(function(set){ return set.length; });
 
   // ═══ STEP 1: People Search — kompaniyalarni topish va kontaktlarni yig‘ish ═══
-  for(var psi=0; psi<Math.min(2, peopleSets.length); psi++){
+  for(var psi=0; psi<(enablePeopleDiscovery ? Math.min(1, peopleSets.length) : 0); psi++){
     if(found.length >= candidateCompanyLimit) break;
     for(var psPage=1; psPage<=1; psPage++){
       if(found.length >= candidateCompanyLimit) break;
       try {
-        var prodKwTags = getProductKeywordTags(prod);
         var psReq = {
           search_type:'people',
           page:psPage,
@@ -17861,9 +17855,12 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
           api_key:apolloKey,
           organization_locations:[country],
           person_titles: peopleSets[psi],
-          q_organization_keyword_tags: prodKwTags.length ? prodKwTags : [kw1].filter(Boolean),
-          q_keywords: getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries)
+          q_organization_keyword_tags: productKeywordTags.length ? productKeywordTags : [kw1].filter(Boolean),
+          q_keywords: strictQuery || getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries)
         };
+        if(productIndustryTags.length){
+          psReq.q_organization_industry_tag_ids = productIndustryTags;
+        }
         var psData = await apolloRequestJson(psReq);
         hadSuccess = true;
         var pagePeople = normalizeApolloArray(psData, ['people','contacts']);
@@ -17873,7 +17870,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
           var name = org.name || person.organization_name || '';
           if(!name) return;
           var mappedPerson = mapApolloPersonToFinderResult(person, country, meta);
-          if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(mappedPerson, prod)) return;
+          if(!isOrgRelevantToProduct(org, preferredKeywords, prod) || isApolloObviousMismatch(mappedPerson, prod)) return;
           apolloUpsertFinderItem(found, mappedPerson, meta);
         });
         if(!pagePeople.length) break;
@@ -17882,8 +17879,8 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   }
 
   // ═══ STEP 1b: Organization Search fallback ═══
-  if(found.length < perCountry){
-    var kwSets = [[kw1,'manufacturer'],[kw1],[kw2]];
+  if(found.length < candidateCompanyLimit){
+    var kwSets = [[strictQuery || kw1]];
     var seenKwSets = {};
     kwSets = kwSets.filter(function(s){
       var key = s.slice().sort().join('|');
@@ -17896,15 +17893,19 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       for(var orgPage=1; orgPage<=1; orgPage++){
         if(found.length >= candidateCompanyLimit) break;
         try {
-          var apData = await apolloRequestJson({
+          var orgReq = {
             search_type:'organizations',
             page:orgPage,
             per_page:discoveryPerPage,
             api_key:apolloKey,
             organization_locations:[country],
-            q_organization_keyword_tags:kwSets[ki],
-            q_keywords:kwSets[ki].join(' ')
-          });
+            q_organization_keyword_tags:productKeywordTags.length ? productKeywordTags : kwSets[ki],
+            q_keywords:strictQuery || kwSets[ki].join(' ')
+          };
+          if(productIndustryTags.length){
+            orgReq.q_organization_industry_tag_ids = productIndustryTags;
+          }
+          var apData = await apolloRequestJson(orgReq);
           hadSuccess = true;
           var orgList = normalizeApolloArray(apData, ['organizations','accounts','companies']);
           orgList.forEach(function(org){
@@ -17912,7 +17913,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
             var name = org.name || '';
             if(!name || name.length > 100 || /\|/.test(name)) return;
             var mappedOrg = mapApolloOrganizationToFinderResult(org, country, meta);
-            if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(mappedOrg, prod)) return;
+            if(!isOrgRelevantToProduct(org, preferredKeywords, prod) || isApolloObviousMismatch(mappedOrg, prod)) return;
             apolloUpsertFinderItem(found, mappedOrg, meta);
           });
           if(!orgList.length) break;
@@ -17921,23 +17922,28 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     }
   }
 
-  if(found.length < perCountry){
+  if(!found.length && enableBroadOrgFallback){
     try {
-      var broadOrgData = await apolloRequestJson({
+      var broadOrgReq = {
         search_type:'organizations',
         page:1,
-        per_page:Math.max(4, discoveryPerPage),
+        per_page:Math.max(2, discoveryPerPage),
         api_key:apolloKey,
         organization_locations:[country],
-        q_keywords:kw1 || kw2
-      });
+        q_organization_keyword_tags: productKeywordTags.length ? productKeywordTags : [kw1].filter(Boolean),
+        q_keywords: strictQuery || kw1 || kw2
+      };
+      if(productIndustryTags.length){
+        broadOrgReq.q_organization_industry_tag_ids = productIndustryTags;
+      }
+      var broadOrgData = await apolloRequestJson(broadOrgReq);
       hadSuccess = true;
       normalizeApolloArray(broadOrgData, ['organizations','accounts','companies']).forEach(function(org){
         if(found.length >= candidateCompanyLimit) return;
         var name = org.name || '';
         if(!name || name.length > 120 || /\|/.test(name)) return;
         var mappedOrg = mapApolloOrganizationToFinderResult(org, country, meta);
-        if(isApolloObviousMismatch(mappedOrg, prod)) return;
+        if(!isOrgRelevantToProduct(org, preferredKeywords, prod) || isApolloObviousMismatch(mappedOrg, prod)) return;
         apolloUpsertFinderItem(found, mappedOrg, meta);
       });
     } catch(eBroadOrg){ lastError = eBroadOrg; if(apolloIsFatalError(eBroadOrg)) throw eBroadOrg; }
@@ -17959,22 +17965,11 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     var item = candidates[fi];
     try {
       if(item._orgId){
-        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, coverageTitles, 6, 1);
+        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, coverageTitles, 4, 1);
       } else {
-        await searchPeopleAndMerge(item, coverageTitles, 6, 1);
+        await searchPeopleAndMerge(item, coverageTitles, 4, 1);
       }
-      await apolloEnrichCompanyContacts(item, apolloKey, 2);
       apolloApplyCompanyContacts(item);
-      if(!apolloHasMinimumContactCoverage(item)){
-        await searchPeopleAndMerge(item, broadTitles.slice(0, 6), 6, 1);
-        await apolloEnrichCompanyContacts(item, apolloKey, 2);
-        apolloApplyCompanyContacts(item);
-      }
-      if(!apolloHasMinimumContactCoverage(item) && item._orgId && apolloCountEmailContacts(item) < 2){
-        await searchPeopleAndMerge(item, [], 4, 1);
-        await apolloEnrichCompanyContacts(item, apolloKey, 1);
-        apolloApplyCompanyContacts(item);
-      }
     } catch(ePeople){
       console.log('Contact coverage for '+item.kompaniya+': '+ePeople.message);
       if(apolloIsFatalError(ePeople)) throw ePeople;
@@ -17982,19 +17977,23 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   }
 
   // ═══ STEP 3: Fallback — hali hech narsa topilmagan bo‘lsa people search ═══
-  if(!found.length){
+  if(!found.length && enableFallbackPeople){
     try {
       for(var fbPage=1; fbPage<=1; fbPage++){
-        var fbData = await apolloRequestJson({
+        var fbReq = {
           search_type:'people',
           page:fbPage,
           per_page:discoveryPerPage,
           api_key:apolloKey,
           person_titles:broadTitles.slice(0, 8),
           organization_locations:[country],
-          q_organization_keyword_tags:getProductKeywordTags(prod),
-          q_keywords:getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries)
-        });
+          q_organization_keyword_tags:productKeywordTags.length ? productKeywordTags : [kw1].filter(Boolean),
+          q_keywords:strictQuery || getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries)
+        };
+        if(productIndustryTags.length){
+          fbReq.q_organization_industry_tag_ids = productIndustryTags;
+        }
+        var fbData = await apolloRequestJson(fbReq);
         hadSuccess = true;
         var fallbackPeople = normalizeApolloArray(fbData, ['people','contacts']);
         fallbackPeople.forEach(function(person){
@@ -18002,19 +18001,12 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
           var compName = org.name || person.organization_name || '';
           if(!compName) return;
           var fallbackPerson = mapApolloPersonToFinderResult(person, country, meta);
-          if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(fallbackPerson, prod)) return;
+          if(!isOrgRelevantToProduct(org, preferredKeywords, prod) || isApolloObviousMismatch(fallbackPerson, prod)) return;
           apolloUpsertFinderItem(found, fallbackPerson, meta);
         });
         if(!fallbackPeople.length) break;
       }
-      for(var gi=0; gi<found.length; gi++){
-        try {
-          if(!apolloHasMinimumContactCoverage(found[gi])){
-            await apolloEnrichCompanyContacts(found[gi], apolloKey, 2);
-          }
-          apolloApplyCompanyContacts(found[gi]);
-        } catch(_fallbackEnrichErr){}
-      }
+      // Kreditni tejash: fallback natijalarida qo'shimcha enrichment qilinmaydi.
     } catch(e3){ lastError = e3; if(apolloIsFatalError(e3)) throw e3; }
   }
 
