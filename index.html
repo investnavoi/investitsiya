@@ -16541,7 +16541,9 @@ function apolloRoleBucket(title){
 function apolloScoreContact(contact){
   var score = 0;
   if(contact.email) score += 10;
+  else if(contact.hasEmailHint) score += 6;
   if(contact.telefon) score += 9;
+  else if(contact.hasPhoneHint) score += 3;
   if(contact.name) score += 2;
   if(contact.photoUrl) score += 1;
   if(contact.bucket === 'executive') score += 5;
@@ -16563,7 +16565,11 @@ function apolloPersonToContact(person, org){
     photoUrl: String((person && (person.photo_url || person.photoUrl)) || '').trim(),
     linkedin: String((person && person.linkedin_url) || '').trim(),
     bucket: apolloRoleBucket(person && person.title),
-    organizationId: String((org && org.id) || '').trim()
+    organizationId: String((org && org.id) || '').trim(),
+    hasEmailHint: !!((person && person.email) || (person && person.has_email)),
+    hasPhoneHint: !!(phones[0] || (person && person.has_direct_phone) || (person && person.has_mobile_phone)),
+    hasDirectPhoneHint: !!(person && person.has_direct_phone),
+    hasMobilePhoneHint: !!(person && person.has_mobile_phone)
   };
   contact.score = apolloScoreContact(contact);
   return contact;
@@ -16583,7 +16589,11 @@ function apolloEnsureContactBuckets(item){
     phones: item.telefon ? [String(item.telefon).trim()] : [],
     photoUrl: String(item.photoUrl || item.photo_url || '').trim(),
     linkedin: String(item.linkedin || '').trim(),
-    bucket: apolloRoleBucket(item.lavozim || '')
+    bucket: apolloRoleBucket(item.lavozim || ''),
+    hasEmailHint: !!String(item.email || '').trim(),
+    hasPhoneHint: !!String(item.telefon || '').trim(),
+    hasDirectPhoneHint: false,
+    hasMobilePhoneHint: false
   };
   if(bootstrap.personId || bootstrap.name || bootstrap.email || bootstrap.telefon){
     bootstrap.score = apolloScoreContact(bootstrap);
@@ -16608,6 +16618,10 @@ function apolloMergeContactCandidate(item, candidate){
   candidate.bucket = candidate.bucket || apolloRoleBucket(candidate.title || '');
   candidate.phones = Array.isArray(candidate.phones) ? candidate.phones.filter(Boolean) : (candidate.telefon ? [candidate.telefon] : []);
   candidate.telefon = String(candidate.telefon || candidate.phones[0] || '').trim();
+  candidate.hasEmailHint = !!(candidate.hasEmailHint || candidate.email);
+  candidate.hasPhoneHint = !!(candidate.hasPhoneHint || candidate.telefon || (candidate.phones && candidate.phones.length));
+  candidate.hasDirectPhoneHint = !!candidate.hasDirectPhoneHint;
+  candidate.hasMobilePhoneHint = !!candidate.hasMobilePhoneHint;
   candidate.score = apolloScoreContact(candidate);
   var key = apolloContactKey(candidate);
   var existing = item._contactCandidates.find(function(c){
@@ -16622,6 +16636,10 @@ function apolloMergeContactCandidate(item, candidate){
     existing.linkedin = existing.linkedin || candidate.linkedin || '';
     existing.bucket = existing.bucket || candidate.bucket || 'other';
     existing.phones = Array.from(new Set([].concat(existing.phones || [], candidate.phones || []).filter(Boolean)));
+    existing.hasEmailHint = existing.hasEmailHint || candidate.hasEmailHint || false;
+    existing.hasPhoneHint = existing.hasPhoneHint || candidate.hasPhoneHint || false;
+    existing.hasDirectPhoneHint = existing.hasDirectPhoneHint || candidate.hasDirectPhoneHint || false;
+    existing.hasMobilePhoneHint = existing.hasMobilePhoneHint || candidate.hasMobilePhoneHint || false;
     if(!existing.telefon && existing.phones.length) existing.telefon = existing.phones[0];
     existing.score = apolloScoreContact(existing);
     return;
@@ -16633,7 +16651,7 @@ function apolloChooseCompanyContacts(candidates){
   var pool = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
     return finderContactHasEmail(contact);
   }).sort(function(a,b){
-    return (b.score || 0) - (a.score || 0);
+    return Number(!!b.telefon) - Number(!!a.telefon) || (b.score || 0) - (a.score || 0);
   });
   var source = pool;
   var chosen = [];
@@ -16659,12 +16677,20 @@ function apolloChooseCompanyContacts(candidates){
   return chosen.slice(0,4);
 }
 
+function apolloCountEmailContacts(item){
+  return (Array.isArray(item && item._contactCandidates) ? item._contactCandidates : []).filter(function(contact){
+    return finderContactHasEmail(contact);
+  }).length;
+}
+
 function apolloChooseEnrichmentTargets(candidates, maxCount){
-  var limit = Math.max(1, Math.min(8, Number(maxCount || 8) || 8));
+  var limit = Math.max(2, Math.min(20, Number(maxCount || 12) || 12));
   var pool = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
     return contact && contact.personId && !finderContactHasEmail(contact);
   }).sort(function(a,b){
-    return (b.score || 0) - (a.score || 0);
+    return Number(!!b.hasEmailHint) - Number(!!a.hasEmailHint)
+      || Number(!!b.hasPhoneHint) - Number(!!a.hasPhoneHint)
+      || (b.score || 0) - (a.score || 0);
   });
   var chosen = [];
   var seen = new Set();
@@ -16784,23 +16810,102 @@ function apolloUpsertFinderItem(found, item, meta){
 async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
   if(!item) return item;
   apolloEnsureContactBuckets(item);
-  var targets = apolloChooseEnrichmentTargets(item._contactCandidates || [], maxEnrich || 8).filter(function(contact){
+  var targets = apolloChooseEnrichmentTargets(item._contactCandidates || [], maxEnrich || 12).filter(function(contact){
     return !contact._enrichedAttempted;
   });
-  for(var i=0; i<targets.length; i++){
-    targets[i]._enrichedAttempted = true;
+  function getWebsiteDomain(url){
     try {
-      var enrData = await apolloRequestJson({
+      var source = String(url || '').trim();
+      if(!source) return '';
+      if(!/^https?:\/\//i.test(source)) source = 'https://' + source;
+      return (new URL(source)).hostname.replace(/^www\./i,'').trim();
+    } catch(_e){
+      return '';
+    }
+  }
+  function buildEnrichmentDetails(contact){
+    var detail = {};
+    var rawName = String(contact && contact.name || '').trim();
+    var parts = rawName ? rawName.split(/\s+/) : [];
+    if(contact && contact.personId) detail.id = String(contact.personId).trim();
+    if(parts[0]) detail.first_name = parts[0];
+    if(parts.length > 1) detail.last_name = parts.slice(1).join(' ');
+    if(contact && contact.email) detail.email = String(contact.email || '').trim();
+    if(item && item.kompaniya) detail.organization_name = String(item.kompaniya || '').trim();
+    var domain = getWebsiteDomain(item && item.website);
+    if(domain) detail.domain = domain;
+    return detail;
+  }
+  function extractEnrichedPeople(data){
+    var out = [];
+    var pushCandidate = function(entry){
+      if(!entry) return;
+      if(entry.person) return pushCandidate(entry.person);
+      if(entry.match) return pushCandidate(entry.match);
+      if(entry.matched_person) return pushCandidate(entry.matched_person);
+      if(entry.people && Array.isArray(entry.people)) return entry.people.forEach(pushCandidate);
+      out.push(entry);
+    };
+    ['matches','people','contacts','results'].forEach(function(key){
+      var list = data && Array.isArray(data[key]) ? data[key] : [];
+      list.forEach(pushCandidate);
+    });
+    if(!out.length && data && data.person) pushCandidate(data.person);
+    return out;
+  }
+  async function enrichSingleContact(contact){
+    var rawName = String(contact && contact.name || '').trim();
+    var parts = rawName ? rawName.split(/\s+/) : [];
+    var firstName = parts[0] || '';
+    var lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+    if(!firstName && !contact.email) return false;
+    try {
+      var singleData = await apolloRequestJson({
         search_type:'people_enrichment',
         api_key:apolloKey,
-        id:targets[i].personId,
+        first_name:firstName,
+        last_name:lastName,
+        email:contact && contact.email ? String(contact.email || '').trim() : '',
+        organization_name:item && item.kompaniya ? String(item.kompaniya || '').trim() : '',
+        organization_domain:getWebsiteDomain(item && item.website),
         reveal_personal_emails:true
       });
-      var person = enrData.person || null;
-      if(!person) continue;
+      var person = singleData && singleData.person ? singleData.person : null;
+      if(!person) return false;
       var merged = apolloPersonToContact(person, person.organization || {});
       apolloMergeContactCandidate(item, merged);
+      return true;
+    } catch(_singleErr){
+      return false;
+    }
+  }
+  var batchSize = 10;
+  for(var start=0; start<targets.length; start += batchSize){
+    var batch = targets.slice(start, start + batchSize).filter(function(contact){
+      return contact && (contact.personId || contact.name || contact.email);
+    });
+    if(!batch.length) continue;
+    batch.forEach(function(contact){ contact._enrichedAttempted = true; });
+    var beforeEmails = apolloCountEmailContacts(item);
+    try {
+      var enrData = await apolloRequestJson({
+        action:'bulk_people_enrichment',
+        api_key:apolloKey,
+        details: batch.map(buildEnrichmentDetails),
+        reveal_personal_emails:true
+      });
+      extractEnrichedPeople(enrData).forEach(function(person){
+        var merged = apolloPersonToContact(person, person.organization || {});
+        apolloMergeContactCandidate(item, merged);
+      });
     } catch(_enrichErr){}
+    if(apolloCountEmailContacts(item) <= beforeEmails && !apolloHasMinimumContactCoverage(item)){
+      for(var bi=0; bi<batch.length; bi++){
+        await enrichSingleContact(batch[bi]);
+        apolloApplyCompanyContacts(item);
+        if(apolloHasMinimumContactCoverage(item)) break;
+      }
+    }
     apolloApplyCompanyContacts(item);
     if(apolloHasMinimumContactCoverage(item)) break;
   }
@@ -17063,6 +17168,7 @@ async function apolloRequestJson(payload){
   if(body.search_type === 'people'){ body.action = 'people_search'; delete body.search_type; }
   else if(body.search_type === 'organizations'){ body.action = 'organization_search'; delete body.search_type; }
   else if(body.search_type === 'people_enrichment'){ body.action = 'people_enrichment'; delete body.search_type; }
+  else if(body.search_type === 'bulk_people_enrichment'){ body.action = 'bulk_people_enrichment'; delete body.search_type; }
   else if(body.search_type === 'org_enrichment'){ body.action = 'org_enrichment'; delete body.search_type; }
   // q_organization_keyword_tags — har bir keyword ALOHIDA element bo'lishi kerak
   if(body.q_organization_keyword_tags && Array.isArray(body.q_organization_keyword_tags)){
@@ -17333,9 +17439,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var found = [];
   var lastError = null;
   var hadSuccess = false;
-  var candidateCompanyLimit = Math.max(6, perCountry * 3);
-  var discoveryPerPage = Math.max(6, Math.min(10, candidateCompanyLimit));
-  var peoplePerPage = 6;
+  var candidateCompanyLimit = Math.max(12, perCountry * 6);
+  var discoveryPerPage = Math.max(12, Math.min(25, candidateCompanyLimit));
+  var peoplePerPage = 10;
   function dedupeStrings(list){
     return Array.from(new Set((list || []).map(function(v){ return String(v || '').trim(); }).filter(Boolean)));
   }
@@ -17372,7 +17478,8 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         var org = person.organization || {};
         var companyName = org.name || person.organization_name || (item && item.kompaniya) || '';
         if(!companyName) return;
-        if(item && item.kompaniya && apolloCompanyKey(companyName) !== apolloCompanyKey(item.kompaniya)) return;
+        var sameOrg = item && item._orgId && String(org.id || '').trim() && String(org.id || '').trim() === String(item._orgId || '').trim();
+        if(item && item.kompaniya && !sameOrg && apolloCompanyKey(companyName) !== apolloCompanyKey(item.kompaniya)) return;
         apolloMergeContactCandidate(item, apolloPersonToContact(person, Object.assign({}, org, { id:(org && org.id) || item._orgId || '' })));
         mergedAny = true;
         if(org){
@@ -17387,9 +17494,12 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         }
       });
       apolloApplyCompanyContacts(item);
-      if(apolloHasMinimumContactCoverage(item) || (item._contactCandidates || []).length >= 8 || !mergedAny){
+      var totalCandidates = (item._contactCandidates || []).length;
+      var emailContacts = apolloCountEmailContacts(item);
+      if(apolloHasMinimumContactCoverage(item) || emailContacts >= 2 || totalCandidates >= 28){
         break;
       }
+      if(!mergedAny) break;
     }
   }
 
@@ -17412,31 +17522,37 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   ].map(dedupeStrings).filter(function(set){ return set.length; });
 
   // ═══ STEP 1: People Search — kompaniyalarni topish va kontaktlarni yig‘ish ═══
-  for(var psi=0; psi<Math.min(3, peopleSets.length); psi++){
+  for(var psi=0; psi<Math.min(4, peopleSets.length); psi++){
     if(found.length >= candidateCompanyLimit) break;
-    try {
-      var prodKwTags = getProductKeywordTags(prod);
-      var psReq = {
-        search_type:'people',
-        page:1,
-        per_page:discoveryPerPage,
-        api_key:apolloKey,
-        organization_locations:[country],
-        person_titles: peopleSets[psi],
-        q_organization_keyword_tags: prodKwTags.length ? prodKwTags : [kw1].filter(Boolean)
-      };
-      var psData = await apolloRequestJson(psReq);
-      hadSuccess = true;
-      normalizeApolloArray(psData, ['people','contacts']).forEach(function(person){
-        if(found.length >= candidateCompanyLimit) return;
-        var org = person.organization || {};
-        var name = org.name || person.organization_name || '';
-        if(!name) return;
-        var mappedPerson = mapApolloPersonToFinderResult(person, country, meta);
-        if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(mappedPerson, prod)) return;
-        apolloUpsertFinderItem(found, mappedPerson, meta);
-      });
-    } catch(e){ lastError = e; if(apolloIsFatalError(e)) throw e; }
+    for(var psPage=1; psPage<=3; psPage++){
+      if(found.length >= candidateCompanyLimit) break;
+      try {
+        var prodKwTags = getProductKeywordTags(prod);
+        var psReq = {
+          search_type:'people',
+          page:psPage,
+          per_page:discoveryPerPage,
+          api_key:apolloKey,
+          organization_locations:[country],
+          person_titles: peopleSets[psi],
+          q_organization_keyword_tags: prodKwTags.length ? prodKwTags : [kw1].filter(Boolean),
+          q_keywords: getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries)
+        };
+        var psData = await apolloRequestJson(psReq);
+        hadSuccess = true;
+        var pagePeople = normalizeApolloArray(psData, ['people','contacts']);
+        pagePeople.forEach(function(person){
+          if(found.length >= candidateCompanyLimit) return;
+          var org = person.organization || {};
+          var name = org.name || person.organization_name || '';
+          if(!name) return;
+          var mappedPerson = mapApolloPersonToFinderResult(person, country, meta);
+          if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(mappedPerson, prod)) return;
+          apolloUpsertFinderItem(found, mappedPerson, meta);
+        });
+        if(!pagePeople.length) break;
+      } catch(e){ lastError = e; if(apolloIsFatalError(e)) throw e; }
+    }
   }
 
   // ═══ STEP 1b: Organization Search fallback ═══
@@ -17451,26 +17567,31 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     });
     for(var ki=0; ki<kwSets.length; ki++){
       if(found.length >= candidateCompanyLimit) break;
-      try {
-        var apData = await apolloRequestJson({
-          search_type:'organizations',
-          page:1,
-          per_page:discoveryPerPage,
-          api_key:apolloKey,
-          organization_locations:[country],
-          q_organization_keyword_tags:kwSets[ki],
-          q_keywords:kwSets[ki].join(' ')
-        });
-        hadSuccess = true;
-        normalizeApolloArray(apData, ['organizations','accounts','companies']).forEach(function(org){
-          if(found.length >= candidateCompanyLimit) return;
-          var name = org.name || '';
-          if(!name || name.length > 100 || /\|/.test(name)) return;
-          var mappedOrg = mapApolloOrganizationToFinderResult(org, country, meta);
-          if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(mappedOrg, prod)) return;
-          apolloUpsertFinderItem(found, mappedOrg, meta);
-        });
-      } catch(eOrg){ lastError = eOrg; if(apolloIsFatalError(eOrg)) throw eOrg; }
+      for(var orgPage=1; orgPage<=2; orgPage++){
+        if(found.length >= candidateCompanyLimit) break;
+        try {
+          var apData = await apolloRequestJson({
+            search_type:'organizations',
+            page:orgPage,
+            per_page:discoveryPerPage,
+            api_key:apolloKey,
+            organization_locations:[country],
+            q_organization_keyword_tags:kwSets[ki],
+            q_keywords:kwSets[ki].join(' ')
+          });
+          hadSuccess = true;
+          var orgList = normalizeApolloArray(apData, ['organizations','accounts','companies']);
+          orgList.forEach(function(org){
+            if(found.length >= candidateCompanyLimit) return;
+            var name = org.name || '';
+            if(!name || name.length > 100 || /\|/.test(name)) return;
+            var mappedOrg = mapApolloOrganizationToFinderResult(org, country, meta);
+            if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(mappedOrg, prod)) return;
+            apolloUpsertFinderItem(found, mappedOrg, meta);
+          });
+          if(!orgList.length) break;
+        } catch(eOrg){ lastError = eOrg; if(apolloIsFatalError(eOrg)) throw eOrg; }
+      }
     }
   }
 
@@ -17479,7 +17600,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       var broadOrgData = await apolloRequestJson({
         search_type:'organizations',
         page:1,
-        per_page:Math.max(4, discoveryPerPage),
+        per_page:Math.max(10, discoveryPerPage),
         api_key:apolloKey,
         organization_locations:[country],
         q_keywords:kw1 || kw2
@@ -17512,20 +17633,20 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     var item = candidates[fi];
     try {
       if(item._orgId){
-        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, coverageTitles, 6, 2);
+        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, coverageTitles, 15, 4);
       } else {
-        await searchPeopleAndMerge(item, coverageTitles, 6, 2);
+        await searchPeopleAndMerge(item, coverageTitles, 15, 4);
       }
-      await apolloEnrichCompanyContacts(item, apolloKey, 8);
+      await apolloEnrichCompanyContacts(item, apolloKey, 12);
       apolloApplyCompanyContacts(item);
       if(!apolloHasMinimumContactCoverage(item)){
-        await searchPeopleAndMerge(item, broadTitles.slice(0, 10), 8, 2);
-        await apolloEnrichCompanyContacts(item, apolloKey, 8);
+        await searchPeopleAndMerge(item, broadTitles.slice(0, 12), 20, 5);
+        await apolloEnrichCompanyContacts(item, apolloKey, 16);
         apolloApplyCompanyContacts(item);
       }
       if(!apolloHasMinimumContactCoverage(item) && item._orgId){
-        await searchPeopleAndMerge(item, [], 8, 2);
-        await apolloEnrichCompanyContacts(item, apolloKey, 8);
+        await searchPeopleAndMerge(item, [], 25, 6);
+        await apolloEnrichCompanyContacts(item, apolloKey, 20);
         apolloApplyCompanyContacts(item);
       }
     } catch(ePeople){
@@ -17537,28 +17658,33 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   // ═══ STEP 3: Fallback — hali hech narsa topilmagan bo‘lsa people search ═══
   if(!found.length){
     try {
-      var fbData = await apolloRequestJson({
-        search_type:'people',
-        page:1,
-        per_page:discoveryPerPage,
-        api_key:apolloKey,
-        person_titles:broadTitles.slice(0, 6),
-        organization_locations:[country],
-        q_organization_keyword_tags:getProductKeywordTags(prod)
-      });
-      hadSuccess = true;
-      normalizeApolloArray(fbData, ['people','contacts']).forEach(function(person){
-        var org = person.organization || {};
-        var compName = org.name || person.organization_name || '';
-        if(!compName) return;
-        var fallbackPerson = mapApolloPersonToFinderResult(person, country, meta);
-        if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(fallbackPerson, prod)) return;
-        apolloUpsertFinderItem(found, fallbackPerson, meta);
-      });
+      for(var fbPage=1; fbPage<=3; fbPage++){
+        var fbData = await apolloRequestJson({
+          search_type:'people',
+          page:fbPage,
+          per_page:discoveryPerPage,
+          api_key:apolloKey,
+          person_titles:broadTitles.slice(0, 8),
+          organization_locations:[country],
+          q_organization_keyword_tags:getProductKeywordTags(prod),
+          q_keywords:getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries)
+        });
+        hadSuccess = true;
+        var fallbackPeople = normalizeApolloArray(fbData, ['people','contacts']);
+        fallbackPeople.forEach(function(person){
+          var org = person.organization || {};
+          var compName = org.name || person.organization_name || '';
+          if(!compName) return;
+          var fallbackPerson = mapApolloPersonToFinderResult(person, country, meta);
+          if(!isOrgRelevantToProduct(org, preferredKeywords, prod) && isApolloObviousMismatch(fallbackPerson, prod)) return;
+          apolloUpsertFinderItem(found, fallbackPerson, meta);
+        });
+        if(!fallbackPeople.length) break;
+      }
       for(var gi=0; gi<found.length; gi++){
         try {
           if(!apolloHasMinimumContactCoverage(found[gi])){
-            await apolloEnrichCompanyContacts(found[gi], apolloKey, 6);
+            await apolloEnrichCompanyContacts(found[gi], apolloKey, 10);
           }
           apolloApplyCompanyContacts(found[gi]);
         } catch(_fallbackEnrichErr){}
