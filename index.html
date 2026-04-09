@@ -5925,26 +5925,30 @@ function finderContactHasPhone(contact){
   return !!String(contact && contact.telefon || '').trim();
 }
 
+function finderHasMinimumContactSet(contacts){
+  var list = Array.isArray(contacts) ? contacts.filter(finderContactIsQualified).slice(0,2) : [];
+  return list.length >= 2 && list.some(finderContactHasPhone);
+}
+
 function finderContactIsQualified(contact){
   return finderContactHasEmail(contact);
 }
 
 function getFinderQualifiedContacts(item){
-  return getFinderDisplayContacts(item).filter(finderContactIsQualified).slice(0,4);
+  return getFinderDisplayContacts(item).filter(finderContactIsQualified).slice(0,2);
 }
 
 function getFinderRenderableContacts(item){
-  var qualified = getFinderDisplayContacts(item).filter(finderContactIsQualified).slice(0,4);
-  return qualified.length >= 2 ? qualified : [];
+  var qualified = getFinderDisplayContacts(item).filter(finderContactIsQualified).slice(0,2);
+  return finderHasMinimumContactSet(qualified) ? qualified : [];
 }
 
 function getFinderVisibleContacts(item){
-  var renderable = getFinderRenderableContacts(item);
-  return renderable.length >= 2 ? renderable : [];
+  return getFinderRenderableContacts(item);
 }
 
 function finderResultIsRenderable(item){
-  return getFinderVisibleContacts(item).length >= 2;
+  return finderHasMinimumContactSet(getFinderVisibleContacts(item));
 }
 
 function renderFinderContactCard(contact){
@@ -5962,8 +5966,8 @@ function renderFinderContactCard(contact){
 }
 
 function renderFinderContactsHtml(contacts){
-  var list = Array.isArray(contacts) ? contacts.filter(finderContactIsQualified).slice(0,4) : [];
-  if(list.length < 2){
+  var list = Array.isArray(contacts) ? contacts.filter(finderContactIsQualified).slice(0,2) : [];
+  if(!finderHasMinimumContactSet(list)){
     return '<span style="color:var(--text3)">—</span>';
   }
   return '<div style="display:flex;flex-direction:column;gap:8px">' + list.map(function(contact){
@@ -5973,7 +5977,7 @@ function renderFinderContactsHtml(contacts){
 
 function getFinderDisplayContacts(item){
   if(item && Array.isArray(item.contacts) && item.contacts.length){
-    return item.contacts.slice(0,4);
+    return item.contacts.slice(0,2);
   }
   if(!item) return [];
   var fallback = {
@@ -16647,34 +16651,42 @@ function apolloMergeContactCandidate(item, candidate){
   item._contactCandidates.push(candidate);
 }
 
+function apolloPickBestContact(pool, preferredBuckets){
+  var list = Array.isArray(pool) ? pool : [];
+  var prefs = Array.isArray(preferredBuckets) ? preferredBuckets : [];
+  for(var i=0; i<prefs.length; i++){
+    var found = list.find(function(contact){
+      return contact && contact.bucket === prefs[i];
+    });
+    if(found) return found;
+  }
+  return list[0] || null;
+}
+
 function apolloChooseCompanyContacts(candidates){
   var pool = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
     return finderContactHasEmail(contact);
   }).sort(function(a,b){
     return Number(!!b.telefon) - Number(!!a.telefon) || (b.score || 0) - (a.score || 0);
   });
-  var source = pool;
-  var chosen = [];
-  var seen = new Set();
-  ['executive','sales','technical'].forEach(function(bucket){
-    var match = source.find(function(contact){
-      var key = apolloContactKey(contact);
-      return contact.bucket === bucket && !seen.has(key);
-    });
-    if(match){
-      chosen.push(match);
-      seen.add(apolloContactKey(match));
-    }
+  if(pool.length < 2) return [];
+  var primary = apolloPickBestContact(
+    pool.filter(finderContactHasPhone),
+    ['executive','sales','technical','other']
+  );
+  if(!primary) return [];
+  var primaryKey = apolloContactKey(primary);
+  var remaining = pool.filter(function(contact){
+    return apolloContactKey(contact) !== primaryKey;
   });
-  source.forEach(function(contact){
-    if(chosen.length >= 4) return;
-    var key = apolloContactKey(contact);
-    if(seen.has(key)) return;
-    chosen.push(contact);
-    seen.add(key);
+  if(!remaining.length) return [];
+  var secondaryPrefs = ['executive','sales','technical','other'].filter(function(bucket){
+    return bucket !== primary.bucket;
   });
-  if(chosen.length < 2) return [];
-  return chosen.slice(0,4);
+  secondaryPrefs.push(primary.bucket);
+  var secondary = apolloPickBestContact(remaining, secondaryPrefs);
+  if(!secondary) return [];
+  return [primary, secondary];
 }
 
 function apolloCountEmailContacts(item){
@@ -16684,12 +16696,14 @@ function apolloCountEmailContacts(item){
 }
 
 function apolloChooseEnrichmentTargets(candidates, maxCount){
-  var limit = Math.max(2, Math.min(20, Number(maxCount || 12) || 12));
+  var limit = Math.max(1, Math.min(2, Number(maxCount || 2) || 2));
   var pool = (Array.isArray(candidates) ? candidates : []).filter(function(contact){
-    return contact && contact.personId && !finderContactHasEmail(contact);
+    return contact && contact.personId && (!finderContactHasEmail(contact) || !finderContactHasPhone(contact));
   }).sort(function(a,b){
-    return Number(!!b.hasEmailHint) - Number(!!a.hasEmailHint)
+    return Number(!finderContactHasPhone(b)) - Number(!finderContactHasPhone(a))
+      || Number(!finderContactHasEmail(b)) - Number(!finderContactHasEmail(a))
       || Number(!!b.hasPhoneHint) - Number(!!a.hasPhoneHint)
+      || Number(!!b.hasEmailHint) - Number(!!a.hasEmailHint)
       || (b.score || 0) - (a.score || 0);
   });
   var chosen = [];
@@ -16724,9 +16738,7 @@ function apolloContactRoleKey(contact){
 }
 
 function apolloHasMinimumContactCoverage(item){
-  var contacts = getFinderRenderableContacts(item);
-  if(contacts.length < 2) return false;
-  return true;
+  return finderHasMinimumContactSet(getFinderRenderableContacts(item));
 }
 
 function apolloApplyCompanyContacts(item){
@@ -16810,7 +16822,7 @@ function apolloUpsertFinderItem(found, item, meta){
 async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
   if(!item) return item;
   apolloEnsureContactBuckets(item);
-  var targets = apolloChooseEnrichmentTargets(item._contactCandidates || [], maxEnrich || 12).filter(function(contact){
+  var targets = apolloChooseEnrichmentTargets(item._contactCandidates || [], maxEnrich || 2).filter(function(contact){
     return !contact._enrichedAttempted;
   });
   function getWebsiteDomain(url){
@@ -16867,8 +16879,7 @@ async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
         last_name:lastName,
         email:contact && contact.email ? String(contact.email || '').trim() : '',
         organization_name:item && item.kompaniya ? String(item.kompaniya || '').trim() : '',
-        organization_domain:getWebsiteDomain(item && item.website),
-        reveal_personal_emails:true
+        organization_domain:getWebsiteDomain(item && item.website)
       });
       var person = singleData && singleData.person ? singleData.person : null;
       if(!person) return false;
@@ -16879,7 +16890,7 @@ async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
       return false;
     }
   }
-  var batchSize = 10;
+  var batchSize = 2;
   for(var start=0; start<targets.length; start += batchSize){
     var batch = targets.slice(start, start + batchSize).filter(function(contact){
       return contact && (contact.personId || contact.name || contact.email);
@@ -16891,8 +16902,7 @@ async function apolloEnrichCompanyContacts(item, apolloKey, maxEnrich){
       var enrData = await apolloRequestJson({
         action:'bulk_people_enrichment',
         api_key:apolloKey,
-        details: batch.map(buildEnrichmentDetails),
-        reveal_personal_emails:true
+        details: batch.map(buildEnrichmentDetails)
       });
       extractEnrichedPeople(enrData).forEach(function(person){
         var merged = apolloPersonToContact(person, person.organization || {});
@@ -17118,7 +17128,7 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
     return getFinderRenderableContacts(b).length - getFinderRenderableContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
   });
   var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
-  return (strong.length ? strong : unique).slice(0, perCountry);
+  return (strong.length ? strong : unique).slice(0, Math.min(2, perCountry || 2));
 }
 
 function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
@@ -17152,7 +17162,7 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
     return getFinderRenderableContacts(b).length - getFinderRenderableContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
   });
   var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
-  return (strong.length ? strong : unique).slice(0, perCountry);
+  return (strong.length ? strong : unique).slice(0, Math.min(2, perCountry || 2));
 }
 
 function apolloNeedContactCoverage(found, perCountry){
@@ -17439,9 +17449,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var found = [];
   var lastError = null;
   var hadSuccess = false;
-  var candidateCompanyLimit = Math.max(12, perCountry * 6);
-  var discoveryPerPage = Math.max(12, Math.min(25, candidateCompanyLimit));
-  var peoplePerPage = 10;
+  var candidateCompanyLimit = Math.max(2, Math.min(4, perCountry * 2));
+  var discoveryPerPage = Math.max(4, Math.min(6, candidateCompanyLimit * 2));
+  var peoplePerPage = 4;
   function dedupeStrings(list){
     return Array.from(new Set((list || []).map(function(v){ return String(v || '').trim(); }).filter(Boolean)));
   }
@@ -17451,7 +17461,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       (meta.apolloTitles || []).filter(function(title){ return apolloRoleBucket(title) === bucket; }),
       fallback || []
     ));
-    return picked.slice(0, 10);
+    return picked.slice(0, 6);
   }
   async function searchPeopleAndMerge(item, titles, limit, maxPages){
     var pages = Math.max(1, Number(maxPages || 1) || 1);
@@ -17469,7 +17479,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
         req.q_keywords = item && item.kompaniya ? item.kompaniya : kw1;
       }
       if(Array.isArray(titles) && titles.length){
-        req.person_titles = titles.slice(0, 10);
+        req.person_titles = titles.slice(0, 6);
       }
       var data = await apolloRequestJson(req);
       hadSuccess = true;
@@ -17496,7 +17506,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       apolloApplyCompanyContacts(item);
       var totalCandidates = (item._contactCandidates || []).length;
       var emailContacts = apolloCountEmailContacts(item);
-      if(apolloHasMinimumContactCoverage(item) || emailContacts >= 2 || totalCandidates >= 28){
+      if(apolloHasMinimumContactCoverage(item) || emailContacts >= 2 || totalCandidates >= 8){
         break;
       }
       if(!mergedAny) break;
@@ -17516,15 +17526,13 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   ));
   var peopleSets = [
     executiveTitles.concat(salesTitles.slice(0, 2)),
-    technicalTitles.concat(salesTitles.slice(2, 5)),
-    broadTitles.slice(0, 8),
-    broadTitles.slice(8, 16)
+    technicalTitles.concat(salesTitles.slice(2, 4))
   ].map(dedupeStrings).filter(function(set){ return set.length; });
 
   // ═══ STEP 1: People Search — kompaniyalarni topish va kontaktlarni yig‘ish ═══
-  for(var psi=0; psi<Math.min(4, peopleSets.length); psi++){
+  for(var psi=0; psi<Math.min(2, peopleSets.length); psi++){
     if(found.length >= candidateCompanyLimit) break;
-    for(var psPage=1; psPage<=3; psPage++){
+    for(var psPage=1; psPage<=1; psPage++){
       if(found.length >= candidateCompanyLimit) break;
       try {
         var prodKwTags = getProductKeywordTags(prod);
@@ -17557,7 +17565,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
 
   // ═══ STEP 1b: Organization Search fallback ═══
   if(found.length < perCountry){
-    var kwSets = [[kw1,'manufacturer'],[kw1,'supplier'],[kw1],[kw2]];
+    var kwSets = [[kw1,'manufacturer'],[kw1],[kw2]];
     var seenKwSets = {};
     kwSets = kwSets.filter(function(s){
       var key = s.slice().sort().join('|');
@@ -17567,7 +17575,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     });
     for(var ki=0; ki<kwSets.length; ki++){
       if(found.length >= candidateCompanyLimit) break;
-      for(var orgPage=1; orgPage<=2; orgPage++){
+      for(var orgPage=1; orgPage<=1; orgPage++){
         if(found.length >= candidateCompanyLimit) break;
         try {
           var apData = await apolloRequestJson({
@@ -17600,7 +17608,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       var broadOrgData = await apolloRequestJson({
         search_type:'organizations',
         page:1,
-        per_page:Math.max(10, discoveryPerPage),
+        per_page:Math.max(4, discoveryPerPage),
         api_key:apolloKey,
         organization_locations:[country],
         q_keywords:kw1 || kw2
@@ -17623,30 +17631,30 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
     salesTitles,
     technicalTitles,
     broadTitles.slice(0, 6)
-  )).slice(0, 12);
+  )).slice(0, 6);
 
   var candidates = found.slice().sort(function(a,b){
     return (Number(b.score || 0) - Number(a.score || 0));
-  }).slice(0, candidateCompanyLimit);
+  }).slice(0, Math.min(2, candidateCompanyLimit));
 
   for(var fi=0; fi<candidates.length; fi++){
     var item = candidates[fi];
     try {
       if(item._orgId){
-        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, coverageTitles, 15, 4);
+        if(!apolloHasMinimumContactCoverage(item)) await searchPeopleAndMerge(item, coverageTitles, 6, 1);
       } else {
-        await searchPeopleAndMerge(item, coverageTitles, 15, 4);
+        await searchPeopleAndMerge(item, coverageTitles, 6, 1);
       }
-      await apolloEnrichCompanyContacts(item, apolloKey, 12);
+      await apolloEnrichCompanyContacts(item, apolloKey, 2);
       apolloApplyCompanyContacts(item);
       if(!apolloHasMinimumContactCoverage(item)){
-        await searchPeopleAndMerge(item, broadTitles.slice(0, 12), 20, 5);
-        await apolloEnrichCompanyContacts(item, apolloKey, 16);
+        await searchPeopleAndMerge(item, broadTitles.slice(0, 6), 6, 1);
+        await apolloEnrichCompanyContacts(item, apolloKey, 2);
         apolloApplyCompanyContacts(item);
       }
-      if(!apolloHasMinimumContactCoverage(item) && item._orgId){
-        await searchPeopleAndMerge(item, [], 25, 6);
-        await apolloEnrichCompanyContacts(item, apolloKey, 20);
+      if(!apolloHasMinimumContactCoverage(item) && item._orgId && apolloCountEmailContacts(item) < 2){
+        await searchPeopleAndMerge(item, [], 4, 1);
+        await apolloEnrichCompanyContacts(item, apolloKey, 1);
         apolloApplyCompanyContacts(item);
       }
     } catch(ePeople){
@@ -17658,7 +17666,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   // ═══ STEP 3: Fallback — hali hech narsa topilmagan bo‘lsa people search ═══
   if(!found.length){
     try {
-      for(var fbPage=1; fbPage<=3; fbPage++){
+      for(var fbPage=1; fbPage<=1; fbPage++){
         var fbData = await apolloRequestJson({
           search_type:'people',
           page:fbPage,
@@ -17684,7 +17692,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       for(var gi=0; gi<found.length; gi++){
         try {
           if(!apolloHasMinimumContactCoverage(found[gi])){
-            await apolloEnrichCompanyContacts(found[gi], apolloKey, 10);
+            await apolloEnrichCompanyContacts(found[gi], apolloKey, 2);
           }
           apolloApplyCompanyContacts(found[gi]);
         } catch(_fallbackEnrichErr){}
@@ -17720,9 +17728,13 @@ async function runCompanyFinder(source){
   var sourceScope = getFinderSourceSelection();
   var countSettings = getFinderCountSettings();
   var requestedCount = countSettings.count;
+  var effectiveRequestedCount = source === 'apollo' ? Math.min(2, Math.max(1, requestedCount || 2)) : requestedCount;
   var requestPerCountry = countSettings.mode === 'total'
-    ? Math.max(1, Math.ceil(requestedCount / Math.max((meta.mode === 'exporters' ? (sourceScope.effectiveCountries || []).length : (_finderTargetCountries || []).length), 1)))
-    : requestedCount;
+    ? Math.max(1, Math.ceil(effectiveRequestedCount / Math.max((meta.mode === 'exporters' ? (sourceScope.effectiveCountries || []).length : (_finderTargetCountries || []).length), 1)))
+    : effectiveRequestedCount;
+  if(source === 'apollo'){
+    requestPerCountry = Math.min(2, Math.max(1, requestPerCountry));
+  }
   var strategy = getFinderStrategyFilters();
 
   // Get selected target countries
@@ -17759,11 +17771,9 @@ async function runCompanyFinder(source){
         document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+getFinderCountryLabel(searchCountries[ci])+' ('+(ci+1)+'/'+searchCountries.length+') — '+meta.resultWord+'...'+(meta.mode === 'exporters' ? (' | Maqsad: '+targetCountries.slice(0,4).map(getFinderCountryLabel).join(', ')+(targetCountries.length>4?'...':'')) : '');
         try {
           var countryResults = await apolloFinderSearchCountry(prod, searchCountries[ci], requestPerCountry, meta, sourceScope, targetCountries, strategy);
-          countryResults.forEach(function(item){ _finderResults.push(item); });
-          if(countSettings.mode === 'total'){
-            dedupeFinderResults();
-            if(_finderResults.length >= requestedCount) break;
-          }
+          countryResults.filter(finderResultIsRenderable).forEach(function(item){ _finderResults.push(item); });
+          dedupeFinderResults();
+          if(_finderResults.length >= effectiveRequestedCount) break;
         } catch(e){
           console.log('Apollo '+searchCountries[ci]+' error:', e);
           if(apolloIsFatalError(e)){
@@ -17777,9 +17787,7 @@ async function runCompanyFinder(source){
       }
       if(apolloFatalError) throw apolloFatalError;
       dedupeFinderResults();
-      if(countSettings.mode === 'total'){
-        _finderResults = _finderResults.slice(0, requestedCount);
-      }
+      _finderResults = _finderResults.filter(finderResultIsRenderable).slice(0, effectiveRequestedCount);
       if(!_finderResults.length && apolloSoftErrors.length){
         throw new Error('Apollo qidiruvi natija qaytarmadi. Ayrim davlatlarda xatolar bo‘ldi: ' + apolloSoftErrors.slice(0,3).join(' | '));
       }
@@ -18020,57 +18028,18 @@ function renderFinderTable(results){
 function saveFinderResults(){
   if(!_finderResults.length){ toast('⚠️ Natija yo\'q','error'); return; }
   if(!DB.investorCompanies) DB.investorCompanies = [];
-  var finderSel = document.getElementById('finder-product-select');
-  var currentProd = (DB.products||[]).find(function(p){ return String(p.id) === String((finderSel||{}).value || ''); });
-  var productLabel = currentProd ? formatBilingualProductName(currentProd) : '';
-  var productHs = currentProd ? String(currentProd.hs_code || '').replace(/\D/g,'').slice(0,6) : '';
-  var productId = currentProd ? String(currentProd.id || '') : '';
   var added = 0;
-  _finderResults.forEach(function(r){
-    var exists = DB.investorCompanies.find(function(e){return e.kompaniya===r.kompaniya && e.rahbar===r.rahbar;});
-    if(!exists){
-      var rec = Object.assign({id:nextId(DB.investorCompanies)},r,{
-        mahsulotNomi: r.mahsulotNomi || productLabel || r.soha || '',
-        soha: r.mahsulotNomi || productLabel || r.soha || '',
-        productId: r.productId || productId || '',
-        mahsulotProductId: r.mahsulotProductId || productId || '',
-        mahsulotHs: r.mahsulotHs || r.hsCode || productHs || '',
-        productHs: r.productHs || r.hsCode || productHs || '',
-        holat:'Yangi',
-        sana:new Date().toISOString().slice(0,10),
-        emailSent:false
-      });
-      DB.investorCompanies.push(rec);
-      if(typeof fbSave==='function') fbSave('investorCompanies',rec);
-      added++;
-    } else {
-      var changed = false;
-      if((productLabel || r.mahsulotNomi) && !exists.mahsulotNomi){
-        exists.mahsulotNomi = r.mahsulotNomi || productLabel || exists.soha || '';
-        changed = true;
-      }
-      if((productLabel || r.soha) && (!exists.soha || exists.soha === exists.mahsulotNomi)){
-        exists.soha = exists.mahsulotNomi || r.soha || productLabel || exists.soha || '';
-        changed = true;
-      }
-      if((productId || r.productId) && !exists.productId){
-        exists.productId = r.productId || productId || '';
-        exists.mahsulotProductId = exists.mahsulotProductId || exists.productId;
-        changed = true;
-      }
-      if((productHs || r.mahsulotHs || r.hsCode) && !exists.mahsulotHs){
-        exists.mahsulotHs = r.mahsulotHs || r.hsCode || productHs || '';
-        exists.productHs = exists.productHs || exists.mahsulotHs;
-        changed = true;
-      }
-      if((r.photoUrl || r.photo_url) && !exists.photoUrl){
-        exists.photoUrl = r.photoUrl || r.photo_url || '';
-        changed = true;
-      }
-      if(changed && typeof fbSave==='function') fbSave('investorCompanies', exists);
-    }
+  var meta = getCurrentFinderProductMeta();
+  (_finderResults || []).forEach(function(item){
+    var contacts = getFinderVisibleContacts(item);
+    contacts.forEach(function(contact){
+      var existing = findFinderContactInvestorRecord(item, contact);
+      var isNew = !existing;
+      var rec = upsertFinderContactInvestorRecord(existing, item, contact, meta);
+      if(rec && isNew) added++;
+    });
   });
-  toast('✅ '+added+' ta kompaniya bazaga saqlandi!');
+  toast('✅ '+added+' ta kontakt bazaga saqlandi!');
   renderInvestorCompanies();
   renderProducts();
 }
@@ -18078,40 +18047,23 @@ function saveFinderResults(){
 function goToAiLetter(idx){
   var comp = _finderResults[idx];
   if(!comp) return;
-  var finderSel = document.getElementById('finder-product-select');
-  var currentProd = (DB.products||[]).find(function(p){ return String(p.id) === String((finderSel||{}).value || ''); });
-  var productLabel = currentProd ? formatBilingualProductName(currentProd) : '';
-  var productHs = currentProd ? String(currentProd.hs_code || '').replace(/\D/g,'').slice(0,6) : '';
-  var productId = currentProd ? String(currentProd.id || '') : '';
-  // Save to DB first
-  if(!DB.investorCompanies) DB.investorCompanies = [];
-  var exists = DB.investorCompanies.find(function(e){return e.kompaniya===comp.kompaniya;});
-  if(!exists){
-    comp.id = nextId(DB.investorCompanies);
-    comp.mahsulotNomi = comp.mahsulotNomi || productLabel || comp.soha || '';
-    comp.soha = comp.mahsulotNomi || productLabel || comp.soha || '';
-    comp.productId = comp.productId || productId || '';
-    comp.mahsulotProductId = comp.mahsulotProductId || comp.productId || '';
-    comp.mahsulotHs = comp.mahsulotHs || comp.hsCode || productHs || '';
-    comp.productHs = comp.productHs || comp.mahsulotHs || '';
-    comp.holat = 'Yangi';
-    comp.sana = new Date().toISOString().slice(0,10);
-    DB.investorCompanies.push(comp);
-    if(typeof fbSave==='function') fbSave('investorCompanies',comp);
-  } else {
-    exists.mahsulotNomi = exists.mahsulotNomi || comp.mahsulotNomi || productLabel || exists.soha || '';
-    exists.soha = exists.soha || exists.mahsulotNomi || comp.soha || productLabel || '';
-    exists.productId = exists.productId || comp.productId || productId || '';
-    exists.mahsulotProductId = exists.mahsulotProductId || exists.productId || productId || '';
-    exists.mahsulotHs = exists.mahsulotHs || comp.mahsulotHs || comp.hsCode || productHs || '';
-    exists.productHs = exists.productHs || exists.mahsulotHs || '';
-    if(typeof fbSave==='function') fbSave('investorCompanies',exists);
+  var contacts = getFinderVisibleContacts(comp);
+  if(!contacts.length){
+    toast('⚠️ AI uchun kontakt topilmadi','error');
+    return;
   }
+  var meta = getCurrentFinderProductMeta();
+  var firstRecord = null;
+  contacts.forEach(function(contact){
+    var existing = findFinderContactInvestorRecord(comp, contact);
+    var rec = upsertFinderContactInvestorRecord(existing, comp, contact, meta);
+    if(!firstRecord && rec) firstRecord = rec;
+  });
+  if(!firstRecord || !firstRecord.id) return;
   showPage('investor');
   setTimeout(function(){
     renderInvestorCompanies();
-    var targetId = exists ? exists.id : comp.id;
-    openInvestorAiWorkspace(targetId);
+    openInvestorAiWorkspace(firstRecord.id);
   },300);
 }
 
