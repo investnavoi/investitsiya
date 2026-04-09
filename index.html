@@ -18341,6 +18341,83 @@ function renderFinderTable(results){
   mountInvestorAiWorkspace();
 }
 
+// Final override: keep one company row-group and show multiple contacts under that company.
+function renderFinderTable(results){
+  updateFinderModeUI();
+  var tb = document.getElementById('finder-tbody');
+  if(!tb) return;
+  var rows = [];
+  var allResults = Array.isArray(_finderResults) ? _finderResults : [];
+  (results || []).slice().sort(function(a,b){
+    return (b.score || 0) - (a.score || 0);
+  }).forEach(function(r, i){
+    var contacts = getFinderVisibleContacts(r);
+    if(!contacts.length) return;
+    var sourceIdx = allResults.indexOf(r);
+    if(sourceIdx < 0) sourceIdx = i;
+    var scoreColor = r.score>=80 ? '#059669' : r.score>=60 ? '#FFB703' : '#EF233C';
+    var contactRows = contacts.map(function(contact, contactIdx){
+      var aiRecord = findFinderContactInvestorRecord(r, contact);
+      var aiTargetKey = getFinderContactTargetKey(sourceIdx, contactIdx, aiRecord);
+      return {
+        contact: contact,
+        contactIdx: contactIdx,
+        aiRecord: aiRecord,
+        isFinderAiOpen: !!_finderAiOpen && aiTargetKey === String(_finderAiTargetKey || ''),
+        isFinderDetailOpen: String(_finderDetailTargetKey || '') === aiTargetKey
+      };
+    });
+    var inlineCount = contactRows.filter(function(state){
+      return state.isFinderAiOpen || state.isFinderDetailOpen;
+    }).length;
+    var rowspan = contactRows.length + inlineCount;
+    contactRows.forEach(function(state, contactRowIdx){
+      var row = '<tr>';
+      if(contactRowIdx === 0){
+        row += '<td rowspan="'+rowspan+'"><input type="checkbox" class="fc-check" data-idx="'+sourceIdx+'" checked></td>';
+        row += '<td rowspan="'+rowspan+'">'+(i+1)+'</td>';
+        row += '<td rowspan="'+rowspan+'"><b>'+escHtml(r.kompaniya || '—')+'</b>'+(r.website ? '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.website)+'</div>' : '')+'</td>';
+        row += '<td rowspan="'+rowspan+'">'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>';
+        row += '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+escHtml(r.shahar || '—')+'</td>';
+      }
+      row += '<td>'+renderFinderContactCard(state.contact)+'</td>';
+      if(contactRowIdx === 0){
+        row += '<td rowspan="'+rowspan+'" style="font-size:.65rem">'+escHtml(r.soha || '—')+'</td>';
+        row += '<td rowspan="'+rowspan+'" style="font-size:.65rem">'+escHtml(r.daromad || '—')+'</td>';
+        row += '<td rowspan="'+rowspan+'"><span style="font-weight:800;color:'+scoreColor+'">'+escHtml(String(r.score || 0))+'</span></td>';
+      }
+      row += '<td><button type="button" onclick="openFinderContactDetail('+sourceIdx+','+state.contactIdx+')" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:5px 10px">Batafsil</button></td>';
+      row += '<td>'+renderFinderContactEmailStatus(sourceIdx, state.contactIdx, state.contact)+'</td>';
+      row += '<td><div style="display:flex;gap:6px;align-items:center;white-space:nowrap">'+
+        '<button class="btn btn-sm" onclick="openFinderContactAi('+sourceIdx+','+state.contactIdx+')" title="AI tahlil va xat" style="background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none">🤖</button>'+
+        (state.contact.email ? '<button class="btn btn-blue btn-sm" onclick="openFinderContactEmail('+sourceIdx+','+state.contactIdx+')" title="Xat yuborish">📧</button>' : '')+
+        (state.contact.email ? '<button class="btn btn-sm" onclick="openFinderContactSchedule('+sourceIdx+','+state.contactIdx+')" title="Rejalashtirish" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border)">📅</button>' : '')+
+        '<button class="btn btn-danger btn-sm" onclick="deleteFinderContactResult('+sourceIdx+','+state.contactIdx+')" title="Kontaktni olib tashlash">🗑</button>'+
+      '</div></td></tr>';
+      rows.push(row);
+      if(state.isFinderDetailOpen || state.isFinderAiOpen){
+        var detailRec = state.aiRecord || ensureFinderContactInvestorRecord(sourceIdx, state.contactIdx);
+        var inlineBlocks = '';
+        if(state.isFinderDetailOpen){
+          inlineBlocks += renderFinderInlineDetail(r, state.contact, detailRec);
+        }
+        if(state.isFinderAiOpen){
+          inlineBlocks += '<div id="finderAiRowMount" style="padding:.2rem 0 .2rem"></div>';
+        }
+        rows.push(
+          '<tr class="finder-ai-inline-row">'+
+            '<td colspan="4" style="padding:0;background:rgba(67,97,238,.03)">'+
+              '<div style="padding:.85rem 1rem .35rem">'+inlineBlocks+'</div>'+
+            '</td>'+
+          '</tr>'
+        );
+      }
+    });
+  });
+  tb.innerHTML = rows.join('');
+  mountInvestorAiWorkspace();
+}
+
 function saveFinderResults(){
   if(!_finderResults.length){ toast('⚠️ Natija yo\'q','error'); return; }
   if(!DB.investorCompanies) DB.investorCompanies = [];
@@ -18356,6 +18433,37 @@ function saveFinderResults(){
     });
   });
   toast('✅ '+added+' ta kontakt bazaga saqlandi!');
+  renderCurrentFinderTable();
+  renderInvestorCompanies();
+  renderProducts();
+}
+
+// Final override: clearer save result feedback (new vs updated contacts).
+function saveFinderResults(){
+  if(!_finderResults.length){ toast('⚠️ Natija yo\'q','error'); return; }
+  if(!DB.investorCompanies) DB.investorCompanies = [];
+  var added = 0;
+  var updated = 0;
+  var meta = getCurrentFinderProductMeta();
+  (_finderResults || []).forEach(function(item){
+    var contacts = getFinderVisibleContacts(item);
+    contacts.forEach(function(contact){
+      var existing = findFinderContactInvestorRecord(item, contact);
+      var rec = upsertFinderContactInvestorRecord(existing, item, contact, meta);
+      if(!rec) return;
+      if(existing) updated++;
+      else added++;
+    });
+  });
+  if(added > 0 && updated > 0){
+    toast('✅ '+added+' ta yangi kontakt saqlandi, '+updated+' ta kontakt yangilandi!');
+  } else if(added > 0){
+    toast('✅ '+added+' ta kontakt bazaga saqlandi!');
+  } else if(updated > 0){
+    toast('✅ Yangi kontakt yo\'q, '+updated+' ta mavjud kontakt yangilandi.');
+  } else {
+    toast('⚠️ Saqlanadigan kontakt topilmadi','error');
+  }
   renderCurrentFinderTable();
   renderInvestorCompanies();
   renderProducts();
