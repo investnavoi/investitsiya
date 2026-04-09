@@ -1512,9 +1512,11 @@ input[type="time"]{-webkit-appearance:none;}
           <thead>
             <tr>
               <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes(this)"></th>
-              <th>T/r</th>
+              <th>#</th>
               <th data-i18n="col_company">Kompaniya</th>
-              <th data-i18n="col_company_location">Kompaniya manzili</th>
+              <th>Davlat</th>
+              <th>Shahar</th>
+              <th style="min-width:260px">Kontaktlar</th>
               <th style="min-width:420px;padding:0;overflow:visible;position:relative">
                 <div style="display:flex;align-items:center;gap:6px;padding:0 6px">
                   <div class="custom-select-wrap" id="investor-soha-filter-wrap" style="min-width:0;flex:1">
@@ -1525,12 +1527,11 @@ input[type="time"]{-webkit-appearance:none;}
                   <button class="btn btn-ghost btn-sm" type="button" onclick="clearInvestorProductFilter()" id="investor-soha-filter-clear" style="display:none;padding:6px 10px;white-space:nowrap">Tozalash</button>
                 </div>
               </th>
+              <th>Eksport hajmi</th>
+              <th>Score</th>
               <th>Batafsil</th>
               <th data-i18n="col_emailstatus">Email holati</th>
               <th data-i18n="col_actions">Amal</th>
-            </tr>
-            <tr>
-
             </tr>
           </thead>
           <tbody id="ic-tbody"></tbody>
@@ -6512,13 +6513,209 @@ function renderInvestorCompanies(){
   if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
 }
 
+renderInvestorCompanies = function(){
+  const allCo = DB.investorCompanies || [];
+  var productFilter = _investorProductFilterId
+    ? (DB.products || []).find(function(item){ return String(item.id || '') === String(_investorProductFilterId || ''); }) || null
+    : null;
+
+  const co = allCo.filter(function(r){
+    if(_investorGeoFilterStateCode && getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
+    if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
+    return true;
+  });
+
+  var allGroupMap = Object.create(null);
+  allCo.forEach(function(rec){
+    var key = [
+      String(rec.kompaniya || '').trim().toLowerCase(),
+      String(rec.website || '').trim().toLowerCase(),
+      String(rec.davlat || rec.country || '').trim().toLowerCase(),
+      String(rec.shahar || rec.city || '').trim().toLowerCase()
+    ].join('|');
+    allGroupMap[key] = true;
+  });
+  const total = allCo.reduce(function(s, r){ return s + (parseFloat(r.summa) || 0); }, 0);
+  document.getElementById('ic-k1').textContent = Object.keys(allGroupMap).length;
+  document.getElementById('ic-k2').textContent = allCo.filter(function(r){ return r.holat === 'Tayyor'; }).length;
+  document.getElementById('ic-k3').textContent = allCo.filter(function(r){ return r.emailSent; }).length + '/' + allCo.filter(function(r){ return r.email; }).length;
+  const ic4 = document.getElementById('ic-k4'); if(ic4) ic4.textContent = '$' + Math.round(total / 1e6) + 'M';
+  document.getElementById('badge-investorco').textContent = Object.keys(allGroupMap).length;
+  renderInvestorGeoCard(allCo);
+  if(typeof renderInvestorProductFilterPicker === 'function'){
+    renderInvestorProductFilterPicker();
+  }
+
+  var filterBar = document.getElementById('investorGeoFilterBar');
+  var filterLabel = document.getElementById('investorGeoFilterLabel');
+  if(filterBar){
+    if(_investorGeoFilterStateCode && window._investorGeoStateStats && window._investorGeoStateStats[_investorGeoFilterStateCode]){
+      filterBar.style.display = 'flex';
+      if(filterLabel){
+        var filterInfo = window._investorGeoStateStats[_investorGeoFilterStateCode];
+        filterLabel.textContent = (filterInfo.name || _investorGeoFilterStateCode) + ' (' + co.length + ' ta kontakt)';
+      }
+    } else {
+      filterBar.style.display = 'none';
+      if(filterLabel) filterLabel.textContent = 'Davlat';
+    }
+  }
+
+  var groupedMap = Object.create(null);
+  var grouped = [];
+  co.forEach(function(rec){
+    var key = [
+      String(rec.kompaniya || '').trim().toLowerCase(),
+      String(rec.website || '').trim().toLowerCase(),
+      String(rec.davlat || rec.country || '').trim().toLowerCase(),
+      String(rec.shahar || rec.city || '').trim().toLowerCase()
+    ].join('|');
+    if(!groupedMap[key]){
+      groupedMap[key] = { key: key, records: [] };
+      grouped.push(groupedMap[key]);
+    }
+    groupedMap[key].records.push(rec);
+  });
+  grouped.forEach(function(group){
+    group.records.sort(function(a,b){
+      var aId = Number(a && a.id);
+      var bId = Number(b && b.id);
+      if(Number.isFinite(aId) && Number.isFinite(bId)) return aId - bId;
+      return String((a && a.id) || '').localeCompare(String((b && b.id) || ''));
+    });
+  });
+
+  const tb = document.getElementById('ic-tbody');
+  if(!grouped.length){
+    tb.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:2rem;color:var(--text2)">Ma\'lumot topilmadi</td></tr>';
+    if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
+    return;
+  }
+
+  var icTotalPages = Math.max(1, Math.ceil(grouped.length / IC_PAGE_SIZE));
+  if(_icPage > icTotalPages) _icPage = icTotalPages;
+  if(_icPage < 1) _icPage = 1;
+  var icStart = (_icPage - 1) * IC_PAGE_SIZE;
+  var icEnd = icStart + IC_PAGE_SIZE;
+  var groupPage = grouped.slice(icStart, icEnd);
+
+  var paginEl = document.getElementById('ic-pagination');
+  if(paginEl){
+    if(icTotalPages > 1){
+      var pages = [];
+      for(var p=1; p<=icTotalPages; p++){
+        var isActive = p === _icPage;
+        pages.push('<button onclick="_icPage='+p+';renderInvestorCompanies()" style="min-width:2rem;padding:4px 8px;border:1px solid '+(isActive?'#4361EE':'var(--border)')+';border-radius:6px;background:'+(isActive?'#4361EE':'var(--bg)')+';color:'+(isActive?'#fff':'var(--text)')+';font-size:.75rem;font-weight:'+(isActive?'700':'400')+';cursor:pointer">'+p+'</button>');
+      }
+      var prevBtn = '<button onclick="if(_icPage>1){_icPage--;renderInvestorCompanies();}" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.75rem;cursor:pointer">&#8592;</button>';
+      var nextBtn = '<button onclick="if(_icPage<'+icTotalPages+'){_icPage++;renderInvestorCompanies();}" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.75rem;cursor:pointer">&#8594;</button>';
+      paginEl.innerHTML = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:.75rem 0">'+prevBtn+pages.join('')+nextBtn+'<span style="font-size:.72rem;color:var(--text3);margin-left:6px">'+grouped.length+' ta / '+_icPage+'-bet</span></div>';
+      paginEl.style.display = 'block';
+    } else {
+      paginEl.innerHTML = '';
+      paginEl.style.display = 'none';
+    }
+  }
+
+  tb.innerHTML = groupPage.map(function(group, groupIdx){
+    var recs = group.records || [];
+    if(!recs.length) return '';
+    var companyRec = recs[0];
+    var rowNumber = icStart + groupIdx + 1;
+    var countryName = String(companyRec.davlat || companyRec.country || '').trim();
+    var countryLabel = countryName ? getFinderCountryLabel(countryName) : '';
+    var cityText = String(companyRec.shahar || companyRec.city || '').trim();
+    var scoreNum = recs.reduce(function(max, rec){
+      var score = Number(rec && rec.score);
+      if(!Number.isFinite(score)) return max;
+      return Math.max(max, score);
+    }, 0);
+    var scoreColor = scoreNum>=80 ? '#059669' : scoreNum>=60 ? '#FFB703' : '#EF233C';
+    var groupIds = recs.map(function(rec){ return String(rec.id); }).join(',');
+    var sohaEditRecord = recs.find(function(rec){
+      return String(_investorSohaEditId || '') === String(rec.id);
+    }) || companyRec;
+    var isSohaEdit = String(_investorSohaEditId || '') === String(sohaEditRecord.id);
+    var sohaValue = getInvestorSohaValue(sohaEditRecord);
+    var sohaCell = isSohaEdit
+      ? '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">' +
+          '<input id="investor-soha-input-'+sohaEditRecord.id+'" value="'+tgEscapeAttr(sohaValue)+'" placeholder="Soha / mahsulot nomi" style="min-width:170px;max-width:260px;padding:4px 8px;font-size:.72rem;border:1px solid #4361EE;border-radius:6px;background:#fff" onkeydown="if(event.key===\'Enter\')saveInvestorSohaEdit(\''+sohaEditRecord.id+'\');if(event.key===\'Escape\')cancelInvestorSohaEdit()">' +
+          '<button type="button" onclick="saveInvestorSohaEdit(\''+sohaEditRecord.id+'\')" style="background:#059669;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:.66rem;cursor:pointer">💾</button>' +
+          '<button type="button" onclick="cancelInvestorSohaEdit()" style="background:#E5E7EB;color:#111827;border:none;border-radius:6px;padding:4px 8px;font-size:.66rem;cursor:pointer">Bekor</button>' +
+        '</div>'
+      : (sohaValue
+          ? '<div style="display:flex;align-items:flex-start;gap:6px;justify-content:space-between"><span>'+escHtml(sohaValue)+'</span>'+(isAdmin?'<button type="button" onclick="openInvestorSohaEdit(\''+sohaEditRecord.id+'\')" title="Soha tahrirlash" style="border:none;background:none;color:#4361EE;cursor:pointer;font-size:.8rem;line-height:1">✏️</button>':'')+'</div>'
+          : (isAdmin
+              ? '<button type="button" onclick="openInvestorSohaEdit(\''+sohaEditRecord.id+'\')" style="background:#F59E0B;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:.66rem;cursor:pointer">Soha qo\'shish</button>'
+              : '—'));
+    var companyHtml = '<b style="color:var(--text)">'+escHtml(companyRec.kompaniya || '—')+'</b>' +
+      (companyRec.website ? '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(companyRec.website)+'</div>' : '');
+    var exportVolume = escHtml(String(companyRec.daromad || companyRec.eksportHajmi || companyRec.summa || '—'));
+
+    var html = '';
+    recs.forEach(function(rec, recIdx){
+      var isAiOpen = !!_investorAiOpen && String(_investorAiTargetId || '') === String(rec.id);
+      var contact = {
+        name: String(rec.rahbar || '').trim(),
+        title: String(rec.lavozim || '').trim(),
+        email: String(rec.email || '').trim(),
+        telefon: String(rec.telefon || rec.tel || '').trim(),
+        photoUrl: String(rec.photoUrl || rec.photo_url || '').trim(),
+        linkedin: String(rec.linkedin || '').trim()
+      };
+      html += '<tr id="investor-row-'+rec.id+'">';
+      if(recIdx === 0){
+        html += '<td rowspan="'+recs.length+'">'+(isAdmin ? ('<input type="checkbox" class="ic-check" data-ids="'+tgEscapeAttr(groupIds)+'" onchange="updateSelectedCount()">') : '')+'</td>';
+        html += '<td rowspan="'+recs.length+'">'+rowNumber+'</td>';
+        html += '<td rowspan="'+recs.length+'">'+companyHtml+'</td>';
+        html += '<td rowspan="'+recs.length+'">'+(countryName ? (getFinderCountryFlag(countryName)+' '+escHtml(countryLabel || countryName)) : '<span style="color:var(--text3)">—</span>')+'</td>';
+        html += '<td rowspan="'+recs.length+'" style="font-size:.74rem">'+(cityText ? escHtml(cityText) : '<span style="color:var(--text3)">—</span>')+'</td>';
+      }
+      html += '<td>'+renderFinderContactCard(contact)+'</td>';
+      if(recIdx === 0){
+        html += '<td rowspan="'+recs.length+'">'+sohaCell+'</td>';
+        html += '<td rowspan="'+recs.length+'" style="font-size:.7rem">'+exportVolume+'</td>';
+        html += '<td rowspan="'+recs.length+'"><span style="font-weight:800;color:'+scoreColor+'">'+escHtml(String(scoreNum || 0))+'</span></td>';
+      }
+      html += '<td><button type="button" onclick="openInvestorDetailModal(\''+rec.id+'\')" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:5px 10px">Batafsil</button></td>';
+      html += '<td>'+getEmailStatusBadge(rec)+'</td>';
+      html += '<td>' +
+        (isAdmin
+          ? ('<div style="display:flex;gap:6px;align-items:center;white-space:nowrap">' +
+              '<button class="btn btn-sm" onclick="openInvestorAiWorkspace(\''+rec.id+'\')" title="AI xat va tahlil" style="background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none">🤖</button>' +
+              (rec.email ? '<button class="btn btn-blue btn-sm" onclick="openEmailModal(\''+rec.id+'\')" title="Xabar yuborish">📧</button>' : '') +
+              (rec.email ? '<button class="btn btn-sm" onclick="openScheduleModal(\''+rec.id+'\')" title="Email rejalashtirish" style="background:'+(rec.emailSchedule?.active?'linear-gradient(135deg,#059669,#06D6A0)':'var(--bg2)')+';color:'+(rec.emailSchedule?.active?'#fff':'var(--text2)')+';border:1px solid var(--border)">📆'+(rec.emailSchedule?.active?' ✓':'')+'</button>' : '') +
+              '<button class="btn btn-danger btn-sm" onclick="deleteRecord(\'investorCompanies\',\''+rec.id+'\')">🗑</button>' +
+            '</div>')
+          : '<span style="font-size:.65rem;color:var(--text3)">—</span>') +
+        '</td>';
+      html += '</tr>';
+      if(isAiOpen){
+        html += '<tr class="investor-ai-inline-row"><td colspan="12" style="padding:0;background:rgba(67,97,238,.03)"><div id="investorAiRowMount" style="padding:.85rem 0 .2rem"></div></td></tr>';
+      }
+    });
+    return html;
+  }).join('');
+
+  updateSelectedCount();
+  var bulkBtn = document.getElementById('bulkSendBtn');
+  var bulkAiBtn = document.getElementById('bulkAiBtn');
+  var checkAll = document.getElementById('checkAll');
+  if(bulkBtn) bulkBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  if(bulkAiBtn) bulkAiBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  var bulkSchedBtn = document.getElementById('bulkSchedBtn');
+  if(bulkSchedBtn) bulkSchedBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  if(checkAll) checkAll.style.display = isAdmin ? 'inline-block' : 'none';
+  if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
+};
+
 function toggleAllCheckboxes(el){
   document.querySelectorAll('.ic-check').forEach(c=>c.checked=el.checked);
   updateSelectedCount();
 }
 
 function updateSelectedCount(){
-  const n = document.querySelectorAll('.ic-check:checked').length;
+  const n = getSelectedIds().length;
   const el = document.getElementById('selectedCount');
   if(el) el.textContent = n ? `${n} ta tanlangan` : '0 ta tanlangan';
   const bulkAiBtn = document.getElementById('bulkAiBtn');
@@ -6530,7 +6727,17 @@ function updateSelectedCount(){
 }
 
 function getSelectedIds(){
-  return Array.from(document.querySelectorAll('.ic-check:checked')).map(c=>String(c.dataset.id));
+  var ids = [];
+  Array.from(document.querySelectorAll('.ic-check:checked')).forEach(function(c){
+    String(c.dataset.ids || c.dataset.id || '')
+      .split(',')
+      .map(function(part){ return String(part || '').trim(); })
+      .filter(Boolean)
+      .forEach(function(id){
+        if(ids.indexOf(id) === -1) ids.push(id);
+      });
+  });
+  return ids;
 }
 
 function sendBulkEmail(){
