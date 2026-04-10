@@ -6028,9 +6028,16 @@ function findFinderContactInvestorRecord(item, contact){
     });
     if(byName) return byName;
   }
-  if(phoneKey){
+  // NOTE:
+  // Bir kompaniyada bir xil umumiy telefon (switchboard) bir nechta xodimda qayta
+  // ishlatilishi mumkin. Shuning uchun telefon bo'yicha match faqat email va ism
+  // bo'lmaganda (zaif fallback) ishlatiladi.
+  if(phoneKey && !emailKey && !nameKey){
     var byPhone = companyRecords.find(function(rec){
-      return String(rec.telefon || rec.tel || '').trim() === phoneKey;
+      if(String(rec.telefon || rec.tel || '').trim() !== phoneKey) return false;
+      var recEmail = String(rec.email || '').trim();
+      var recName = String(rec.rahbar || '').trim();
+      return !recEmail && !recName;
     });
     if(byPhone) return byPhone;
   }
