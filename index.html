@@ -1946,6 +1946,18 @@ input[type="time"]{-webkit-appearance:none;}
             <input class="form-input" id="finder-count" type="number" min="1" max="100" step="1" value="1" inputmode="numeric">
           </div>
         </div>
+        <div class="form-group" style="flex:0 0 140px">
+          <label class="form-label">Yil</label>
+          <select class="form-input" id="finder-year" onchange="handleImportYearChange()">
+            <option value="all" selected>2021+</option>
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+          </select>
+        </div>
         <div class="form-group" style="flex:0 0 185px">
           <label class="form-label">Import manbasi</label>
           <select class="form-input" id="import-source-select" onchange="handleImportSourceChange()">
@@ -13106,6 +13118,31 @@ function getImportAnalysisSource(){
   return sel ? String(sel.value || 'comtrade').toLowerCase() : 'comtrade';
 }
 
+function getImportAnalysisSelectedYear(){
+  var el = document.getElementById('finder-year');
+  var raw = String((el && el.value) || 'all').trim();
+  if(raw === 'all') return 'all';
+  var year = parseInt(raw, 10);
+  if(!year || year < 2021) return 'all';
+  return String(year);
+}
+
+function getImportAnalysisDisplayYears(){
+  var selectedYear = getImportAnalysisSelectedYear();
+  if(selectedYear !== 'all') return [selectedYear];
+  return ['2021','2022','2023','2024'];
+}
+
+function getImportAnalysisYearsText(){
+  var years = getImportAnalysisDisplayYears();
+  return years.length === 1 ? years[0] : (years[0] + '-' + years[years.length - 1]);
+}
+
+function getImportAnalysisPrimaryYear(){
+  var years = getImportAnalysisDisplayYears();
+  return years.length ? String(years[years.length - 1]) : '2024';
+}
+
 function getImportAnalysisFinderMode(){
   var el = document.getElementById('finder-mode');
   return (el && String(el.value || '').toLowerCase() === 'importers') ? 'importers' : 'exporters';
@@ -13116,20 +13153,21 @@ function getImportAnalysisTradeFlowCode(){
 }
 
 function getImportAnalysisLabels(){
+  var yearsText = getImportAnalysisYearsText();
   if(getImportAnalysisFinderMode() === 'importers'){
     return {
-      totalKpi: "Jami eksport 2021-2024",
+      totalKpi: "Jami eksport "+yearsText,
       biggestKpi: "Top eksportyor",
-      chartTitleSuffix: "Eksport Hajmi (2021-2024)",
+      chartTitleSuffix: "Eksport Hajmi ("+yearsText+")",
       emptyText: "Tanlangan davlatlar bo'yicha eksport ma'lumotlari topilmadi",
       sourceLabel: "Ma'lumot manbasi",
       valueColumn: "Eksport ($)"
     };
   }
   return {
-    totalKpi: "Jami import 2021-2024",
+    totalKpi: "Jami import "+yearsText,
     biggestKpi: "Top eksportyor",
-    chartTitleSuffix: "Import Hajmi (2021-2024)",
+    chartTitleSuffix: "Import Hajmi ("+yearsText+")",
     emptyText: "Tanlangan davlatlar bo'yicha import ma'lumotlari topilmadi",
     sourceLabel: "Ma'lumot manbasi",
     valueColumn: "Import ($)"
@@ -13869,7 +13907,7 @@ function initImportAnalysisComtradeOnly(){
   if(!importPage) return;
 
   var sub = importPage.querySelector('.pg-sub');
-  if(sub) sub.textContent = count+" davlat import statistikasi - 2021-2024 "+getImportAnalysisSourceLabel(source);
+  if(sub) sub.textContent = count+" davlat import statistikasi - "+getImportAnalysisYearsText()+" "+getImportAnalysisSourceLabel(source);
 
   var kpi1 = document.getElementById('imp-k1');
   var kpi1Label = kpi1 ? kpi1.previousElementSibling : null;
@@ -13913,7 +13951,8 @@ function hashTargetList(items){
 
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
   var sourceScope = getImportAnalysisSourceScopeState();
-  return ['importv5', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
+  var yearKey = getImportAnalysisSelectedYear();
+  return ['importv6', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), yearKey, sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
     .join('_')
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
@@ -13950,6 +13989,9 @@ function restoreImportSnapshot(snapshot, quiet){
   if(!snapshot || !(snapshot.countries||[]).length) return false;
   var storedTargets = (snapshot.targetCountries && snapshot.targetCountries.length) ? snapshot.targetCountries : FINDER_ALWAYS_TARGET_COUNTRIES.slice();
   var sourceKey = getImportAnalysisSourceKey(snapshot.source || snapshot.sourceKey || 'comtrade');
+  var yearEl = document.getElementById('finder-year');
+  var snapshotYear = String(snapshot.year || snapshot.selectedYear || 'all');
+  if(yearEl && yearEl.querySelector('option[value="'+snapshotYear+'"]')) yearEl.value = snapshotYear;
   _finderSourceContinents = (snapshot.sourceContinents || []).slice();
   _finderSourceCountries = (snapshot.sourceCountries || []).slice();
   renderFinderSourceFilters();
@@ -14001,6 +14043,7 @@ function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
   if(!prod || !countries || !countries.length) return;
   var sourceKey = getImportAnalysisSourceKey(source);
   var sourceScope = getImportAnalysisSourceScopeState();
+  var selectedYear = getImportAnalysisSelectedYear();
   var snapshotTargets = ((targetCountries && targetCountries.length) ? targetCountries : FINDER_ALWAYS_TARGET_COUNTRIES.slice()).map(function(country){
     return typeof country === 'string' ? country : String(country && (country.name || country.label || country.code) || '');
   }).filter(Boolean);
@@ -14015,6 +14058,7 @@ function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
     sourceCountries: sourceScope.countries,
     sourceEffectiveCountries: sourceScope.effectiveCountries,
     sourceScopeKey: sourceScope.cacheKey,
+    year: selectedYear,
     updatedAt: new Date().toISOString(),
     targetCountries: snapshotTargets,
     countries: countries.map(function(c){
@@ -14135,7 +14179,9 @@ function renderCountryImportAccordion(countries, getCountryMeta){
     return;
   }
 
-  var years = ['2024','2023','2022','2021'];
+  var years = getImportAnalysisDisplayYears().slice().sort(function(a, b){
+    return Number(b) - Number(a);
+  });
   bodyEl.innerHTML = sortedCountries.map(function(country, index){
     var meta = getCountryMeta(country);
     var flag = meta.flag ? escHtml(meta.flag) + ' ' : '';
@@ -14143,8 +14189,21 @@ function renderCountryImportAccordion(countries, getCountryMeta){
     var countryTotal = country.status === 'ok' ? formatImportDetailUsd(country.import_usd) : '\u2014';
     var countryVolume = country.status === 'ok' ? formatImportDetailTons(country.volume_tons, true) : '\u2014';
     var yi = country.year_imports || {};
-    var cv21 = Number(yi['2021']||0), cv24 = Number(yi['2024']||0);
-    var countryCagr = (cv21 > 0 && cv24 > 0) ? (Math.pow(cv24/cv21, 1/3) - 1) * 100 : null;
+    var yearsForCagr = years.slice().sort(function(a, b){ return Number(a) - Number(b); });
+    var yearsWithData = yearsForCagr.filter(function(y){
+      return Number(yi[y] || 0) > 0;
+    });
+    var countryCagr = null;
+    if(yearsWithData.length >= 2){
+      var firstYear = yearsWithData[0];
+      var lastYear = yearsWithData[yearsWithData.length - 1];
+      var firstValue = Number(yi[firstYear] || 0);
+      var lastValue = Number(yi[lastYear] || 0);
+      var span = Number(lastYear) - Number(firstYear);
+      countryCagr = (firstValue > 0 && lastValue > 0 && span > 0)
+        ? (Math.pow(lastValue / firstValue, 1 / span) - 1) * 100
+        : null;
+    }
     var countryCagrFmt = countryCagr !== null ? (countryCagr >= 0 ? '+' : '') + countryCagr.toFixed(1) + '%' : '\u2014';
     var countryCagrColor = countryCagr !== null ? (countryCagr >= 0 ? '#059669' : '#EF233C') : 'var(--text3)';
     var rows = Array.isArray(country.products) ? country.products.slice() : [];
@@ -14192,8 +14251,14 @@ function renderCountryImportAccordion(countries, getCountryMeta){
                 var up=(Number(row.value||0)>0&&wk>0)?(Number(row.value||0)/wk):null;
                 var pCell='<td style="color:#059669;font-weight:600">'+(up!==null?'$'+(up>=1?up.toFixed(2):up.toFixed(4))+'/kg':'—')+'</td>';
                 var yi=country.year_imports||{};
-                var cv21=Number(yi['2021']||0), cv24=Number(yi['2024']||0);
-                var cagr=(cv21>0&&cv24>0)?(Math.pow(cv24/cv21,1/3)-1)*100:null;
+                var yearsForCagr=years.slice().sort(function(a,b){return Number(a)-Number(b);});
+                var yearsWithData=yearsForCagr.filter(function(y){return Number(yi[y]||0)>0;});
+                var cagr=null;
+                if(yearsWithData.length>=2){
+                  var fy=yearsWithData[0], ly=yearsWithData[yearsWithData.length-1];
+                  var fv=Number(yi[fy]||0), lv=Number(yi[ly]||0), span=Number(ly)-Number(fy);
+                  cagr=(fv>0&&lv>0&&span>0)?(Math.pow(lv/fv,1/span)-1)*100:null;
+                }
                 var cagrFmt=cagr!==null?(cagr>=0?'+':'')+cagr.toFixed(1)+'%':'—';
                 var cagrColor=cagr!==null?(cagr>=0?'#059669':'#EF233C'):'var(--text3)';
                 var cCell='<td style="font-weight:700;color:'+cagrColor+'">'+cagrFmt+'</td>';
@@ -14203,7 +14268,7 @@ function renderCountryImportAccordion(countries, getCountryMeta){
             '</tr>';
           }).join('') + '</tbody></table></div></div>')
         : '<div class="import-source-table-wrap"><div class="import-source-empty">Bu yil uchun partner kesimidagi import ma\'lumotlari topilmadi.</div></div>';
-      return '<details class="import-year-item"' + (index === 0 && year === '2024' ? ' open' : '') + '>' +
+      return '<details class="import-year-item"' + (index === 0 && year === years[0] ? ' open' : '') + '>' +
         '<summary class="import-year-summary">' +
           '<div class="import-year-main">' +
             '<span class="import-year-arrow">\u25b6</span>' +
@@ -14266,10 +14331,51 @@ function handleImportSourceChange(){
   handleImportProductChange();
 }
 
+function handleImportYearChange(){
+  handleImportProductChange();
+}
+
+function applyImportAnalysisYearFilter(countries){
+  var selectedYear = getImportAnalysisSelectedYear();
+  if(selectedYear === 'all') return Array.isArray(countries) ? countries : [];
+  var year = String(selectedYear);
+  return (Array.isArray(countries) ? countries : []).map(function(country){
+    var clone = Object.assign({}, country || {});
+    var yearImports = Object.assign({}, clone.year_imports || {});
+    var yearStatuses = Object.assign({}, clone.year_statuses || {});
+    var yearRows = (Array.isArray(clone.products) ? clone.products : []).filter(function(row){
+      return String((row && row.period) || '') === year;
+    });
+    var yearValue = Number(yearImports[year] || 0) || 0;
+    if(!(yearValue > 0) && yearRows.length){
+      yearValue = yearRows.reduce(function(sum, row){
+        return sum + (Number((row && row.value) || 0) || 0);
+      }, 0);
+    }
+    var yearWeight = yearRows.reduce(function(sum, row){
+      return sum + (Number((row && (row.weight || row.quantity)) || 0) || 0);
+    }, 0);
+    var yearStatus = String(yearStatuses[year] || clone.status || 'no_data');
+    if(yearValue > 0 || yearWeight > 0){
+      yearStatus = 'ok';
+      yearStatuses[year] = 'ok';
+    }
+    clone.import_usd = yearValue;
+    clone.volume_tons = yearWeight > 0 ? (yearWeight / 1000) : 0;
+    clone.status = yearStatus;
+    clone.products = yearRows;
+    clone._selectedYear = year;
+    clone.year_imports = yearImports;
+    clone.year_statuses = yearStatuses;
+    return clone;
+  });
+}
+
 async function runImportAnalysis(forceRefresh){
   var targetCountries = getImportAnalysisTargetCountries();
   var sourceKey = getImportAnalysisSource();
   var sourceLabel = getImportAnalysisSourceLabel(sourceKey);
+  var selectedYear = getImportAnalysisPrimaryYear();
   initImportAnalysisComtradeOnly(targetCountries, sourceKey);
 
   var sel = getImportAnalysisProductSelect();
@@ -14302,8 +14408,9 @@ async function runImportAnalysis(forceRefresh){
     return;
   }
 
-  toast(sourceLabel+' ma\'lumot olmoqda (HS: '+hsCode+')...');
-  var countries = await fetchComtrade(hsCode, '2023', targetCountries, sourceKey);
+  toast(sourceLabel+' ma\'lumot olmoqda (HS: '+hsCode+', yil: '+getImportAnalysisYearsText()+')...');
+  var countries = await fetchComtrade(hsCode, selectedYear, targetCountries, sourceKey);
+  countries = applyImportAnalysisYearFilter(countries);
 
   if(!countries || !countries.length){
     if(resultsEl) resultsEl.style.display = 'none';
@@ -14381,7 +14488,7 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
       rTr.style.cssText='cursor:pointer;background:var(--bg2);border-top:2px solid var(--border)';
       var ryi=c.year_imports||{};
       // Find earliest and latest years with data (min 2 years needed)
-      var ryears=['2021','2022','2023','2024'];
+      var ryears=getImportAnalysisDisplayYears().slice().sort(function(a,b){return Number(a)-Number(b);});
       var ryWithData=ryears.filter(function(y){return Number(ryi[y]||0)>0;});
       var rcagr=null;
       if(ryWithData.length>=2){
@@ -14457,7 +14564,9 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
   }
 
   // Fallback: yillar bo'yicha summary
-  theadEl.innerHTML='<tr><th>#</th><th>Davlat</th><th>Jami</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Hajm</th><th>Amal</th></tr>';
+  var displayYears = getImportAnalysisDisplayYears();
+  var yearHeaderHtml = displayYears.map(function(y){ return '<th>'+escHtml(y)+'</th>'; }).join('');
+  theadEl.innerHTML='<tr><th>#</th><th>Davlat</th><th>Jami</th>'+yearHeaderHtml+'<th>Hajm</th><th>Amal</th></tr>';
   tb.innerHTML='';
   countries.forEach(function(c,i){
     var tc=getTargetMeta(c);
@@ -14472,7 +14581,8 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
     var total=c.status==='ok'?investAiFmtUsd(c.import_usd||0):'—';
     var vol=c.volume_tons>0?(c.volume_tons>999?Math.round(c.volume_tons/1000)+'K t':Math.round(c.volume_tons)+'t'):'—';
     var tr=document.createElement('tr');
-    tr.innerHTML='<td>'+(i+1)+'</td><td style="font-weight:600">'+(tc.flag?escHtml(tc.flag)+' ':'')+escHtml(tc.label||c.name||'')+'</td><td style="font-weight:800;color:#4361EE">'+total+'</td><td>'+fmtY('2021')+'</td><td>'+fmtY('2022')+'</td><td>'+fmtY('2023')+'</td><td>'+fmtY('2024')+'</td><td>'+escHtml(vol)+'</td><td><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>';
+    var yearCellsHtml = displayYears.map(function(y){ return '<td>'+fmtY(y)+'</td>'; }).join('');
+    tr.innerHTML='<td>'+(i+1)+'</td><td style="font-weight:600">'+(tc.flag?escHtml(tc.flag)+' ':'')+escHtml(tc.label||c.name||'')+'</td><td style="font-weight:800;color:#4361EE">'+total+'</td>'+yearCellsHtml+'<td>'+escHtml(vol)+'</td><td><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>';
     tr.querySelector('button').addEventListener('click',function(){goToFinder(this.dataset.pid,this.dataset.code);});
     tb.appendChild(tr);
   });
@@ -14486,7 +14596,8 @@ function countryHasImportDisplayData(country){
   if(rows.some(function(row){
     return (Number(row.value || 0) || 0) > 0 || (Number(row.weight || row.quantity || 0) || 0) > 0;
   })) return true;
-  return ['2021','2022','2023','2024'].some(function(y){
+  var displayYears = getImportAnalysisDisplayYears();
+  return displayYears.some(function(y){
     if((Number(years[y] || 0) || 0) > 0) return true;
     return rows.some(function(row){
       return String(row.period || '') === y && (Number(row.value || 0) || 0) > 0;
@@ -14498,6 +14609,9 @@ function renderImportResults(countries, prod, source, targetCountries){
   targetCountries = (targetCountries && targetCountries.length) ? targetCountries : getImportAnalysisTargetCountries();
   initImportAnalysisComtradeOnly(targetCountries, getImportAnalysisSourceKey(source));
   var labels = getImportAnalysisLabels();
+  var yearsText = getImportAnalysisYearsText();
+  var displayYears = getImportAnalysisDisplayYears();
+  var primaryYear = getImportAnalysisPrimaryYear();
   var detailTitleEl = document.getElementById('import-detail-title');
   if(detailTitleEl){
     detailTitleEl.textContent = getImportAnalysisFinderMode() === 'importers'
@@ -14507,6 +14621,14 @@ function renderImportResults(countries, prod, source, targetCountries){
   countries = Array.isArray(countries) ? countries.slice() : [];
   countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
   if(!countries.length){
+    clearImportDetailBody("Tanlangan davlatlar bo'yicha "+yearsText+" uchun ma'lumot topilmadi");
+    var chartEmptySafeEl = document.getElementById('importBarChart');
+    if(chartEmptySafeEl) chartEmptySafeEl.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text3)">'+escHtml(labels.emptyText)+' ('+escHtml(yearsText)+').</div>';
+    document.getElementById('imp-k1').textContent = '$0';
+    document.getElementById('imp-k2').textContent = '\u2014';
+    document.getElementById('imp-k3').textContent = '\u2014';
+    document.getElementById('imp-k4').textContent = source || '\u2014';
+    return;
     clearImportDetailBody('Tanlangan davlatar bo‘yicha 2021–2024 import ma\'lumotlari topilmadi');
     var chartEmptyEl = document.getElementById('importBarChart');
     if(chartEmptyEl) chartEmptyEl.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text3)">Tanlangan davlatlar bo‘yicha import ma\'lumotlari topilmadi.</div>';
@@ -14584,8 +14706,9 @@ function renderImportResults(countries, prod, source, targetCountries){
 
   if(k1Label) k1Label.textContent = labels.totalKpi;
   if(k2Label) k2Label.textContent = labels.biggestKpi;
+  var selectedYearLabel = primaryYear;
   if(k3Label) k3Label.textContent = singleCountry
-    ? (getImportAnalysisFinderMode() === 'importers' ? '2024 eksport' : '2024 import')
+    ? (getImportAnalysisFinderMode() === 'importers' ? (selectedYearLabel + ' eksport') : (selectedYearLabel + ' import'))
     : 'Top importyor';
 
   document.getElementById('imp-k1').textContent = investAiFmtUsd(total);
@@ -14596,7 +14719,7 @@ function renderImportResults(countries, prod, source, targetCountries){
     document.getElementById('imp-k2').textContent = ((topExporterCard.flag || '') + ' ' + (topExporterCard.label || topExporterCard.name || '—')).trim();
   }
   document.getElementById('imp-k3').textContent = singleCountry
-    ? investAiFmtUsd(Number((((topImporter.year_imports || {})['2024']) || ((topImporter.year_imports || {})['2023']) || topImporter.import_usd || 0)))
+    ? investAiFmtUsd(Number((((topImporterCard && topImporterCard.year_imports) || {})[primaryYear]) || (topImporterCard && (topImporterCard.import_usd || topImporterCard.value)) || 0))
     : (topImporter.name ? ((topImporter.flag||'')+' '+topImporter.name+' • '+topImporterShare+'%') : '—');
   if(!singleCountry && topImporterCard && topImporterCard.name){
     document.getElementById('imp-k3').textContent = (((topImporterCard.flag||'')+' '+topImporterCard.name+' • '+topImporterCardShare+'%')).trim();
@@ -14606,13 +14729,13 @@ function renderImportResults(countries, prod, source, targetCountries){
   // yellow card shows the leading importer/counterparty for the current mode.
   if(k2Label) k2Label.textContent = 'Top eksportyor';
   if(k3Label) k3Label.textContent = singleCountry
-    ? (isImporterMode ? '2024 import' : '2024 eksport')
+    ? (isImporterMode ? (selectedYearLabel+' import') : (selectedYearLabel+' eksport'))
     : 'Top importyor';
   document.getElementById('imp-k2').textContent = topExporterCard
     ? ((topExporterCard.flag || '') + ' ' + (topExporterCard.label || topExporterCard.name || 'вЂ”')).trim()
     : ((topReporter.flag||'')+' '+(topReporter.name||'вЂ”'));
   document.getElementById('imp-k3').textContent = singleCountry
-    ? investAiFmtUsd(Number(((((topImporterCard && topImporterCard.year_imports) || {})['2024']) || (((topImporterCard && topImporterCard.year_imports) || {})['2023']) || (topImporterCard && (topImporterCard.import_usd || topImporterCard.value)) || 0)))
+    ? investAiFmtUsd(Number(((((topImporterCard && topImporterCard.year_imports) || {})[primaryYear]) || (topImporterCard && (topImporterCard.import_usd || topImporterCard.value)) || 0)))
     : (topImporterCard && topImporterCard.name ? (((topImporterCard.flag||'')+' '+topImporterCard.name+' вЂў '+topImporterCardShare+'%')).trim() : 'вЂ”');
 
   var impK2El = document.getElementById('imp-k2');
@@ -14634,7 +14757,7 @@ function renderImportResults(countries, prod, source, targetCountries){
       : (c.status==='no_data' ? 'yo\'q' : (c.status==='rate_limited' ? 'limit' : 'xato'));
     var trendLabel = (c.status==='ok' && hasTrend) ? ((trend>0?'↑':'↓')+Math.abs(trend)+'%') : '—';
     var trendLabelColor = c.status==='ok' ? trendColor : '#94A3B8';
-    var years = ['2021','2022','2023','2024'];
+    var years = displayYears.slice();
     var yearImports = c.year_imports || {};
     var yearStatuses = c.year_statuses || {};
     var yearsHtml = years.map(function(y){
@@ -14645,7 +14768,7 @@ function renderImportResults(countries, prod, source, targetCountries){
         : (yStatus==='no_data' ? '—' : (yStatus==='rate_limited' ? 'limit' : 'xato'));
       return '<div style="min-width:'+(singleCountry?90:48)+'px;text-align:right" title="'+(yStatus==='ok' ? investAiFmtUsd(yValue) : yText)+'"><div style="font-size:.56rem;color:var(--text3);line-height:1.1">'+y+'</div><div style="font-size:'+ (singleCountry?'.58rem':'.62rem') +';font-weight:700;line-height:1.2">'+yText+'</div></div>';
     }).join('');
-    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc.flag||c.flag||'')+' '+(tc.label||c.name||'')+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:'+(compactChartAmounts?72:110)+'px;font-size:'+(compactChartAmounts?'.68rem':'.62rem')+';font-weight:700;text-align:right" title="'+amountExact+'">'+amountLabel+'</div><div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;min-width:'+(singleCountry?380:220)+'px">'+yearsHtml+'</div></div>';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:100px;font-size:.72rem;font-weight:600;text-align:right">'+(tc.flag||c.flag||'')+' '+(tc.label||c.name||'')+'</div><div style="flex:1;height:22px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#4CC9F0);border-radius:4px;transition:width .6s"></div></div><div style="width:'+(compactChartAmounts?72:110)+'px;font-size:'+(compactChartAmounts?'.68rem':'.62rem')+';font-weight:700;text-align:right" title="'+amountExact+'">'+amountLabel+'</div><div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;min-width:'+Math.max(120, years.length * (singleCountry ? 90 : 56))+'px">'+yearsHtml+'</div></div>';
   }).join('');
 
   if(String(source || '').toLowerCase().indexOf('wits') !== -1){
@@ -14657,6 +14780,9 @@ function renderImportResults(countries, prod, source, targetCountries){
   var okCount2 = countries.filter(function(c){ return c.status==='ok'; }).length;
   var noDataCount2 = countries.filter(function(c){ return c.status==='no_data'; }).length;
   var limitCount2 = countries.filter(function(c){ return c.status==='rate_limited'; }).length;
+  var yearsLegend = displayYears.join(', ');
+  chartEl.innerHTML += '<div style="text-align:right;margin-top:8px;font-size:.6rem;color:var(--text3)">📊 Manba: '+source+' | O\'ngdagi raqamlar: '+yearsLegend+' | OK: '+okCount2+' | Ma\'lumot yo\'q: '+noDataCount2+' | Limit: '+limitCount2+'</div>';
+  return;
   chartEl.innerHTML += '<div style="text-align:right;margin-top:8px;font-size:.6rem;color:var(--text3)">📊 Manba: '+source+' | O\'ngdagi raqamlar: 2021, 2022, 2023, 2024 | OK: '+okCount2+' | Ma\'lumot yo\'q: '+noDataCount2+' | Limit: '+limitCount2+'</div>';
 }
 
