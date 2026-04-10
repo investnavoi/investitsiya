@@ -17635,7 +17635,13 @@ async function apolloRequestJson(payload){
     var normalized = [];
     body.q_organization_keyword_tags.forEach(function(tag){
       var v = String(tag || '').trim();
-      if(v && normalized.indexOf(v) === -1) normalized.push(v);
+      if(!v) return;
+      if(normalized.indexOf(v) === -1) normalized.push(v);
+      // Apollo ba'zan phrase bo'yicha aniq topmaydi, shuning uchun so'zlarga ham bo'lamiz.
+      v.split(/[\s,]+/).forEach(function(w){
+        w = String(w || '').trim();
+        if(w && normalized.indexOf(w) === -1) normalized.push(w);
+      });
     });
     body.q_organization_keyword_tags = normalized;
   }
@@ -17928,17 +17934,18 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
   var apolloKey = getApolloApiKey();
   if(!apolloKey) throw new Error('Apollo API key topilmadi. Sozlamalar sahifasiga kiriting.');
   var preferredKeywords = getApolloPreferredKeywords(prod);
-  var kw1 = apolloStripHsNoise(preferredKeywords[0] || ((prod && prod.name_en) || ''));
-  var kw2 = apolloStripHsNoise(preferredKeywords[1] || kw1);
+  var coreSignals = getApolloCoreCommoditySignals(prod);
+  var kw1 = apolloStripHsNoise(coreSignals[0] || preferredKeywords[0] || ((prod && prod.name_en) || ''));
+  var kw2 = apolloStripHsNoise(coreSignals[1] || preferredKeywords[1] || kw1);
   var productKeywordTags = getProductKeywordTags(prod);
   var industryKeywordBoost = getApolloIndustryKeywordBoost(prod);
   var productIndustryTags = getProductIndustryTags(prod);
   var found = [];
   var lastError = null;
   var hadSuccess = false;
-  var enablePeopleDiscovery = false;
+  var enablePeopleDiscovery = true;
   var enableBroadOrgFallback = true;
-  var enableFallbackPeople = false;
+  var enableFallbackPeople = true;
   var candidateCompanyLimit = Math.max(1, Math.min(2, Number(perCountry || 2) || 2));
   var discoveryPerPage = Math.max(4, Math.min(8, candidateCompanyLimit * 4));
   var peoplePerPage = 2;
@@ -17957,7 +17964,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
       return true;
     })
   ).slice(0, 4);
-  var softQuery = dedupeStrings([].concat(softKeywordTokens, [kw1, kw2])).join(' ').trim();
+  var softQuery = dedupeStrings([].concat([kw1, kw2], softKeywordTokens)).join(' ').trim();
   if(!softQuery){
     softQuery = getApolloFinderKeywords(prod, meta, sourceScope, country, targetCountries);
   }
@@ -18077,7 +18084,7 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
 
   // ═══ STEP 1b: Organization Search fallback ═══
   if(found.length < candidateCompanyLimit){
-    var kwSets = [[softQuery || kw1], [kw1], [kw2]];
+    var kwSets = [[kw1], [kw2], [softQuery], ['']];
     var seenKwSets = {};
     kwSets = kwSets.filter(function(s){
       var key = s.slice().sort().join('|');
@@ -18102,8 +18109,9 @@ async function apolloFinderSearchCountry(prod, country, perCountry, meta, source
               per_page:discoveryPerPage,
               api_key:apolloKey,
               organization_locations:[country],
-              q_keywords: softQuery || kwSets[ki].join(' ')
+              q_keywords: kwSets[ki].join(' ')
             };
+            if(!String(orgReq.q_keywords || '').trim()) delete orgReq.q_keywords;
             if(orgKeywordPasses[oki].length){
               orgReq.q_organization_keyword_tags = orgKeywordPasses[oki];
             }
@@ -18409,6 +18417,11 @@ async function runCompanyFinder(source){
       _finderResults = (_finderResults || []).filter(finderResultIsRenderable);
 
       if(!_finderResults.length){
+        if(source === 'apollo'){
+          toast('ℹ️ Apollo natija bermadi, Gemini fallback ishga tushdi','warning');
+          runCompanyFinder('gemini');
+          return;
+        }
         document.getElementById('finderEmpty').style.display = 'block';
         toast('⚠️ Kompaniya topilmadi','error');
         return;
