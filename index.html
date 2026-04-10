@@ -1956,6 +1956,7 @@ input[type="time"]{-webkit-appearance:none;}
         <div class="form-group" style="flex:0 0 210px">
           <div style="display:flex;flex-direction:column;gap:.45rem">
             <button class="btn btn-blue" type="button" onclick="runCompanyFinder('gemini')">🤖 Gemini bilan topish</button>
+            <button class="btn" type="button" onclick="runCompanyFinder('tradeatlas')" style="background:linear-gradient(135deg,#14B8A6,#0F766E);color:#fff;border:none;font-weight:700">🌐 TradeAtlas</button>
             <button class="btn" type="button" onclick="runCompanyFinder('apollo')" style="background:linear-gradient(135deg,#FFB703,#FB8500);color:#000;border:none;font-weight:700">🅰️ Apollo</button>
             <button class="btn btn-blue" type="button" onclick="runImportAnalysis(true)">📊 Tahlil qilish</button>
           </div>
@@ -5924,12 +5925,20 @@ function finderContactHasPhone(contact){
   return !!String(contact && contact.telefon || '').trim();
 }
 
+function finderContactHasWebsite(contact){
+  return !!String(contact && contact.website || '').trim();
+}
+
 function finderHasMinimumContactSet(contacts){
   var list = Array.isArray(contacts) ? contacts.filter(finderContactIsQualified).slice(0,2) : [];
   return list.length >= 2 && list.some(finderContactHasPhone);
 }
 
 function finderContactIsQualified(contact){
+  var source = String((contact && (contact.source || contact.manba)) || '').toLowerCase();
+  if(source.indexOf('tradeatlas') !== -1){
+    return finderContactHasEmail(contact) || finderContactHasPhone(contact) || finderContactHasWebsite(contact);
+  }
   return finderContactHasEmail(contact);
 }
 
@@ -5964,6 +5973,46 @@ function renderFinderContactCard(contact){
   extras += finderContactHasPhone(contact)
     ? '<div style="font-size:.58rem;color:#059669;margin-top:2px">'+escHtml(contact.telefon)+'</div>'
     : '<div style="font-size:.58rem;color:var(--text3)">— Tel yo\'q</div>';
+  return renderPersonNameWithPhoto(contact.name, contact.photoUrl, extras, 28);
+}
+
+/*
+function renderFinderContactCard(contact){
+  if(!contact){
+    return '<span style="color:var(--text3)">вЂ”</span>';
+  }
+  var source = String((contact && (contact.source || contact.manba)) || '').toLowerCase();
+  var extras = '<div style="font-size:.62rem;color:var(--text3)">'+escHtml(contact.title||'вЂ”')+'</div>';
+  if(finderContactHasEmail(contact)){
+    extras += '<div style="font-size:.6rem;color:#0ea5e9;margin-top:2px">'+escHtml(contact.email)+'</div>';
+  } else if(source.indexOf('tradeatlas') !== -1 && finderContactHasWebsite(contact)){
+    extras += '<div style="font-size:.6rem;color:#0ea5e9;margin-top:2px">'+escHtml(String(contact.website || '').trim())+'</div>';
+  } else {
+    extras += '<div style="font-size:.58rem;color:var(--text3)">вЂ” Email yo\\'q</div>';
+  }
+  extras += finderContactHasPhone(contact)
+    ? '<div style="font-size:.58rem;color:#059669;margin-top:2px">'+escHtml(contact.telefon)+'</div>'
+    : '<div style="font-size:.58rem;color:var(--text3)">вЂ” Tel yo\\'q</div>';
+  return renderPersonNameWithPhoto(contact.name, contact.photoUrl, extras, 28);
+}
+
+*/
+function renderFinderContactCard(contact){
+  if(!contact){
+    return '<span style="color:var(--text3)">-</span>';
+  }
+  var source = String((contact && (contact.source || contact.manba)) || '').toLowerCase();
+  var extras = '<div style="font-size:.62rem;color:var(--text3)">'+escHtml(contact.title||'-')+'</div>';
+  if(finderContactHasEmail(contact)){
+    extras += '<div style="font-size:.6rem;color:#0ea5e9;margin-top:2px">'+escHtml(contact.email)+'</div>';
+  } else if(source.indexOf('tradeatlas') !== -1 && finderContactHasWebsite(contact)){
+    extras += '<div style="font-size:.6rem;color:#0ea5e9;margin-top:2px">'+escHtml(String(contact.website || '').trim())+'</div>';
+  } else {
+    extras += "<div style=\"font-size:.58rem;color:var(--text3)\">- Email yo'q</div>";
+  }
+  extras += finderContactHasPhone(contact)
+    ? '<div style="font-size:.58rem;color:#059669;margin-top:2px">'+escHtml(contact.telefon)+'</div>'
+    : "<div style=\"font-size:.58rem;color:var(--text3)\">- Tel yo'q</div>";
   return renderPersonNameWithPhoto(contact.name, contact.photoUrl, extras, 28);
 }
 
@@ -13047,6 +13096,7 @@ async function loadSampleProducts(){
 ═══════════════════════════════════════ */
 var COMTRADE_PROXY = 'https://navoiy-api-proxy.vercel.app/api/comtrade';
 var WORLDBANK_PROXY = TG_API_BASE + '/worldbank';
+var TRADEATLAS_PROXY = 'https://navoiy-api-proxy.vercel.app/api/tradeatlas';
 
 // Country code mapping for Comtrade
 var COUNTRY_COMTRADE = {UZ:'860',TM:'795',TJ:'762',KG:'417',KZ:'398',MN:'496',RU:'643',AZ:'031',GE:'268',AM:'051',IR:'364',AF:'004',PK:'586'};
@@ -16756,6 +16806,227 @@ function apolloStripHsNoise(value){
   return v;
 }
 
+var TRADEATLAS_COUNTRY_ALIASES = {
+  'russia':'RU',
+  'russian federation':'RU',
+  'south korea':'KR',
+  'north korea':'KP',
+  "ivory coast":'CI',
+  "cote d ivoire":'CI',
+  "cote d'ivoire":'CI',
+  'dr congo':'CD',
+  'democratic republic of the congo':'CD',
+  'congo':'CG',
+  'republic of the congo':'CG',
+  'czech republic':'CZ',
+  'czechia':'CZ',
+  'turkey':'TR',
+  'turkiye':'TR',
+  'laos':'LA',
+  'viet nam':'VN',
+  'vietnam':'VN',
+  'palestine':'PS',
+  'vatican city':'VA',
+  'holy see':'VA',
+  'eswatini':'SZ',
+  'swaziland':'SZ',
+  'cape verde':'CV',
+  'cabo verde':'CV',
+  'micronesia':'FM',
+  'timor leste':'TL',
+  'timor-leste':'TL',
+  'east timor':'TL',
+  'kosovo':'XK',
+  'sao tome and principe':'ST',
+  'north macedonia':'MK',
+  'moldova':'MD',
+  'brunei':'BN',
+  'united states':'US',
+  'united kingdom':'GB',
+  'kyrgyzstan':'KG',
+  'kazakhstan':'KZ',
+  'tajikistan':'TJ',
+  'turkmenistan':'TM',
+  'uzbekistan':'UZ',
+  'azerbaijan':'AZ',
+  'georgia':'GE',
+  'armenia':'AM',
+  'iran':'IR',
+  'afghanistan':'AF',
+  'pakistan':'PK',
+  'mongolia':'MN',
+  'china':'CN'
+};
+
+function getTradeAtlasCountryNameMap(){
+  if(window._tradeAtlasCountryNameMap) return window._tradeAtlasCountryNameMap;
+  var reverse = {};
+  try{
+    if(typeof Intl !== 'undefined' && Intl.DisplayNames && Intl.supportedValuesOf){
+      var regionNames = new Intl.DisplayNames(['en'], { type:'region' });
+      Intl.supportedValuesOf('region').forEach(function(code){
+        var label = regionNames.of(code);
+        if(label){
+          reverse[apolloNormalizeText(label)] = code;
+        }
+      });
+    }
+  } catch(_e){}
+  Object.keys(TRADEATLAS_COUNTRY_ALIASES).forEach(function(key){
+    reverse[apolloNormalizeText(key)] = TRADEATLAS_COUNTRY_ALIASES[key];
+  });
+  window._tradeAtlasCountryNameMap = reverse;
+  return reverse;
+}
+
+function getTradeAtlasCountryCode(countryName){
+  var key = apolloNormalizeText(countryName || '');
+  if(!key) return '';
+  if(TRADEATLAS_COUNTRY_ALIASES[key]) return TRADEATLAS_COUNTRY_ALIASES[key];
+  var reverse = getTradeAtlasCountryNameMap();
+  return reverse[key] || '';
+}
+
+function getTradeAtlasProductKeyword(prod){
+  var preferred = getApolloPreferredKeywords(prod).map(apolloStripHsNoise).filter(Boolean);
+  var base = apolloStripHsNoise((prod && prod.name_en) || (prod && prod.raw_name) || '');
+  var keyword = Array.from(new Set([base].concat(preferred))).filter(Boolean).slice(0, 3).join(' ');
+  return String(keyword || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+
+function tradeAtlasNormalizeArray(data){
+  if(Array.isArray(data)) return data;
+  if(data && Array.isArray(data.firms)) return data.firms;
+  if(data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function formatTradeAtlasUsd(value){
+  var num = Number(value || 0) || 0;
+  if(!num) return ' - ';
+  if(num >= 1000000000) return '$' + (num / 1000000000).toFixed(1).replace(/\.0$/,'') + 'B';
+  if(num >= 1000000) return '$' + (num / 1000000).toFixed(1).replace(/\.0$/,'') + 'M';
+  if(num >= 1000) return '$' + (num / 1000).toFixed(1).replace(/\.0$/,'') + 'K';
+  return '$' + Math.round(num).toLocaleString('en-US');
+}
+
+function tradeAtlasComputeScore(firm){
+  var docs = Number((firm && (firm.doc_count || firm.docCount || firm.shipment_count)) || 0) || 0;
+  var tradeValue = Number((firm && (firm.total_trade_value_usd || firm.trade_value_usd)) || 0) || 0;
+  var score = 72 + Math.round((Math.log(docs + 1) / Math.log(2)) * 3);
+  if(tradeValue > 1000000) score += 4;
+  if(tradeValue > 10000000) score += 4;
+  return Math.max(72, Math.min(96, score));
+}
+
+function tradeAtlasPersonName(firm){
+  return String(
+    (firm && (firm.contact_person || firm.contact_name || firm.person_name || firm.person)) ||
+    (firm && (firm.firm_name || firm.name)) ||
+    'TradeAtlas kontakt'
+  ).trim();
+}
+
+function mapTradeAtlasFirmToFinderResult(firm, meta, prod){
+  var website = apolloAbsoluteUrl((firm && (firm.web || firm.website || firm.url)) || '');
+  var email = String((firm && (firm.e_mail || firm.email || firm.email_address)) || '').trim();
+  var phone = String((firm && (firm.tel || firm.phone || firm.phone_number)) || '').trim();
+  var companyName = String((firm && (firm.firm_name || firm.name)) || '').trim();
+  var countryName = String((firm && (firm.firm_country || firm.country || firm.country_name)) || '').trim();
+  var cityState = String((firm && (firm.city_state || firm.city || firm.state)) || '').trim();
+  var tradeValue = Number((firm && (firm.total_trade_value_usd || firm.trade_value_usd)) || 0) || 0;
+  var quantity = Number((firm && (firm.total_quantity || firm.quantity)) || 0) || 0;
+  var quantityUnit = String((firm && (firm.quantity_unit || firm.quantityUnit)) || '').trim();
+  var counterpart = Array.isArray(firm && firm.counterpart_countries) ? firm.counterpart_countries.slice(0,3).join(', ') : '';
+  var contact = {
+    personId: '',
+    name: tradeAtlasPersonName(firm),
+    title: meta.mode === 'exporters' ? 'TradeAtlas eksport kontakti' : 'TradeAtlas import kontakti',
+    email: email,
+    telefon: phone,
+    photoUrl: '',
+    linkedin: String((firm && firm.linkedin) || '').trim(),
+    website: website,
+    source: 'TradeAtlas'
+  };
+  return {
+    id: 'fc_ta_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    kompaniya: companyName,
+    rahbar: contact.name,
+    lavozim: contact.title,
+    email: email,
+    telefon: phone,
+    davlat: countryName,
+    shahar: cityState || ' - ',
+    soha: String((firm && (firm.sector || firm.industry || firm.product_group)) || '') || (prod ? formatBilingualProductName(prod) : ''),
+    linkedin: contact.linkedin,
+    website: website,
+    description: counterpart ? ('Hamkor davlatlar: ' + counterpart) : '',
+    keywords: String((firm && (firm.product_details || firm.hs_description)) || '').trim(),
+    daromad: formatTradeAtlasUsd(tradeValue),
+    score: tradeAtlasComputeScore(firm),
+    manba: 'TradeAtlas',
+    finderMode: meta.mode,
+    xodimlar: Number((firm && firm.doc_count) || 0) || 0,
+    products_imported: prod ? formatBilingualProductName(prod) : '',
+    import_volume: tradeValue ? String(tradeValue) : '',
+    contacts: [contact],
+    _contactCandidates: [contact],
+    _contactsBootstrapped: true,
+    _tradeAtlasTradeValue: tradeValue,
+    _tradeAtlasQuantity: quantity,
+    _tradeAtlasQuantityUnit: quantityUnit
+  };
+}
+
+async function tradeAtlasRequestJson(payload){
+  var resp = await fetch(TRADEATLAS_PROXY, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload || {})
+  });
+  var data = {};
+  try { data = await resp.json(); } catch(_e){}
+  var errMsg = String((data && data.error) || ('TradeAtlas error ' + resp.status) || '').trim();
+  if(!resp.ok || errMsg){
+    if(/credit limit is exceeded/i.test(errMsg)){
+      throw new Error('TradeAtlas trial limiti tugagan. TradeAtlas hisobidan limitni yangilash kerak.');
+    }
+    throw new Error(errMsg || 'TradeAtlas qidiruvi xato bilan tugadi');
+  }
+  return data || {};
+}
+
+async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope, limit){
+  var hsCode = getExactImportHsCode(prod);
+  if(!hsCode) throw new Error('TradeAtlas uchun mahsulot HS kodi topilmadi');
+  var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
+  var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  var payload = {
+    mode: meta.mode,
+    targetCountries: targetCodes,
+    sourceCountries: sourceCodes,
+    hsCode: hsCode,
+    productKeyword: getTradeAtlasProductKeyword(prod),
+    size: Math.max(100, Math.min(300, Math.max((limit || 1) * 80, 120)))
+  };
+  var data = await tradeAtlasRequestJson(payload);
+  var found = [];
+  tradeAtlasNormalizeArray(data).forEach(function(firm){
+    var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
+    if(!item || !String(item.kompaniya || '').trim()) return;
+    apolloUpsertFinderItem(found, item, meta);
+  });
+  return found
+    .filter(finderResultIsRenderable)
+    .sort(function(a,b){
+      return (Number(b._tradeAtlasTradeValue || 0) - Number(a._tradeAtlasTradeValue || 0)) ||
+        ((b.score || 0) - (a.score || 0));
+    })
+    .slice(0, Math.max(1, limit || 1));
+}
+
 function isApolloBuildingMaterialsProduct(prod){
   var text = apolloNormalizeText([
     prod && prod.name_en,
@@ -18266,6 +18537,21 @@ async function runCompanyFinder(source){
   if(source === 'apollo'){
     requestPerCountry = Math.min(2, Math.max(1, requestPerCountry));
   }
+  var tradeAtlasCompanyLimit = countSettings.mode === 'total'
+    ? Math.max(1, effectiveRequestedCount || 1)
+    : Math.max(
+        1,
+        requestPerCountry * Math.max(
+          meta.mode === 'exporters'
+            ? (((sourceScope && sourceScope.effectiveCountries) || []).length || (_finderTargetCountries || []).length || 1)
+            : ((_finderTargetCountries || []).length || 1),
+          1
+        )
+      );
+  tradeAtlasCompanyLimit = Math.min(200, tradeAtlasCompanyLimit);
+  var finalDisplayLimit = source === 'tradeatlas'
+    ? tradeAtlasCompanyLimit
+    : effectiveRequestedCount;
   var strategy = getFinderStrategyFilters();
 
   // Get selected target countries
@@ -18274,7 +18560,7 @@ async function runCompanyFinder(source){
   var searchCountries = meta.mode === 'exporters'
     ? (sourceScope.effectiveCountries || []).slice()
     : targetCountries.slice();
-  if(meta.mode === 'exporters' && !searchCountries.length){
+  if(meta.mode === 'exporters' && !searchCountries.length && source !== 'tradeatlas'){
     toast('⚠️ Eksportyor kompaniyalar uchun avval "Eksportyor manbasi" bo‘limidan qit\'a yoki davlat tanlang','error');
     return;
   }
@@ -18293,7 +18579,25 @@ async function runCompanyFinder(source){
   _finderResults = [];
 
   try {
-    if(source==='apollo'){
+    if(source === 'tradeatlas'){
+      document.getElementById('finderBar').style.width = '38%';
+      document.getElementById('finderProgressText').textContent =
+        'TradeAtlas: HS ' + (getExactImportHsCode(prod) || '-') +
+        ' | Importyor: ' + targetCountries.slice(0,4).map(getFinderCountryLabel).join(', ') + (targetCountries.length > 4 ? '...' : '') +
+        ' | Eksportyor: ' + (((sourceScope && sourceScope.effectiveCountries) || []).length
+          ? sourceScope.effectiveCountries.slice(0,4).map(getFinderCountryLabel).join(', ') + (sourceScope.effectiveCountries.length > 4 ? '...' : '')
+          : 'Butun dunyo');
+      var tradeAtlasResults = await tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope, tradeAtlasCompanyLimit);
+      tradeAtlasResults.filter(finderResultIsRenderable).forEach(function(item){
+        _finderResults.push(item);
+      });
+      dedupeFinderResults();
+      _finderResults = _finderResults.filter(finderResultIsRenderable).slice(0, finalDisplayLimit);
+      if(!_finderResults.length){
+        throw new Error('TradeAtlas qidiruvi natija qaytarmadi');
+      }
+      document.getElementById('finderBar').style.width = '88%';
+    } else if(source==='apollo'){
       // Apollo proxy — organization search first, then people fallback
       document.getElementById('finderBar').style.width = '40%';
       var apolloFatalError = null;
@@ -18318,7 +18622,7 @@ async function runCompanyFinder(source){
       }
       if(apolloFatalError) throw apolloFatalError;
       dedupeFinderResults();
-      _finderResults = _finderResults.filter(finderResultIsRenderable).slice(0, effectiveRequestedCount);
+      _finderResults = _finderResults.filter(finderResultIsRenderable).slice(0, finalDisplayLimit);
       if(!_finderResults.length && apolloSoftErrors.length){
         throw new Error('Apollo qidiruvi natija qaytarmadi. Ayrim davlatlarda xatolar bo‘ldi: ' + apolloSoftErrors.slice(0,3).join(' | '));
       }
