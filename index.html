@@ -554,7 +554,8 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 .tscroll::-webkit-scrollbar-thumb{background:rgba(67,97,238,.2);border-radius:20px;}
 .import-detail-accordion{padding:.9rem 1rem 1rem;display:flex;flex-direction:column;gap:.72rem;}
 .import-detail-empty{padding:1rem;border:1px dashed rgba(67,97,238,.2);border-radius:16px;text-align:center;color:var(--text3);font-size:.78rem;background:rgba(67,97,238,.03);}
-.import-country-item,.import-year-item{border:1px solid rgba(67,97,238,.12);border-radius:16px;background:rgba(67,97,238,.04);overflow:hidden;}
+.import-country-item{border:1px solid rgba(67,97,238,.12);border-radius:16px;background:rgba(67,97,238,.04);overflow:hidden;}
+.import-year-item{border:1px solid rgba(67,97,238,.12);border-radius:16px;background:rgba(67,97,238,.04);overflow:visible;}
 .import-country-item[open]{background:rgba(67,97,238,.06);box-shadow:0 8px 22px rgba(67,97,238,.08);}
 .import-country-item>summary,.import-year-item>summary{list-style:none;cursor:pointer;}
 .import-country-item>summary::-webkit-details-marker,.import-year-item>summary::-webkit-details-marker{display:none;}
@@ -571,11 +572,12 @@ body{font-family:'Inter',sans-serif;background:radial-gradient(circle at top rig
 [data-theme="dark"] .import-year-item{background:rgba(255,255,255,.03);}
 .import-year-label{font-size:.8rem;font-weight:800;color:var(--text2);}
 .import-year-sources{font-size:.66rem;color:var(--text3);}
-.import-source-table-wrap{padding:0 1rem 1rem 3rem;}
-.import-source-table{width:100%;border-collapse:collapse;border:1.5px solid #b0bcd8;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.88);}
+.import-source-table-wrap{padding:0 .8rem 1rem 2rem;max-width:100%;overflow-x:auto;}
+.import-source-table-wrap .tscroll{width:100%;overflow-x:auto;}
+.import-source-table{width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;border:1.5px solid #b0bcd8;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.88);}
 .import-source-table thead tr{background:rgba(67,97,238,.05);}
-.import-source-table th{padding:9px 10px;text-align:left;font-size:.63rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text);border:1px solid #b0bcd8;white-space:nowrap;}
-.import-source-table td{padding:9px 10px;font-size:.74rem;color:var(--text3);border:1px solid #b0bcd8;vertical-align:middle;}
+.import-source-table th{padding:9px 10px;text-align:left;font-size:.63rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text);border:1px solid #b0bcd8;white-space:normal;word-break:break-word;}
+.import-source-table td{padding:9px 10px;font-size:.74rem;color:var(--text3);border:1px solid #b0bcd8;vertical-align:middle;white-space:normal;word-break:break-word;}
 .import-source-table td.td-num{font-size:.75rem;}
 .import-source-table td.import-source-reporter{color:var(--text);font-weight:600;}
 .import-source-table td.import-source-partner{font-weight:700;color:#4361EE;}
@@ -14361,6 +14363,149 @@ function renderCountryImportAccordion(countries, getCountryMeta){
           '<div class="import-year-main">' +
             '<span class="import-year-arrow">\u25b6</span>' +
             '<div><div class="import-year-label">' + escHtml(year) + '</div><div class="import-year-sources">' + sourcesCount + ' ta manba</div></div>' +
+          '</div>' +
+          '<div class="import-year-meta"><span class="import-year-total">' + escHtml(yearLabel) + '</span><span class="import-year-volume">' + escHtml(yearVolume) + '</span></div>' +
+        '</summary>' +
+        sourceRowsHtml +
+      '</details>';
+    }).join('');
+
+    if(singleCountryMode){
+      return '<div class="import-country-years">' + yearBlocks + '</div>';
+    }
+
+    return '<details class="import-country-item"' + (index === 0 ? ' open' : '') + '>' +
+      '<summary class="import-country-summary">' +
+        '<div class="import-country-main">' +
+          '<span class="import-country-arrow">\u25b6</span>' +
+          '<span class="import-country-name">' + flag + label + '</span>' +
+        '</div>' +
+        '<div class="import-country-meta"><span class="import-country-total">' + escHtml(countryTotal) + '</span><span style="font-size:.78rem;font-weight:700;color:' + countryCagrColor + ';min-width:3.5rem;text-align:right">' + escHtml(countryCagrFmt) + '</span><span class="import-country-volume">' + escHtml(countryVolume) + '</span></div>' +
+      '</summary>' +
+      '<div class="import-country-years">' + yearBlocks + '</div>' +
+    '</details>';
+  }).join('');
+}
+
+// Override: wide visible detail table with importer company and full action columns.
+function renderCountryImportAccordion(countries, getCountryMeta){
+  var bodyEl = document.getElementById('import-detail-body');
+  if(!bodyEl) return;
+  var sortedCountries = (countries || []).slice().sort(function(a, b){
+    return (b.import_usd || 0) - (a.import_usd || 0);
+  });
+  var singleCountryMode = sortedCountries.length === 1;
+  if(!sortedCountries.length){
+    clearImportDetailBody("Batafsil import ma'lumotlari topilmadi");
+    return;
+  }
+
+  var years = getImportAnalysisDisplayYears().slice().sort(function(a, b){
+    return Number(b) - Number(a);
+  });
+
+  bodyEl.innerHTML = sortedCountries.map(function(country, index){
+    var meta = getCountryMeta(country);
+    var flag = meta.flag ? escHtml(meta.flag) + ' ' : '';
+    var label = escHtml(meta.label || country.name || '\u2014');
+    var countryTotal = country.status === 'ok' ? formatImportDetailUsd(country.import_usd) : '\u2014';
+    var countryVolume = country.status === 'ok' ? formatImportDetailTons(country.volume_tons, true) : '\u2014';
+    var yi = country.year_imports || {};
+    var yearsForCagr = years.slice().sort(function(a, b){ return Number(a) - Number(b); });
+    var yearsWithData = yearsForCagr.filter(function(y){ return Number(yi[y] || 0) > 0; });
+    var countryCagr = null;
+    if(yearsWithData.length >= 2){
+      var firstYear = yearsWithData[0];
+      var lastYear = yearsWithData[yearsWithData.length - 1];
+      var firstValue = Number(yi[firstYear] || 0);
+      var lastValue = Number(yi[lastYear] || 0);
+      var span = Number(lastYear) - Number(firstYear);
+      countryCagr = (firstValue > 0 && lastValue > 0 && span > 0)
+        ? (Math.pow(lastValue / firstValue, 1 / span) - 1) * 100
+        : null;
+    }
+    var countryCagrFmt = countryCagr !== null ? (countryCagr >= 0 ? '+' : '') + countryCagr.toFixed(1) + '%' : '\u2014';
+    var countryCagrColor = countryCagr !== null ? (countryCagr >= 0 ? '#059669' : '#EF233C') : 'var(--text3)';
+    var rows = Array.isArray(country.products) ? country.products.slice() : [];
+
+    var yearBlocks = years.map(function(year){
+      var yearRows = rows.filter(function(row){
+        return String(row.period || '') === year;
+      });
+      var worldRow = yearRows.find(isImportWorldRow);
+      var partnerRows = yearRows.filter(function(row){
+        return !isImportWorldRow(row) && (Number(row.value || 0) > 0 || Number(row.weight || row.quantity || 0) > 0);
+      }).sort(function(a, b){
+        return (Number(b.value || 0) || 0) - (Number(a.value || 0) || 0);
+      });
+
+      var yearValue = worldRow ? Number(worldRow.value || 0) : Number((country.year_imports || {})[year] || 0);
+      if(!(yearValue > 0) && !worldRow){
+        yearValue = partnerRows.reduce(function(sum, row){ return sum + Number(row.value || 0); }, 0);
+      }
+      var yearTons = worldRow
+        ? getImportRowWeightTons(worldRow)
+        : partnerRows.reduce(function(sum, row){ return sum + getImportRowWeightTons(row); }, 0);
+      var yearStatus = String(((country.year_statuses || {})[year]) || country.status || 'no_data');
+      var yearLabel = yearStatus === 'ok'
+        ? formatImportDetailUsd(yearValue)
+        : (yearStatus === 'rate_limited' ? 'limit' : (yearStatus === 'error' ? 'xato' : '\u2014'));
+      var yearVolume = yearStatus === 'ok' ? formatImportDetailTons(yearTons, false) : '\u2014';
+
+      var selectedProdId = String((document.getElementById('importProductSel') && document.getElementById('importProductSel').value) || '');
+      var selectedCountryCode = String((country && country.code) || '');
+      var actionClick = "goToFinder(" + JSON.stringify(selectedProdId) + "," + JSON.stringify(selectedCountryCode) + ")";
+      var scoreBase = Math.max(yearValue || 0, 1);
+
+      var sourceRowsHtml = partnerRows.length
+        ? ('<div class="import-source-table-wrap"><div class="tscroll"><table class="import-source-table"><thead><tr>' +
+            '<th>#</th>' +
+            '<th>PERIOD</th>' +
+            '<th>REPORTER</th>' +
+            '<th>IMPORTYOR KOMPANIYA</th>' +
+            '<th>PARTNER</th>' +
+            '<th>IMPORT ($)</th>' +
+            '<th>HAJM (KG)</th>' +
+            '<th>NARX ($/KG)</th>' +
+            '<th>SCORE</th>' +
+            '<th>BATAFSIL</th>' +
+            '<th>AMAL</th>' +
+          '</tr></thead><tbody>' + partnerRows.map(function(row, rowIndex){
+            var reporterLabel = row.reporter || country.name || meta.label || '\u2014';
+            var partnerName = row.partner || row.partnerDesc || '\u2014';
+            var importerCompany = row.importerCompany || row.importer_company || row.importerFirm || row.importer_firm || row.importerName || row.importer_name || row.importer || row.consignee || partnerName || '\u2014';
+            var rowValue = Number(row.value || 0) || 0;
+            var weightKg = getImportRowWeightKg(row);
+            var unitPrice = (rowValue > 0 && weightKg > 0) ? (rowValue / weightKg) : null;
+            var priceText = unitPrice !== null ? ('$' + (unitPrice >= 1 ? unitPrice.toFixed(2) : unitPrice.toFixed(4)) + '/kg') : '\u2014';
+            var rowScore = Math.max(1, Math.min(100, Math.round((rowValue / scoreBase) * 100)));
+            var scoreColor = rowScore >= 80 ? '#059669' : (rowScore >= 60 ? '#D97706' : '#EF233C');
+            return '<tr>' +
+              '<td class="td-num">' + (rowIndex + 1) + '</td>' +
+              '<td class="td-num">' + escHtml(year) + '</td>' +
+              '<td class="import-source-reporter">' + escHtml(reporterLabel) + '</td>' +
+              '<td class="import-source-reporter">' + escHtml(importerCompany) + '</td>' +
+              '<td class="import-source-partner">' + escHtml(partnerName) + '</td>' +
+              '<td class="import-source-value">' + formatImportDetailUsd(row.value) + '</td>' +
+              '<td class="import-source-weight">' + escHtml(formatImportDetailKg(weightKg)) + '</td>' +
+              '<td style="color:#059669;font-weight:700">' + escHtml(priceText) + '</td>' +
+              '<td style="font-weight:800;color:' + scoreColor + '">' + rowScore + '</td>' +
+              '<td class="import-source-action-cell"><button type="button" class="btn btn-ghost btn-sm" style="font-size:.68rem;padding:5px 10px" onclick=\'' + actionClick + '\'>Batafsil</button></td>' +
+              '<td style="white-space:nowrap"><div style="display:flex;gap:6px;align-items:center">' +
+                '<button type="button" class="btn btn-sm" title="AI tahlil va xat" onclick=\'' + actionClick + '\' style="background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none">&#129302;</button>' +
+                '<button type="button" class="btn btn-blue btn-sm" title="Xat yuborish" onclick=\'' + actionClick + '\'>&#128231;</button>' +
+                '<button type="button" class="btn btn-sm" title="Rejalashtirish" onclick=\'' + actionClick + '\' style="background:var(--bg2);color:var(--text2);border:1px solid var(--border)">&#128197;</button>' +
+                '<button type="button" class="btn btn-danger btn-sm" title="Olib tashlash" onclick=\'' + actionClick + '\'>&#128465;</button>' +
+              '</div></td>' +
+            '</tr>';
+          }).join('') + '</tbody></table></div></div>')
+        : '<div class="import-source-table-wrap"><div class="import-source-empty">Bu yil uchun partner kesimidagi import ma\'lumotlari topilmadi.</div></div>';
+
+      return '<details class="import-year-item"' + (index === 0 && year === years[0] ? ' open' : '') + '>' +
+        '<summary class="import-year-summary">' +
+          '<div class="import-year-main">' +
+            '<span class="import-year-arrow">\u25b6</span>' +
+            '<div><div class="import-year-label">' + escHtml(year) + '</div><div class="import-year-sources">' + partnerRows.length + ' ta manba</div></div>' +
           '</div>' +
           '<div class="import-year-meta"><span class="import-year-total">' + escHtml(yearLabel) + '</span><span class="import-year-volume">' + escHtml(yearVolume) + '</span></div>' +
         '</summary>' +
