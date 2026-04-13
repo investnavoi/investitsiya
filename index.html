@@ -14103,6 +14103,7 @@ function restoreImportSnapshot(snapshot, quiet){
           quantity:Number(p.quantity||p.weight||0),
           exporterCountry:p.exporterCountry||p.ec||'',
           exporterCountryCode:p.exporterCountryCode||p.ecc||'',
+          importerCompany:p.importerCompany||p.ic||'',
           companyName:p.companyName||p.cn||'',
           companyWebsite:p.companyWebsite||p.cw||'',
           companyEmail:p.companyEmail||p.ce||'',
@@ -14161,6 +14162,7 @@ function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
             quantity:Number(p.quantity||p.weight||0),
             ec:p.exporterCountry||'',
             ecc:p.exporterCountryCode||'',
+            ic:p.importerCompany||'',
             cn:p.companyName||'',
             cw:p.companyWebsite||'',
             ce:p.companyEmail||'',
@@ -14677,6 +14679,154 @@ function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
     var yearCellsHtml = displayYears.map(function(y){ return '<td>'+fmtY(y)+'</td>'; }).join('');
     tr.innerHTML='<td>'+(i+1)+'</td><td style="font-weight:600">'+(tc.flag?escHtml(tc.flag)+' ':'')+escHtml(tc.label||c.name||'')+'</td><td style="font-weight:800;color:#4361EE">'+total+'</td>'+yearCellsHtml+'<td>'+escHtml(vol)+'</td><td><button class="btn btn-blue btn-sm" data-pid="'+escHtml(String(prod.id||''))+'" data-code="'+escHtml(String(c.code||''))+'">&#128269;</button></td>';
     tr.querySelector('button').addEventListener('click',function(){goToFinder(this.dataset.pid,this.dataset.code);});
+    tb.appendChild(tr);
+  });
+}
+
+// Override: default detail table with importer-company column support.
+function renderDefaultImportDetailTable(countries, prod, getTargetMeta){
+  var theadEl = document.getElementById('import-thead');
+  var tb = document.getElementById('import-tbody');
+  if(!theadEl || !tb) return;
+  var tableEl = tb.parentNode;
+  Array.from(tableEl.querySelectorAll('tbody[data-extra]')).forEach(function(el){ el.remove(); });
+
+  var hasProducts = countries.some(function(c){
+    return (c.products || []).some(function(p){
+      return Number(p.partnerCode !== undefined ? p.partnerCode : -1) !== 0 && (p.value || p.weight);
+    });
+  });
+
+  if(hasProducts){
+    theadEl.innerHTML = '';
+    tb.innerHTML = '';
+    var sorted = countries.slice().sort(function(a, b){ return (b.import_usd || 0) - (a.import_usd || 0); });
+
+    sorted.forEach(function(c){
+      var tc = getTargetMeta(c);
+      var totalFmt = c.status === 'ok' ? investAiFmtUsd(c.import_usd || 0) : '\u2014';
+      var vol = c.volume_tons > 0 ? (c.volume_tons > 999 ? Math.round(c.volume_tons / 1000) + 'K t' : Math.round(c.volume_tons) + 't') : '\u2014';
+      var flag = tc.flag ? tc.flag + ' ' : '';
+
+      var rHead = document.createElement('tbody');
+      rHead.setAttribute('data-extra', '1');
+      var rTr = document.createElement('tr');
+      rTr.style.cssText = 'cursor:pointer;background:var(--bg2);border-top:2px solid var(--border)';
+
+      var ryi = c.year_imports || {};
+      var ryears = getImportAnalysisDisplayYears().slice().sort(function(a, b){ return Number(a) - Number(b); });
+      var ryWithData = ryears.filter(function(y){ return Number(ryi[y] || 0) > 0; });
+      var rcagr = null;
+      if(ryWithData.length >= 2){
+        var ryFirst = ryWithData[0];
+        var ryLast = ryWithData[ryWithData.length - 1];
+        var rvFirst = Number(ryi[ryFirst] || 0);
+        var rvLast = Number(ryi[ryLast] || 0);
+        var rySpan = Number(ryLast) - Number(ryFirst);
+        rcagr = rySpan > 0 ? (Math.pow(rvLast / rvFirst, 1 / rySpan) - 1) * 100 : null;
+      }
+      var rcagrFmt = rcagr !== null ? (rcagr >= 0 ? '+' : '') + rcagr.toFixed(1) + '%' : '\u2014';
+      var rcagrColor = rcagr !== null ? (rcagr >= 0 ? '#059669' : '#EF233C') : 'var(--text3)';
+
+      rTr.innerHTML = '<td colspan="11" style="padding:.75rem 1rem"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:.8rem"><span class="r-arrow" style="color:#4361EE;font-size:.8rem;display:inline-block;transition:transform .2s">&#9656;</span><b style="font-size:.92rem;color:var(--text)">' + escHtml(flag) + escHtml(tc.label || c.name || '') + '</b></div><div style="display:flex;align-items:center"><b style="color:#4361EE;font-size:.88rem;min-width:8rem;text-align:right">' + escHtml(totalFmt) + '</b><span style="font-size:.78rem;font-weight:700;color:' + rcagrColor + ';min-width:4.5rem;text-align:right">' + escHtml(rcagrFmt) + '</span><span style="color:var(--text3);font-size:.78rem;min-width:3.5rem;text-align:right">' + escHtml(vol) + '</span></div></div></td>';
+      rHead.appendChild(rTr);
+
+      var rBody = document.createElement('tbody');
+      rBody.setAttribute('data-extra', '1');
+      rBody.style.display = 'none';
+      var byYear = {};
+      (c.products || []).forEach(function(p){
+        if(Number(p.partnerCode !== undefined ? p.partnerCode : -1) === 0) return;
+        if(!p.value && !p.weight) return;
+        var yr = String(p.period || '');
+        if(!byYear[yr]) byYear[yr] = [];
+        byYear[yr].push(p);
+      });
+
+      Object.keys(byYear).sort(function(a, b){ return Number(b) - Number(a); }).forEach(function(yr){
+        var yRows = byYear[yr].sort(function(a, b){ return (b.value || 0) - (a.value || 0); });
+        var yTotal = yRows.reduce(function(s, r){ return s + Number(r.value || 0); }, 0);
+        var yWgt = yRows.reduce(function(s, r){ return s + Number(r.weight || r.quantity || 0); }, 0);
+        var yTotalFmt = yTotal > 0 ? ('$' + Number(yTotal.toFixed(0)).toLocaleString('en-US')) : '\u2014';
+        var yWgtFmt = yWgt > 999 ? Math.round(yWgt / 1000) + 'K t' : Math.round(yWgt) + 't';
+
+        var yTr = document.createElement('tr');
+        yTr.style.cssText = 'cursor:pointer;background:rgba(67,97,238,.05)';
+        yTr.innerHTML = '<td colspan="11" style="padding:.55rem 1rem .55rem 2.5rem"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:.6rem"><span class="y-arrow" style="color:var(--text3);font-size:.65rem;display:inline-block;transition:transform .2s">&#9656;</span><b style="color:var(--text2);font-size:.82rem">' + escHtml(yr) + '</b><span style="font-size:.65rem;color:var(--text3)">' + yRows.length + ' ta manba</span></div><div style="display:flex;gap:1.2rem"><b style="font-size:.78rem">' + escHtml(yTotalFmt) + '</b><span style="color:var(--text3);font-size:.72rem">' + escHtml(yWgtFmt) + '</span></div></div></td>';
+        rBody.appendChild(yTr);
+
+        var colTr = document.createElement('tr');
+        colTr.style.cssText = 'display:none;background:rgba(67,97,238,.08);font-size:.65rem;color:var(--text3);font-weight:700';
+        colTr.innerHTML = '<th style="padding:.35rem .8rem .35rem 4rem">#</th><th style="padding:.35rem .8rem">Period</th><th style="padding:.35rem .8rem">Reporter</th><th style="padding:.35rem .8rem">Importyor kompaniya</th><th style="padding:.35rem .8rem">Partner</th><th style="padding:.35rem .8rem">' + getImportAnalysisLabels().valueColumn + '</th><th style="padding:.35rem .8rem">Hajm (kg)</th><th style="padding:.35rem .8rem">Narx ($/kg)</th><th style="padding:.35rem .8rem">Score</th><th style="padding:.35rem .8rem">Batafsil</th><th style="padding:.35rem .8rem">Amal</th>';
+        rBody.appendChild(colTr);
+
+        var dataRows = [colTr];
+        var yearMaxVal = Math.max.apply(null, yRows.map(function(r){ return Number(r.value || 0) || 0; }).concat([1]));
+        yRows.forEach(function(row, ri){
+          var rFmt = Number(row.value || 0) > 0 ? ('$' + Number(Number(row.value || 0).toFixed(3)).toLocaleString('en-US')) : '\u2014';
+          var wFmt = Number(row.weight || 0) > 0 ? (Number(row.weight || 0).toLocaleString('en-US') + ' kg') : '\u2014';
+          var partner = row.partner || row.partnerDesc || '';
+          var importerCompany = row.importerCompany || row.importer_company || '\u2014';
+          var unitPrice = (Number(row.value || 0) > 0 && Number(row.weight || 0) > 0)
+            ? (Number(row.value || 0) / Number(row.weight || 0))
+            : null;
+          var priceFmt = unitPrice !== null ? ('$' + (unitPrice >= 1 ? unitPrice.toFixed(2) : unitPrice.toFixed(4)) + '/kg') : '\u2014';
+
+          var rowVal = Number(row.value || 0) || 0;
+          var rowScore = Math.max(1, Math.min(100, Math.round((rowVal / yearMaxVal) * 100)));
+          var scoreColor = rowScore >= 80 ? '#059669' : (rowScore >= 60 ? '#FFB703' : '#EF233C');
+          var dTr = document.createElement('tr');
+          dTr.style.cssText = 'display:none;font-size:.8rem;border-top:1px solid rgba(67,97,238,.07)';
+          dTr.innerHTML = '<td style="padding:.5rem .8rem .5rem 4rem;color:var(--text3)">' + (ri + 1) + '</td><td style="padding:.5rem .8rem;font-weight:700">' + escHtml(yr) + '</td><td style="padding:.5rem .8rem">' + escHtml(c.name || '') + '</td><td style="padding:.5rem .8rem">' + escHtml(importerCompany) + '</td><td style="padding:.5rem .8rem;font-weight:600;color:#4361EE">' + escHtml(partner || '\u2014') + '</td><td style="padding:.5rem .8rem;font-weight:700">' + escHtml(rFmt) + '</td><td style="padding:.5rem .8rem;color:var(--text2)">' + escHtml(wFmt) + '</td><td style="padding:.5rem .8rem;color:#059669;font-weight:600">' + escHtml(priceFmt) + '</td><td style="padding:.5rem .8rem"><span style="font-weight:800;color:' + scoreColor + '">' + rowScore + '</span></td><td style="padding:.5rem .8rem"><button class="btn btn-ghost btn-sm" data-pid="' + escHtml(String(prod.id || '')) + '" data-code="' + escHtml(String(c.code || '')) + '" style="font-size:.68rem;padding:5px 10px">Batafsil</button></td><td style="padding:.5rem .8rem"><div style="display:flex;gap:6px;align-items:center;white-space:nowrap"><button class="btn btn-sm" data-pid="' + escHtml(String(prod.id || '')) + '" data-code="' + escHtml(String(c.code || '')) + '" title="AI tahlil va xat" style="background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none">&#129302;</button><button class="btn btn-blue btn-sm" data-pid="' + escHtml(String(prod.id || '')) + '" data-code="' + escHtml(String(c.code || '')) + '" title="Xat yuborish">&#128231;</button><button class="btn btn-sm" data-pid="' + escHtml(String(prod.id || '')) + '" data-code="' + escHtml(String(c.code || '')) + '" title="Rejalashtirish" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border)">&#128197;</button><button class="btn btn-danger btn-sm" data-pid="' + escHtml(String(prod.id || '')) + '" data-code="' + escHtml(String(c.code || '')) + '" title="Olib tashlash">&#128465;</button></div></td>';
+          dTr.querySelectorAll('button').forEach(function(btn){
+            btn.addEventListener('click', function(){ goToFinder(this.dataset.pid, this.dataset.code); });
+          });
+          dataRows.push(dTr);
+          rBody.appendChild(dTr);
+        });
+
+        yTr.addEventListener('click', function(e){
+          e.stopPropagation();
+          var isOpen = colTr.style.display !== 'none';
+          dataRows.forEach(function(r){ r.style.display = isOpen ? 'none' : ''; });
+          var arrow = this.querySelector('.y-arrow');
+          if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
+        });
+      });
+
+      rTr.addEventListener('click', function(){
+        var isOpen = rBody.style.display !== 'none';
+        rBody.style.display = isOpen ? 'none' : '';
+        var arrow = this.querySelector('.r-arrow');
+        if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
+      });
+
+      tableEl.appendChild(rHead);
+      tableEl.appendChild(rBody);
+    });
+    return;
+  }
+
+  var displayYears = getImportAnalysisDisplayYears();
+  var yearHeaderHtml = displayYears.map(function(y){ return '<th>' + escHtml(y) + '</th>'; }).join('');
+  theadEl.innerHTML = '<tr><th>#</th><th>Davlat</th><th>Jami</th>' + yearHeaderHtml + '<th>Hajm</th><th>Amal</th></tr>';
+  tb.innerHTML = '';
+  countries.forEach(function(c, i){
+    var tc = getTargetMeta(c);
+    var yi = c.year_imports || {}, ys = c.year_statuses || {};
+    function fmtY(y){
+      var st = ys[y] || c.status || 'no_data', val = Number(yi[y] || 0);
+      if(st === 'ok' && val > 0) return '<b>' + investAiFmtShortUsd(val) + '</b>';
+      if(st === 'rate_limited') return '<span style="color:#d97706;font-size:.65rem">limit</span>';
+      if(st === 'error') return '<span style="color:#EF233C;font-size:.65rem">xato</span>';
+      return '<span style="color:var(--text3)">\u2014</span>';
+    }
+    var total = c.status === 'ok' ? investAiFmtUsd(c.import_usd || 0) : '\u2014';
+    var vol = c.volume_tons > 0 ? (c.volume_tons > 999 ? Math.round(c.volume_tons / 1000) + 'K t' : Math.round(c.volume_tons) + 't') : '\u2014';
+    var tr = document.createElement('tr');
+    var yearCellsHtml = displayYears.map(function(y){ return '<td>' + fmtY(y) + '</td>'; }).join('');
+    tr.innerHTML = '<td>' + (i + 1) + '</td><td style="font-weight:600">' + (tc.flag ? escHtml(tc.flag) + ' ' : '') + escHtml(tc.label || c.name || '') + '</td><td style="font-weight:800;color:#4361EE">' + total + '</td>' + yearCellsHtml + '<td>' + escHtml(vol) + '</td><td><button class="btn btn-blue btn-sm" data-pid="' + escHtml(String(prod.id || '')) + '" data-code="' + escHtml(String(c.code || '')) + '">&#128269;</button></td>';
+    tr.querySelector('button').addEventListener('click', function(){ goToFinder(this.dataset.pid, this.dataset.code); });
     tb.appendChild(tr);
   });
 }
@@ -17416,7 +17566,7 @@ function buildTradeAtlasAnalysisRow(firm, reporterLabel, year){
   if(!companyName) return null;
   var exporterCountry = String((firm && (firm.firm_country || firm.country || firm.country_name)) || '').trim();
   var tradeValue = tradeAtlasPickUsdFob(firm);
-  var qtyRaw = Number((firm && (firm.total_quantity || firm.quantity)) || 0) || 0;
+  var qtyRaw = tradeAtlasParseNumber((firm && (firm.total_quantity || firm.quantity)) || 0);
   var qtyUnitRaw = String((firm && (firm.quantity_unit || firm.quantityUnit)) || '').trim();
   var qtyKg = tradeAtlasQuantityToKg(qtyRaw, qtyUnitRaw);
   var importerCompany = tradeAtlasPickImporterCompany(firm);
@@ -17546,6 +17696,9 @@ async function fetchTradeAtlasImportAnalysis(prod, targetCountries, sourceScope)
           yearFirmMap[dedupeKey].docCount = (yearFirmMap[dedupeKey].docCount || 0) + (row.docCount || 0);
           if(!yearFirmMap[dedupeKey].companyWebsite && row.companyWebsite){
             yearFirmMap[dedupeKey].companyWebsite = row.companyWebsite;
+          }
+          if(!yearFirmMap[dedupeKey].importerCompany && row.importerCompany){
+            yearFirmMap[dedupeKey].importerCompany = row.importerCompany;
           }
           if(!yearFirmMap[dedupeKey].companyEmail && row.companyEmail){
             yearFirmMap[dedupeKey].companyEmail = row.companyEmail;
