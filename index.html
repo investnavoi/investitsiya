@@ -17305,14 +17305,121 @@ function tradeAtlasQuantityToKg(qty, unit){
   return value;
 }
 
+function tradeAtlasPickImporterCompany(firm){
+  var direct = String((firm && (
+    firm.importer_company ||
+    firm.importer_firm ||
+    firm.importer_firm_name ||
+    firm.importer_name ||
+    firm.importer
+  )) || '').trim();
+  if(direct && direct !== '.') return direct;
+  var examples = Array.isArray(firm && firm.shipment_examples) ? firm.shipment_examples : [];
+  for(var i=0; i<examples.length; i++){
+    var ex = examples[i] || {};
+    var cand = String(
+      ex.importerCompany ||
+      ex.importer_company ||
+      ex.importerFirm ||
+      ex.importer_firm ||
+      ex.importerName ||
+      ex.importer_name ||
+      ex.importer ||
+      ex.buyer ||
+      ''
+    ).trim();
+    if(cand && cand !== '.') return cand;
+  }
+  return '';
+}
+
+function tradeAtlasParseNumber(value){
+  if(value === null || value === undefined) return 0;
+  if(typeof value === 'number'){
+    return Number.isFinite(value) ? value : 0;
+  }
+  var text = String(value).trim();
+  if(!text || text === '.') return 0;
+  var cleaned = text.replace(/[^0-9.,-]/g, '').replace(/\s+/g, '');
+  if(!cleaned) return 0;
+  var hasComma = cleaned.indexOf(',') !== -1;
+  var hasDot = cleaned.indexOf('.') !== -1;
+  if(hasComma && hasDot){
+    // Assume comma is thousands separator
+    cleaned = cleaned.replace(/,/g, '');
+  } else if(hasComma && !hasDot){
+    // Assume comma is decimal separator
+    cleaned = cleaned.replace(',', '.');
+  }
+  var num = Number(cleaned);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function tradeAtlasPickUsdFob(firm){
+  var directCandidates = [
+    firm && firm.total_fob_value_usd,
+    firm && firm.total_fob_usd,
+    firm && firm.fob_value_usd,
+    firm && firm.fob_usd,
+    firm && firm.total_trade_value_fob_usd,
+    firm && firm.trade_value_fob_usd,
+    firm && firm.totalTradeValueFobUsd,
+    firm && firm.tradeValueFobUsd,
+    firm && firm.totalUsdFob,
+    firm && firm.usdFob
+  ];
+  if(firm && typeof firm === 'object'){
+    Object.keys(firm).forEach(function(key){
+      var k = String(key || '').toLowerCase();
+      if(k.indexOf('fob') !== -1 && (k.indexOf('usd') !== -1 || k.indexOf('value') !== -1)){
+        directCandidates.push(firm[key]);
+      }
+    });
+  }
+  for(var i=0; i<directCandidates.length; i++){
+    var dv = tradeAtlasParseNumber(directCandidates[i]);
+    if(dv > 0) return dv;
+  }
+  var examples = Array.isArray(firm && firm.shipment_examples) ? firm.shipment_examples : [];
+  var sumFromExamples = 0;
+  for(var j=0; j<examples.length; j++){
+    var ex = examples[j] || {};
+    var exCandidates = [
+      ex.fobValueUsd,
+      ex.fob_value_usd,
+      ex.fobUsd,
+      ex.fob_usd,
+      ex.usdFob,
+      ex.usd_fob,
+      ex.statisticalValueFobUsd,
+      ex.statistical_value_fob_usd
+    ];
+    Object.keys(ex).forEach(function(key){
+      var k = String(key || '').toLowerCase();
+      if(k.indexOf('fob') !== -1 && (k.indexOf('usd') !== -1 || k.indexOf('value') !== -1)){
+        exCandidates.push(ex[key]);
+      }
+    });
+    var ev = 0;
+    for(var ec=0; ec<exCandidates.length; ec++){
+      ev = tradeAtlasParseNumber(exCandidates[ec]);
+      if(ev > 0) break;
+    }
+    if(ev > 0) sumFromExamples += ev;
+  }
+  if(sumFromExamples > 0) return sumFromExamples;
+  return tradeAtlasParseNumber((firm && (firm.total_trade_value_usd || firm.trade_value_usd)) || 0);
+}
+
 function buildTradeAtlasAnalysisRow(firm, reporterLabel, year){
   var companyName = String((firm && (firm.firm_name || firm.name)) || '').trim();
   if(!companyName) return null;
   var exporterCountry = String((firm && (firm.firm_country || firm.country || firm.country_name)) || '').trim();
-  var tradeValue = Number((firm && (firm.total_trade_value_usd || firm.trade_value_usd)) || 0) || 0;
+  var tradeValue = tradeAtlasPickUsdFob(firm);
   var qtyRaw = Number((firm && (firm.total_quantity || firm.quantity)) || 0) || 0;
   var qtyUnitRaw = String((firm && (firm.quantity_unit || firm.quantityUnit)) || '').trim();
   var qtyKg = tradeAtlasQuantityToKg(qtyRaw, qtyUnitRaw);
+  var importerCompany = tradeAtlasPickImporterCompany(firm);
   return {
     period: String(year || ''),
     reporter: reporterLabel || '',
@@ -17325,6 +17432,7 @@ function buildTradeAtlasAnalysisRow(firm, reporterLabel, year){
     quantityUnit: 'Kilogram',
     exporterCountry: exporterCountry || '',
     exporterCountryCode: tradeAtlasFirmCountryCode(firm) || '',
+    importerCompany: importerCompany || '',
     companyName: companyName,
     companyWebsite: String((firm && (firm.web || firm.website || firm.url)) || '').trim(),
     companyEmail: String((firm && (firm.e_mail || firm.email || firm.email_address)) || '').trim(),
