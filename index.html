@@ -17182,12 +17182,12 @@ async function tradeAtlasRequestJson(payload){
   });
   var data = {};
   try { data = await resp.json(); } catch(_e){}
-  var errMsg = String((data && data.error) || ('TradeAtlas error ' + resp.status) || '').trim();
-  if(!resp.ok || errMsg){
+  var errMsg = String((data && data.error) || '').trim();
+  if(!resp.ok || (errMsg && errMsg.toLowerCase() !== 'null' && errMsg.toLowerCase() !== 'undefined')){
     if(/credit limit is exceeded/i.test(errMsg)){
       throw new Error('TradeAtlas trial limiti tugagan. TradeAtlas hisobidan limitni yangilash kerak.');
     }
-    throw new Error(errMsg || 'TradeAtlas qidiruvi xato bilan tugadi');
+    throw new Error(errMsg || ('TradeAtlas error ' + resp.status));
   }
   return data || {};
 }
