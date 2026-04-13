@@ -1963,6 +1963,7 @@ input[type="time"]{-webkit-appearance:none;}
           <select class="form-input" id="import-source-select" onchange="handleImportSourceChange()">
             <option value="comtrade" selected>UN Comtrade</option>
             <option value="wits">WITS (World Bank)</option>
+            <option value="tradeatlas">TradeAtlas Shipments</option>
           </select>
         </div>
         <div class="form-group" style="flex:0 0 210px">
@@ -6001,10 +6002,16 @@ function getFinderQualifiedContacts(item){
 }
 
 function getFinderRenderableContacts(item){
-  var qualified = getFinderDisplayContacts(item).filter(finderContactIsQualified).slice(0,2);
+  var source = String((item && (item.manba || item.source)) || '').toLowerCase();
+  var displayContacts = getFinderDisplayContacts(item);
+  var qualified = displayContacts.filter(finderContactIsQualified).slice(0,2);
   if(finderHasMinimumContactSet(qualified)) return qualified;
   // Soft fallback: kamida 1 ta email bo'lsa kompaniyani yashirmaymiz.
   if(qualified.length >= 1) return qualified;
+  // TradeAtlas: kontakt rekvizitlari bo'sh bo'lsa ham kompaniyani ko'rsatamiz.
+  if(source.indexOf('tradeatlas') !== -1 && displayContacts.length){
+    return [displayContacts[0]];
+  }
   return [];
 }
 
@@ -13235,17 +13242,20 @@ function getImportAnalysisLabels(){
 
 function getImportAnalysisSourceLabel(source){
   var value = String(source || '').toLowerCase();
+  if(value === 'tradeatlas' || value.indexOf('tradeatlas') >= 0) return 'TradeAtlas Shipments';
   if(value === 'wits' || value.indexOf('wits') >= 0) return 'WITS (World Bank)';
   return 'UN Comtrade (real)';
 }
 
 function getImportAnalysisSourceKey(source){
   var value = String(source || '').toLowerCase();
+  if(value === 'tradeatlas' || value.indexOf('tradeatlas') >= 0) return 'tradeatlas';
   return (value === 'wits' || value.indexOf('wits') >= 0) ? 'wits' : 'comtrade';
 }
 
 function getImportAnalysisSnapshotSourceKey(source){
   var key = getImportAnalysisSourceKey(source);
+  if(key === 'tradeatlas') return 'tradeatlas_shipments_v1';
   return key === 'wits' ? 'wits_exact_v2' : 'comtrade_exact_v3';
 }
 
@@ -14009,7 +14019,7 @@ function hashTargetList(items){
 }
 
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
-  var sourceScope = getImportAnalysisSourceScopeState();
+  var sourceScope = getImportAnalysisSourceScopeState(source);
   var yearKey = getImportAnalysisSelectedYear();
   return ['importv6', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), yearKey, sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
     .join('_')
@@ -14021,8 +14031,9 @@ function getImportSnapshot(prod, hsCode, targetCountries, source){
   return (DB.importSnapshots||[]).find(function(item){ return String(item.id)===String(id); }) || null;
 }
 
-function getImportAnalysisSourceScopeState(){
-  if(getImportAnalysisFinderMode() === 'importers'){
+function getImportAnalysisSourceScopeState(source){
+  var sourceKey = getImportAnalysisSourceKey(source || getImportAnalysisSource());
+  if(getImportAnalysisFinderMode() === 'importers' && sourceKey !== 'tradeatlas'){
     return {
       hasFilter: false,
       countries: [],
@@ -14088,7 +14099,15 @@ function restoreImportSnapshot(snapshot, quiet){
           partnerDesc:p.partner||'',
           partnerCode:Number(p.partnerCode||0),
           value:Number(p.value||0),
-          weight:Number(p.weight||0)
+          weight:Number(p.weight||0),
+          quantity:Number(p.quantity||p.weight||0),
+          exporterCountry:p.exporterCountry||p.ec||'',
+          exporterCountryCode:p.exporterCountryCode||p.ecc||'',
+          companyName:p.companyName||p.cn||'',
+          companyWebsite:p.companyWebsite||p.cw||'',
+          companyEmail:p.companyEmail||p.ce||'',
+          companyPhone:p.companyPhone||p.cp||'',
+          docCount:Number(p.docCount||p.dc||0)||0
         };
       })
     };
@@ -14101,7 +14120,7 @@ function restoreImportSnapshot(snapshot, quiet){
 function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
   if(!prod || !countries || !countries.length) return;
   var sourceKey = getImportAnalysisSourceKey(source);
-  var sourceScope = getImportAnalysisSourceScopeState();
+  var sourceScope = getImportAnalysisSourceScopeState(sourceKey);
   var selectedYear = getImportAnalysisSelectedYear();
   var snapshotTargets = ((targetCountries && targetCountries.length) ? targetCountries : FINDER_ALWAYS_TARGET_COUNTRIES.slice()).map(function(country){
     return typeof country === 'string' ? country : String(country && (country.name || country.label || country.code) || '');
@@ -14138,7 +14157,15 @@ function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
             partner:p.partner||p.partnerDesc||'',
             partnerCode:Number(p.partnerCode||0),
             value:Number(p.value||0),
-            weight:Number(p.weight||0)
+            weight:Number(p.weight||0),
+            quantity:Number(p.quantity||p.weight||0),
+            ec:p.exporterCountry||'',
+            ecc:p.exporterCountryCode||'',
+            cn:p.companyName||'',
+            cw:p.companyWebsite||'',
+            ce:p.companyEmail||'',
+            cp:p.companyPhone||'',
+            dc:Number(p.docCount||0)||0
           };
         })
       };
@@ -14430,11 +14457,12 @@ function applyImportAnalysisYearFilter(countries){
   });
 }
 
-async function runImportAnalysis(forceRefresh){
+async function runImportAnalysis(forceRefresh, sourceOverride){
   var targetCountries = getImportAnalysisTargetCountries();
-  var sourceKey = getImportAnalysisSource();
+  var sourceKey = getImportAnalysisSourceKey(sourceOverride || getImportAnalysisSource());
   var sourceLabel = getImportAnalysisSourceLabel(sourceKey);
   var selectedYear = getImportAnalysisPrimaryYear();
+  syncImportSourceSelect(sourceKey);
   initImportAnalysisComtradeOnly(targetCountries, sourceKey);
 
   var sel = getImportAnalysisProductSelect();
@@ -14468,8 +14496,14 @@ async function runImportAnalysis(forceRefresh){
   }
 
   toast(sourceLabel+' ma\'lumot olmoqda (HS: '+hsCode+', yil: '+getImportAnalysisYearsText()+')...');
-  var countries = await fetchComtrade(hsCode, selectedYear, targetCountries, sourceKey);
-  countries = applyImportAnalysisYearFilter(countries);
+  var countries = null;
+  if(sourceKey === 'tradeatlas'){
+    var sourceScope = getImportAnalysisSourceScopeState(sourceKey);
+    countries = await fetchTradeAtlasImportAnalysis(prod, targetCountries, sourceScope);
+  } else {
+    countries = await fetchComtrade(hsCode, selectedYear, targetCountries, sourceKey);
+    countries = applyImportAnalysisYearFilter(countries);
+  }
 
   if(!countries || !countries.length){
     if(resultsEl) resultsEl.style.display = 'none';
@@ -14666,7 +14700,8 @@ function countryHasImportDisplayData(country){
 
 function renderImportResults(countries, prod, source, targetCountries){
   targetCountries = (targetCountries && targetCountries.length) ? targetCountries : getImportAnalysisTargetCountries();
-  initImportAnalysisComtradeOnly(targetCountries, getImportAnalysisSourceKey(source));
+  var sourceKey = getImportAnalysisSourceKey(source);
+  initImportAnalysisComtradeOnly(targetCountries, sourceKey);
   var labels = getImportAnalysisLabels();
   var yearsText = getImportAnalysisYearsText();
   var displayYears = getImportAnalysisDisplayYears();
@@ -14727,7 +14762,10 @@ function renderImportResults(countries, prod, source, targetCountries){
     var rows = Array.isArray(country.products) ? country.products : [];
     rows.forEach(function(row){
       if(isImportWorldRow(row)) return;
-      var exporterName = String(row && (row.partner || row.partnerDesc || '') || '').trim();
+      var exporterName = String(row && (row.exporterCountry || row.exporter_country || row.exporterCountryName || '') || '').trim();
+      if(!exporterName){
+        exporterName = String(row && (row.partner || row.partnerDesc || '') || '').trim();
+      }
       var exporterValue = Number(row && row.value || 0) || 0;
       if(!exporterName || !(exporterValue > 0)) return;
       if(!exporterTotals[exporterName]){
@@ -17251,6 +17289,192 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
     });
 }
 
+function tradeAtlasFirmCountryCode(firm){
+  var direct = String((firm && (firm.firm_country_code || firm.country_code || firm.countryCode)) || '').trim().toUpperCase();
+  if(direct && direct.length === 2) return direct;
+  return getTradeAtlasCountryCode((firm && (firm.firm_country || firm.country || firm.country_name)) || '');
+}
+
+function tradeAtlasQuantityToKg(qty, unit){
+  var value = Number(qty || 0) || 0;
+  if(!(value > 0)) return 0;
+  var u = String(unit || '').toLowerCase();
+  if(u && u.indexOf('kg') === -1 && (u.indexOf('ton') !== -1 || u === 't' || u === 'tons')){
+    return value * 1000;
+  }
+  return value;
+}
+
+function buildTradeAtlasAnalysisRow(firm, reporterLabel, year){
+  var companyName = String((firm && (firm.firm_name || firm.name)) || '').trim();
+  if(!companyName) return null;
+  var exporterCountry = String((firm && (firm.firm_country || firm.country || firm.country_name)) || '').trim();
+  var tradeValue = Number((firm && (firm.total_trade_value_usd || firm.trade_value_usd)) || 0) || 0;
+  var qtyRaw = Number((firm && (firm.total_quantity || firm.quantity)) || 0) || 0;
+  var qtyUnitRaw = String((firm && (firm.quantity_unit || firm.quantityUnit)) || '').trim();
+  var qtyKg = tradeAtlasQuantityToKg(qtyRaw, qtyUnitRaw);
+  return {
+    period: String(year || ''),
+    reporter: reporterLabel || '',
+    partner: companyName,
+    partnerDesc: companyName,
+    partnerCode: 1,
+    value: tradeValue,
+    weight: qtyKg,
+    quantity: qtyKg,
+    quantityUnit: 'Kilogram',
+    exporterCountry: exporterCountry || '',
+    exporterCountryCode: tradeAtlasFirmCountryCode(firm) || '',
+    companyName: companyName,
+    companyWebsite: String((firm && (firm.web || firm.website || firm.url)) || '').trim(),
+    companyEmail: String((firm && (firm.e_mail || firm.email || firm.email_address)) || '').trim(),
+    companyPhone: String((firm && (firm.tel || firm.phone || firm.phone_number)) || '').trim(),
+    docCount: Number((firm && (firm.doc_count || firm.docCount || firm.shipment_count)) || 0) || 0
+  };
+}
+
+async function fetchTradeAtlasImportAnalysis(prod, targetCountries, sourceScope){
+  var hsCode = getExactImportHsCode(prod);
+  if(!hsCode) throw new Error('TradeAtlas uchun mahsulot HS kodi topilmadi');
+
+  var selectedTargets = (targetCountries || []).slice();
+  if(!selectedTargets.length) return [];
+
+  var modeMeta = getFinderModeMeta((document.getElementById('finder-mode') || {}).value || 'exporters');
+  var taFlowType = (modeMeta.mode === 'importers') ? 'IMPORT' : 'EXPORT';
+  var taFirmType = (modeMeta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
+  var years = getImportAnalysisDisplayYears();
+  var accountId = (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz');
+
+  var sourceSelection = sourceScope || getFinderSourceSelection();
+  var sourceCodes = ((sourceSelection && sourceSelection.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  var sourceCodeSet = {};
+  sourceCodes.forEach(function(code){ sourceCodeSet[String(code || '').toUpperCase()] = true; });
+
+  var out = [];
+  for(var ti=0; ti<selectedTargets.length; ti++){
+    var target = selectedTargets[ti];
+    var targetName = typeof target === 'string'
+      ? target
+      : String((target && (target.name || target.label || target.code)) || '').trim();
+    if(!targetName) continue;
+    var targetCode = getTradeAtlasCountryCode(targetName);
+    var targetLabel = typeof target === 'string'
+      ? (getFinderCountryLabel(targetName) || targetName)
+      : (target.label || getFinderCountryLabel(targetName) || targetName);
+    var targetFlag = typeof target === 'string'
+      ? (getFinderCountryFlag(targetName) || '')
+      : (target.flag || getFinderCountryFlag(targetName) || '');
+    var countryNode = {
+      code: targetCode || String((target && target.code) || '').trim().toUpperCase(),
+      name: targetName,
+      flag: targetFlag,
+      import_usd: 0,
+      trend_pct: 0,
+      volume_tons: 0,
+      products: [],
+      year_imports: {},
+      year_statuses: {},
+      status: 'no_data'
+    };
+    var countryWeightKg = 0;
+
+    for(var yi=0; yi<years.length; yi++){
+      var year = String(years[yi] || '');
+      var requestCountries = sourceCodes.length ? sourceCodes.slice() : (targetCode ? [targetCode] : []);
+      if(!requestCountries.length){
+        countryNode.year_imports[year] = 0;
+        countryNode.year_statuses[year] = 'no_data';
+        continue;
+      }
+
+      var payload = {
+        accountId: accountId,
+        countries: requestCountries,
+        firmFilter: [0,1,2],
+        firmType: taFirmType,
+        flowType: taFlowType,
+        page: 1,
+        parameters: [{ HS_CODE: hsCode }],
+        mode: modeMeta.mode,
+        targetCountries: targetCode ? [targetCode] : [],
+        sourceCountries: sourceCodes.slice(),
+        hsCode: hsCode,
+        startDate: year + '-01-01',
+        endDate: year + '-12-31',
+        size: 250
+      };
+
+      var yearFirmMap = {};
+      var pageSize = 250;
+      var maxPages = 8;
+      var expectedTotal = 0;
+      for(var page=1; page<=maxPages; page++){
+        payload.page = page;
+        payload.size = pageSize;
+        var pageData = await tradeAtlasRequestJson(payload);
+        var pageFirms = tradeAtlasNormalizeArray(pageData);
+        if(!expectedTotal){
+          expectedTotal = Number((pageData && pageData.count) || 0) || 0;
+        }
+        if(!pageFirms.length) break;
+        pageFirms.forEach(function(firm){
+          var row = buildTradeAtlasAnalysisRow(firm, targetLabel, year);
+          if(!row) return;
+          var firmCode = String(row.exporterCountryCode || '').toUpperCase();
+          if(sourceCodes.length && firmCode && !sourceCodeSet[firmCode]) return;
+          var dedupeKey = [
+            apolloNormalizeText(row.companyName || row.partner || ''),
+            firmCode || apolloNormalizeText(row.exporterCountry || ''),
+            row.period
+          ].join('|');
+          if(!yearFirmMap[dedupeKey]){
+            yearFirmMap[dedupeKey] = row;
+            return;
+          }
+          yearFirmMap[dedupeKey].value += row.value;
+          yearFirmMap[dedupeKey].weight += row.weight;
+          yearFirmMap[dedupeKey].quantity = yearFirmMap[dedupeKey].weight;
+          yearFirmMap[dedupeKey].docCount = (yearFirmMap[dedupeKey].docCount || 0) + (row.docCount || 0);
+          if(!yearFirmMap[dedupeKey].companyWebsite && row.companyWebsite){
+            yearFirmMap[dedupeKey].companyWebsite = row.companyWebsite;
+          }
+          if(!yearFirmMap[dedupeKey].companyEmail && row.companyEmail){
+            yearFirmMap[dedupeKey].companyEmail = row.companyEmail;
+          }
+          if(!yearFirmMap[dedupeKey].companyPhone && row.companyPhone){
+            yearFirmMap[dedupeKey].companyPhone = row.companyPhone;
+          }
+        });
+        if(expectedTotal > 0 && Object.keys(yearFirmMap).length >= expectedTotal) break;
+        if(pageFirms.length < pageSize) break;
+      }
+
+      var yearRows = Object.keys(yearFirmMap).map(function(key){
+        return yearFirmMap[key];
+      }).sort(function(a, b){
+        return (Number(b.value || 0) || 0) - (Number(a.value || 0) || 0);
+      });
+      var yearValue = yearRows.reduce(function(sum, row){
+        return sum + (Number(row.value || 0) || 0);
+      }, 0);
+      var yearWeightKg = yearRows.reduce(function(sum, row){
+        return sum + (Number(row.weight || 0) || 0);
+      }, 0);
+      countryNode.year_imports[year] = yearValue;
+      countryNode.year_statuses[year] = (yearValue > 0 || yearRows.length) ? 'ok' : 'no_data';
+      countryNode.products = countryNode.products.concat(yearRows);
+      countryNode.import_usd += yearValue;
+      countryWeightKg += yearWeightKg;
+    }
+
+    countryNode.volume_tons = countryWeightKg > 0 ? (countryWeightKg / 1000) : 0;
+    countryNode.status = countryNode.import_usd > 0 ? 'ok' : 'no_data';
+    out.push(countryNode);
+  }
+  return out;
+}
+
 function isApolloBuildingMaterialsProduct(prod){
   var text = apolloNormalizeText([
     prod && prod.name_en,
@@ -18795,6 +19019,10 @@ async function runCompanyFinder(source){
 
   try {
     if(source === 'tradeatlas'){
+      syncImportSourceSelect('tradeatlas');
+      runImportAnalysis(true, 'tradeatlas').catch(function(err){
+        console.warn('TradeAtlas auto analysis error:', err && err.message ? err.message : err);
+      });
       document.getElementById('finderBar').style.width = '38%';
       document.getElementById('finderProgressText').textContent =
         'TradeAtlas: HS ' + (getExactImportHsCode(prod) || '-') +
@@ -18966,6 +19194,14 @@ async function runCompanyFinder(source){
       _finderActiveCountryFilter = '';
       refreshFinderResultTabs();
       renderCurrentFinderTable();
+      if(false && source === 'tradeatlas'){
+        syncImportSourceSelect('tradeatlas');
+        setTimeout(function(){
+          runImportAnalysis(true, 'tradeatlas').catch(function(err){
+            console.warn('TradeAtlas auto analysis error:', err && err.message ? err.message : err);
+          });
+        }, 80);
+      }
 
       toast('✅ '+_finderResults.length+' ta kompaniya '+countryNames.length+' ta davlatdan topildi!');
     }, 500);
