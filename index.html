@@ -13189,16 +13189,16 @@ function getImportAnalysisDateRange(){
   var selectedYear = getImportAnalysisSelectedYear();
   if(selectedYear !== 'all'){
     return {
-      startDate: '01/01/' + selectedYear,
-      endDate: '31/12/' + selectedYear
+      startDate: selectedYear + '-01-01',
+      endDate: selectedYear + '-12-31'
     };
   }
   var years = getImportAnalysisDisplayYears();
   var startYear = String(years[0] || '2021');
   var endYear = String(years[years.length - 1] || startYear);
   return {
-    startDate: '01/01/' + startYear,
-    endDate: '31/12/' + endYear
+    startDate: startYear + '-01-01',
+    endDate: endYear + '-12-31'
   };
 }
 
@@ -17198,9 +17198,20 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope, 
   var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
   if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
   var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
-  var keyword = getTradeAtlasProductKeyword(prod);
   var dateRange = getImportAnalysisDateRange();
+  var taFlowType = (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT';
+  var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
+  var taCountries = sourceCodes.length
+    ? sourceCodes.slice()
+    : targetCodes.slice();
   var payload = {
+    accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
+    countries: taCountries,
+    firmFilter: [0,1,2],
+    firmType: taFirmType,
+    flowType: taFlowType,
+    page: 1,
+    parameters: [{ HS_CODE: hsCode }],
     mode: meta.mode,
     targetCountries: targetCodes,
     sourceCountries: sourceCodes,
@@ -17209,28 +17220,7 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope, 
     endDate: dateRange.endDate,
     size: Math.max(100, Math.min(300, Math.max((limit || 1) * 80, 120)))
   };
-  if(keyword) payload.productKeyword = keyword;
-  var data = {};
-  try{
-    data = await tradeAtlasRequestJson(payload);
-  }catch(err){
-    var msg = String((err && err.message) || '').toLowerCase();
-    if(keyword && /400|bad request|keyword|invalid/.test(msg)){
-      var retryPayload = Object.assign({}, payload);
-      delete retryPayload.productKeyword;
-      data = await tradeAtlasRequestJson(retryPayload);
-    }else{
-      throw err;
-    }
-  }
-  if(keyword && tradeAtlasNormalizeArray(data).length === 0){
-    var retryWhenEmpty = Object.assign({}, payload);
-    delete retryWhenEmpty.productKeyword;
-    var retryData = await tradeAtlasRequestJson(retryWhenEmpty);
-    if(tradeAtlasNormalizeArray(retryData).length){
-      data = retryData;
-    }
-  }
+  var data = await tradeAtlasRequestJson(payload);
   var found = [];
   tradeAtlasNormalizeArray(data).forEach(function(firm){
     var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
