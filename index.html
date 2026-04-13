@@ -13185,6 +13185,23 @@ function getImportAnalysisPrimaryYear(){
   return years.length ? String(years[years.length - 1]) : '2024';
 }
 
+function getImportAnalysisDateRange(){
+  var selectedYear = getImportAnalysisSelectedYear();
+  if(selectedYear !== 'all'){
+    return {
+      startDate: '01/01/' + selectedYear,
+      endDate: '31/12/' + selectedYear
+    };
+  }
+  var years = getImportAnalysisDisplayYears();
+  var startYear = String(years[0] || '2021');
+  var endYear = String(years[years.length - 1] || startYear);
+  return {
+    startDate: '01/01/' + startYear,
+    endDate: '31/12/' + endYear
+  };
+}
+
 function getImportAnalysisFinderMode(){
   var el = document.getElementById('finder-mode');
   return (el && String(el.value || '').toLowerCase() === 'importers') ? 'importers' : 'exporters';
@@ -17182,11 +17199,14 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope, 
   if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
   var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
   var keyword = getTradeAtlasProductKeyword(prod);
+  var dateRange = getImportAnalysisDateRange();
   var payload = {
     mode: meta.mode,
     targetCountries: targetCodes,
     sourceCountries: sourceCodes,
     hsCode: hsCode,
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
     size: Math.max(100, Math.min(300, Math.max((limit || 1) * 80, 120)))
   };
   if(keyword) payload.productKeyword = keyword;
