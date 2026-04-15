@@ -281,15 +281,17 @@ function waitForDB(){
       window.isAdmin = true;
       if(typeof applyAdminUI==='function') applyAdminUI(true);
     }
-    loadFromFirestore();
-    // URL ?page= parametridan sahifani tiklash
+    // URL ?page= parametridan sahifani darhol tiklash
     try{
       var urlParams = new URLSearchParams(window.location.search);
       var pageFromUrl = urlParams.get('page');
       if(pageFromUrl && typeof showPage==='function'){
-        setTimeout(function(){ showPage(pageFromUrl); }, 500);
+        showPage(pageFromUrl);
+      } else {
+        showPage('investors');
       }
-    }catch(e){}
+    }catch(e){ showPage('investors'); }
+    loadFromFirestore();
   } else {
     setTimeout(waitForDB, 100);
   }
@@ -1684,7 +1686,7 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
 </div>
 
 <!-- INVESTORS -->
-<div class="page active" id="page-investors">
+<div class="page" id="page-investors">
   <div style="max-width:1600px;margin:0 auto;padding:1.8rem;">
     <div class="page-hero" data-aos="fade-up">
       <div class="pg-title" data-i18n="page_investors_title">Tashrif Buyurgan Xorijiy Investorlar</div>
@@ -7301,13 +7303,17 @@ _renderInvestorCompaniesMain = function(){
 
   var allGroupMap = Object.create(null);
   var tayyor = 0, emailSent = 0, hasEmail = 0;
+  var emailSentGroups = Object.create(null);
+  var hasEmailGroups = Object.create(null);
   allCo.forEach(function(rec){
     var key = getInvestorCompanyGroupKey(rec);
     allGroupMap[key] = true;
     if(rec.holat === 'Tayyor') tayyor++;
-    if(rec.emailSent) emailSent++;
-    if(rec.email) hasEmail++;
+    if(rec.emailSent) emailSentGroups[key] = true;
+    if(rec.email) hasEmailGroups[key] = true;
   });
+  emailSent = Object.keys(emailSentGroups).length;
+  hasEmail = Object.keys(hasEmailGroups).length;
   const total = allCo.reduce(function(s, r){ return s + (parseFloat(r.summa) || 0); }, 0);
   var groupCount = Object.keys(allGroupMap).length;
   document.getElementById('ic-k1').textContent = groupCount;
