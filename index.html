@@ -282,6 +282,14 @@ function waitForDB(){
       if(typeof applyAdminUI==='function') applyAdminUI(true);
     }
     loadFromFirestore();
+    // URL ?page= parametridan sahifani tiklash
+    try{
+      var urlParams = new URLSearchParams(window.location.search);
+      var pageFromUrl = urlParams.get('page');
+      if(pageFromUrl && typeof showPage==='function'){
+        setTimeout(function(){ showPage(pageFromUrl); }, 500);
+      }
+    }catch(e){}
   } else {
     setTimeout(waitForDB, 100);
   }
@@ -2135,6 +2143,7 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
         <div id="invAiTariffMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
       </div>
 
+      <div id="invAiContactsList" style="display:none;margin:0 1rem .5rem 1rem"></div>
       <div id="invAiLetterCard" class="tcard" style="display:none;margin:0 1rem 1rem 1rem">
         <div class="tc-head">
           <div class="tc-title">✉️ Taklif Xati</div>
@@ -2491,12 +2500,12 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
         <div>
           <div id="importResults" style="display:none">
             <div class="ta-card" style="margin-bottom:1rem">
-              <div class="ta-card-head"><div class="ta-card-title">📊 Import tahlili</div></div>
-              <div class="ta-metrics cols-4" style="padding:1rem">
-                <div class="ta-metric"><div class="ta-metric-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg></div><div class="kpi-label" id="imp-k1-label" style="font-size:.68rem;color:var(--ta-gray-500)">Jami import</div><div id="imp-k1" style="font-size:1.1rem;font-weight:700;color:var(--ta-gray-800)">—</div></div>
-                <div class="ta-metric"><div class="ta-metric-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z" fill="currentColor"/></svg></div><div class="kpi-label" id="imp-k2-label" style="font-size:.68rem;color:var(--ta-gray-500)">Top eksportyor</div><div id="imp-k2" style="font-size:1.1rem;font-weight:700;color:var(--ta-gray-800)">—</div></div>
-                <div class="ta-metric"><div class="ta-metric-icon orange"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99l1.5 1.5z" fill="currentColor"/></svg></div><div class="kpi-label" id="imp-k3-label" style="font-size:.68rem;color:var(--ta-gray-500)">Top importyor</div><div id="imp-k3" style="font-size:1.1rem;font-weight:700;color:var(--ta-gray-800)">—</div></div>
-                <div class="ta-metric"><div class="ta-metric-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z" fill="currentColor"/></svg></div><div class="kpi-label" id="imp-k4-label" style="font-size:.68rem;color:var(--ta-gray-500)">Ma'lumot manbasi</div><div id="imp-k4" style="font-size:.7rem;font-weight:700;color:var(--ta-gray-800)">—</div></div>
+              <div class="ta-card-head" style="padding:.4rem .8rem"><div class="ta-card-title" style="font-size:.85rem">📊 Import tahlili</div></div>
+              <div class="ta-metrics cols-4" style="padding:.4rem .8rem;gap:.5rem">
+                <div class="ta-metric" style="padding:.4rem"><div class="ta-metric-icon blue" style="width:32px;height:32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg></div><div class="kpi-label" id="imp-k1-label" style="font-size:.6rem;color:var(--ta-gray-500)">Jami import</div><div id="imp-k1" style="font-size:.9rem;font-weight:700;color:var(--ta-gray-800)">—</div></div>
+                <div class="ta-metric" style="padding:.4rem"><div class="ta-metric-icon green" style="width:32px;height:32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z" fill="currentColor"/></svg></div><div class="kpi-label" id="imp-k2-label" style="font-size:.6rem;color:var(--ta-gray-500)">Top eksportyor</div><div id="imp-k2" style="font-size:.9rem;font-weight:700;color:var(--ta-gray-800)">—</div></div>
+                <div class="ta-metric" style="padding:.4rem"><div class="ta-metric-icon orange" style="width:32px;height:32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99l1.5 1.5z" fill="currentColor"/></svg></div><div class="kpi-label" id="imp-k3-label" style="font-size:.6rem;color:var(--ta-gray-500)">Top importyor</div><div id="imp-k3" style="font-size:.9rem;font-weight:700;color:var(--ta-gray-800)">—</div></div>
+                <div class="ta-metric" style="padding:.4rem"><div class="ta-metric-icon red" style="width:32px;height:32px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z" fill="currentColor"/></svg></div><div class="kpi-label" id="imp-k4-label" style="font-size:.6rem;color:var(--ta-gray-500)">Ma'lumot manbasi</div><div id="imp-k4" style="font-size:.7rem;font-weight:700;color:var(--ta-gray-800)">—</div></div>
               </div>
               <div id="importBarChart" style="display:none"></div>
             </div>
@@ -2683,6 +2692,9 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
       </div>
       <div id="aiTransportMeta" style="display:none;padding:0 1rem 1rem;font-size:.74rem;line-height:1.65;color:var(--text2)"></div>
     </div>
+
+    <!-- Kontaktlar ro'yxati -->
+    <div id="aiContactsList" style="display:none;margin-bottom:1rem"></div>
 
     <!-- Xat -->
     <div id="aiLetterCard" class="tcard" style="display:none">
@@ -4244,6 +4256,12 @@ function _showPageInner(id){
   var sidebarLink = document.querySelector('#tab-' + id);
   if(sidebarLink) sidebarLink.classList.add('active');
   currentPage=id;
+  // URL parametrini yangilash (sahifa yangilanganda shu bo'limda qolish uchun)
+  try{
+    var url = new URL(window.location.href);
+    url.searchParams.set('page', id);
+    window.history.replaceState(null, '', url.toString());
+  }catch(e){}
   var titles={
     overview:"Umumiy ma'lumotlar",
     investors:'Investorlar tashriflari',
@@ -20987,8 +21005,39 @@ function openInvestorAiWorkspace(id){
   setInvestorAiMeta(comp);
   if(switching){
     resetAiScope('investor', 'Investor tanlandi. Endi "AI Xat Yozish" tugmasini bosing');
+    // Hide contacts list on switch
+    var cl = document.getElementById('invAiContactsList');
+    if(cl) cl.style.display = 'none';
   }
   mountInvestorAiWorkspace();
+
+  // Show all contacts from same company
+  var companyKey = getInvestorCompanyGroupKey(comp);
+  var allContacts = (DB.investorCompanies||[]).filter(function(c){
+    return getInvestorCompanyGroupKey(c) === companyKey;
+  });
+  if(allContacts.length > 1){
+    renderAiContactsList(allContacts, 'investor');
+    // Load existing letters for all contacts
+    window._aiContactLetters = window._aiContactLetters || {};
+    allContacts.forEach(function(c){
+      if(c.aiLetterData && c.aiLetterData.analysis){
+        window._aiContactLetters[String(c.id)] = {
+          contact: c,
+          payload: {
+            analysis: c.aiLetterData.analysis,
+            transportSummary: c.aiLetterData.transportSummary,
+            tariffSummary: c.aiLetterData.tariffSummary || null,
+            letterSubject: c.aiLetterData.subject || '',
+            letterBody: c.aiLetterData.body || '',
+            lang: c.aiLetterData.lang || 'en',
+            generatedAt: c.aiLetterData.generatedAt || ''
+          }
+        };
+      }
+    });
+  }
+
   if(comp.aiLetterData && comp.aiLetterData.analysis){
     hydrateAiScope('investor', comp, {
       analysis: comp.aiLetterData.analysis,
@@ -21831,18 +21880,88 @@ async function generateAiLetterForScope(scope){
 
   var lang = dom.lang ? dom.lang.value : 'en';
 
-  var lt = toastLoading('⏳ AI xat tayyorlanmoqda: ' + escHtml(comp.kompaniya || '') + '...');
+  // Find all contacts from same company
+  var companyKey = getInvestorCompanyGroupKey(comp);
+  var allContacts = (DB.investorCompanies||[]).filter(function(c){
+    return getInvestorCompanyGroupKey(c) === companyKey;
+  });
+
+  var lt = toastLoading('⏳ AI xat tayyorlanmoqda: ' + escHtml(comp.kompaniya || '') + ' (' + allContacts.length + ' ta kontakt)...');
 
   try {
-    var payload = await buildAiLetterPackage(comp, lang);
-    saveAiLetterPackage(comp, payload);
-    hydrateAiScope(scope, comp, payload);
+    // Generate letters for all contacts
+    window._aiContactLetters = {};
+    for(var ci=0; ci<allContacts.length; ci++){
+      var contact = allContacts[ci];
+      var payload = await buildAiLetterPackage(contact, lang);
+      saveAiLetterPackage(contact, payload);
+      window._aiContactLetters[String(contact.id)] = {contact: contact, payload: payload};
+    }
 
-    toastDone(lt, '✅ AI xat tayyor! ' + escHtml(comp.kompaniya || ''));
+    // Show contacts list
+    renderAiContactsList(allContacts, scope);
+
+    // Hydrate with first contact
+    hydrateAiScope(scope, allContacts[0], window._aiContactLetters[String(allContacts[0].id)].payload);
+
+    toastDone(lt, '✅ AI xat tayyor! ' + escHtml(comp.kompaniya || '') + ' — ' + allContacts.length + ' ta kontakt');
 
   } catch(e){
     toastDone(lt, '❌ Xato: '+e.message,'error');
     console.error(e);
+  }
+}
+
+function renderAiContactsList(contacts, scope){
+  var container = scope === 'investor'
+    ? document.getElementById('invAiContactsList')
+    : document.getElementById('aiContactsList');
+  if(!container || contacts.length < 2){ if(container) container.style.display='none'; return; }
+
+  var html = '<div class="tcard" style="overflow:visible"><div class="tc-head" style="padding:.6rem 1rem"><div class="tc-title" style="font-size:.85rem">👥 Kontaktlar (' + contacts.length + ' ta)</div></div>';
+  html += '<div style="padding:.5rem 1rem;display:flex;gap:.5rem;flex-wrap:wrap">';
+  contacts.forEach(function(c, i){
+    var name = c.rahbar || c.name || 'Kontakt';
+    var title = c.lavozim || c.title || '';
+    var email = c.email || '';
+    var isActive = i === 0 ? 'background:#4361EE;color:#fff;border-color:#4361EE' : 'background:#fff;color:var(--ta-gray-700);border-color:var(--border)';
+    var safeId = String(c.id).replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    html += '<button class="ai-contact-btn" data-contact-id="'+escHtml(String(c.id))+'" onclick="switchAiContact(\''+safeId+'\',\''+scope+'\')" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .8rem;border-radius:10px;border:1.5px solid;cursor:pointer;transition:all .2s;'+isActive+'">';
+    html += '<div style="width:32px;height:32px;border-radius:50%;background:'+(i===0?'rgba(255,255,255,.2)':'#EEF2FF')+';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem;flex-shrink:0">' + escapeHtmlText(name.charAt(0).toUpperCase()) + '</div>';
+    html += '<div style="text-align:left"><div style="font-size:.75rem;font-weight:600;line-height:1.2">' + escapeHtmlText(name) + '</div>';
+    if(title) html += '<div style="font-size:.6rem;opacity:.7;line-height:1.2">' + escapeHtmlText(title) + '</div>';
+    if(email) html += '<div style="font-size:.6rem;opacity:.6;line-height:1.2">' + escapeHtmlText(email) + '</div>';
+    html += '</div></button>';
+  });
+  html += '</div></div>';
+  container.innerHTML = html;
+  container.style.display = 'block';
+}
+
+function switchAiContact(contactId, scope){
+  var data = (window._aiContactLetters||{})[String(contactId)];
+  if(!data) return;
+  hydrateAiScope(scope, data.contact, data.payload);
+  // Update active button styles
+  var container = scope === 'investor'
+    ? document.getElementById('invAiContactsList')
+    : document.getElementById('aiContactsList');
+  if(container){
+    container.querySelectorAll('.ai-contact-btn').forEach(function(btn){
+      if(btn.dataset.contactId === String(contactId)){
+        btn.style.background = '#4361EE';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#4361EE';
+        var avatar = btn.querySelector('div');
+        if(avatar) avatar.style.background = 'rgba(255,255,255,.2)';
+      } else {
+        btn.style.background = '#fff';
+        btn.style.color = 'var(--ta-gray-700)';
+        btn.style.borderColor = 'var(--border)';
+        var avatar = btn.querySelector('div');
+        if(avatar) avatar.style.background = '#EEF2FF';
+      }
+    });
   }
 }
 
