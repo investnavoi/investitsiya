@@ -1415,14 +1415,16 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
             <span class="sidebar-badge" id="badge-zoom">0</span>
           </a>
         </li>
+        <!-- Outreach collapsible section -->
         <li class="nav-item static-item">
-          <a class="nav-link static-item disabled" href="#" tabindex="-1">
-            <span class="default-icon">Outreach</span>
+          <a class="nav-link static-item" href="javascript:void(0)" onclick="toggleSidebarSection('outreach')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+            <span class="default-icon">Mahsulot outreach</span>
+            <svg id="outreach-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" style="transition:transform .2s;transform:rotate(0deg)"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="mini-icon">-</span>
           </a>
         </li>
         <!-- Products -->
-        <li class="nav-item">
+        <li class="nav-item nav-outreach">
           <a class="nav-link" href="javascript:void(0)" onclick="showPage('products')" id="tab-products">
             <i class="icon"><svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path opacity="0.4" d="M16.34 1.99976H7.67C4.28 1.99976 2 4.37976 2 7.91976V16.0898C2 19.6198 4.28 21.9998 7.67 21.9998H16.34C19.73 21.9998 22 19.6198 22 16.0898V7.91976C22 4.37976 19.73 1.99976 16.34 1.99976Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M11.1246 8.18934C11.1246 8.67134 11.5156 9.06234 11.9976 9.06234C12.4876 9.06234 12.8796 8.67134 12.8796 8.18934C12.8796 7.70734 12.4876 7.31634 12.0056 7.31634C11.5196 7.31634 11.1246 7.70734 11.1246 8.18934ZM12.8696 11.9993C12.8696 11.5173 12.4776 11.1263 11.9956 11.1263C11.5136 11.1263 11.1226 11.5173 11.1226 11.9993C11.1226 12.4813 11.5136 12.8723 11.9956 12.8723C12.4776 12.8723 12.8696 12.4813 12.8696 11.9993ZM12.8696 15.8103C12.8696 15.3283 12.4776 14.9373 11.9956 14.9373C11.5136 14.9373 11.1226 15.3283 11.1226 15.8103C11.1226 16.2923 11.5136 16.6833 11.9956 16.6833C12.4776 16.6833 12.8696 16.2923 12.8696 15.8103Z" fill="currentColor"></path></svg></i>
             <span class="item-name">Mahsulotlar</span>
@@ -1430,14 +1432,14 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
           </a>
         </li>
         <!-- Finder -->
-        <li class="nav-item">
+        <li class="nav-item nav-outreach">
           <a class="nav-link" href="javascript:void(0)" onclick="showPage('finder')" id="tab-finder">
             <i class="icon"><svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11.7669" cy="11.7666" r="8.98856" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.0186 18.4851L21.5426 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></i>
             <span class="item-name">Kompaniya Qidiruvi</span>
           </a>
         </li>
         <!-- Investor Database -->
-        <li class="nav-item">
+        <li class="nav-item nav-outreach">
           <a class="nav-link" href="javascript:void(0)" onclick="showPage('investor')" id="tab-investor">
             <i class="icon"><svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9488 14.54C8.49884 14.54 5.58789 15.1038 5.58789 17.2795C5.58789 19.4562 8.51765 20.0001 11.9488 20.0001C15.3988 20.0001 18.3098 19.4364 18.3098 17.2606C18.3098 15.084 15.38 14.54 11.9488 14.54Z" fill="currentColor"></path><path opacity="0.4" d="M11.949 12.467C14.2851 12.467 16.1583 10.5831 16.1583 8.23351C16.1583 5.88306 14.2851 4 11.949 4C9.61293 4 7.73975 5.88306 7.73975 8.23351C7.73975 10.5831 9.61293 12.467 11.949 12.467Z" fill="currentColor"></path></svg></i>
             <span class="item-name" data-i18n="nav_investorco">Investorlar bazasi</span>
@@ -1445,21 +1447,29 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
           </a>
         </li>
         <!-- Pipeline -->
-        <li class="nav-item">
+        <li class="nav-item nav-outreach">
           <a class="nav-link" href="javascript:void(0)" onclick="showPage('pipeline')" id="tab-pipeline">
             <i class="icon"><svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path opacity="0.4" d="M18.8088 9.021C18.3573 9.021 17.7592 9.011 17.0146 9.011C15.1987 9.011 13.7055 7.508 13.7055 5.675V2.459C13.7055 2.206 13.5036 2 13.253 2H7.96363C5.49517 2 3.5 4.026 3.5 6.509V17.284C3.5 19.889 5.59022 22 8.16958 22H16.0463C18.5058 22 20.5 19.987 20.5 17.502V9.471C20.5 9.217 20.298 9.012 20.0474 9.013C19.5413 9.017 18.8088 9.021 18.8088 9.021Z" fill="currentColor"></path><path d="M16.0842 2.56737C15.7852 2.25637 15.2632 2.47037 15.2632 2.90137V5.53837C15.2632 6.64437 16.1742 7.55437 17.2802 7.55437C17.9772 7.56237 18.9452 7.56437 19.7672 7.56237C20.1882 7.56037 20.4022 7.05837 20.1102 6.75437C19.0552 5.65737 17.1662 3.69137 16.0842 2.56737Z" fill="currentColor"></path></svg></i>
             <span class="item-name">Outreach statistikasi</span>
           </a>
         </li>
+        <!-- Forum outreach collapsible section -->
+        <li class="nav-item static-item">
+          <a class="nav-link static-item" href="javascript:void(0)" onclick="toggleSidebarSection('forumoutreach')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+            <span class="default-icon">Forum outreach</span>
+            <svg id="forumoutreach-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" style="transition:transform .2s;transform:rotate(0deg)"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="mini-icon">-</span>
+          </a>
+        </li>
         <!-- Trade -->
-        <li class="nav-item">
+        <li class="nav-item nav-forumoutreach">
           <a class="nav-link" href="javascript:void(0)" onclick="showPage('trade')" id="tab-trade">
             <i class="icon"><svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M15.2428 4.73756C15.2428 6.95855 17.0459 8.75902 19.2702 8.75902C19.5151 8.75902 19.7571 8.73862 19.9922 8.69495V16.9166C19.9922 20.0542 18.0477 22.0001 14.9139 22.0001H7.08757C3.94845 22.0001 2.00101 20.0542 2.00101 16.9166V9.09093C2.00101 5.95424 3.94845 4.00037 7.08757 4.00037H15.3177C15.2675 4.24142 15.2428 4.48738 15.2428 4.73756ZM13.15 14.8966L16.0078 11.2088V11.1978C16.2525 10.8625 16.1901 10.3989 15.8659 10.1373C15.7022 10.0079 15.4958 9.94446 15.29 9.96006C15.0837 9.97566 14.8907 10.0687 14.7482 10.2207L12.4111 13.128L9.76765 10.9927C9.59776 10.8581 9.38526 10.7965 9.17348 10.8187C8.96164 10.8405 8.76765 10.9447 8.62873 11.1103L5.79734 14.5765L5.73543 14.6556C5.54891 14.9518 5.59697 15.3475 5.84917 15.5827C5.97268 15.7017 6.13391 15.7653 6.30168 15.7767C6.47084 15.7885 6.64138 15.7419 6.78213 15.637L9.41914 12.5955L12.0616 14.7279C12.2355 14.8673 12.4545 14.9257 12.6693 14.8939C12.8842 14.8621 13.0756 14.742 13.2012 14.5636L13.15 14.8966Z" fill="currentColor"></path><circle opacity="0.4" cx="19.2717" cy="4.73789" r="2.73789" fill="currentColor"></circle></svg></i>
             <span class="item-name">Jahon tashqi savdosi</span>
           </a>
         </li>
         <!-- Forums -->
-        <li class="nav-item">
+        <li class="nav-item nav-forumoutreach">
           <a class="nav-link" href="javascript:void(0)" onclick="showPage('forums')" id="tab-forums">
             <i class="icon"><svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path opacity="0.4" d="M16.191 2H7.81C4.77 2 3 3.78 3 6.83V17.16C3 20.26 4.77 22 7.81 22H16.191C19.28 22 21 20.26 21 17.16V6.83C21 3.78 19.28 2 16.191 2Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M8.07996 6.6499V6.6599C7.64896 6.6599 7.29996 7.0099 7.29996 7.4399C7.29996 7.8699 7.64896 8.2199 8.07996 8.2199H11.069C11.5 8.2199 11.85 7.8699 11.85 7.4289C11.85 6.9999 11.5 6.6499 11.069 6.6499H8.07996ZM15.92 12.7399H8.07996C7.64896 12.7399 7.29996 12.3899 7.29996 11.9599C7.29996 11.5299 7.64896 11.1789 8.07996 11.1789H15.92C16.35 11.1789 16.7 11.5299 16.7 11.9599C16.7 12.3899 16.35 12.7399 15.92 12.7399ZM15.92 17.3099H8.07996C7.77996 17.3499 7.48996 17.1999 7.32996 16.9499C7.16996 16.6899 7.16996 16.3599 7.32996 16.1099C7.48996 15.8499 7.77996 15.7099 8.07996 15.7399H15.92C16.319 15.7799 16.62 16.1199 16.62 16.5299C16.62 16.9289 16.319 17.2699 15.92 17.3099Z" fill="currentColor"></path></svg></i>
             <span class="item-name" data-i18n="nav_forums">Forumlar</span>
@@ -7076,7 +7086,8 @@ function openEmbassyModal(type){
   var embassy = getEmbassyForCountry(code);
   var data = null;
   var title = '';
-  if(type === 'uzb'){
+  var isUzbEmbassy = (type === 'uzb');
+  if(isUzbEmbassy){
     title = '🏛️ O\'zbekiston elchixonasi — ' + cName + 'da';
     data = embassy ? embassy.uzbEmbassy : null;
   } else {
@@ -7097,14 +7108,71 @@ function openEmbassyModal(type){
   var embName = data ? data.name : '';
   var embAddr = data ? (data.address||'') : '';
 
-  // Generate letter
-  var letterSubject = 'Navoiy erkin iqtisodiy zona — investitsiya imkoniyatlari haqida';
-  var letterBody = 'Hurmatli ' + (embName || 'Elchixona vakili') + ',\n\n'
-    + 'Navoiy erkin iqtisodiy zona (NIEZ) nomidan sizga murojaat qilmoqdamiz.\n\n'
-    + cName + 'dan jami ' + countryCompanies.length + ' ta kompaniya bilan aloqa o\'rnatilgan bo\'lib, '
-    + 'ularni Navoiy viloyatiga investitsiya jalb qilish maqsadida taklif qilmoqdamiz.\n\n'
-    + 'Sizdan iltimos — ushbu kompaniyalar bilan bog\'liq hamkorlik imkoniyatlarini ko\'rib chiqishingizni so\'raymiz.\n\n'
-    + 'Hurmat bilan,\nNavoiy EIZ jamoasi';
+  // Generate letter based on embassy type and country language
+  var _cisCountries = ['RU','KZ','KG','TJ','BY','AM','AZ','GE','MD','UA','TM'];
+  var _cnCountries = ['CN','TW','HK','MO'];
+  var isCIS = _cisCountries.indexOf(code) !== -1;
+  var isCN = _cnCountries.indexOf(code) !== -1;
+  var letterSubject, letterBody;
+  var cnt = countryCompanies.length;
+
+  if(isUzbEmbassy){
+    // O'zbekiston elchixonalariga — DOIMO O'ZBEKCHA
+    var recip = embName || 'Hurmatli Elchi janoblari';
+    letterSubject = 'Navoiy erkin iqtisodiy zona — investitsiya jalb qilish bo\'yicha murojaat';
+    letterBody = recip + ',\n\n'
+      + 'O\'zbekiston Respublikasi Navoiy erkin iqtisodiy zonasi (NIEZ) nomidan Sizga murojaat qilmoqdamiz.\n\n'
+      + cName + 'dan jami ' + cnt + ' ta kompaniya bilan aloqa o\'rnatilgan bo\'lib, ularni Navoiy viloyatiga investitsiya kiritish maqsadida taklif etmoqdamiz.\n\n'
+      + 'Navoiy EIZ quyidagi imkoniyatlarni taqdim etadi:\n'
+      + '• Soliq imtiyozlari va bojxona to\'lovlaridan ozod etish\n'
+      + '• Tayyor infratuzilma va sanoat maydonchalari\n'
+      + '• Soddалаshtirilgan ma\'muriy tartiblar\n'
+      + '• Buyuk Ipak yo\'lidagi strategik joylashuv\n\n'
+      + 'Sizdan iltimos — ushbu kompaniyalar bilan uchrashuvlar va muzokaralar tashkil etishda ko\'maklashishingizni so\'raymiz.\n\n'
+      + 'Hurmat bilan,\nNavoiy EIZ jamoasi';
+  } else if(isCIS){
+    // Xorij elchixona — MDH davlatlariga RUSCHA
+    var recip = embName || 'Уважаемый представитель Посольства';
+    letterSubject = 'Навоийская свободная экономическая зона — инвестиционные возможности';
+    letterBody = recip + ',\n\n'
+      + 'От имени Навоийской свободной экономической зоны (НСЭЗ) обращаемся к вам.\n\n'
+      + 'Мы установили контакт с ' + cnt + ' компаниями из ' + cName + ' и приглашаем их инвестировать в Навоийскую область Республики Узбекистан.\n\n'
+      + 'Навоийская СЭЗ предлагает:\n'
+      + '• Налоговые льготы и освобождение от таможенных пошлин\n'
+      + '• Готовую инфраструктуру и промышленные площадки\n'
+      + '• Упрощённые административные процедуры\n'
+      + '• Стратегическое расположение на Великом Шёлковом пути\n\n'
+      + 'Просим содействовать в организации встреч и переговоров с заинтересованными компаниями.\n\n'
+      + 'С уважением,\nКоманда НСЭЗ';
+  } else if(isCN){
+    // Xorij elchixona — Xitoyga XITOYCHA
+    var recip = embName || '尊敬的大使馆代表';
+    letterSubject = '纳沃伊自由经济区 — 投资机会';
+    letterBody = recip + '，\n\n'
+      + '我们代表纳沃伊自由经济区（NFEZ）向您致函。\n\n'
+      + '我们已与来自' + cName + '的 ' + cnt + ' 家企业建立了联系，诚邀其到乌兹别克斯坦纳沃伊州投资。\n\n'
+      + '纳沃伊自由经济区提供：\n'
+      + '• 税收优惠和关税豁免\n'
+      + '• 完善的基础设施和工业园区\n'
+      + '• 简化的行政手续\n'
+      + '• 位于丝绸之路的战略位置\n\n'
+      + '恳请贵馆协助安排与相关企业的会谈和洽谈。\n\n'
+      + '此致敬礼，\n纳沃伊自由经济区团队';
+  } else {
+    // Xorij elchixona — boshqa davlatlarga INGLIZCHA
+    var recip = embName || 'Dear Embassy Representative';
+    letterSubject = 'Navoi Free Economic Zone — Investment Opportunities';
+    letterBody = recip + ',\n\n'
+      + 'On behalf of the Navoi Free Economic Zone (NFEZ), we are reaching out to your esteemed Embassy.\n\n'
+      + 'We have established contact with ' + cnt + ' companies from ' + cName + ' and would like to invite them to invest in the Navoi region of the Republic of Uzbekistan.\n\n'
+      + 'The Navoi FEZ offers:\n'
+      + '• Tax incentives and customs duty exemptions\n'
+      + '• Ready-made infrastructure and industrial sites\n'
+      + '• Simplified administrative procedures\n'
+      + '• Strategic location on the Great Silk Road\n\n'
+      + 'We kindly request your assistance in facilitating meetings and negotiations with interested companies.\n\n'
+      + 'Best regards,\nNavoi FEZ Team';
+  }
 
   // Build modal
   var modalHtml = '<div id="embassyModal" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);animation:fadeIn .2s">'
