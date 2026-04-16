@@ -594,6 +594,7 @@ body{padding:0!important;}
 .import-map-title{font-size:1rem;font-weight:600;color:var(--ta-gray-800);}
 .import-map-sub{font-size:.78rem;color:var(--ta-gray-500);margin-top:2px;}
 .import-map-wrap{margin:0 1.25rem 1.25rem;border-radius:12px;background:var(--ta-gray-50);border:1px solid var(--ta-gray-200);overflow:hidden;padding:1rem;}
+#investorGeoMapCard{overflow:visible;}
 [data-bs-theme="dark"] .import-map-wrap{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.06);}
 .import-map-wrap .jvm-container{height:380px !important;}
 #investorGeoJvMap .jvm-container{height:100% !important;}
@@ -1022,89 +1023,91 @@ input[type="time"]{-webkit-appearance:none;}
 .kanban-card-sub{font-size:.6rem;color:var(--text3);margin-top:3px}
 .kanban-card-score{font-size:.55rem;font-weight:800;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;display:inline-block;margin-top:4px}
 /* ===== MAILBOXES PANEL ===== */
-.mailbox-shell{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:1.2rem 1.25rem;box-shadow:var(--shadow);margin-bottom:1.2rem}
-.mailbox-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
-.mailbox-title-row{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
-.mailbox-title-main{font-size:1rem;font-weight:800;color:var(--text)}
-.mailbox-title-icon{width:38px;height:38px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#4361EE,#7C3AED);color:#fff;font-size:1rem;box-shadow:0 10px 20px rgba(124,58,237,.2)}
-.mailbox-pill{display:inline-flex;align-items:center;justify-content:center;padding:6px 12px;border-radius:999px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.16);color:#6D28D9;font-size:.72rem;font-weight:800}
-.mailbox-sub{font-size:.68rem;color:var(--text3);margin-top:.35rem}
-.mailbox-add-form{display:grid;grid-template-columns:1.2fr .7fr 1fr auto;gap:.7rem;align-items:end;padding:.85rem;border:1px solid var(--border);border-radius:18px;background:linear-gradient(180deg,rgba(124,58,237,.04),rgba(67,97,238,.03));margin-bottom:1rem}
-.mailbox-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:.9rem;margin-bottom:1rem}
-.mailbox-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:1rem;position:relative;overflow:hidden}
-.mailbox-kpi::after{content:'';position:absolute;top:-18px;right:-18px;width:72px;height:72px;border-radius:50%;background:var(--orb,#6366F1);opacity:.1}
-.mailbox-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.65rem}
-.mailbox-kpi-icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;color:#fff;background:var(--orb,#6366F1);box-shadow:0 10px 18px rgba(99,102,241,.2)}
-.mailbox-kpi-label{font-size:.63rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
-.mailbox-kpi-value{font-size:2rem;line-height:1;font-weight:900;color:var(--text)}
-.mailbox-kpi-meta{font-size:.68rem;color:var(--text3);margin-top:.3rem}
-.mailbox-grid{display:grid;grid-template-columns:1.55fr .95fr;gap:1rem}
-.mailbox-panel{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1rem}
-.mailbox-panel-title{font-size:.82rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.45rem}
-.mailbox-panel-sub{font-size:.64rem;color:var(--text3);margin-top:.25rem}
+.mailbox-shell{margin-bottom:1rem}
+.mailbox-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.8rem;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem}
+.mailbox-title-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.mailbox-title-main{font-size:.95rem;font-weight:700;color:var(--text)}
+.mailbox-title-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(99,102,241,.1);color:#6366F1;font-size:.9rem}
+.mailbox-pill{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:20px;background:#ecfdf5;border:1px solid #a7f3d0;color:#059669;font-size:.72rem;font-weight:700}
+.mailbox-sub{font-size:.74rem;color:var(--text3);margin-top:.3rem}
+.mailbox-add-form{display:grid;grid-template-columns:1.2fr .7fr 1fr auto;gap:.7rem;align-items:end;padding:.85rem;border:1px solid var(--border);border-radius:12px;background:var(--card);margin-bottom:.8rem}
+.mailbox-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:.75rem;margin-bottom:.8rem}
+.mailbox-kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.9rem 1rem;position:relative}
+.mailbox-kpi::after{display:none}
+.mailbox-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
+.mailbox-kpi-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:.9rem;color:var(--orb,#6366F1);background:color-mix(in srgb,var(--orb,#6366F1) 10%,transparent)}
+.mailbox-kpi-label{font-size:.7rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.mailbox-kpi-value{font-size:1.55rem;line-height:1;font-weight:800;color:var(--text)}
+.mailbox-kpi-meta{font-size:.7rem;color:var(--text3);margin-top:.25rem}
+.mailbox-grid{display:grid;grid-template-columns:1.55fr .95fr;gap:.8rem}
+.mailbox-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem}
+.mailbox-panel-title{font-size:.88rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem}
+.mailbox-panel-sub{font-size:.72rem;color:var(--text3);margin-top:.2rem}
 .mailbox-table-head,.mailbox-row{display:grid;grid-template-columns:1.6fr .9fr 1fr .95fr .9fr 1fr;gap:.7rem;align-items:center}
-.mailbox-table-head{font-size:.58rem;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:.65rem 0;border-bottom:1px solid var(--border)}
+.mailbox-table-head{font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:.6rem 0;border-bottom:1px solid var(--border)}
 .mailbox-rows{display:flex;flex-direction:column}
-.mailbox-row{padding:.85rem 0;border-bottom:1px solid rgba(148,163,184,.16)}
+.mailbox-row{padding:.75rem 0;border-bottom:1px solid var(--border)}
 .mailbox-row:last-child{border-bottom:none}
-.mailbox-account{display:flex;align-items:center;gap:.7rem;min-width:0}
-.mailbox-avatar{width:38px;height:38px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#F8FAFC,#E2E8F0);border:1px solid rgba(148,163,184,.22);font-size:1rem;flex:0 0 auto}
+.mailbox-account{display:flex;align-items:center;gap:.6rem;min-width:0}
+.mailbox-avatar{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--bg2);border:1px solid var(--border);font-size:.9rem;flex:0 0 auto}
 .mailbox-acc-meta{min-width:0}
-.mailbox-acc-email{font-size:.78rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mailbox-acc-sub{font-size:.63rem;color:var(--text3);margin-top:2px}
-.mailbox-capacity strong{font-size:.95rem;color:var(--text)}
-.mailbox-capacity div{font-size:.63rem;color:var(--text3);margin-top:2px}
-.mailbox-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:.64rem;font-weight:800;border:1px solid transparent;white-space:nowrap}
-.mailbox-chip.ok{background:rgba(5,150,105,.1);color:#047857;border-color:rgba(5,150,105,.18)}
-.mailbox-chip.warn{background:rgba(245,158,11,.1);color:#b45309;border-color:rgba(245,158,11,.18)}
-.mailbox-chip.bad{background:rgba(239,68,68,.1);color:#dc2626;border-color:rgba(239,68,68,.18)}
-.mailbox-health-wrap{display:flex;align-items:center;gap:.45rem}
-.mailbox-health-bars{display:flex;align-items:center;gap:4px}
-.mailbox-health-bars span{width:12px;height:4px;border-radius:999px;background:#D5DCEA}
+.mailbox-acc-email{font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mailbox-acc-sub{font-size:.68rem;color:var(--text3);margin-top:2px}
+.mailbox-capacity strong{font-size:.9rem;color:var(--text)}
+.mailbox-capacity div{font-size:.68rem;color:var(--text3);margin-top:2px}
+.mailbox-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;font-size:.7rem;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.mailbox-chip.ok{background:#ecfdf5;color:#059669;border-color:#a7f3d0}
+.mailbox-chip.warn{background:#fffbeb;color:#b45309;border-color:#fde68a}
+.mailbox-chip.bad{background:#fef2f2;color:#dc2626;border-color:#fecaca}
+.mailbox-health-wrap{display:flex;align-items:center;gap:.4rem}
+.mailbox-health-bars{display:flex;align-items:center;gap:3px}
+.mailbox-health-bars span{width:10px;height:4px;border-radius:999px;background:#e2e8f0}
 .mailbox-health-bars span.on.ok{background:#10B981}
 .mailbox-health-bars span.on.warn{background:#F59E0B}
 .mailbox-health-bars span.on.bad{background:#EF4444}
-.mailbox-health-num{font-size:.68rem;font-weight:800;color:var(--text2)}
+.mailbox-health-num{font-size:.72rem;font-weight:700;color:var(--text2)}
 .mailbox-use{display:flex;justify-content:center}
-.mailbox-toggle{width:46px;height:26px;border-radius:999px;border:none;cursor:pointer;position:relative;background:#D7DCEF;transition:all .2s}
-.mailbox-toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.15);transition:all .2s}
-.mailbox-toggle.active{background:linear-gradient(135deg,#8B5CF6,#6366F1)}
-.mailbox-toggle.active::after{left:23px}
-.mailbox-actions{display:flex;align-items:center;gap:.45rem;justify-content:flex-end;flex-wrap:wrap}
-.mailbox-mini-btn{padding:7px 10px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.63rem;font-weight:700;cursor:pointer}
-.mailbox-mini-btn.danger{color:#DC2626;border-color:rgba(220,38,38,.18);background:rgba(220,38,38,.04)}
-.mailbox-mini-btn.primary{color:#5B21B6;border-color:rgba(91,33,182,.16);background:rgba(91,33,182,.06)}
-.mailbox-empty{padding:1.2rem;text-align:center;font-size:.72rem;color:var(--text3)}
-.mailbox-chart{height:360px;display:flex;align-items:flex-end;gap:8px;padding-top:1rem}
-.mailbox-chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
-.mailbox-chart-bars{height:150px;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:5px}
-.mailbox-chart-bar{width:14px;border-radius:999px 999px 4px 4px;min-height:6px}
-.mailbox-chart-bar.warm{background:linear-gradient(180deg,#A78BFA,#7C3AED)}
-.mailbox-chart-bar.cold{background:linear-gradient(180deg,#60A5FA,#38BDF8)}
-.mailbox-chart-label{font-size:.58rem;color:var(--text3);text-align:center}
-.mailbox-chart-legend{display:flex;align-items:center;gap:1rem;justify-content:flex-end;font-size:.6rem;color:var(--text3)}
-.mailbox-legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px}
+.mailbox-toggle{width:42px;height:24px;border-radius:999px;border:none;cursor:pointer;position:relative;background:#e2e8f0;transition:all .2s}
+.mailbox-toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.15);transition:all .2s}
+.mailbox-toggle.active{background:#3b82f6}
+.mailbox-toggle.active::after{left:20px}
+.mailbox-actions{display:flex;align-items:center;gap:.4rem;justify-content:flex-end;flex-wrap:wrap}
+.mailbox-mini-btn{padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.68rem;font-weight:600;cursor:pointer;transition:all .15s}
+.mailbox-mini-btn:hover{background:var(--bg2)}
+.mailbox-mini-btn.danger{color:#DC2626;border-color:#fecaca;background:#fef2f2}
+.mailbox-mini-btn.danger:hover{background:#fee2e2}
+.mailbox-mini-btn.primary{color:#3b82f6;border-color:#bfdbfe;background:#eff6ff}
+.mailbox-mini-btn.primary:hover{background:#dbeafe}
+.mailbox-empty{padding:1.5rem;text-align:center;font-size:.78rem;color:var(--text3)}
+.mailbox-chart{height:300px;display:flex;align-items:flex-end;gap:6px;padding-top:.8rem}
+.mailbox-chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.mailbox-chart-bars{height:140px;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:4px}
+.mailbox-chart-bar{width:12px;border-radius:6px 6px 2px 2px;min-height:4px}
+.mailbox-chart-bar.warm{background:#8B5CF6}
+.mailbox-chart-bar.cold{background:#38BDF8}
+.mailbox-chart-label{font-size:.62rem;color:var(--text3);text-align:center}
+.mailbox-chart-legend{display:flex;align-items:center;gap:.8rem;justify-content:flex-end;font-size:.68rem;color:var(--text3)}
+.mailbox-legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
 .mailbox-legend-dot.warm{background:#8B5CF6}
 .mailbox-legend-dot.cold{background:#38BDF8}
-.mailbox-inline-note{font-size:.62rem;color:var(--text3)}
+.mailbox-inline-note{font-size:.68rem;color:var(--text3);margin-top:.5rem}
 .trade-subtabs{display:flex;gap:.55rem;flex-wrap:wrap;padding:.85rem .9rem .25rem;border-top:1px solid var(--border)}
 .trade-subtab{padding:7px 12px;border-radius:999px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:.68rem;font-weight:700;cursor:pointer;transition:all .18s}
 .trade-subtab.active{background:linear-gradient(135deg,#4361EE,#6D28D9);border-color:transparent;color:#fff;box-shadow:0 8px 18px rgba(67,97,238,.18)}
 .trade-view-note{padding:0 .9rem .7rem;font-size:.62rem;color:var(--text3)}
 @media(max-width:1100px){
-  .mailbox-kpi-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}
+  .mailbox-kpi-grid{grid-template-columns:repeat(3,1fr)}
   .mailbox-grid{grid-template-columns:1fr}
 }
 @media(max-width:900px){
   .mailbox-add-form{grid-template-columns:1fr 1fr}
   .mailbox-table-head{display:none}
-  .mailbox-row{grid-template-columns:1fr;gap:.6rem}
+  .mailbox-row{grid-template-columns:1fr;gap:.5rem}
   .mailbox-actions,.mailbox-use{justify-content:flex-start}
 }
 @media(max-width:600px){
-  .mailbox-kpi-grid{grid-template-columns:1fr}
+  .mailbox-kpi-grid{grid-template-columns:repeat(2,1fr)}
   .mailbox-add-form{grid-template-columns:1fr}
-  .mailbox-shell{padding:.95rem}
   .trade-subtabs{padding:.7rem .7rem .15rem}
 }
 /* ===== AI CHATBOT WIDGET ===== */
@@ -1202,7 +1205,8 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
 .org-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08);transform:translateY(-1px);border-color:#818cf8;}
 .org-card .oc-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .org-card .oc-icon svg{width:16px;height:16px;}
-.org-card .oc-val{font-size:1.1rem;font-weight:800;color:var(--text);letter-spacing:-.02em;line-height:1.1;}
+.org-card .oc-val{font-size:1.1rem;font-weight:800;color:var(--text);letter-spacing:-.02em;line-height:1.1;display:flex;align-items:baseline;gap:4px;}
+.org-card .oc-pct{font-size:.6rem;font-weight:700;color:#fff;background:#3b82f6;padding:1px 5px;border-radius:6px;letter-spacing:0;}
 .org-card .oc-label{font-size:.72rem;color:var(--text3);font-weight:500;margin-top:1px;}
 .org-card.root{border-color:#3b82f6;box-shadow:0 3px 10px rgba(59,130,246,.12);}
 .org-extra{display:flex;gap:8px;padding-left:26px;}
@@ -2083,7 +2087,11 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
       </div>
       <div id="investorGeoFilterBar" style="display:none;margin:.6rem 1.25rem 0;padding:.65rem 1rem;border:1px solid rgba(70,95,255,.12);border-radius:10px;background:rgba(70,95,255,.04);align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap">
         <div style="font-size:.78rem;color:var(--ta-gray-700);font-weight:600">📍 Filtr: <span id="investorGeoFilterLabel">Davlat</span></div>
-        <button class="ta-btn ta-btn-sm" type="button" onclick="clearInvestorGeoFilter()" style="background:var(--ta-gray-100);color:var(--ta-gray-600);border:none;border-radius:8px">Filtrni tozalash</button>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+          <button class="ta-btn ta-btn-sm" id="btnEmbassyUzb" onclick="openEmbassyModal('uzb')" style="display:none;background:#059669;color:#fff;border:none;border-radius:8px;font-size:.7rem">🏛️ <span id="btnEmbassyUzbLabel">UZB elchixona</span></button>
+          <button class="ta-btn ta-btn-sm" id="btnEmbassyForeign" onclick="openEmbassyModal('foreign')" style="display:none;background:#0EA5E9;color:#fff;border:none;border-radius:8px;font-size:.7rem">🏛️ <span id="btnEmbassyForeignLabel">Xorij elchixona</span></button>
+          <button class="ta-btn ta-btn-sm" type="button" onclick="clearInvestorGeoFilter()" style="background:var(--ta-gray-100);color:var(--ta-gray-600);border:none;border-radius:8px">Filtrni tozalash</button>
+        </div>
       </div>
       <div style="position:relative;overflow:visible;z-index:20">
         <table class="ta-table" style="width:100%">
@@ -2838,11 +2846,11 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
       <!-- Charts row 1: Funnel + Lavozim -->
       <div style="display:grid;grid-template-columns:1.2fr .8fr;gap:1rem;margin-bottom:1rem" class="crm-chart-row">
         <div class="tcard" style="border-radius:14px;">
-          <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>Pipeline Funnel</div></div>
+          <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>Pipeline voronkasi</div></div>
           <div id="crm-funnel-chart" style="padding:.8rem 1.1rem;min-height:220px"></div>
         </div>
         <div class="tcard" style="border-radius:14px;">
-          <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0110 10"/><line x1="12" y1="12" x2="12" y2="2"/><line x1="12" y1="12" x2="22" y2="12"/></svg>Javob beruvchi lavozimlar</div></div>
+          <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0110 10"/><line x1="12" y1="12" x2="12" y2="2"/><line x1="12" y1="12" x2="22" y2="12"/></svg>Javob beruvchilar lavozimi</div></div>
           <div id="crm-position-chart" style="padding:.8rem 1.1rem;min-height:220px"></div>
         </div>
       </div>
@@ -2850,21 +2858,17 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
       <!-- Charts row 2: Continent bar + Top industries -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem" class="crm-chart-row">
         <div class="tcard" style="border-radius:14px;">
-          <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Qit'alar bo'yicha</div></div>
+          <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Qit'alar bo'yicha taqsimot</div></div>
           <div id="crm-continent-chart" style="padding:.8rem 1.1rem;min-height:220px"></div>
         </div>
         <div class="tcard" style="border-radius:14px;">
-          <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>Top 10 yo'nalish (Sanoat)</div></div>
+          <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>Top 10 sanoat yo'nalishi</div></div>
           <div id="crm-industry-chart" style="padding:.8rem 1.1rem;min-height:220px"></div>
         </div>
       </div>
 
-      <!-- Chart row 3: Exporter donut + Latest Activities -->
-      <div style="display:grid;grid-template-columns:.7fr 1.3fr;gap:1rem;margin-bottom:1rem" class="crm-chart-row">
-        <div class="tcard" style="border-radius:14px;">
-          <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>Eksport holati</div></div>
-          <div id="crm-exporter-chart" style="padding:.8rem 1.1rem;min-height:200px"></div>
-        </div>
+      <!-- Chart row 3: Latest Activities -->
+      <div style="margin-bottom:1rem">
         <div class="tcard" style="border-radius:14px;">
           <div class="tc-head" style="padding:.9rem 1.1rem .5rem"><div class="tc-title" style="font-size:.88rem;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>So'nggi faoliyatlar</div></div>
           <div id="crm-latest-activities" style="padding:.6rem 1rem;max-height:280px;overflow-y:auto"></div>
@@ -5010,11 +5014,9 @@ function _showPageInner(id){
   else if(id==='forums'){renderForums();renderIntlForums();}
   else if(id==='investor'){
     renderInvestorCompanies();
-    if(window._pendingInvestorGeoCompanies && window._pendingInvestorGeoCompanies.length){
-      var pending = window._pendingInvestorGeoCompanies;
-      window._pendingInvestorGeoCompanies = null;
-      setTimeout(function(){ renderInvestorGeoCard(pending); }, 80);
-    }
+    var geoCompanies = window._pendingInvestorGeoCompanies || (DB.investorCompanies||[]).concat(DB.finderResults||[]);
+    window._pendingInvestorGeoCompanies = null;
+    setTimeout(function(){ renderInvestorGeoCard(geoCompanies); }, 150);
   }
   else if(id==='admin')renderAdminLists();
   else if(id==='products')renderProducts();
@@ -7008,16 +7010,185 @@ window.onInvestorGeoCountryClick = function(stateCode){
   renderInvestorGeoStatePanel(stateCode);
   renderInvestorCompanies();
   showIcTableCard();
+  // Show embassy buttons
+  if(stateCode) updateEmbassyButtons(String(stateCode).toUpperCase());
 };
 
 function clearInvestorGeoFilter(){
   _investorGeoFilterStateCode = '';
+  _selectedEmbassyCountry = '';
   renderInvestorGeoStatePanel('');
   renderInvestorCompanies();
   var card = document.getElementById('icTableCard');
   if(card) card.style.display = 'none';
+  // Hide embassy buttons
+  var b1=document.getElementById('btnEmbassyUzb');if(b1)b1.style.display='none';
+  var b2=document.getElementById('btnEmbassyForeign');if(b2)b2.style.display='none';
 }
 window.clearInvestorGeoFilter = clearInvestorGeoFilter;
+
+/* ═══ EMBASSY (ELCHIXONA) SYSTEM ═══ */
+var _selectedEmbassyCountry = '';
+
+// Embassy data stored in DB.embassies = [{country:'US',countryName:'Amerika Qo\'shma Shtatlari',uzbEmbassy:{name:'',email:'',address:''},foreignEmbassy:{name:'',email:'',address:''}}]
+function getEmbassyDB(){
+  if(!DB.embassies) DB.embassies = [];
+  return DB.embassies;
+}
+
+function getEmbassyForCountry(countryCode){
+  var embassies = getEmbassyDB();
+  return embassies.find(function(e){ return e.country === countryCode; }) || null;
+}
+
+// Country code to name mapping
+var _embassyCountryNames = {
+  'US':'AQSh','CN':'Xitoy','DE':'Germaniya','GB':'Buyuk Britaniya','FR':'Fransiya',
+  'JP':'Yaponiya','KR':'Janubiy Koreya','IN':'Hindiston','TR':'Turkiya','RU':'Rossiya',
+  'AE':'BAA','SA':'Saudiya Arabistoni','IT':'Italiya','ES':'Ispaniya','CA':'Kanada',
+  'AU':'Avstraliya','BR':'Braziliya','MX':'Meksika','ID':'Indoneziya','TH':'Tailand',
+  'MY':'Malayziya','SG':'Singapur','PL':'Polsha','CZ':'Chexiya','AT':'Avstriya',
+  'NL':'Niderlandiya','SE':'Shvetsiya','CH':'Shveytsariya','IL':'Isroil','EG':'Misr',
+  'KZ':'Qozog\'iston','PK':'Pokiston','BD':'Bangladesh','VN':'Vyetnam','PH':'Filippin'
+};
+
+function updateEmbassyButtons(countryCode){
+  _selectedEmbassyCountry = countryCode;
+  var cName = _embassyCountryNames[countryCode] || countryCode;
+  var b1 = document.getElementById('btnEmbassyUzb');
+  var b2 = document.getElementById('btnEmbassyForeign');
+  var l1 = document.getElementById('btnEmbassyUzbLabel');
+  var l2 = document.getElementById('btnEmbassyForeignLabel');
+  if(b1 && l1){
+    l1.textContent = cName + ' UZB elchixona';
+    b1.style.display = 'inline-flex';
+  }
+  if(b2 && l2){
+    l2.textContent = cName + ' xorij elchixona';
+    b2.style.display = 'inline-flex';
+  }
+}
+
+function openEmbassyModal(type){
+  var code = _selectedEmbassyCountry;
+  if(!code){ toast('⚠️ Avval xaritadan davlat tanlang','error'); return; }
+  var cName = _embassyCountryNames[code] || code;
+  var embassy = getEmbassyForCountry(code);
+  var data = null;
+  var title = '';
+  if(type === 'uzb'){
+    title = '🏛️ O\'zbekiston elchixonasi — ' + cName + 'da';
+    data = embassy ? embassy.uzbEmbassy : null;
+  } else {
+    title = '🏛️ ' + cName + ' elchixonasi — O\'zbekistonda';
+    data = embassy ? embassy.foreignEmbassy : null;
+  }
+
+  // Count companies for this country
+  var co = DB.investorCompanies || [];
+  var finder = DB.finderResults || [];
+  var countryCompanies = co.concat(finder).filter(function(c){
+    var d = (c.davlat||c.country||'').toLowerCase();
+    var cn = (cName||'').toLowerCase();
+    return d.indexOf(cn) !== -1;
+  });
+
+  var emailTo = data ? data.email : '';
+  var embName = data ? data.name : '';
+  var embAddr = data ? (data.address||'') : '';
+
+  // Generate letter
+  var letterSubject = 'Navoiy erkin iqtisodiy zona — investitsiya imkoniyatlari haqida';
+  var letterBody = 'Hurmatli ' + (embName || 'Elchixona vakili') + ',\n\n'
+    + 'Navoiy erkin iqtisodiy zona (NIEZ) nomidan sizga murojaat qilmoqdamiz.\n\n'
+    + cName + 'dan jami ' + countryCompanies.length + ' ta kompaniya bilan aloqa o\'rnatilgan bo\'lib, '
+    + 'ularni Navoiy viloyatiga investitsiya jalb qilish maqsadida taklif qilmoqdamiz.\n\n'
+    + 'Sizdan iltimos — ushbu kompaniyalar bilan bog\'liq hamkorlik imkoniyatlarini ko\'rib chiqishingizni so\'raymiz.\n\n'
+    + 'Hurmat bilan,\nNavoiy EIZ jamoasi';
+
+  // Build modal
+  var modalHtml = '<div id="embassyModal" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);animation:fadeIn .2s">'
+    + '<div style="background:var(--card);border-radius:16px;width:640px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);padding:0">'
+    + '<div style="padding:1.2rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
+      + '<div style="font-size:1rem;font-weight:700;color:var(--text)">'+title+'</div>'
+      + '<button onclick="document.getElementById(\'embassyModal\').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text3)">✕</button>'
+    + '</div>'
+    + '<div style="padding:1.2rem 1.5rem">'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem">'
+        + '<div><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Elchixona nomi</label>'
+          + '<input id="emb-name" type="text" value="'+escHtml(embName)+'" placeholder="Elchixona nomi..." style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem"></div>'
+        + '<div><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Email</label>'
+          + '<input id="emb-email" type="email" value="'+escHtml(emailTo)+'" placeholder="embassy@email.com" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem"></div>'
+      + '</div>'
+      + '<div style="margin-bottom:1rem"><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Manzil</label>'
+        + '<input id="emb-address" type="text" value="'+escHtml(embAddr)+'" placeholder="Manzil..." style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem"></div>'
+      + '<div style="margin-bottom:.6rem"><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Xat mavzusi (Subject)</label>'
+        + '<input id="emb-subject" type="text" value="'+escHtml(letterSubject)+'" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem"></div>'
+      + '<div style="margin-bottom:1rem"><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Xat matni</label>'
+        + '<textarea id="emb-body" rows="8" style="width:100%;padding:.6rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.8rem;resize:vertical;line-height:1.5">'+escHtml(letterBody)+'</textarea></div>'
+      + '<div style="background:var(--bg2);border-radius:10px;padding:.7rem .9rem;margin-bottom:1rem;font-size:.72rem;color:var(--text3)">'
+        + '📊 <b>'+cName+'</b> dan bazadagi kompaniyalar: <b>'+countryCompanies.length+'</b> ta'
+        + (countryCompanies.length > 0 ? '<br>Top: ' + countryCompanies.slice(0,5).map(function(c){return c.kompaniya||c.name||'';}).join(', ') : '')
+      + '</div>'
+      + '<div style="display:flex;gap:.5rem;justify-content:flex-end">'
+        + '<button onclick="saveEmbassyData(\''+code+'\',\''+type+'\')" style="padding:.5rem 1rem;background:#059669;color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">💾 Saqlash</button>'
+        + '<button onclick="sendEmbassyLetter(\''+code+'\',\''+type+'\')" style="padding:.5rem 1rem;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">📧 Xat yuborish</button>'
+        + '<button onclick="document.getElementById(\'embassyModal\').remove()" style="padding:.5rem 1rem;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.8rem;cursor:pointer">Yopish</button>'
+      + '</div>'
+    + '</div></div></div>';
+
+  // Remove old modal if exists
+  var old = document.getElementById('embassyModal');
+  if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function saveEmbassyData(countryCode, type){
+  var embassies = getEmbassyDB();
+  var existing = embassies.find(function(e){return e.country===countryCode;});
+  if(!existing){
+    existing = {country:countryCode, countryName:_embassyCountryNames[countryCode]||countryCode, uzbEmbassy:{name:'',email:'',address:''}, foreignEmbassy:{name:'',email:'',address:''}};
+    embassies.push(existing);
+  }
+  var target = type==='uzb' ? 'uzbEmbassy' : 'foreignEmbassy';
+  existing[target] = {
+    name: (document.getElementById('emb-name')||{}).value||'',
+    email: (document.getElementById('emb-email')||{}).value||'',
+    address: (document.getElementById('emb-address')||{}).value||''
+  };
+  DB.embassies = embassies;
+  if(typeof saveDB === 'function') saveDB();
+  if(typeof fbSaveSettings === 'function') fbSaveSettings(DB.settings);
+  toast('✅ Elchixona ma\'lumotlari saqlandi','success');
+}
+
+function sendEmbassyLetter(countryCode, type){
+  var email = (document.getElementById('emb-email')||{}).value;
+  var subject = (document.getElementById('emb-subject')||{}).value;
+  var body = (document.getElementById('emb-body')||{}).value;
+  if(!email){toast('⚠️ Email manzil kiritilmagan','error');return;}
+  // Save data first
+  saveEmbassyData(countryCode, type);
+  // Send via EmailJS
+  if(typeof emailjs !== 'undefined' && emailjs.send){
+    emailjs.send('service_1w08xxe','template_c1nxcvg',{
+      to_email: email,
+      subject: subject,
+      message: body,
+      from_name: 'Navoiy EIZ'
+    }).then(function(){
+      toast('✅ Xat yuborildi: '+email,'success');
+      document.getElementById('embassyModal').remove();
+    },function(err){
+      toast('❌ Xat yuborilmadi: '+err.text,'error');
+    });
+  } else {
+    // Fallback: open mailto
+    var mailtoUrl = 'mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    window.open(mailtoUrl);
+    toast('📧 Email dasturi ochildi','success');
+  }
+}
 
 function getInvestorGeoTooltipHtml(info){
   if(!info) return '';
@@ -7369,9 +7540,12 @@ function renderInvestorGeoCard(companies){
     });
   }catch(e){ console.warn('investorGeoJvMap error:', e); }
 
-  // Render HTML count bubbles over markers
+  // Render HTML count bubbles over markers (with retry for timing)
   window._investorGeoMarkerData = markerData;
   _renderInvestorGeoBubbles();
+  setTimeout(_renderInvestorGeoBubbles, 300);
+  setTimeout(_renderInvestorGeoBubbles, 800);
+  setTimeout(_renderInvestorGeoBubbles, 1500);
 
   // Re-render bubbles on zoom/pan
   if(window._investorGeoJvInstance){
@@ -7392,26 +7566,43 @@ function _renderInvestorGeoBubbles(){
   var bubblesEl = document.getElementById('investorGeoBubbles');
   var mapEl = document.getElementById('investorGeoJvMap');
   if(!bubblesEl || !mapEl || !window._investorGeoMarkerData) return;
-  var svg = mapEl.querySelector('svg');
-  if(!svg) return;
   var markers = window._investorGeoMarkerData;
-  var pt = svg.createSVGPoint();
-  var ctm = svg.getScreenCTM();
-  if(!ctm){ bubblesEl.innerHTML = ''; return; }
+  if(!markers.length){ bubblesEl.innerHTML=''; return; }
   var wrapRect = bubblesEl.getBoundingClientRect();
-  // Find all marker circle/path elements rendered by jsvectormap
+  if(!wrapRect.width || !wrapRect.height) return;
+
+  // Try method 1: use .jvm-marker elements
   var markerEls = mapEl.querySelectorAll('.jvm-marker');
   var html = '';
-  markers.forEach(function(m, i){
-    var el = markerEls[i];
-    if(el){
-      var r = el.getBoundingClientRect();
-      var cx = r.left + r.width / 2 - wrapRect.left;
-      var cy = r.top + r.height / 2 - wrapRect.top;
+  if(markerEls.length >= markers.length){
+    markers.forEach(function(m, i){
+      var el = markerEls[i];
+      if(el){
+        var r = el.getBoundingClientRect();
+        var cx = r.left + r.width / 2 - wrapRect.left;
+        var cy = r.top + r.height / 2 - wrapRect.top;
+        var size = Math.max(28, Math.min(48, 24 + m.count * 1.5));
+        html += '<div class="investor-geo-bubble" onclick="_showInvestorGeoCountryPanel(\'' + (m.code || '') + '\')" style="left:' + cx + 'px;top:' + cy + 'px;width:' + size + 'px;height:' + size + 'px;font-size:' + (m.count > 99 ? '.6' : '.72') + 'rem" title="' + tgEscapeAttr(m.name + ': ' + m.count + ' ta kompaniya') + '">' + m.count + '</div>';
+      }
+    });
+  } else {
+    // Fallback method 2: project lat/lon to container coordinates using Mercator
+    var w = wrapRect.width;
+    var h = wrapRect.height;
+    markers.forEach(function(m){
+      if(!m.coords || m.coords.length < 2) return;
+      var lat = m.coords[0], lon = m.coords[1];
+      var x = ((lon + 180) / 360) * w;
+      var latRad = lat * Math.PI / 180;
+      var mercN = Math.log(Math.tan(Math.PI/4 + latRad/2));
+      var y = (h/2) - (w * mercN / (2 * Math.PI));
+      // Adjust for typical map padding
+      x = x * 0.97 + w * 0.015;
+      y = y * 0.85 + h * 0.06;
       var size = Math.max(28, Math.min(48, 24 + m.count * 1.5));
-      html += '<div class="investor-geo-bubble" onclick="_showInvestorGeoCountryPanel(\'' + (m.code || '') + '\')" style="left:' + cx + 'px;top:' + cy + 'px;width:' + size + 'px;height:' + size + 'px;font-size:' + (m.count > 99 ? '.6' : '.72') + 'rem" title="' + tgEscapeAttr(m.name + ': ' + m.count + ' ta kompaniya') + '">' + m.count + '</div>';
-    }
-  });
+      html += '<div class="investor-geo-bubble" onclick="_showInvestorGeoCountryPanel(\'' + (m.code || '') + '\')" style="left:' + x + 'px;top:' + y + 'px;width:' + size + 'px;height:' + size + 'px;font-size:' + (m.count > 99 ? '.6' : '.72') + 'rem" title="' + tgEscapeAttr(m.name + ': ' + m.count + ' ta kompaniya') + '">' + m.count + '</div>';
+    });
+  }
   bubblesEl.innerHTML = html;
 }
 
@@ -7420,11 +7611,12 @@ function _showInvestorGeoCountryPanel(code){
   var stats = window._investorGeoStateStats || {};
   var info = stats[code];
   if(!info || !info.count) return;
-  // Use existing filter mechanism to filter the main table
   _investorGeoFilterStateCode = code;
   renderInvestorGeoStatePanel(code);
   renderInvestorCompanies();
   showIcTableCard();
+  // Show embassy buttons
+  if(typeof updateEmbassyButtons === 'function') updateEmbassyButtons(code);
 }
 
 function renderPersonNameWithPhoto(name, photoUrl, extraHtml, size){
@@ -10294,8 +10486,22 @@ async function checkGmailReplies(manual=false){
         ts:       Date.now()
       };
 
-      if(company && company.pipelineStage !== 'meeting'){
-        company.pipelineStage = 'replied';
+      if(company){
+        company.emailReplied = true;
+        company.replyDate = new Date().toISOString().split('T')[0];
+        // Auto-detect sentiment from body text
+        var _bLow = (bodyText||'').toLowerCase();
+        var _posWords = /interest|agree|yes|great|happy|pleased|look forward|accept|invest|partner|meeting|schedule|call|visit|welcome|glad/i;
+        var _negWords = /not interested|no thank|decline|reject|unfortunately|regret|unable|cannot|sorry|pass|unsubscribe|remove|stop/i;
+        if(_negWords.test(_bLow)){
+          company.replySentiment = 'negative';
+        } else if(_posWords.test(_bLow)){
+          company.replySentiment = 'positive';
+          if(company.pipelineStage !== 'meeting') company.pipelineStage = 'replied';
+        } else {
+          company.replySentiment = 'neutral';
+          if(company.pipelineStage !== 'meeting') company.pipelineStage = 'replied';
+        }
         company.replyReceivedAt = new Date().toISOString();
         if(typeof fbSave === 'function') fbSave('investorCompanies', company);
       }
@@ -23649,9 +23855,9 @@ function renderCrmDashboard(){
   var totalSent = co.filter(function(c){return c.emailSent;}).length;
   var totalOpened = co.filter(function(c){return c.emailOpened;}).length;
   var totalReplied = co.filter(function(c){return c.emailReplied || c.pipelineStage==='replied' || c.pipelineStage==='meeting';}).length;
-  var totalPositive = co.filter(function(c){return c.pipelineStage==='replied' || c.pipelineStage==='meeting';}).length;
-  var totalNegative = co.filter(function(c){return c.emailReplied && c.replySentiment==='negative';}).length;
-  var totalIgnored = totalSent - totalOpened;
+  var totalPositive = co.filter(function(c){return c.replySentiment==='positive' || c.pipelineStage==='replied' || c.pipelineStage==='meeting';}).length;
+  var totalNegative = co.filter(function(c){return c.replySentiment==='negative';}).length;
+  var totalIgnored = totalSent - totalReplied;
   if(totalIgnored < 0) totalIgnored = 0;
   var totalCalls = co.filter(function(c){return c.phoneCalled;}).length;
   var totalZoom = zoom.length;
@@ -23679,31 +23885,70 @@ function renderCrmDashboard(){
   var treeEl = document.getElementById('crm-kpi-tree');
   if(!treeEl) return;
 
-  function _oc(label,val,icon,color,bg,extra){
-    return '<div class="org-card'+(extra||'')+'">'
+  function _oc(label,val,pct,icon,color,bg,extra,nav){
+    var pctStr = pct !== null ? '<span class="oc-pct">'+pct+'%</span>' : '';
+    var onclick = nav ? ' onclick="'+nav+'"' : '';
+    return '<div class="org-card'+(extra||'')+'"'+onclick+' style="cursor:pointer" title="'+label+' sahifasiga o\'tish">'
       +'<div class="oc-icon" style="background:'+bg+';color:'+color+'">'+icon+'</div>'
-      +'<div><div class="oc-val">'+val+'</div><div class="oc-label">'+label+'</div></div>'
+      +'<div><div class="oc-val">'+val+' '+pctStr+'</div><div class="oc-label">'+label+'</div></div>'
     +'</div>';
   }
   var icons={}; kpis.forEach(function(k){icons[k.label]=k;});
   var gi=function(l){var k=icons[l];return k?{icon:k.icon,color:k.color,bg:k.bg}:{icon:'',color:'#94A3B8',bg:'rgba(148,163,184,.1)'};};
-  var c=function(l,v,ex){var i=gi(l);return _oc(l,v,i.icon,i.color,i.bg,ex);};
+  var c=function(l,v,pct,ex,nav){var i=gi(l);return _oc(l,v,pct,i.icon,i.color,i.bg,ex,nav);};
   var vl='<div class="org-vline"></div>';
 
+  // Apollo vs TradeAtlas counts (from positive responses)
+  var apolloPositive=co.filter(function(x){return (x.replySentiment==='positive'||x.pipelineStage==='replied'||x.pipelineStage==='meeting')&&(x.source==='apollo'||x.source==='finder');}).length;
+  var tradePositive=co.filter(function(x){return (x.replySentiment==='positive'||x.pipelineStage==='replied'||x.pipelineStage==='meeting')&&(x.source==='tradeatlas'||x.source==='trade');}).length;
+  // Fallback: if no source tagged, split by finderResults vs investorCompanies
+  if(apolloPositive===0&&tradePositive===0&&totalPositive>0){
+    apolloPositive=finder.filter(function(x){return x.replySentiment==='positive'||x.pipelineStage==='replied';}).length;
+    tradePositive=totalPositive-apolloPositive;
+    if(tradePositive<0) tradePositive=0;
+  }
+
+  // Percentage calculations (Jami = 100%)
+  var base=totalCompanies||1;
+  var pSent=Math.round(totalSent/base*100);
+  var pReplied=totalSent?Math.round(totalReplied/totalSent*100):0;
+  var pIgnored=totalSent?Math.round(totalIgnored/totalSent*100):0;
+  var pPositive=totalReplied?Math.round(totalPositive/totalReplied*100):0;
+  var pNegative=totalReplied?Math.round(totalNegative/totalReplied*100):0;
+  var pApollo=totalPositive?Math.round(apolloPositive/totalPositive*100):0;
+  var pTrade=totalPositive?Math.round(tradePositive/totalPositive*100):0;
+  var pZoom=totalPositive?Math.round(totalZoom/totalPositive*100):0;
+  var pVisits=totalPositive?Math.round(totalVisits/totalPositive*100):0;
+  var pLand=totalPositive?Math.round(totalLand/totalPositive*100):0;
+  var pOpened2=totalPositive?Math.round(totalOpened2/totalPositive*100):0;
+
+  // Navigation targets
+  var navCompanies="switchCrmTab(\'companies\')";
+  var navActivities="switchCrmTab(\'activities\')";
+  var navFunnel="switchCrmTab(\'funnel\')";
+  var navGeo="switchCrmTab(\'geo\')";
+  var navReports="switchCrmTab(\'reports\')";
+  var navInvestors="showPage(\'investors\')";
+  var navMailbox="switchCrmTab(\'mailbox\')";
+  var navFinder="showPage(\'finder\')";
+  var navTrade="showPage(\'trade\')";
+
+  // Apollo & TradeAtlas icons
+  var apolloIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+  var tradeIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>';
+
   // Horizontal layout — columns left to right, SVG draws lines
+  // cards[0]=Jami [1]=Yuborilgan [2]=Javob [3]=Javobsiz [4]=Ijobiy [5]=Salbiy [6]=Apollo [7]=TradeAtlas [8]=Zoom [9]=Tashrif [10]=Korxona [11]=Yer [12]=Telefon [13]=Pipeline
   treeEl.innerHTML='<div class="org-tree">'
-    // Col 0: Jami
-    +'<div class="org-col">'+c('Jami kompaniyalar',totalCompanies,' root')+'</div>'
-    // Col 1: Yuborilgan
-    +'<div class="org-col">'+c('Yuborilgan xatlar',totalSent)+'</div>'
-    // Col 2: Javob olgan + Javobsiz
-    +'<div class="org-col">'+c('Javob olgan',totalReplied)+c('Javobsiz (ignored)',totalIgnored)+'</div>'
-    // Col 3: Ijobiy + Salbiy
-    +'<div class="org-col">'+c('Ijobiy javoblar',totalPositive)+c('Salbiy javoblar',totalNegative)+'</div>'
-    // Col 4: Zoom, Tashrif, Yer, Korxona
-    +'<div class="org-col">'+c('Zoom uchrashuvlar',totalZoom)+c('Navoiyga tashrif buyurgan',totalVisits)+c('Yer ajratildi',totalLand)+c('Korxona ochildi',totalOpened2)+'</div>'
-    // Col 5: Telefon + Pipeline
-    +'<div class="org-col org-extra">'+c('Telefon qo\'ng\'iroqlar',totalCalls)+c('Pipeline qiymati','$'+_fmtNum(pipelineVal))+'</div>'
+    +'<div class="org-col">'+c('Jami kompaniyalar',totalCompanies,100,' root',navCompanies)+'</div>'
+    +'<div class="org-col">'+c('Yuborilgan xatlar',totalSent,pSent,'',navMailbox)+'</div>'
+    +'<div class="org-col">'+c('Javob olgan',totalReplied,pReplied,'',navActivities)+c('Javobsiz (ignored)',totalIgnored,pIgnored,'',navActivities)+'</div>'
+    +'<div class="org-col">'+c('Ijobiy javoblar',totalPositive,pPositive,'',navFunnel)+c('Salbiy javoblar',totalNegative,pNegative,'',navFunnel)+'</div>'
+    +'<div class="org-col">'
+      +_oc('Apollo (Top 100)',apolloPositive,pApollo,apolloIcon,'#6366F1','rgba(99,102,241,.1)','',navFinder)
+      +_oc('TradeAtlas (13 davlat)',tradePositive,pTrade,tradeIcon,'#0EA5E9','rgba(14,165,233,.1)','',navTrade)
+    +'</div>'
+    +'<div class="org-col">'+c('Zoom uchrashuvlar',totalZoom,pZoom,'',navActivities)+c('Navoiyga tashrif buyurgan',totalVisits,pVisits,'',navInvestors)+c('Korxona ochildi',totalOpened2,pOpened2,'',navReports)+c('Yer ajratildi',totalLand,pLand,'',navGeo)+'</div>'
   +'</div>';
 
   // Draw SVG connecting lines
@@ -23746,14 +23991,14 @@ function _drawOrgLines(){
   }
 
   var cards=tree.querySelectorAll('.org-card');
-  if(cards.length<10) return;
-  // cards: [0]Jami [1]Yuborilgan [2]Javob [3]Javobsiz [4]Ijobiy [5]Salbiy [6]Zoom [7]Tashrif [8]Yer [9]Korxona [10]Telefon [11]Pipeline
+  if(cards.length<12) return;
+  // cards: [0]Jami [1]Yuborilgan [2]Javob [3]Javobsiz [4]Ijobiy [5]Salbiy [6]Apollo [7]TradeAtlas [8]Zoom [9]Tashrif [10]Korxona [11]Yer [12]Telefon [13]Pipeline
   var p=[];
   cards.forEach(function(c){p.push(cp(c));});
 
-  // Jami → Yuborilgan (horizontal)
+  // Jami → Yuborilgan
   line(p[0].r, p[0].y, p[1].l, p[1].y);
-  // Yuborilgan → fork to Javob olgan & Javobsiz (midpoint between cols)
+  // Yuborilgan → fork to Javob olgan & Javobsiz
   var forkX1=Math.round((p[1].r+p[2].l)/2);
   line(p[1].r, p[1].y, forkX1, p[1].y);
   line(forkX1, p[2].y, forkX1, p[3].y);
@@ -23765,14 +24010,31 @@ function _drawOrgLines(){
   line(forkX2, p[4].y, forkX2, p[5].y);
   line(forkX2, p[4].y, p[4].l, p[4].y);
   line(forkX2, p[5].y, p[5].l, p[5].y);
-  // Ijobiy → fork to Zoom, Tashrif, Yer, Korxona
+  // Ijobiy → fork to Apollo & TradeAtlas
   var forkX3=Math.round((p[4].r+p[6].l)/2);
   line(p[4].r, p[4].y, forkX3, p[4].y);
-  line(forkX3, p[6].y, forkX3, p[9].y);
+  line(forkX3, p[6].y, forkX3, p[7].y);
   line(forkX3, p[6].y, p[6].l, p[6].y);
   line(forkX3, p[7].y, p[7].l, p[7].y);
-  line(forkX3, p[8].y, p[8].l, p[8].y);
-  line(forkX3, p[9].y, p[9].l, p[9].y);
+  // Apollo+TradeAtlas → merge → then fork to Zoom, Tashrif, Korxona, Yer
+  var mergeX=Math.round(Math.max(p[6].r,p[7].r)+14);
+  var forkX4=Math.round((mergeX+p[8].l)/2);
+  // Apollo → right to merge point
+  line(p[6].r, p[6].y, mergeX, p[6].y);
+  // TradeAtlas → right to merge point
+  line(p[7].r, p[7].y, mergeX, p[7].y);
+  // Merge vertical bar (connects Apollo and TradeAtlas)
+  line(mergeX, p[6].y, mergeX, p[7].y);
+  // Merge center → horizontal to fork point
+  var mergeY=Math.round((p[6].y+p[7].y)/2);
+  line(mergeX, mergeY, forkX4, mergeY);
+  // Fork vertical bar (spans all 4 outputs)
+  line(forkX4, p[8].y, forkX4, p[11].y);
+  // Fork → each output card
+  line(forkX4, p[8].y, p[8].l, p[8].y);
+  line(forkX4, p[9].y, p[9].l, p[9].y);
+  line(forkX4, p[10].y, p[10].l, p[10].y);
+  line(forkX4, p[11].y, p[11].l, p[11].y);
 
   tree.appendChild(svg);
 }
@@ -23788,11 +24050,11 @@ function _fmtNum(n){
 function _renderCrmFunnel(co){
   var el=document.getElementById('crm-funnel-chart');if(!el)return;
   var stages=[
-    {name:'Lead',count:co.length,color:'#3B82F6'},
-    {name:'Contacted',count:co.filter(function(c){return c.emailSent;}).length,color:'#8B5CF6'},
-    {name:'Engaged',count:co.filter(function(c){return c.emailReplied||c.pipelineStage==='replied';}).length,color:'#F59E0B'},
-    {name:'Negotiation',count:co.filter(function(c){return c.pipelineStage==='meeting';}).length,color:'#EF4444'},
-    {name:'Customer',count:co.filter(function(c){return c.companyOpened;}).length,color:'#059669'}
+    {name:'Aniqlangan (Lead)',count:co.length,color:'#3B82F6'},
+    {name:'Bog\'lanildi (Contacted)',count:co.filter(function(c){return c.emailSent;}).length,color:'#8B5CF6'},
+    {name:'Javob berdi (Engaged)',count:co.filter(function(c){return c.emailReplied||c.pipelineStage==='replied';}).length,color:'#F59E0B'},
+    {name:'Muzokara (Negotiation)',count:co.filter(function(c){return c.pipelineStage==='meeting';}).length,color:'#EF4444'},
+    {name:'Mijoz (Customer)',count:co.filter(function(c){return c.companyOpened;}).length,color:'#059669'}
   ];
   var max=Math.max(stages[0].count,1);
   el.innerHTML=stages.map(function(s,i){
@@ -23813,14 +24075,14 @@ function _renderCrmFunnel(co){
 /* Position Pie */
 function _renderCrmPositionPie(co){
   var el=document.getElementById('crm-position-chart');if(!el)return;
-  var cats={'C-Level':0,'VP/Director':0,'Manager':0,'Specialist':0,'Other':0};
+  var cats={'Rahbar (C-Level)':0,'Direktor (VP)':0,'Menejer':0,'Mutaxassis':0,'Boshqa':0};
   co.forEach(function(c){
     var t=(c.contactTitle||'').toLowerCase();
-    if(/ceo|cfo|coo|cto|founder|president|owner|chief/.test(t)) cats['C-Level']++;
-    else if(/vp|vice|director/.test(t)) cats['VP/Director']++;
-    else if(/manager|head/.test(t)) cats['Manager']++;
-    else if(/specialist|engineer|analyst|coordinator/.test(t)) cats['Specialist']++;
-    else cats['Other']++;
+    if(/ceo|cfo|coo|cto|founder|president|owner|chief/.test(t)) cats['Rahbar (C-Level)']++;
+    else if(/vp|vice|director/.test(t)) cats['Direktor (VP)']++;
+    else if(/manager|head/.test(t)) cats['Menejer']++;
+    else if(/specialist|engineer|analyst|coordinator/.test(t)) cats['Mutaxassis']++;
+    else cats['Boshqa']++;
   });
   var total=Object.values(cats).reduce(function(a,b){return a+b;},0)||1;
   var colors=['#3B82F6','#8B5CF6','#F59E0B','#10B981','#94A3B8'];
@@ -23918,8 +24180,8 @@ function _renderCrmExporterDonut(co){
       +'<text x="'+cx+'" y="'+cy+'" text-anchor="middle" dy=".35em" style="font-size:1.1rem;font-weight:800;fill:var(--text)">'+total+'</text>'
     +'</svg>'
     +'<div>'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:12px;height:12px;border-radius:4px;background:#10B981"></div><div style="font-size:.82rem;color:var(--text)">Oldin eksport: <b>'+prev+'</b> ('+prevPct+'%)</div></div>'
-      +'<div style="display:flex;align-items:center;gap:8px"><div style="width:12px;height:12px;border-radius:4px;background:#3B82F6"></div><div style="font-size:.82rem;color:var(--text)">Yangi bozor: <b>'+newM+'</b> ('+newPct+'%)</div></div>'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:12px;height:12px;border-radius:4px;background:#10B981"></div><div style="font-size:.82rem;color:var(--text)">Avval eksport qilgan: <b>'+prev+'</b> ('+prevPct+'%)</div></div>'
+      +'<div style="display:flex;align-items:center;gap:8px"><div style="width:12px;height:12px;border-radius:4px;background:#3B82F6"></div><div style="font-size:.82rem;color:var(--text)">Yangi bozorga kirgan: <b>'+newM+'</b> ('+newPct+'%)</div></div>'
     +'</div>'
   +'</div>';
 }
