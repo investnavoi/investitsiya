@@ -1,0 +1,458 @@
+/* ═══ EMBASSY (ELCHIXONA) SYSTEM ═══ */
+var _selectedEmbassyCountry = '';
+
+// Embassy data stored in DB.embassies = [{country:'US',countryName:'Amerika Qo\'shma Shtatlari',uzbEmbassy:{name:'',email:'',address:''},foreignEmbassy:{name:'',email:'',address:''}}]
+function getEmbassyDB(){
+  if(!DB.embassies) DB.embassies = [];
+  return DB.embassies;
+}
+
+function getEmbassyForCountry(countryCode){
+  var embassies = getEmbassyDB();
+  return embassies.find(function(e){ return e.country === countryCode; }) || null;
+}
+
+// Country code to name mapping
+var _embassyCountryNames = {
+  'US':'AQSh','CN':'Xitoy','DE':'Germaniya','GB':'Buyuk Britaniya','FR':'Fransiya',
+  'JP':'Yaponiya','KR':'Janubiy Koreya','IN':'Hindiston','TR':'Turkiya','RU':'Rossiya',
+  'AE':'BAA','SA':'Saudiya Arabistoni','IT':'Italiya','ES':'Ispaniya','CA':'Kanada',
+  'AU':'Avstraliya','BR':'Braziliya','MX':'Meksika','ID':'Indoneziya','TH':'Tailand',
+  'MY':'Malayziya','SG':'Singapur','PL':'Polsha','CZ':'Chexiya','AT':'Avstriya',
+  'NL':'Niderlandiya','SE':'Shvetsiya','CH':'Shveytsariya','IL':'Isroil','EG':'Misr',
+  'KZ':'Qozog\'iston','PK':'Pokiston','BD':'Bangladesh','VN':'Vyetnam','PH':'Filippin'
+};
+
+function updateEmbassyButtons(countryCode){
+  _selectedEmbassyCountry = countryCode;
+  var cName = _embassyCountryNames[countryCode] || countryCode;
+  var b1 = document.getElementById('btnEmbassyUzb');
+  var b2 = document.getElementById('btnEmbassyForeign');
+  var l1 = document.getElementById('btnEmbassyUzbLabel');
+  var l2 = document.getElementById('btnEmbassyForeignLabel');
+  if(b1 && l1){
+    l1.textContent = cName + ' UZB elchixona';
+    b1.style.display = 'inline-flex';
+  }
+  if(b2 && l2){
+    l2.textContent = cName + ' xorij elchixona';
+    b2.style.display = 'inline-flex';
+  }
+}
+
+function openEmbassyModal(type){
+  var code = _selectedEmbassyCountry;
+  if(!code){ toast('⚠️ Avval xaritadan davlat tanlang','error'); return; }
+  var cName = _embassyCountryNames[code] || code;
+  var embassy = getEmbassyForCountry(code);
+  var data = null;
+  var title = '';
+  var isUzbEmbassy = (type === 'uzb');
+  if(isUzbEmbassy){
+    title = '🏛️ O\'zbekiston elchixonasi — ' + cName + 'da';
+    data = embassy ? embassy.uzbEmbassy : null;
+  } else {
+    title = '🏛️ ' + cName + ' elchixonasi — O\'zbekistonda';
+    data = embassy ? embassy.foreignEmbassy : null;
+  }
+
+  // Count companies for this country
+  var co = DB.investorCompanies || [];
+  var finder = DB.finderResults || [];
+  var countryCompanies = co.concat(finder).filter(function(c){
+    return typeof matchesCountry === 'function' ? matchesCountry(c.davlat||c.country||'', code) : (String(c.davlat||c.country||'').toLowerCase().indexOf(cName.toLowerCase()) !== -1);
+  });
+
+  var emailTo = data ? data.email : '';
+  var embName = data ? data.name : '';
+  var embAddr = data ? (data.address||'') : '';
+
+  // Generate letter based on embassy type and country language
+  var _cisCountries = ['RU','KZ','KG','TJ','BY','AM','AZ','GE','MD','UA','TM'];
+  var _cnCountries = ['CN','TW','HK','MO'];
+  var isCIS = _cisCountries.indexOf(code) !== -1;
+  var isCN = _cnCountries.indexOf(code) !== -1;
+  var letterSubject, letterBody;
+  var cnt = countryCompanies.length;
+
+  if(isUzbEmbassy){
+    // O'zbekiston elchixonalariga — DOIMO O'ZBEKCHA
+    var recip = embName || 'Hurmatli Elchi janoblari';
+    letterSubject = 'Navoiy erkin iqtisodiy zona — investitsiya jalb qilish bo\'yicha murojaat';
+    letterBody = recip + ',\n\n'
+      + 'O\'zbekiston Respublikasi Navoiy erkin iqtisodiy zonasi (NIEZ) nomidan Sizga murojaat qilmoqdamiz.\n\n'
+      + cName + 'dan jami ' + cnt + ' ta kompaniya bilan aloqa o\'rnatilgan bo\'lib, ularni Navoiy viloyatiga investitsiya kiritish maqsadida taklif etmoqdamiz.\n\n'
+      + 'Navoiy EIZ quyidagi imkoniyatlarni taqdim etadi:\n'
+      + '• Soliq imtiyozlari va bojxona to\'lovlaridan ozod etish\n'
+      + '• Tayyor infratuzilma va sanoat maydonchalari\n'
+      + '• Soddалаshtirilgan ma\'muriy tartiblar\n'
+      + '• Buyuk Ipak yo\'lidagi strategik joylashuv\n\n'
+      + 'Sizdan iltimos — ushbu kompaniyalar bilan uchrashuvlar va muzokaralar tashkil etishda ko\'maklashishingizni so\'raymiz.\n\n'
+      + 'Hurmat bilan,\nNavoiy EIZ jamoasi';
+  } else if(isCIS){
+    // Xorij elchixona — MDH davlatlariga RUSCHA
+    var recip = embName || 'Уважаемый представитель Посольства';
+    letterSubject = 'Навоийская свободная экономическая зона — инвестиционные возможности';
+    letterBody = recip + ',\n\n'
+      + 'От имени Навоийской свободной экономической зоны (НСЭЗ) обращаемся к вам.\n\n'
+      + 'Мы установили контакт с ' + cnt + ' компаниями из ' + cName + ' и приглашаем их инвестировать в Навоийскую область Республики Узбекистан.\n\n'
+      + 'Навоийская СЭЗ предлагает:\n'
+      + '• Налоговые льготы и освобождение от таможенных пошлин\n'
+      + '• Готовую инфраструктуру и промышленные площадки\n'
+      + '• Упрощённые административные процедуры\n'
+      + '• Стратегическое расположение на Великом Шёлковом пути\n\n'
+      + 'Просим содействовать в организации встреч и переговоров с заинтересованными компаниями.\n\n'
+      + 'С уважением,\nКоманда НСЭЗ';
+  } else if(isCN){
+    // Xorij elchixona — Xitoyga XITOYCHA
+    var recip = embName || '尊敬的大使馆代表';
+    letterSubject = '纳沃伊自由经济区 — 投资机会';
+    letterBody = recip + '，\n\n'
+      + '我们代表纳沃伊自由经济区（NFEZ）向您致函。\n\n'
+      + '我们已与来自' + cName + '的 ' + cnt + ' 家企业建立了联系，诚邀其到乌兹别克斯坦纳沃伊州投资。\n\n'
+      + '纳沃伊自由经济区提供：\n'
+      + '• 税收优惠和关税豁免\n'
+      + '• 完善的基础设施和工业园区\n'
+      + '• 简化的行政手续\n'
+      + '• 位于丝绸之路的战略位置\n\n'
+      + '恳请贵馆协助安排与相关企业的会谈和洽谈。\n\n'
+      + '此致敬礼，\n纳沃伊自由经济区团队';
+  } else {
+    // Xorij elchixona — boshqa davlatlarga INGLIZCHA
+    var recip = embName || 'Dear Embassy Representative';
+    letterSubject = 'Navoi Free Economic Zone — Investment Opportunities';
+    letterBody = recip + ',\n\n'
+      + 'On behalf of the Navoi Free Economic Zone (NFEZ), we are reaching out to your esteemed Embassy.\n\n'
+      + 'We have established contact with ' + cnt + ' companies from ' + cName + ' and would like to invite them to invest in the Navoi region of the Republic of Uzbekistan.\n\n'
+      + 'The Navoi FEZ offers:\n'
+      + '• Tax incentives and customs duty exemptions\n'
+      + '• Ready-made infrastructure and industrial sites\n'
+      + '• Simplified administrative procedures\n'
+      + '• Strategic location on the Great Silk Road\n\n'
+      + 'We kindly request your assistance in facilitating meetings and negotiations with interested companies.\n\n'
+      + 'Best regards,\nNavoi FEZ Team';
+  }
+
+  // Use cached letter if exists (avoid Gemini cost)
+  var _cached = (typeof getEmbassyCache==='function') ? getEmbassyCache(code, type) : null;
+  if(_cached && _cached.subject) letterSubject = _cached.subject;
+  if(_cached && _cached.body) letterBody = _cached.body;
+
+  // Build modal
+  var modalHtml = '<div id="embassyModal" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);animation:fadeIn .2s">'
+    + '<div style="background:var(--card);border-radius:16px;width:640px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);padding:0">'
+    + '<div style="padding:1.2rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
+      + '<div style="font-size:1rem;font-weight:700;color:var(--text)">'+title+'</div>'
+      + '<button onclick="document.getElementById(\'embassyModal\').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text3)">✕</button>'
+    + '</div>'
+    + '<div style="padding:1.2rem 1.5rem">'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem">'
+        + '<div><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Elchixona nomi</label>'
+          + '<input id="emb-name" type="text" value="'+escHtml(embName)+'" placeholder="Elchixona nomi..." style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem"></div>'
+        + '<div><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Email</label>'
+          + '<input id="emb-email" type="email" value="'+escHtml(emailTo)+'" placeholder="embassy@email.com" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem"></div>'
+      + '</div>'
+      + '<div style="margin-bottom:1rem"><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Manzil</label>'
+        + '<input id="emb-address" type="text" value="'+escHtml(embAddr)+'" placeholder="Manzil..." style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem"></div>'
+      + '<div style="margin-bottom:.6rem"><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Xat mavzusi (Subject)</label>'
+        + '<input id="emb-subject" type="text" value="'+escHtml(letterSubject)+'" style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem"></div>'
+      + '<div style="margin-bottom:1rem"><label style="font-size:.72rem;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Xat matni</label>'
+        + '<textarea id="emb-body" rows="8" style="width:100%;padding:.6rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.8rem;resize:vertical;line-height:1.5">'+escHtml(letterBody)+'</textarea></div>'
+      + '<div style="background:var(--bg2);border-radius:10px;padding:.7rem .9rem;margin-bottom:1rem;font-size:.72rem;color:var(--text3)">'
+        + '📊 <b>'+cName+'</b> dan bazadagi kompaniyalar: <b>'+countryCompanies.length+'</b> ta'
+        + (countryCompanies.length > 0 ? '<br>Top: ' + countryCompanies.slice(0,5).map(function(c){return c.kompaniya||c.name||'';}).join(', ') : '')
+      + '</div>'
+      + '<div style="display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap">'
+        + '<button id="emb-ai-btn" onclick="generateEmbassyAiLetter(\''+code+'\',\''+type+'\')" style="padding:.5rem 1rem;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">🤖 AI xat yaratish</button>'
+        + '<button onclick="saveEmbassyData(\''+code+'\',\''+type+'\')" style="padding:.5rem 1rem;background:#059669;color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">💾 Saqlash</button>'
+        + '<button onclick="sendEmbassyLetter(\''+code+'\',\''+type+'\')" style="padding:.5rem 1rem;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">📧 Xat yuborish</button>'
+        + '<button onclick="document.getElementById(\'embassyModal\').remove()" style="padding:.5rem 1rem;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.8rem;cursor:pointer">Yopish</button>'
+      + '</div>'
+    + '</div></div></div>';
+
+  // Remove old modal if exists
+  var old = document.getElementById('embassyModal');
+  if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  // Auto-generate AI letter on open (or use cache to avoid credits)
+  setTimeout(function(){
+    if(_cached && _cached.subject && _cached.body){
+      if(typeof _attachEmbassyAutoSave === 'function') _attachEmbassyAutoSave(code, type);
+      if(typeof toast === 'function') toast('💾 Saqlangan AI xat yuklandi','info');
+    } else if(typeof generateEmbassyAiLetter === 'function'){
+      generateEmbassyAiLetter(code, type);
+    }
+  }, 200);
+}
+
+function saveEmbassyData(countryCode, type){
+  var embassies = getEmbassyDB();
+  var existing = embassies.find(function(e){return e.country===countryCode;});
+  if(!existing){
+    existing = {country:countryCode, countryName:_embassyCountryNames[countryCode]||countryCode, uzbEmbassy:{name:'',email:'',address:''}, foreignEmbassy:{name:'',email:'',address:''}};
+    embassies.push(existing);
+  }
+  var target = type==='uzb' ? 'uzbEmbassy' : 'foreignEmbassy';
+  existing[target] = {
+    name: (document.getElementById('emb-name')||{}).value||'',
+    email: (document.getElementById('emb-email')||{}).value||'',
+    address: (document.getElementById('emb-address')||{}).value||''
+  };
+  DB.embassies = embassies;
+  if(typeof saveDB === 'function') saveDB();
+  if(typeof fbSaveSettings === 'function') fbSaveSettings(DB.settings);
+  toast('✅ Elchixona ma\'lumotlari saqlandi','success');
+}
+
+var _embassyAutoSaveTimer = null;
+function _attachEmbassyAutoSave(countryCode, type){
+  var subjEl = document.getElementById('emb-subject');
+  var bodyEl = document.getElementById('emb-body');
+  function save(){
+    if(_embassyAutoSaveTimer) clearTimeout(_embassyAutoSaveTimer);
+    _embassyAutoSaveTimer = setTimeout(function(){
+      var prev = getEmbassyCache(countryCode, type) || {};
+      setEmbassyCache(countryCode, type, {
+        subject: (subjEl && subjEl.value) || '',
+        body: (bodyEl && bodyEl.value) || '',
+        companyIds: prev.companyIds || '',
+        generatedAt: prev.generatedAt || new Date().toISOString(),
+        editedAt: new Date().toISOString()
+      });
+    }, 800);
+  }
+  if(subjEl && !subjEl._autoSaveAttached){ subjEl.addEventListener('input', save); subjEl._autoSaveAttached = true; }
+  if(bodyEl && !bodyEl._autoSaveAttached){ bodyEl.addEventListener('input', save); bodyEl._autoSaveAttached = true; }
+}
+window._attachEmbassyAutoSave = _attachEmbassyAutoSave;
+
+function embassyMarkKey(countryCode, type){ return countryCode+'|'+type; }
+function isCompanyInEmbassyLetter(c, countryCode, type){
+  var key = embassyMarkKey(countryCode,type);
+  return !!(c.embassyLetters && c.embassyLetters[key]);
+}
+function getEmbassyCache(code, type){
+  var m = (DB.settings && DB.settings.embassyAiCache) || {};
+  return m[embassyMarkKey(code,type)] || null;
+}
+function setEmbassyCache(code, type, payload){
+  if(!DB.settings) DB.settings = {};
+  if(!DB.settings.embassyAiCache) DB.settings.embassyAiCache = {};
+  DB.settings.embassyAiCache[embassyMarkKey(code,type)] = payload;
+  if(typeof fbSaveSettings==='function') fbSaveSettings(DB.settings);
+}
+
+var _embassyCountryAliases = {
+  'US':['aqsh','usa','united states','amerika','u.s.','u.s','america'],
+  'CN':['xitoy','china','cn','prc'],
+  'DE':['germaniya','germany','deutschland'],
+  'GB':['buyuk britaniya','uk','united kingdom','britain','england'],
+  'FR':['fransiya','france'],
+  'JP':['yaponiya','japan'],
+  'KR':['janubiy koreya','south korea','korea'],
+  'IN':['hindiston','india'],
+  'TR':['turkiya','turkey','türkiye'],
+  'RU':['rossiya','russia','российская'],
+  'AE':['baa','uae','united arab emirates','emirates'],
+  'SA':['saudiya arabistoni','saudi arabia'],
+  'IT':['italiya','italy'],
+  'ES':['ispaniya','spain'],
+  'CA':['kanada','canada'],
+  'AU':['avstraliya','australia'],
+  'BR':['braziliya','brazil'],
+  'MX':['meksika','mexico'],
+  'ID':['indoneziya','indonesia'],
+  'TH':['tailand','thailand'],
+  'MY':['malayziya','malaysia'],
+  'SG':['singapur','singapore'],
+  'PL':['polsha','poland'],
+  'CZ':['chexiya','czech','czechia'],
+  'AT':['avstriya','austria'],
+  'NL':['niderlandiya','netherlands','holland'],
+  'SE':['shvetsiya','sweden'],
+  'CH':['shveytsariya','switzerland'],
+  'IL':['isroil','israel'],
+  'EG':['misr','egypt'],
+  'KZ':["qozog'iston",'kazakhstan','kz'],
+  'PK':['pokiston','pakistan'],
+  'BD':['bangladesh'],
+  'VN':['vyetnam','vietnam'],
+  'PH':['filippin','philippines']
+};
+function matchesCountry(text, code){
+  var t = String(text||'').toLowerCase();
+  if(!t) return false;
+  var aliases = _embassyCountryAliases[code] || [];
+  aliases = aliases.concat([(_embassyCountryNames[code]||'').toLowerCase(), String(code||'').toLowerCase()]);
+  return aliases.filter(Boolean).some(function(a){ return t.indexOf(a) !== -1; });
+}
+
+async function generateEmbassyAiLetter(countryCode, type){
+  var btn = document.getElementById('emb-ai-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ AI yozmoqda...'; }
+  var loadingToast = null;
+  try {
+    if(typeof callGemini !== 'function'){ throw new Error('Gemini funksiyasi topilmadi'); }
+    if(typeof getGeminiKey === 'function' && !getGeminiKey()){ throw new Error('Gemini API kalit yo\'q. Sozlamalardan qo\'shing.'); }
+    var cName = _embassyCountryNames[countryCode] || countryCode;
+    var co = DB.investorCompanies || [];
+    var finder = DB.finderResults || [];
+    var allByCountry = co.concat(finder).filter(function(c){
+      return matchesCountry(c.davlat||c.country||'', countryCode);
+    });
+    if(!allByCountry.length){ throw new Error(cName+' davlatidan bazada kompaniya topilmadi'); }
+    var alreadySent = allByCountry.filter(function(c){ return isCompanyInEmbassyLetter(c, countryCode, type); });
+    var all = allByCountry.filter(function(c){ return !isCompanyInEmbassyLetter(c, countryCode, type); });
+    if(!all.length){
+      toast('ℹ️ Yangi kompaniya yo\'q — barcha '+allByCountry.length+' ta kompaniya oldin xat yuborilgan','info');
+      if(btn){ btn.disabled = false; btn.textContent = '🤖 AI xat yaratish'; }
+      return;
+    }
+    window._currentEmbassyCompanies = all;
+    var cnt = all.length;
+
+    // Try cache: if cached letter exists for same company set → use cache, no AI call
+    var cache = getEmbassyCache(countryCode, type);
+    var currentIds = all.map(function(c){return String(c.id);}).sort().join(',');
+    if(cache && cache.companyIds === currentIds && cache.subject && cache.body){
+      var subjEl = document.getElementById('emb-subject');
+      var bodyEl = document.getElementById('emb-body');
+      if(subjEl) subjEl.value = cache.subject;
+      if(bodyEl) bodyEl.value = cache.body;
+      _attachEmbassyAutoSave(countryCode, type);
+      toast('💾 Saqlangan AI xat yuklandi (credit ishlatilmadi)','success');
+      if(btn){ btn.disabled = false; btn.textContent = '🤖 AI xat yaratish'; }
+      return;
+    }
+    loadingToast = typeof toastLoading === 'function' ? toastLoading('🤖 AI xat yaratilmoqda...') : toast('🤖 AI xat yaratilmoqda...','info');
+    var totalUsd = 0;
+    var targetCountries = {};
+    var industries = {};
+    all.forEach(function(c){
+      var v = Number(c._tradeAtlasTradeValue || c.import_volume || 0) || 0;
+      if(v) totalUsd += v;
+      var counter = String(c.description || '').replace(/^Hamkor davlatlar:\s*/i,'');
+      counter.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean).forEach(function(t){
+        targetCountries[t] = (targetCountries[t]||0) + 1;
+      });
+      var s = String(c.soha||'').trim();
+      if(s) industries[s] = (industries[s]||0) + 1;
+    });
+    var targetList = Object.keys(targetCountries).sort(function(a,b){return targetCountries[b]-targetCountries[a];}).slice(0,15);
+    var industryList = Object.keys(industries).sort(function(a,b){return industries[b]-industries[a];}).slice(0,8);
+    function fmtUsd(n){ if(n>=1e9) return '$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6) return '$'+(n/1e6).toFixed(1)+'M'; if(n>=1e3) return '$'+(n/1e3).toFixed(0)+'K'; return '$'+n; }
+    var totalStr = totalUsd ? fmtUsd(totalUsd) : 'noma\'lum';
+    var savingsEstimate = totalUsd ? fmtUsd(Math.round(totalUsd * 0.18)) : 'sezilarli qiymatda';
+    var isUzbEmbassy = (type === 'uzb');
+    var lang = isUzbEmbassy ? 'uz' : (countryCode==='CN' ? 'zh' : (['RU','KZ','KG','TJ','BY','AM','AZ','GE','MD','UA','TM'].indexOf(countryCode)!==-1 ? 'ru' : 'en'));
+    var langLabel = {uz:"O'zbek tilida",ru:"Rus tilida (русский язык)",zh:"Xitoy tilida (中文)",en:"Ingliz tilida (English)"}[lang];
+
+    var followUpNote = alreadySent.length
+      ? ('Bu takroriy xat — oldin '+alreadySent.length+' ta kompaniya haqida xabar berilgan edi. Bu yangi xatda faqat YANGI '+cnt+' ta kompaniya haqida so\'z boradi.')
+      : ('Bu birinchi marta yuborilayotgan xat.');
+    var senderOrg = "Navoiy viloyati investitsiyalar, sanoat va savdo boshqarmasi";
+    var senderShort = "Boshqarma";
+    var prompt = 'Sen tajribali davlat xizmatchisisan — '+senderOrg+' nomidan ish olib boruvchi mas\'ul xodim. '
+      + 'Sen rasmiy, lekin INSONIY, samimiy, tabiiy ohangda xat yozasan — kanselyar quruq tilda emas, balki tajribali diplomat yozadiganidek, AI yozgani sezilmasligi uchun. '
+      + (isUzbEmbassy ? 'Xat O\'zbekistonning '+cName+'dagi elchixonasiga' : 'Xat '+cName+'ning O\'zbekistondagi elchixonasiga')
+      + ' yo\'llanadi.\n\n'
+      + followUpNote + '\n\n'
+      + 'JO\'NATUVCHI: '+senderOrg+' (NFEZ ham emas, vazirlik ham emas — aynan shu boshqarma)\n\n'
+      + 'XAT MAZMUNI uchun real raqamlar:\n'
+      + '• '+cName+' davlatida '+cnt+' ta yangi sanoat kompaniyasi aniqlandi (oldindan '+alreadySent.length+' ta haqida xabar berilgan edi)\n'
+      + '• Bu kompaniyalar ' + (targetList.length || 'bir nechta') + ' ta maqsadli davlatga eksport qiladi'
+      + (targetList.length ? ': ' + targetList.join(', ') : '') + '\n'
+      + '• Ularning yillik umumiy eksport hajmi: ' + totalStr + '\n'
+      + '• Asosiy sohalar: ' + (industryList.join(', ') || 'sanoat ishlab chiqarish') + '\n'
+      + '• Agar ushbu kompaniyalar ishlab chiqarishni Navoiy viloyatiga ko\'chirsa va shu eksport bozorlariga xizmat ko\'rsatsa, taxminan ' + savingsEstimate + ' miqdorida yillik logistika va ishlab chiqarish xarajatlari tejaladi (Navoiy EIZ soliq imtiyozlari, bojxona ozodligi, raqobatbardosh ishchi kuchi va Buyuk Ipak yo\'li logistikasi hisobiga)\n\n'
+      + 'XAT TUZILISHI (tabiiy oqim, sun\'iy "bir-ikki-uch-paragraf" hissi yo\'q):\n'
+      + '1) Hurmatli murojaat (elchi yoki vakil ismini bilmasak — umumiy odob bilan)\n'
+      + '2) Qisqa kontekst: nima sababli yozayotganimiz, kim ekanimiz\n'
+      + '3) Aniq raqamlar va dalillar bilan vaziyatni tushuntirish (kompaniyalar soni, eksport hajmi, sohalar)\n'
+      + '4) Navoiy viloyatining real iqtisodiy va logistik afzalliklari (umumiy maqtov emas, aniq raqam va misollar)\n'
+      + '5) Aniq, kichkina va bajarilishi mumkin bo\'lgan so\'rov: shu '+cnt+' ta kompaniya bilan onlayn videokonferensiya tashkil etishga ko\'maklashish; agar elchixona vositachi bo\'lsa, biz buni qadrlaymiz\n'
+      + '6) Hamkorlik uchun minnatdorchilik va imzo bloki: '+senderOrg+', mas\'ul xodim ismi (faraz: F.I.SH., Bo\'lim boshlig\'i o\'rinbosari), kontakt ma\'lumotlari placeholder ([telefon], [email])\n\n'
+      + 'QAT\'IY QOIDALAR:\n'
+      + '- Markdown ishlatma (** , * , # YO\'Q). Faqat oddiy matn.\n'
+      + '- "Aloha", "Bismillah", "Hurmatli o\'qiyotgan inson" kabi noo\'rin murojaatlar YO\'Q\n'
+      + '- "Raqamli dalillar:", "So\'rov:", "Yopilish:" kabi sub-bosh sarlavhalar YO\'Q\n'
+      + '- AI tomonidan yozilgani sezilmaydigan tabiiy gaplar, biroz hissiyot, real diplomatik ohang\n'
+      + '- Kamida 350-450 so\'z, 5-7 paragraf — hech qaysisi qisqa kesilmagan\n'
+      + '- Faqat aniq raqamlar va realchillik ('+totalStr+', '+cnt+' ta kompaniya, '+savingsEstimate+')\n'
+      + '- '+langLabel+' yoz\n\n'
+      + 'JAVOB FORMATI: Faqat JSON, boshqa narsa yo\'q: {"subject":"...","body":"..."}';
+
+    var data = await callGemini({
+      contents:[{role:'user',parts:[{text: prompt}]}],
+      generationConfig:{temperature:0.7}
+    });
+    var raw = geminiText(data);
+    var parsed = null;
+    try { parsed = JSON.parse(raw); } catch(e){
+      var m = raw.match(/\{[\s\S]*\}/);
+      if(m) { try { parsed = JSON.parse(m[0]); } catch(e2){} }
+    }
+    if(!parsed || !parsed.body){ throw new Error('AI javobidan JSON ajratib olib bo\'lmadi'); }
+    var subjEl = document.getElementById('emb-subject');
+    var bodyEl = document.getElementById('emb-body');
+    if(subjEl && parsed.subject) subjEl.value = parsed.subject;
+    if(bodyEl && parsed.body) bodyEl.value = parsed.body;
+    setEmbassyCache(countryCode, type, {
+      subject: parsed.subject || '',
+      body: parsed.body || '',
+      companyIds: currentIds,
+      generatedAt: new Date().toISOString()
+    });
+    _attachEmbassyAutoSave(countryCode, type);
+    if(typeof toastDone === 'function') toastDone(loadingToast, '✅ AI xat yaratildi va saqlandi ('+cnt+' ta yangi kompaniya)', 'success');
+    else toast('✅ AI xat yaratildi va saqlandi ('+cnt+' ta yangi kompaniya)','success');
+  } catch(e){
+    console.error('Embassy AI error:', e);
+    if(typeof toastDone === 'function') toastDone(loadingToast, '❌ AI xato: '+(e.message||e), 'error');
+    else toast('❌ AI xato: '+(e.message||e),'error');
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = '🤖 AI xat yaratish'; }
+  }
+}
+window.generateEmbassyAiLetter = generateEmbassyAiLetter;
+
+function markEmbassyCompaniesSent(companies, countryCode, type){
+  var key = embassyMarkKey(countryCode, type);
+  var stamp = new Date().toISOString();
+  (companies||[]).forEach(function(c){
+    if(!c.embassyLetters) c.embassyLetters = {};
+    c.embassyLetters[key] = stamp;
+    if((DB.investorCompanies||[]).some(function(x){return String(x.id)===String(c.id);})){
+      if(typeof fbSave==='function') fbSave('investorCompanies', c);
+    }
+  });
+}
+
+function sendEmbassyLetter(countryCode, type){
+  var email = (document.getElementById('emb-email')||{}).value;
+  var subject = (document.getElementById('emb-subject')||{}).value;
+  var body = (document.getElementById('emb-body')||{}).value;
+  if(!email){toast('⚠️ Email manzil kiritilmagan','error');return;}
+  saveEmbassyData(countryCode, type);
+  var companiesToMark = window._currentEmbassyCompanies || [];
+  if(typeof emailjs !== 'undefined' && emailjs.send){
+    emailjs.send('service_1w08xxe','template_c1nxcvg',{
+      to_email: email,
+      subject: subject,
+      message: body,
+      from_name: 'Navoiy EIZ'
+    }).then(function(){
+      markEmbassyCompaniesSent(companiesToMark, countryCode, type);
+      toast('✅ Xat yuborildi: '+email+(companiesToMark.length?(' ('+companiesToMark.length+' ta kompaniya belgilandi)'):''),'success');
+      document.getElementById('embassyModal').remove();
+      window._currentEmbassyCompanies = null;
+    },function(err){
+      toast('❌ Xat yuborilmadi: '+err.text,'error');
+    });
+  } else {
+    var mailtoUrl = 'mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    window.open(mailtoUrl);
+    markEmbassyCompaniesSent(companiesToMark, countryCode, type);
+    toast('📧 Email dasturi ochildi','success');
+  }
+}
