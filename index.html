@@ -311,6 +311,7 @@ waitForDB();
 <link rel="stylesheet" href="assets/css/main.css">
 <script src="assets/js/utils.js"></script>
 <script src="assets/js/gemini.js"></script>
+<script src="assets/js/apollo-config.js"></script>
 </head>
 <body class="">
 <!-- Loader (hidden immediately - Hope UI loader requires images we don't have) -->
@@ -4717,13 +4718,7 @@ function setIntlRegion(i){
 /* ═══════════════════════════════════════
    APOLLO.IO INTEGRATION
 ═══════════════════════════════════════ */
-const APOLLO_PROXY = 'https://navoiy-api-proxy.vercel.app/api/apollo';
-let _apoPage = 1;
-let _apoResults = [];
-let _apoSelected = new Set();
-function getApolloApiKey(){
-  return (window._apiKeys && window._apiKeys.apollo) || '';
-}
+/* Apollo config moved to assets/js/apollo-config.js */
 
 function openApolloSearch(){
   document.getElementById('apolloModal').classList.add('open');
