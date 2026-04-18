@@ -12,7 +12,7 @@
   // Cache key per target lang
   var CACHE_PREFIX = '_autotr_';
   // Max chars per batch (Gemini context limit)
-  var BATCH_CHARS = 8000;
+  var BATCH_CHARS = 3000;
   // Don't translate text shorter than this (1-2 char labels usually icons/symbols)
   var MIN_LEN = 2;
   // Skip selectors (inside these, don't translate)
@@ -172,7 +172,7 @@
                  'Keep keys identical to inputs.\n\n' +
                  'Input strings (JSON array):\n' + JSON.stringify(strings);
     var body = {
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
     };
     try {
