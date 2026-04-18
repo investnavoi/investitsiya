@@ -2765,7 +2765,7 @@ async function runCompanyFinder(source){
   }
 }
 
-function renderFinderTable(results){
+function _legacyRenderFinderTable_v2(results){
   updateFinderModeUI();
   var tb = document.getElementById('finder-tbody');
   if(!tb) return;
@@ -2804,7 +2804,7 @@ function filterFinderByCountry(country){
 }
 
 // Override finder table rendering so each qualified contact gets its own detail/status/action controls.
-function renderFinderTable(results){
+function _legacyRenderFinderTable_v3(results){
   updateFinderModeUI();
   var tb = document.getElementById('finder-tbody');
   if(!tb) return;
@@ -2940,7 +2940,7 @@ function renderFinderTable(results){
   mountInvestorAiWorkspace();
 }
 
-function saveFinderResults(){
+function _legacySaveFinderResults_v1(){
   if(!_finderResults.length){ toast('⚠️ Natija yo\'q','error'); return; }
   if(!DB.investorCompanies) DB.investorCompanies = [];
   var added = 0;

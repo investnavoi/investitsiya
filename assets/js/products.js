@@ -3110,14 +3110,14 @@ function matchForumsToEntrepreneurs(){
   toast('🔗 '+matched+' ta tadbirkor forumga moslashtirildi! ('+(entrList.length-matched)+' ta mos kelmadi)');
 }
 
-function toggleAllEntrepreneurs(){
+function toggleEntrepreneursPanel(){
   var body=document.getElementById('entrBody');
   var icon=document.getElementById('entr-toggle-icon');
   if(!body) return;
   if(body.style.display==='none'){body.style.display='block';if(icon)icon.textContent='▲';}
   else{body.style.display='none';if(icon)icon.textContent='▼';}
 }
-window.toggleAllEntrepreneurs = toggleAllEntrepreneurs;
+window.toggleEntrepreneursPanel = toggleEntrepreneursPanel;
 
 var _currentModalForum = '';
 

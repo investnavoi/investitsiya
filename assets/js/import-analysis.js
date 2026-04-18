@@ -155,7 +155,7 @@ async function fetchWorldBank(countryCode, indicator){
   return null;
 }
 
-async function runImportAnalysis(){
+async function _legacyRunImportAnalysis_v1(){
   var sel = document.getElementById('import-product-select');
   var prodId = sel.value;
   if(!prodId){ toast('⚠️ Mahsulot tanlang','error'); return; }
@@ -275,7 +275,7 @@ function scrollToImportDetailCountry(code){
   if(detailCard) detailCard.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-function renderImportResults(countries, prod, source){
+function _legacyRenderImportResults_v1(countries, prod, source){
   // Sort by import value
   countries.sort(function(a,b){return (b.import_usd||0)-(a.import_usd||0);});
 
