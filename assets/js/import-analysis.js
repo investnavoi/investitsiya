@@ -3556,8 +3556,6 @@ async function analyzeInvestmentMaterial(){
           'gemini-2.5-flash-lite',
           'gemini-2.0-flash',
           'gemini-2.0-flash-lite',
-          'gemini-1.5-flash',
-          'gemini-1.5-flash-8b',
           'gemma-3-27b-it',
           'gemma-3-12b-it',
           'gemma-3-4b-it'
