@@ -3556,7 +3556,36 @@ async function analyzeInvestmentMaterial(){
     var systemPrompt = window._cachedSystemPrompt;
     if(!systemPrompt) throw new Error('System prompt bo\'sh');
 
-    // Step 2: call Gemini DIRECTLY from browser (same path as AI letter — bypasses Vercel IP rate-limit)
+    // Step 2: TRIM tradeContext to fit free-tier 15K token/min limit
+    // Strip large fields: full snapshot.countries arrays, full raw object, etc.
+    var slimContext = {
+      material: tradeContext.material,
+      rawMaterial: tradeContext.rawMaterial,
+      raw: tradeContext.raw ? {
+        id: tradeContext.raw.id,
+        name_uz: tradeContext.raw.name_uz,
+        name_en: tradeContext.raw.name_en,
+        section: tradeContext.raw.section,
+        hs_code: tradeContext.raw.hs_code
+      } : null,
+      matchedProducts: (tradeContext.matchedProducts || []).slice(0, 20),
+      officialDataAvailable: tradeContext.officialDataAvailable,
+      officialSource: tradeContext.officialSource,
+      analyzedProducts: (tradeContext.analyzedProducts || []).slice(0, 15).map(function(p){
+        return {
+          productId: p.productId,
+          productName: p.productName,
+          hsCode: p.hsCode,
+          source: p.source,
+          totalLatestUsd: p.totalLatestUsd,
+          // Keep only top 5 countries summary, drop full snapshot.countries (too large)
+          topCountries: (p.topCountries || []).slice(0, 5)
+        };
+      })
+    };
+    var ctxJson = JSON.stringify(slimContext);
+    console.log('[analyze-material] context size: ' + ctxJson.length + ' chars (~' + Math.round(ctxJson.length/4) + ' tokens)');
+
     var contextText = 'Selected raw material: ' + material + '\n\n' +
       'Strict instruction:\n' +
       '- Analyze ONLY the selected raw material.\n' +
@@ -3564,7 +3593,7 @@ async function analyzeInvestmentMaterial(){
       '- Do NOT use any sample Excel/template data.\n' +
       '- Do NOT add other downstream products unless they are present in the context JSON.\n' +
       '- If data is missing, say it is missing.\n\n' +
-      'Official UN Comtrade context:\n' + JSON.stringify(tradeContext, null, 2);
+      'Official UN Comtrade context:\n' + ctxJson;
 
     var directKeys = (typeof getAllGeminiKeys === 'function') ? getAllGeminiKeys() : [];
     if(!directKeys.length) throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalardan kiriting.');
@@ -3598,6 +3627,20 @@ async function analyzeInvestmentMaterial(){
           } catch(_){ parsedErr = eTxt; }
           lastDirectErr = { status: r.status, model: dModel, key: ki+1, detail: parsedErr };
           console.warn('[analyze-material direct] key#'+(ki+1)+' '+dModel+' -> '+r.status+' :: '+parsedErr.slice(0,300));
+
+          // Per-minute token quota — wait then retry SAME model once
+          var retryMatch = parsedErr.match(/retry in ([\d.]+)s/i);
+          if(r.status === 429 && retryMatch){
+            var waitSec = Math.min(parseFloat(retryMatch[1]) + 2, 30);
+            toast('⏳ Per-minute limit — '+Math.ceil(waitSec)+'s kutilmoqda...','info');
+            await new Promise(function(rr){ setTimeout(rr, waitSec*1000); });
+            try {
+              var r2 = await fetch(dUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dBody) });
+              if(r2.ok){ resp = r2; console.log('[analyze-material direct retry] key#'+(ki+1)+' '+dModel+' OK after wait'); break outer; }
+              var e2 = await r2.text();
+              console.warn('[analyze-material direct retry] '+dModel+' STILL '+r2.status);
+            } catch(e2){ console.warn('[retry] exception:', e2.message); }
+          }
         } catch(e){
           lastDirectErr = { message: e.message, model: dModel, key: ki+1 };
           console.warn('[analyze-material direct] key#'+(ki+1)+' '+dModel+' exception:', e.message);
