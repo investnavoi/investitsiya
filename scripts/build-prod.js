@@ -135,11 +135,11 @@ async function build(){
 
   // 8. Copy static assets
   console.log('📁 Static fayllarni nusxalash...');
-  for(const dir of ['maps', 'assets/img']){
+  for(const dir of ['assets/img']){
     const src = join(ROOT, dir);
     if(existsSync(src)) await copyDir(src, join(DIST, dir));
   }
-  for(const file of ['mapdata.js', 'worldmap.js', 'investor-world-map.svg', 'navoi-invest-ai-white.png']){
+  for(const file of ['mapdata.js', 'worldmap.js']){
     const src = join(ROOT, file);
     if(existsSync(src)) await copyFile(src, join(DIST, file));
   }
