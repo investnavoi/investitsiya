@@ -3550,9 +3550,18 @@ async function analyzeInvestmentMaterial(){
         geminiKey: (typeof getGeminiKey === 'function' ? getGeminiKey() : ''),
         geminiKey2: (typeof getGeminiKey2 === 'function' ? getGeminiKey2() : ''),
         tradeContext: tradeContext,
-        // Gemini 2.5 Flash first, Gemma as fallback
+        // Aggressive cascade — Gemini 2.0/1.5 have separate (higher) free quotas
         model: 'gemini-2.5-flash',
-        modelFallbacks: ['gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it']
+        modelFallbacks: [
+          'gemini-2.5-flash-lite',
+          'gemini-2.0-flash',
+          'gemini-2.0-flash-lite',
+          'gemini-1.5-flash',
+          'gemini-1.5-flash-8b',
+          'gemma-3-27b-it',
+          'gemma-3-12b-it',
+          'gemma-3-4b-it'
+        ]
       })
     });
 
