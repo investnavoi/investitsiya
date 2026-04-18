@@ -3,7 +3,8 @@
 var GEMINI_KEY = (window._apiKeys && window._apiKeys.gemini) || '';
 // Faqat ishlaydigan modellar — 2.0-flash va lite YOQILMAGAN, faqat 2.5-flash ishlaydi
 // Gemini 2.5 Flash first (250K token quota), Gemma as fallback
-const GEMINI_MODELS = ['gemini-2.5-flash','gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it','gemini-2.5-pro'];
+// Gemma first — has much higher free-tier daily limit (14,400 RPD vs Gemini 2.5 Flash 250 RPD)
+const GEMINI_MODELS = ['gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it','gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.0-flash','gemini-2.0-flash-lite'];
 
 function getGeminiKey(){
   if(window._apiKeys && window._apiKeys.gemini) return window._apiKeys.gemini;

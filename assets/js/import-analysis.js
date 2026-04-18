@@ -3603,7 +3603,8 @@ async function analyzeInvestmentMaterial(){
     var directKeys = (typeof getAllGeminiKeys === 'function') ? getAllGeminiKeys() : [];
     if(!directKeys.length) throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalardan kiriting.');
 
-    var directModels = ['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.0-flash','gemini-2.0-flash-lite','gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it'];
+    // Gemma first — much higher free-tier daily limit (14,400 RPD vs Gemini 250 RPD)
+    var directModels = ['gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it','gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.0-flash','gemini-2.0-flash-lite'];
     var resp = null;
     var lastDirectErr = null;
     outer:
