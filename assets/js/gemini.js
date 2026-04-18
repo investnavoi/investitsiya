@@ -2,8 +2,8 @@
 // API kalit Firebase'dan yuklanadi, agar yo'q bo'lsa fallback
 var GEMINI_KEY = (window._apiKeys && window._apiKeys.gemini) || '';
 // Faqat ishlaydigan modellar — 2.0-flash va lite YOQILMAGAN, faqat 2.5-flash ishlaydi
-// Gemma first — cheaper + higher rate limit, fall back to Gemini if needed
-const GEMINI_MODELS = ['gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it','gemini-2.5-flash','gemini-2.5-pro'];
+// Gemini 2.5 Flash first (250K token quota), Gemma as fallback
+const GEMINI_MODELS = ['gemini-2.5-flash','gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it','gemini-2.5-pro'];
 
 function getGeminiKey(){
   if(window._apiKeys && window._apiKeys.gemini) return window._apiKeys.gemini;

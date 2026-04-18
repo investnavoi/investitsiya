@@ -3550,9 +3550,9 @@ async function analyzeInvestmentMaterial(){
         geminiKey: (typeof getGeminiKey === 'function' ? getGeminiKey() : ''),
         geminiKey2: (typeof getGeminiKey2 === 'function' ? getGeminiKey2() : ''),
         tradeContext: tradeContext,
-        // Prefer Gemma (higher free quota) over Gemini-2.5-flash
-        model: 'gemma-3-27b-it',
-        modelFallbacks: ['gemma-3-12b-it','gemma-3-4b-it','gemini-2.5-flash']
+        // Gemini 2.5 Flash first, Gemma as fallback
+        model: 'gemini-2.5-flash',
+        modelFallbacks: ['gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it']
       })
     });
 
