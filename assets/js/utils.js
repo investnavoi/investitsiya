@@ -114,3 +114,8 @@ function toastDone(loadingToast, msg, type){
 
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Attribute escape — used by forum-detail / products / many renderers (must load before defer scripts)
+function tgEscapeAttr(value){
+  return String(value||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}

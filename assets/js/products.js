@@ -2076,9 +2076,7 @@ var TG_DEFAULT_COOLDOWN_MS = 45 * 60 * 1000;
 var _tgBatchRunning = false;
 var _entrSelectedIds = null;
 
-function tgEscapeAttr(value){
-  return String(value||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-}
+// tgEscapeAttr moved to utils.js (needed early, before defer scripts)
 
 function tgNormalizePhone(phone){
   var raw = String(phone||'').trim();

@@ -215,17 +215,17 @@ function _showPageInner(id){
         .then(function(){ populateProductSelects(); });
     } else { populateProductSelects(); }
   }
-  else if(id==='materialai'){renderInvestAiPage();}
-  else if(id==='finder'){populateProductSelects();updateFinderModeUI();handleImportProductChange();}
-  else if(id==='ailetter')populateProductSelects();
-  else if(id==='pipeline'){renderCrmDashboard();}
+  else if(id==='materialai'){if(typeof renderInvestAiPage==='function')renderInvestAiPage();}
+  else if(id==='finder'){if(typeof populateProductSelects==='function')populateProductSelects();if(typeof updateFinderModeUI==='function')updateFinderModeUI();if(typeof handleImportProductChange==='function')handleImportProductChange();}
+  else if(id==='ailetter'){if(typeof populateProductSelects==='function')populateProductSelects();}
+  else if(id==='pipeline'){if(typeof renderCrmDashboard==='function')renderCrmDashboard();}
   else if(id==='trade'){
     if(window.ensureCollectionLoaded){
       Promise.all([window.ensureCollectionLoaded('tradeData'), window.ensureCollectionLoaded('tradeSnapshots'), window.ensureCollectionLoaded('tradeSnapshotChunks')])
         .then(function(){ restoreLastTradeSnapshot(); });
     } else { restoreLastTradeSnapshot(); }
   }
-  else if(id==='settings'){loadSettings();if(typeof checkTgStatus==='function')checkTgStatus();}
+  else if(id==='settings'){if(typeof loadSettings==='function')loadSettings();if(typeof checkTgStatus==='function')checkTgStatus();}
 
   // Re-trigger AOS animations — same as first load
   replayAllAnimations(pg);
