@@ -12,6 +12,7 @@ function toggleTheme(){
 }
 function setLang(l){
   currentLang = l;
+  window.currentLang = l;
   document.querySelectorAll('.lang-btn').forEach(b => {
     b.classList.remove('active');
     if(b.textContent.trim().toLowerCase() === l.toLowerCase()) b.classList.add('active');
@@ -23,4 +24,8 @@ function setLang(l){
   applyTranslations();
   renderAll();
   renderOverview();
+  // Auto-translate everything else (Gemini-powered, cached)
+  if(typeof autoTranslatePage === 'function'){
+    setTimeout(function(){ autoTranslatePage(l); }, 100);
+  }
 }

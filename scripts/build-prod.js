@@ -29,6 +29,7 @@ const JS_FILES = [
   'ai-letter.js',
   'settings.js',
   'theme-lang.js',
+  'auto-translate.js',
   'admin-login.js',
   'admin-forms.js',
   'pipeline-crm.js',
