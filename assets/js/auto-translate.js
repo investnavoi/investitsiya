@@ -161,18 +161,34 @@
       console.warn('Auto-translate: Gemini not available');
       return {};
     }
+    if(!getGeminiKey()){
+      console.warn('Auto-translate: Gemini API kalit yo\'q');
+      return {};
+    }
     var langName = { ru: 'Russian', en: 'English', uz: 'Uzbek (Latin)' }[targetLang] || targetLang;
     var prompt = 'Translate the following Uzbek UI strings to ' + langName + '. ' +
-                 'Return ONLY a JSON object mapping each input string to its translation. ' +
+                 'Return ONLY a valid JSON object (no markdown, no explanation) mapping each input string EXACTLY to its translation. ' +
                  'Preserve emojis, numbers, punctuation, and HTML entities. ' +
-                 'Do not add explanations.\n\n' +
-                 'Input strings:\n' + JSON.stringify(strings);
+                 'Keep keys identical to inputs.\n\n' +
+                 'Input strings (JSON array):\n' + JSON.stringify(strings);
+    var body = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
+    };
     try {
-      var raw = await callGemini(prompt, { temperature: 0.1, maxTokens: 4000 });
-      // Extract JSON
+      var data = await callGemini(body);
+      var raw = (typeof geminiText === 'function') ? geminiText(data) : '';
+      if(!raw) return {};
+      // Strip markdown fences
+      raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
       var json = raw.match(/\{[\s\S]*\}/);
       if(!json) return {};
-      var parsed = JSON.parse(json[0]);
+      var parsed;
+      try { parsed = JSON.parse(json[0]); }
+      catch(e){
+        if(typeof safeParseJSON === 'function'){ parsed = safeParseJSON(json[0]); }
+        else throw e;
+      }
       return parsed && typeof parsed === 'object' ? parsed : {};
     } catch(e){
       console.error('Auto-translate batch error:', e);
