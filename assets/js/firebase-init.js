@@ -16,7 +16,13 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
 // Collections: investors, local, zoom, forums, investorCompanies
-const COLLECTIONS = ['investors','local','zoom','forums','investorCompanies','rawMaterials','products','tradeData','tradeSnapshots','tradeSnapshotChunks','importSnapshots','entrepreneurs'];
+// Critical collections — needed for first paint (overview/investors page)
+const COLLECTIONS_CRITICAL = ['investors','local','zoom','forums','investorCompanies','entrepreneurs'];
+// Heavy collections — lazy-loaded when user navigates to that page
+const COLLECTIONS_LAZY = ['rawMaterials','products','tradeData','tradeSnapshots','tradeSnapshotChunks','importSnapshots'];
+const COLLECTIONS = COLLECTIONS_CRITICAL.concat(COLLECTIONS_LAZY);
+window.COLLECTIONS = COLLECTIONS;
+window.COLLECTIONS_LAZY = COLLECTIONS_LAZY;
 
 // Load API keys from separate doc
 async function loadApiKeys(){
@@ -135,76 +141,109 @@ function _loadCacheAndRenderFast(){
   return cached;
 }
 
+// Load a single collection from Firestore + return rows
+async function _loadOneCollection(col){
+  const snap = await getDocs(collection(db, col));
+  const rows = [];
+  snap.forEach(d => {
+    const row = d.data();
+    if(row && (row.id === undefined || row.id === null || String(row.id).trim() === '')){
+      row.id = d.id;
+    }
+    rows.push(row);
+  });
+  return _sortRows(rows);
+}
+
+// Apply loaded rows to DB + cache + handle entrepreneurs fallback + seed defaults
+function _applyCollectionToDb(col, rows, batchRef){
+  if(col==='entrepreneurs' && rows.length===0){
+    var localBackup = getLocalCollectionBackup('entrepreneurs');
+    if(localBackup.length){
+      rows.push.apply(rows, localBackup);
+      console.log('♻️ Tadbirkorlar local backupdan tiklandi:', localBackup.length);
+    }
+  }
+  DB[col] = rows;
+  if(rows.length) setLocalCollectionBackup(col, rows);
+  // Seed from defaults if empty
+  if(rows.length === 0){
+    const DEFAULT_DB = getDefaultDB();
+    if(DEFAULT_DB[col] && DEFAULT_DB[col].length){
+      DB[col] = DEFAULT_DB[col];
+      if(batchRef){
+        DEFAULT_DB[col].forEach(r => batchRef.batch.set(doc(db, col, String(r.id)), r));
+        batchRef.needSeed = true;
+        console.log(`Seeding: ${col} (${DEFAULT_DB[col].length} ta)`);
+      }
+    }
+  }
+  return DB[col].length;
+}
+
+// Lazy-load a single collection on demand (called by page handlers)
+window._lazyLoaded = window._lazyLoaded || {};
+window.ensureCollectionLoaded = async function(col){
+  if(window._lazyLoaded[col]) return DB[col];
+  window._lazyLoaded[col] = true;
+  try {
+    const t0 = Date.now();
+    const rows = await _loadOneCollection(col);
+    const batchRef = { batch: writeBatch(db), needSeed: false };
+    _applyCollectionToDb(col, rows, batchRef);
+    if(batchRef.needSeed) await batchRef.batch.commit();
+    console.log(`📦 Lazy load: ${col} — ${DB[col].length} ta (${Date.now()-t0}ms)`);
+    return DB[col];
+  } catch(e){
+    console.error(`Lazy load error (${col}):`, e);
+    window._lazyLoaded[col] = false; // allow retry
+    return DB[col] || [];
+  }
+};
+
 async function loadFromFirestore(){
   try {
     const loadEl = document.getElementById('fb-loading');
     if(loadEl) loadEl.style.display = 'flex';
 
-    // 1. Show cached data instantly while Firebase loads
+    // 1. Show cached data instantly (all collections, including lazy ones if cached)
     var hadCache = _loadCacheAndRenderFast();
     if(hadCache && loadEl) loadEl.style.display = 'none';
 
-    // 2. Load ALL collections + apiKeys + settings in PARALLEL
-    const colPromises = COLLECTIONS.map(col =>
-      getDocs(collection(db, col)).then(snap => {
-        const rows = [];
-        snap.forEach(d => {
-          const row = d.data();
-          if(row && (row.id === undefined || row.id === null || String(row.id).trim() === '')){
-            row.id = d.id;
-          }
-          rows.push(row);
-        });
-        return { col, rows: _sortRows(rows) };
-      })
+    // 2. Load CRITICAL collections + apiKeys + settings in PARALLEL (fast — small)
+    const t0 = Date.now();
+    const critPromises = COLLECTIONS_CRITICAL.map(col =>
+      _loadOneCollection(col).then(rows => ({ col, rows }))
     );
-    const [colResults] = await Promise.all([
-      Promise.all(colPromises),
+    const [critResults] = await Promise.all([
+      Promise.all(critPromises),
       loadApiKeys(),
       fbLoadSettings()
     ]);
 
+    const batchRef = { batch: writeBatch(db), needSeed: false };
     let totalDocs = 0;
-    for(const { col, rows } of colResults){
-      if(col==='entrepreneurs' && rows.length===0){
-        var localBackup = getLocalCollectionBackup('entrepreneurs');
-        if(localBackup.length){
-          rows.push.apply(rows, localBackup);
-          console.log('♻️ Mahalliy tadbirkorlar local backupdan tiklandi:', localBackup.length);
-        }
-      }
-      DB[col] = rows;
-      // Cache to localStorage for next fast load
-      if(rows.length) setLocalCollectionBackup(col, rows);
-      totalDocs += rows.length;
+    for(const { col, rows } of critResults){
+      totalDocs += _applyCollectionToDb(col, rows, batchRef);
+      window._lazyLoaded[col] = true; // mark critical as loaded
     }
-
-    // Check each collection — if empty, seed from defaults
-    const DEFAULT_DB = getDefaultDB();
-    const batch = writeBatch(db);
-    let needSeed = false;
-
-    for(const col of COLLECTIONS){
-      if(DB[col].length === 0 && DEFAULT_DB[col] && DEFAULT_DB[col].length){
-        DB[col] = DEFAULT_DB[col];
-        DEFAULT_DB[col].forEach(r => {
-          batch.set(doc(db, col, String(r.id)), r);
-        });
-        needSeed = true;
-        console.log(`Seeding: ${col} (${DEFAULT_DB[col].length} ta)`);
-      }
-    }
-
-    if(needSeed){
-      await batch.commit();
-      console.log('✅ Default ma\'lumotlar Firebase ga yozildi');
-    }
+    if(batchRef.needSeed) await batchRef.batch.commit();
 
     if(loadEl) loadEl.style.display = 'none';
     renderAll();
     renderOverview();
     if(typeof applyTranslations==='function') applyTranslations();
-    console.log('✅ Firebase: ma\'lumotlar yuklandi. Jami:', totalDocs);
+    console.log(`✅ Firebase critical: ${totalDocs} ta yozuv (${Date.now()-t0}ms)`);
+
+    // 3. Load LAZY (heavy) collections in background — don't block UI
+    setTimeout(() => {
+      Promise.all(COLLECTIONS_LAZY.map(col => window.ensureCollectionLoaded(col)))
+        .then(() => {
+          if(typeof renderProducts==='function') renderProducts();
+          if(typeof renderEntrepreneurs==='function') renderEntrepreneurs();
+          console.log('✅ Firebase lazy: barcha qolgan collectionlar yuklandi');
+        });
+    }, 100);
   } catch(e){
     console.error('Firebase load error:', e);
     const loadEl = document.getElementById('fb-loading');
@@ -214,6 +253,7 @@ async function loadFromFirestore(){
     if(typeof applyTranslations==='function') applyTranslations();
   }
 }
+window.loadFromFirestore = loadFromFirestore;
 
 // Save single record to Firestore
 window.fbSave = async function(colName, record){

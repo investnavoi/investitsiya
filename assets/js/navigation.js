@@ -203,13 +203,28 @@ function _showPageInner(id){
     setTimeout(function(){ renderInvestorGeoCard(geoCompanies); }, 150);
   }
   else if(id==='admin')renderAdminLists();
-  else if(id==='products')renderProducts();
-  else if(id==='import'){populateProductSelects();}
+  else if(id==='products'){
+    if(window.ensureCollectionLoaded){
+      Promise.all([window.ensureCollectionLoaded('rawMaterials'), window.ensureCollectionLoaded('products')])
+        .then(function(){ renderProducts(); });
+    } else { renderProducts(); }
+  }
+  else if(id==='import'){
+    if(window.ensureCollectionLoaded){
+      Promise.all([window.ensureCollectionLoaded('importSnapshots'), window.ensureCollectionLoaded('rawMaterials'), window.ensureCollectionLoaded('products')])
+        .then(function(){ populateProductSelects(); });
+    } else { populateProductSelects(); }
+  }
   else if(id==='materialai'){renderInvestAiPage();}
   else if(id==='finder'){populateProductSelects();updateFinderModeUI();handleImportProductChange();}
   else if(id==='ailetter')populateProductSelects();
   else if(id==='pipeline'){renderCrmDashboard();}
-  else if(id==='trade'){restoreLastTradeSnapshot();}
+  else if(id==='trade'){
+    if(window.ensureCollectionLoaded){
+      Promise.all([window.ensureCollectionLoaded('tradeData'), window.ensureCollectionLoaded('tradeSnapshots'), window.ensureCollectionLoaded('tradeSnapshotChunks')])
+        .then(function(){ restoreLastTradeSnapshot(); });
+    } else { restoreLastTradeSnapshot(); }
+  }
   else if(id==='settings'){loadSettings();if(typeof checkTgStatus==='function')checkTgStatus();}
 
   // Re-trigger AOS animations — same as first load
