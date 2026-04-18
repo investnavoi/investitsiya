@@ -172,8 +172,7 @@
                  'Keep keys identical to inputs.\n\n' +
                  'Input strings (JSON array):\n' + JSON.stringify(strings);
     var body = {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
     };
     try {
       var data = await callGemini(body);
@@ -199,7 +198,10 @@
   // Public: translate page to targetLang
   var _running = false;
   var _pendingLang = null;
+  var _failCount = 0;
+  var _disabled = false;
   async function autoTranslatePage(targetLang){
+    if(_disabled){ console.warn('Auto-translate: disabled (too many failures)'); return; }
     if(!targetLang || targetLang === SOURCE_LANG){
       // Restore originals
       var collected = collectTextNodes(document.body);
@@ -232,6 +234,16 @@
         var batches = buildBatches(missList);
         for(var i = 0; i < batches.length; i++){
           var result = await translateBatch(batches[i], targetLang);
+          if(!result || !Object.keys(result).length){
+            _failCount++;
+            if(_failCount >= 3){
+              _disabled = true;
+              console.error('Auto-translate: 3 marta xato — o\'chirildi. Console: clearAutoTranslateCache() va sahifani yangilang.');
+              return;
+            }
+          } else {
+            _failCount = 0;
+          }
           // Merge into cache
           Object.keys(result).forEach(function(k){
             if(typeof result[k] === 'string') cache[k] = result[k];
@@ -268,19 +280,19 @@
     }, 400);
   }
 
-  // Watch DOM for dynamic content (renders, modals)
+  // DOM watcher disabled — too noisy with ApexCharts/maps/Firestore renders.
+  // Re-translate is triggered manually after page navigation instead.
   function watchDom(){
-    var observer = new MutationObserver(function(mutations){
-      var hasNewContent = false;
-      for(var i = 0; i < mutations.length; i++){
-        if(mutations[i].addedNodes && mutations[i].addedNodes.length){
-          hasNewContent = true;
-          break;
-        }
-      }
-      if(hasNewContent) scheduleRetranslate();
-    });
-    observer.observe(document.body, { childList: true, subtree: true, characterData: false });
+    // Hook into showPage if present — translate after page render
+    if(typeof window.showPage === 'function' && !window._showPageTranslateHooked){
+      window._showPageTranslateHooked = true;
+      var origShowPage = window.showPage;
+      window.showPage = function(){
+        var r = origShowPage.apply(this, arguments);
+        scheduleRetranslate();
+        return r;
+      };
+    }
   }
 
   // Expose globals
