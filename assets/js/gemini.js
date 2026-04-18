@@ -6,22 +6,36 @@ var GEMINI_KEY = (window._apiKeys && window._apiKeys.gemini) || '';
 const GEMINI_MODELS = ['gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it','gemini-2.5-flash','gemini-2.5-pro'];
 
 function getGeminiKey(){
-  // Always check Firebase first
   if(window._apiKeys && window._apiKeys.gemini) return window._apiKeys.gemini;
   return GEMINI_KEY;
 }
-function geminiUrl(model){
-  return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + getGeminiKey();
+function getGeminiKey2(){
+  return (window._apiKeys && window._apiKeys.gemini2) || '';
 }
-async function callGemini(body, _retryCount){
+// Get all available keys (primary first, then fallback)
+function getAllGeminiKeys(){
+  var keys = [];
+  var k1 = getGeminiKey();
+  var k2 = getGeminiKey2();
+  if(k1) keys.push(k1);
+  if(k2 && k2 !== k1) keys.push(k2);
+  return keys;
+}
+function geminiUrl(model, key){
+  return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + (key || getGeminiKey());
+}
+async function callGemini(body, _retryCount, _keyIdx){
   var retryCount = _retryCount || 0;
+  var keyIdx = _keyIdx || 0;
   var maxRetries = 2;
-  var key = getGeminiKey();
-  if(!key) throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
-  
+  var keys = getAllGeminiKeys();
+  if(!keys.length) throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
+  var key = keys[keyIdx];
+  if(!key) throw new Error('Gemini API kalit yo\'q.');
+
   for(var m=0; m<GEMINI_MODELS.length; m++){
     try {
-      var resp = await fetch(geminiUrl(GEMINI_MODELS[m]),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      var resp = await fetch(geminiUrl(GEMINI_MODELS[m], key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       if(resp.ok){
         var data = await resp.json();
         if(data.candidates && data.candidates[0]) return data;
@@ -30,22 +44,27 @@ async function callGemini(body, _retryCount){
       var errBody = await resp.json().catch(function(){return {};});
       var errMsg = errBody.error?.message || ('Status: '+resp.status);
       
-      // 429 = rate limit
+      // 429 = rate limit / quota
       if(resp.status === 429){
-        // Immediately disable auto-translate so it stops burning quota
-        try { localStorage.setItem('_autotr_disabled', '1'); } catch(e){}
-        if(typeof window !== 'undefined') window._autotrQuotaHit = true;
-        // Quota error — don't retry (wastes more)
-        if(errMsg.indexOf('quota') !== -1 || errMsg.indexOf('Quota') !== -1){
-          throw new Error('Gemini kvota tugadi. Sozlamalar dan boshqa API kalit qo\'shing yoki ertaga qayta urining.');
+        var isQuota = errMsg.indexOf('quota') !== -1 || errMsg.indexOf('Quota') !== -1;
+        // Try next API key if quota exhausted
+        if(isQuota && keyIdx + 1 < keys.length){
+          console.warn('Gemini key #'+(keyIdx+1)+' kvota tugadi → key #'+(keyIdx+2)+' ga o\'tilmoqda');
+          toast('🔄 Asosiy kalit kvota tugadi — zaxira kalit ishlatilmoqda','info');
+          return callGemini(body, 0, keyIdx + 1);
         }
-        // Rate limit — short retry
+        if(isQuota){
+          // Disable auto-translate so it stops burning quota
+          try { localStorage.setItem('_autotr_disabled', '1'); } catch(e){}
+          throw new Error('Barcha Gemini kalitlar kvota tugadi. Sozlamalardan yangi kalit qo\'shing yoki ertaga qayta urining.');
+        }
+        // Rate limit (not quota) — short retry
         if(retryCount < maxRetries){
           var waitMatch = errMsg.match(/retry in (\d+)/i);
           var waitSec = waitMatch ? parseInt(waitMatch[1])+3 : 20;
           toast('⏳ Gemini limit — '+waitSec+'s kutilmoqda... ('+(retryCount+1)+'/'+maxRetries+')','info');
           await new Promise(function(r){setTimeout(r, waitSec*1000);});
-          return callGemini(body, retryCount+1);
+          return callGemini(body, retryCount+1, keyIdx);
         }
       }
       console.log('Gemini '+GEMINI_MODELS[m]+' xato:', errMsg);

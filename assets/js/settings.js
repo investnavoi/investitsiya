@@ -19,6 +19,8 @@ function loadSettings(){
   var keys = window._apiKeys||{};
   var gkEl = document.getElementById('set-gemini-key');
   if(gkEl) gkEl.value = keys.gemini||getGeminiKey()||'';
+  var gk2El = document.getElementById('set-gemini-key2');
+  if(gk2El) gk2El.value = keys.gemini2||'';
   var akEl = document.getElementById('set-apollo-key');
   if(akEl) akEl.value = keys.apollo||'';
   var srEl = document.getElementById('set-searates-key');
@@ -56,6 +58,10 @@ function saveSettings(){
   if(geminiVal && typeof saveApiKey==='function'){
     saveApiKey('gemini', geminiVal.trim());
     GEMINI_KEY = geminiVal.trim(); // Update runtime key
+  }
+  var gemini2Val = (document.getElementById('set-gemini-key2')||{}).value||'';
+  if(gemini2Val && typeof saveApiKey==='function'){
+    saveApiKey('gemini2', gemini2Val.trim());
   }
   if(apolloVal && typeof saveApiKey==='function'){
     saveApiKey('apollo', apolloVal.trim());
