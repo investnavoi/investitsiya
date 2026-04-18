@@ -208,8 +208,19 @@
   var _pendingLang = null;
   var _failCount = 0;
   var _disabled = false;
+  var _lastDomHash = '';
+  function quickHash(){
+    // Fast hash of body text length — cheap "did anything change?" check
+    return (document.body && document.body.textContent || '').length + ':' + (window.currentLang || '');
+  }
   async function autoTranslatePage(targetLang){
     if(_disabled){ console.warn('Auto-translate: disabled (too many failures)'); return; }
+    // Skip if DOM hasn't changed since last successful run
+    var h = quickHash();
+    if(h === _lastDomHash && !_running){
+      // Already processed this DOM state — skip silently
+      return;
+    }
     if(!targetLang || targetLang === SOURCE_LANG){
       // Restore originals
       var collected = collectTextNodes(document.body);
@@ -227,16 +238,24 @@
 
       // Apply cache hits immediately, collect misses
       var missing = {};
+      var hitCount = 0;
       allTargets.forEach(function(t){
         if(!t.key) return;
         if(cache[t.key]){
           if(t.kind === 'text') applyCachedToNode(t.node, cache, false);
           else applyCachedToNode(t.target, cache, true);
+          hitCount++;
         } else {
           missing[t.key] = true;
         }
       });
       var missList = Object.keys(missing);
+      if(hitCount && !missList.length){
+        // Everything from cache — no API call needed
+        console.log('🌐 Cache hit: '+hitCount+' element ('+targetLang+', API ishlatilmadi)');
+        _lastDomHash = h;
+        return;
+      }
 
       if(missList.length){
         var batches = buildBatches(missList);
@@ -281,6 +300,8 @@
               if(typeof result[k] === 'string') cache[k] = result[k];
             });
             applyDom();
+            // Persist cache after every batch — survives tab close mid-translate
+            saveCache(targetLang);
           }
         }
         // Pool: keep CONCURRENCY batches running at once
@@ -295,7 +316,10 @@
         for(var w = 0; w < CONCURRENCY; w++) workers.push(worker());
         await Promise.all(workers);
         saveCache(targetLang);
+        _lastDomHash = quickHash();
         console.log('🌐 Auto-translate ('+targetLang+'): '+totalHits+'/'+missList.length+' yangi, jami keshda '+Object.keys(cache).length);
+      } else {
+        _lastDomHash = h;
       }
     } finally {
       _running = false;
