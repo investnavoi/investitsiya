@@ -4,6 +4,57 @@
 var AI_COUNTRY_API_BASE = 'https://navoiy-api-proxy.vercel.app/api';
 var AI_COUNTRY_ANALYSIS_CACHE = {};
 var AI_PRODUCT_TARIFF_CACHE = {};
+var AI_LS_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Hydrate caches from localStorage on load — country/tariff data rarely changes
+(function hydrateAiCachesFromLs(){
+  try {
+    var rawC = localStorage.getItem('_aiCountryCache');
+    if(rawC){
+      var parsed = JSON.parse(rawC);
+      var now = Date.now();
+      Object.keys(parsed || {}).forEach(function(k){
+        var entry = parsed[k];
+        if(entry && entry._ts && (now - entry._ts) < AI_LS_CACHE_TTL_MS){
+          AI_COUNTRY_ANALYSIS_CACHE[k] = entry.data;
+        }
+      });
+    }
+    var rawT = localStorage.getItem('_aiTariffCache');
+    if(rawT){
+      var parsed2 = JSON.parse(rawT);
+      var now2 = Date.now();
+      Object.keys(parsed2 || {}).forEach(function(k){
+        var entry = parsed2[k];
+        if(entry && entry._ts && (now2 - entry._ts) < AI_LS_CACHE_TTL_MS){
+          AI_PRODUCT_TARIFF_CACHE[k] = entry.data;
+        }
+      });
+    }
+    var nC = Object.keys(AI_COUNTRY_ANALYSIS_CACHE).length;
+    var nT = Object.keys(AI_PRODUCT_TARIFF_CACHE).length;
+    if(nC || nT) console.log('🔄 AI cache hydrated: '+nC+' country + '+nT+' tariff entries');
+  } catch(e){ console.warn('AI cache hydrate error:', e); }
+})();
+
+function persistAiCountryCache(){
+  try {
+    var out = {};
+    Object.keys(AI_COUNTRY_ANALYSIS_CACHE).forEach(function(k){
+      out[k] = { _ts: Date.now(), data: AI_COUNTRY_ANALYSIS_CACHE[k] };
+    });
+    localStorage.setItem('_aiCountryCache', JSON.stringify(out));
+  } catch(e){}
+}
+function persistAiTariffCache(){
+  try {
+    var out = {};
+    Object.keys(AI_PRODUCT_TARIFF_CACHE).forEach(function(k){
+      out[k] = { _ts: Date.now(), data: AI_PRODUCT_TARIFF_CACHE[k] };
+    });
+    localStorage.setItem('_aiTariffCache', JSON.stringify(out));
+  } catch(e){}
+}
 
 /* escapeHtmlText moved to utils.js */
 
@@ -90,6 +141,7 @@ async function fetchOfficialAiCountryAnalysis(comp){
   var data = await resp.json().catch(function(){ return {}; });
   if(!resp.ok || data.error) throw new Error(data.error || ('Rasmiy tahlil API xato berdi ('+resp.status+')'));
   AI_COUNTRY_ANALYSIS_CACHE[cacheKey] = data;
+  persistAiCountryCache();
   return data;
 }
 
@@ -106,6 +158,7 @@ async function fetchOfficialAiTariffSummary(comp, analysis){
   if(!resp.ok || data.error) throw new Error(data.error || ('Tarif tahlil API xato berdi (' + resp.status + ')'));
   data.productInfo = productInfo;
   AI_PRODUCT_TARIFF_CACHE[cacheKey] = data;
+  persistAiTariffCache();
   return data;
 }
 
@@ -1557,6 +1610,7 @@ async function generateAiLetterForScope(scope){
       var contact = allContacts[ci];
       // First contact: full pipeline (country analysis + tariff). Subsequent: reuse, only letter regenerated.
       if(ci === 0){
+        // Country first (tariff needs iso3 from it). Cache hit = ~0ms.
         sharedAnalysis = await fetchOfficialAiCountryAnalysis(contact);
         try {
           sharedTariff = await fetchOfficialAiTariffSummary(contact, sharedAnalysis);
