@@ -30,13 +30,23 @@ async function callGemini(body, _retryCount){
       var errBody = await resp.json().catch(function(){return {};});
       var errMsg = errBody.error?.message || ('Status: '+resp.status);
       
-      // 429 = rate limit — wait and retry
-      if(resp.status === 429 && retryCount < maxRetries){
-        var waitMatch = errMsg.match(/retry in (\d+)/i);
-        var waitSec = waitMatch ? parseInt(waitMatch[1])+3 : 20;
-        toast('⏳ Gemini limit — '+waitSec+'s kutilmoqda... ('+(retryCount+1)+'/'+maxRetries+')','info');
-        await new Promise(function(r){setTimeout(r, waitSec*1000);});
-        return callGemini(body, retryCount+1);
+      // 429 = rate limit
+      if(resp.status === 429){
+        // Immediately disable auto-translate so it stops burning quota
+        try { localStorage.setItem('_autotr_disabled', '1'); } catch(e){}
+        if(typeof window !== 'undefined') window._autotrQuotaHit = true;
+        // Quota error — don't retry (wastes more)
+        if(errMsg.indexOf('quota') !== -1 || errMsg.indexOf('Quota') !== -1){
+          throw new Error('Gemini kvota tugadi. Sozlamalar dan boshqa API kalit qo\'shing yoki ertaga qayta urining.');
+        }
+        // Rate limit — short retry
+        if(retryCount < maxRetries){
+          var waitMatch = errMsg.match(/retry in (\d+)/i);
+          var waitSec = waitMatch ? parseInt(waitMatch[1])+3 : 20;
+          toast('⏳ Gemini limit — '+waitSec+'s kutilmoqda... ('+(retryCount+1)+'/'+maxRetries+')','info');
+          await new Promise(function(r){setTimeout(r, waitSec*1000);});
+          return callGemini(body, retryCount+1);
+        }
       }
       console.log('Gemini '+GEMINI_MODELS[m]+' xato:', errMsg);
     } catch(e){ console.log('Gemini '+GEMINI_MODELS[m]+' fetch error:',e); }

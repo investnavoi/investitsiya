@@ -254,6 +254,8 @@
   var _pendingLang = null;
   var _failCount = 0;
   var _disabled = false;
+  // Persist disabled state — don't reset on page reload after quota exhaustion
+  if(localStorage.getItem('_autotr_disabled') === '1') _disabled = true;
   var _lastDomHash = '';
   function quickHash(){
     // Fast hash of body text length — cheap "did anything change?" check
@@ -335,9 +337,10 @@
           }
           if(!hits){
             _failCount++;
-            if(_failCount >= 8){
+            if(_failCount >= 3){
               _disabled = true;
-              console.error('Auto-translate: 8 marta xato — o\'chirildi. enableAutoTranslate()');
+              try { localStorage.setItem('_autotr_disabled', '1'); } catch(e){}
+              console.error('Auto-translate: 3 marta xato — vaqtincha o\'chirildi (Gemini kvota tugagan bo\'lishi mumkin). Console: enableAutoTranslate()');
               return;
             }
           } else {
@@ -424,7 +427,11 @@
   // Expose globals
   window.autoTranslatePage = autoTranslatePage;
   window.scheduleRetranslate = scheduleRetranslate;
-  window.enableAutoTranslate = function(){ _disabled = false; _failCount = 0; console.log('🌐 Auto-translate qayta yoqildi'); };
+  window.enableAutoTranslate = function(){
+    _disabled = false; _failCount = 0;
+    try { localStorage.removeItem('_autotr_disabled'); } catch(e){}
+    console.log('🌐 Auto-translate qayta yoqildi');
+  };
   // Force re-scan and translate everything (manual)
   window.forceTranslateAll = function(){
     _disabled = false; _failCount = 0;
