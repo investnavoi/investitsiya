@@ -2249,6 +2249,11 @@ function loadInvestAiHistory(idx){
   var notice = document.getElementById('materialAiExcelNotice');
   if(outputCard) outputCard.style.display = 'block';
   if(notice) notice.style.display = 'block';
+  // Also reveal inline product panel cards (when loading from products page)
+  var inlineOutputCard = document.getElementById('productRawAiOutputCard');
+  var inlineNotice = document.getElementById('productRawAiExcelNotice');
+  if(inlineOutputCard) inlineOutputCard.style.display = 'block';
+  if(inlineNotice) inlineNotice.style.display = 'block';
   updateInvestAiOutputMeta(item.material, item.savedAt);
   renderInvestAiProgress(3, true);
   toast(investAiT('toastHistory'));
