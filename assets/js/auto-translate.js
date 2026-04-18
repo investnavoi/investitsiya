@@ -134,13 +134,59 @@
 
   function restoreOriginal(node, isAttr){
     if(isAttr){
-      // For attrs we don't keep an original — just leave as-is (next translate call will re-cache)
       return;
     }
     if(node.__origUz != null){
       node.nodeValue = node.__origUz;
     }
   }
+
+  // Reverse-lookup: build map { translatedText -> originalUzbek } from all caches
+  function buildReverseMap(){
+    var rev = {};
+    ['ru','en'].forEach(function(lang){
+      var c = loadCache(lang);
+      Object.keys(c).forEach(function(orig){
+        var trans = c[orig];
+        if(trans && typeof trans === 'string') rev[trans.trim()] = orig;
+      });
+    });
+    return rev;
+  }
+
+  // Restore Uzbek from translated text using cache reverse map
+  function restoreUzbekFromCache(){
+    var rev = buildReverseMap();
+    if(!Object.keys(rev).length) return 0;
+    var collected = collectTextNodes(document.body);
+    var restored = 0;
+    collected.textNodes.forEach(function(n){
+      var v = (n.nodeValue || '').trim();
+      if(!v) return;
+      // Try direct __origUz first (was translated this session)
+      if(n.__origUz != null){
+        n.nodeValue = n.__origUz;
+        restored++;
+        return;
+      }
+      // Otherwise reverse-lookup
+      if(rev[v]){
+        var leading = (n.nodeValue.match(/^\s*/) || [''])[0];
+        var trailing = (n.nodeValue.match(/\s*$/) || [''])[0];
+        n.nodeValue = leading + rev[v] + trailing;
+        restored++;
+      }
+    });
+    // Also handle attributes
+    collected.attrNodes.forEach(function(t){
+      var v = t.value.trim();
+      if(rev[v]){
+        t.el.setAttribute(t.attr, rev[v]);
+      }
+    });
+    return restored;
+  }
+  window.restoreUzbekFromCache = restoreUzbekFromCache;
 
   // Build batches under BATCH_CHARS each
   function buildBatches(items){
