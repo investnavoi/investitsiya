@@ -110,13 +110,14 @@ function focusProductRawAnalysis(section, rawId){
   PRODUCT_AI_STATE.rawId = String(rawId || '');
   PRODUCT_AI_STATE.open = !!rawId;
   var raw = getSelectedProductAiRaw();
-  if(raw) fillInvestAiMaterial(getRawAnalysisMaterialName(raw));
+  if(raw && typeof fillInvestAiMaterial === 'function') fillInvestAiMaterial(getRawAnalysisMaterialName(raw));
   renderInlineProductSection(PRODUCT_ACTIVE_SECTION);
   setTimeout(function(){
     var shell = document.getElementById('productRawAiShell');
-    if(shell) shell.scrollIntoView({behavior:'smooth',block:'nearest'});
-  }, 30);
+    if(shell) shell.scrollIntoView({behavior:'smooth',block:'center'});
+  }, 50);
 }
+window.focusProductRawAnalysis = focusProductRawAnalysis;
 
 function closeProductRawAi(section){
   if(section && normalizeProductSection(section) !== PRODUCT_ACTIVE_SECTION) return;
@@ -157,6 +158,10 @@ function analyzeSelectedProductRaw(){
   _investAiDirectRawId = String(raw.id || '');
   analyzeInvestmentMaterial();
 }
+window.closeProductRawAi = closeProductRawAi;
+window.openProductRawAiPage = openProductRawAiPage;
+window.loadProductRawAiHistory = loadProductRawAiHistory;
+window.analyzeSelectedProductRaw = analyzeSelectedProductRaw;
 
 function renderProductRawAiBlock(section, sectionRaws, sectionProds){
   section = normalizeProductSection(section);
