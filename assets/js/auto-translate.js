@@ -12,7 +12,7 @@
   // Cache key per target lang
   var CACHE_PREFIX = '_autotr_';
   // Max chars per batch (Gemini context limit)
-  var BATCH_CHARS = 3000;
+  var BATCH_CHARS = 1500;
   // Don't translate text shorter than this (1 char usually icons/symbols)
   var MIN_LEN = 2;
   // Cyrillic / Latin letter ratio threshold — only translate if text is mostly letters
@@ -172,11 +172,13 @@
       return {};
     }
     var langName = { ru: 'Russian', en: 'English', uz: 'Uzbek (Latin)' }[targetLang] || targetLang;
-    var prompt = 'Translate the following Uzbek UI strings to ' + langName + '. ' +
-                 'Return ONLY a valid JSON object (no markdown, no explanation) mapping each input string EXACTLY to its translation. ' +
-                 'Preserve emojis, numbers, punctuation, and HTML entities. ' +
-                 'Keep keys identical to inputs.\n\n' +
-                 'Input strings (JSON array):\n' + JSON.stringify(strings);
+    var prompt = 'You are a translator. Translate every Uzbek string in the JSON array below to ' + langName + '. ' +
+                 'Output: ONLY a JSON object where each KEY is exactly the original Uzbek string and VALUE is the translation. ' +
+                 'Include EVERY input string in the output — no exceptions. ' +
+                 'Preserve emojis, numbers, punctuation, dashes (— – -), apostrophes, and HTML entities exactly. ' +
+                 'Do not add any text outside the JSON.\n\n' +
+                 'INPUT (translate all):\n' + JSON.stringify(strings) + '\n\n' +
+                 'OUTPUT (JSON only):';
     var body = {
       contents: [{ role: 'user', parts: [{ text: prompt }] }]
     };
@@ -238,8 +240,11 @@
 
       if(missList.length){
         var batches = buildBatches(missList);
+        console.log('🌐 '+missList.length+' ta yangi matn, '+batches.length+' batch da yuboriladi');
         for(var i = 0; i < batches.length; i++){
           var result = await translateBatch(batches[i], targetLang);
+          var hits = result ? Object.keys(result).length : 0;
+          console.log('🌐 Batch '+(i+1)+'/'+batches.length+': '+hits+'/'+batches[i].length+' tarjima qilindi');
           if(!result || !Object.keys(result).length){
             _failCount++;
             if(_failCount >= 8){
