@@ -315,6 +315,14 @@ function waitForDB(){
         b.classList.remove('active');
         if(b.textContent.trim().toLowerCase() === savedLang) b.classList.add('active');
       });
+      var langLabel = document.getElementById('currentLangLabel');
+      if(langLabel) langLabel.textContent = savedLang.toUpperCase();
+      // Auto-translate after page renders if non-Uzbek
+      if(savedLang !== 'uz' && typeof autoTranslatePage === 'function'){
+        [500, 2000, 5000, 10000].forEach(function(delay){
+          setTimeout(function(){ autoTranslatePage(savedLang); }, delay);
+        });
+      }
     }
     // Restore admin session
     if(localStorage.getItem('_adminLoggedIn')==='1'){
