@@ -3590,8 +3590,14 @@ async function analyzeInvestmentMaterial(){
           var r = await fetch(dUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dBody) });
           if(r.ok){ resp = r; console.log('[analyze-material direct] key#'+(ki+1)+' '+dModel+' OK'); break outer; }
           var eTxt = await r.text();
-          lastDirectErr = { status: r.status, model: dModel, key: ki+1, detail: eTxt };
-          console.warn('[analyze-material direct] key#'+(ki+1)+' '+dModel+' -> '+r.status);
+          var parsedErr = '';
+          try {
+            var errJson = JSON.parse(eTxt);
+            if(Array.isArray(errJson)) errJson = errJson[0];
+            parsedErr = (errJson && errJson.error && errJson.error.message) || eTxt;
+          } catch(_){ parsedErr = eTxt; }
+          lastDirectErr = { status: r.status, model: dModel, key: ki+1, detail: parsedErr };
+          console.warn('[analyze-material direct] key#'+(ki+1)+' '+dModel+' -> '+r.status+' :: '+parsedErr.slice(0,300));
         } catch(e){
           lastDirectErr = { message: e.message, model: dModel, key: ki+1 };
           console.warn('[analyze-material direct] key#'+(ki+1)+' '+dModel+' exception:', e.message);
@@ -3599,7 +3605,8 @@ async function analyzeInvestmentMaterial(){
       }
     }
     if(!resp){
-      throw new Error('Barcha modellar 429 berdi. Tried: ' + directModels.join(', '));
+      var detailMsg = lastDirectErr && lastDirectErr.detail ? lastDirectErr.detail : (lastDirectErr && lastDirectErr.message) || '';
+      throw new Error('Gemini API javobi: ' + detailMsg + '\n\nTried: ' + directModels.join(', '));
     }
 
     var reader = resp.body.getReader();
