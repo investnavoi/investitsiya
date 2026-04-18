@@ -240,35 +240,62 @@
 
       if(missList.length){
         var batches = buildBatches(missList);
-        console.log('🌐 '+missList.length+' ta yangi matn, '+batches.length+' batch da yuboriladi');
-        for(var i = 0; i < batches.length; i++){
-          var result = await translateBatch(batches[i], targetLang);
+        console.log('🌐 '+missList.length+' ta yangi matn, '+batches.length+' batch (3 parallel)');
+        var CONCURRENCY = 3;
+        var done = 0;
+        var totalHits = 0;
+        // Apply DOM updates in throttled chunks (avoid blocking UI)
+        var pendingDomUpdate = false;
+        function applyDom(){
+          if(pendingDomUpdate) return;
+          pendingDomUpdate = true;
+          requestAnimationFrame(function(){
+            pendingDomUpdate = false;
+            allTargets.forEach(function(t){
+              if(t.key && cache[t.key]){
+                if(t.kind === 'text') applyCachedToNode(t.node, cache, false);
+                else applyCachedToNode(t.target, cache, true);
+              }
+            });
+          });
+        }
+        async function runBatch(batchIdx){
+          var batch = batches[batchIdx];
+          var result = await translateBatch(batch, targetLang);
           var hits = result ? Object.keys(result).length : 0;
-          console.log('🌐 Batch '+(i+1)+'/'+batches.length+': '+hits+'/'+batches[i].length+' tarjima qilindi');
-          if(!result || !Object.keys(result).length){
+          done++;
+          totalHits += hits;
+          if(done % 10 === 0 || done === batches.length){
+            console.log('🌐 '+done+'/'+batches.length+' batch tugadi, '+totalHits+' so\'z tarjima qilindi');
+          }
+          if(!hits){
             _failCount++;
             if(_failCount >= 8){
               _disabled = true;
-              console.error('Auto-translate: 8 marta xato — vaqtincha o\'chirildi. Console: enableAutoTranslate() qilib qayta yoqing.');
+              console.error('Auto-translate: 8 marta xato — o\'chirildi. enableAutoTranslate()');
               return;
             }
           } else {
             _failCount = 0;
+            Object.keys(result).forEach(function(k){
+              if(typeof result[k] === 'string') cache[k] = result[k];
+            });
+            applyDom();
           }
-          // Merge into cache
-          Object.keys(result).forEach(function(k){
-            if(typeof result[k] === 'string') cache[k] = result[k];
-          });
-          // Apply to DOM after each batch (progressive)
-          allTargets.forEach(function(t){
-            if(t.key && cache[t.key]){
-              if(t.kind === 'text') applyCachedToNode(t.node, cache, false);
-              else applyCachedToNode(t.target, cache, true);
-            }
-          });
         }
+        // Pool: keep CONCURRENCY batches running at once
+        var nextIdx = 0;
+        async function worker(){
+          while(nextIdx < batches.length && !_disabled){
+            var idx = nextIdx++;
+            await runBatch(idx);
+          }
+        }
+        var workers = [];
+        for(var w = 0; w < CONCURRENCY; w++) workers.push(worker());
+        await Promise.all(workers);
         saveCache(targetLang);
-        console.log('🌐 Auto-translate ('+targetLang+'): '+missList.length+' yangi, jami keshda '+Object.keys(cache).length);
+        console.log('🌐 Auto-translate ('+targetLang+'): '+totalHits+'/'+missList.length+' yangi, jami keshda '+Object.keys(cache).length);
       }
     } finally {
       _running = false;
