@@ -47,7 +47,8 @@ const JS_FILES = [
   'app-init.js',
   'gmail.js',
   'embassy.js',
-  'chatbot.js'
+  'chatbot.js',
+  'sidebar.js'
 ];
 
 async function copyDir(src, dest){

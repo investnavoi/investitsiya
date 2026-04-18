@@ -1,3 +1,18 @@
+// Test Gemini API key on load
+async function testGeminiKey(){
+  var key = getGeminiKey();
+  if(!key){ return false; }
+  try {
+    var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
+    if(r.ok){ console.log('✅ Gemini API key ishlayapti'); return true; }
+    var e = await r.json().catch(function(){return {};});
+    console.error('❌ Gemini API xato:', r.status, e.error?.message||'');
+    if(r.status===403) console.error('👉 API yoqish: https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com');
+    return false;
+  } catch(err){ console.error('Gemini test xato:',err); return false; }
+}
+if(typeof getGeminiKey==='function') testGeminiKey();
+
 var NAVOIY_CONTEXT = `Sen Navoiy viloyati investitsiya bo'limi AI yordamchisisan. Faqat O'zbek tilida javob ber (agar foydalanuvchi boshqa tilda yozsa, o'sha tilda javob ber).
 
 Navoiy viloyati haqida asosiy ma'lumotlar:
