@@ -1363,9 +1363,10 @@ function getAiLangName(lang){
   return {en:'English',ru:'Russian',de:'German',zh:'Chinese',fr:'French',fa:'Persian'}[lang]||'English';
 }
 
-async function buildAiLetterPackage(comp, lang){
+async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff){
   var langName = getAiLangName(lang);
-  var analysis = await fetchOfficialAiCountryAnalysis(comp);
+  // Reuse pre-computed analysis (saves quota when same company has multiple contacts)
+  var analysis = sharedAnalysis || await fetchOfficialAiCountryAnalysis(comp);
   var officialLines = buildOfficialAnalysisLines(analysis);
   if(!officialLines.length) throw new Error('Rasmiy iqtisodiy ko\'rsatkichlar topilmadi');
   var transportSummary = buildAiTransportAnalysis(analysis.country);
@@ -1373,12 +1374,17 @@ async function buildAiLetterPackage(comp, lang){
   var productInfo = getAiCompanyProductInfo(comp);
   var tariffSummary = null;
   var tariffLines = [];
-  try{
-    tariffSummary = await fetchOfficialAiTariffSummary(comp, analysis);
+  if(sharedTariff){
+    tariffSummary = sharedTariff;
     tariffLines = buildAiTariffPromptLines(tariffSummary);
-  }catch(err){
-    console.warn('AI tariff analysis skipped:', err && err.message ? err.message : err);
-    tariffSummary = getAiTariffUnavailableSummary(comp, analysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
+  } else {
+    try{
+      tariffSummary = await fetchOfficialAiTariffSummary(comp, analysis);
+      tariffLines = buildAiTariffPromptLines(tariffSummary);
+    }catch(err){
+      console.warn('AI tariff analysis skipped:', err && err.message ? err.message : err);
+      tariffSummary = getAiTariffUnavailableSummary(comp, analysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
+    }
   }
   var productLabel = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || 'selected product';
   var industryLabel = comp.mahsulotNomi || comp.soha || productLabel || 'Manufacturing';
@@ -1543,11 +1549,25 @@ async function generateAiLetterForScope(scope){
   var lt = toastLoading('⏳ AI xat tayyorlanmoqda: ' + escHtml(comp.kompaniya || '') + ' (' + allContacts.length + ' ta kontakt)...');
 
   try {
-    // Generate letters for all contacts
+    // Generate letters for all contacts — analysis runs ONCE per company (shared across contacts)
     window._aiContactLetters = {};
+    var sharedAnalysis = null;
+    var sharedTariff = null;
     for(var ci=0; ci<allContacts.length; ci++){
       var contact = allContacts[ci];
-      var payload = await buildAiLetterPackage(contact, lang);
+      // First contact: full pipeline (country analysis + tariff). Subsequent: reuse, only letter regenerated.
+      if(ci === 0){
+        sharedAnalysis = await fetchOfficialAiCountryAnalysis(contact);
+        try {
+          sharedTariff = await fetchOfficialAiTariffSummary(contact, sharedAnalysis);
+        } catch(err){
+          console.warn('AI tariff analysis skipped:', err && err.message ? err.message : err);
+          sharedTariff = getAiTariffUnavailableSummary(contact, sharedAnalysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
+        }
+      } else {
+        toast('🔁 ' + (contact.rahbar || 'kontakt') + ': tahlil qayta o\'tkazilmadi, faqat xat yangilanmoqda');
+      }
+      var payload = await buildAiLetterPackage(contact, lang, sharedAnalysis, sharedTariff);
       saveAiLetterPackage(contact, payload);
       window._aiContactLetters[String(contact.id)] = {contact: contact, payload: payload};
     }
