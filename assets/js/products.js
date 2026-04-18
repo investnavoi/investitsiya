@@ -119,6 +119,33 @@ function focusProductRawAnalysis(section, rawId){
 }
 window.focusProductRawAnalysis = focusProductRawAnalysis;
 
+// Lazy-load section videos (large mp4s from GitHub Releases — only fetch when card is visible)
+(function lazyLoadSectionVideos(){
+  function tryAttach(){
+    var videos = document.querySelectorAll('.resurs-slide video[src][preload="none"]');
+    if(!videos.length) return setTimeout(tryAttach, 500);
+    if(!('IntersectionObserver' in window)){
+      // Old browser — load immediately
+      videos.forEach(function(v){ v.preload='auto'; v.play().catch(function(){}); });
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          var v = e.target;
+          v.preload = 'auto';
+          v.load();
+          v.play().catch(function(){});
+          io.unobserve(v);
+        }
+      });
+    }, { rootMargin: '200px' });
+    videos.forEach(function(v){ io.observe(v); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryAttach);
+  else tryAttach();
+})();
+
 function closeProductRawAi(section){
   if(section && normalizeProductSection(section) !== PRODUCT_ACTIVE_SECTION) return;
   PRODUCT_AI_STATE.open = false;

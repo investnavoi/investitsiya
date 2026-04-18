@@ -1735,7 +1735,7 @@ _renderInvestorCompaniesMain = function(){
     var companyRec = recs[0];
     var rowNumber = icStart + groupIdx + 1;
     var countryName = String(companyRec.davlat || companyRec.country || '').trim();
-    var countryLabel = countryName ? getFinderCountryLabel(countryName) : '';
+    var countryLabel = countryName ? (typeof getFinderCountryLabel === 'function' ? getFinderCountryLabel(countryName) : countryName) : '';
     var cityText = String(companyRec.shahar || companyRec.city || '').trim();
     var groupIds = recs.map(function(rec){ return String(rec.id); }).join(',');
     var sohaEditRecord = recs.find(function(rec){
