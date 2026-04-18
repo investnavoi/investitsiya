@@ -1161,7 +1161,7 @@ function refreshFinderResultTabs(){
   var inactiveStyle = 'border-bottom:2px solid transparent;background:transparent;';
   tabsEl.innerHTML = '<div onclick="filterFinderByCountry(\'\')" style="flex:0 0 auto;padding:8px 14px;cursor:pointer;font-size:.7rem;font-weight:700;'+(!activeCountry ? activeStyle : inactiveStyle)+'">📋 Hammasi ('+list.length+')</div>';
   countryNames.forEach(function(cn){
-    tabsEl.innerHTML += '<div onclick="filterFinderByCountry(\''+cn+'\')" style="flex:0 0 auto;padding:8px 14px;cursor:pointer;font-size:.7rem;font-weight:600;'+(activeCountry === cn ? activeStyle : inactiveStyle)+'">'+getFinderCountryFlag(cn)+' '+getFinderCountryLabel(cn)+' ('+countryGroups[cn].length+')</div>';
+    tabsEl.innerHTML += '<div onclick="filterFinderByCountry(\''+cn+'\')" style="flex:0 0 auto;padding:8px 14px;cursor:pointer;font-size:.7rem;font-weight:600;'+(activeCountry === cn ? activeStyle : inactiveStyle)+'">'+(typeof getFinderCountryFlag==='function'?getFinderCountryFlag(cn):'')+' '+(typeof getFinderCountryLabel==='function'?getFinderCountryLabel(cn):cn)+' ('+countryGroups[cn].length+')</div>';
   });
 }
 
@@ -1762,7 +1762,7 @@ _renderInvestorCompaniesMain = function(){
     var locationLine = '';
     if(countryName || cityText){
       locationLine = '<div style="font-size:.66rem;color:#4B5563;margin-top:2px;display:flex;align-items:center;gap:4px">' +
-        (countryName ? getFinderCountryFlag(countryName)+' ' : '') +
+        (countryName && typeof getFinderCountryFlag === 'function' ? getFinderCountryFlag(countryName)+' ' : '') +
         '<span>'+escHtml((countryLabel||countryName)+(cityText?', '+cityText:''))+'</span></div>';
     }
     var companyHtml = '<div onclick="openInvestorDetailModal(\''+companyRec.id+'\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil">' +
