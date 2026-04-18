@@ -13,8 +13,10 @@
   var CACHE_PREFIX = '_autotr_';
   // Max chars per batch (Gemini context limit)
   var BATCH_CHARS = 3000;
-  // Don't translate text shorter than this (1-2 char labels usually icons/symbols)
+  // Don't translate text shorter than this (1 char usually icons/symbols)
   var MIN_LEN = 2;
+  // Cyrillic / Latin letter ratio threshold — only translate if text is mostly letters
+  var LETTER_RATIO_MIN = 0.3;
   // Skip selectors (inside these, don't translate)
   var SKIP_SELECTORS = 'script,style,code,pre,svg,canvas,.apexcharts-canvas,[data-no-translate],[contenteditable="true"]';
   // Skip if attribute present (already handled by data-i18n system)
@@ -53,9 +55,13 @@
     if(!text) return false;
     var t = text.trim();
     if(t.length < MIN_LEN) return false;
-    // Skip pure numbers / dates / currency / emojis-only
+    // Skip pure numbers / dates / currency
     if(/^[\d\s.,:;\/\\\-+()$€₽%]+$/.test(t)) return false;
+    // Skip emoji-only text
     if(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\s]+$/u.test(t)) return false;
+    // Skip if no letters at all (e.g. "12 / 13", "—", "→")
+    var letters = (t.match(/[\p{L}]/gu) || []).length;
+    if(letters === 0) return false;
     return true;
   }
 
@@ -317,6 +323,21 @@
   window.autoTranslatePage = autoTranslatePage;
   window.scheduleRetranslate = scheduleRetranslate;
   window.enableAutoTranslate = function(){ _disabled = false; _failCount = 0; console.log('🌐 Auto-translate qayta yoqildi'); };
+  // Force re-scan and translate everything (manual)
+  window.forceTranslateAll = function(){
+    _disabled = false; _failCount = 0;
+    var lang = window.currentLang;
+    if(lang && lang !== SOURCE_LANG){
+      console.log('🌐 Force translate boshlandi:', lang);
+      autoTranslatePage(lang);
+    }
+  };
+  // Show status
+  window.autoTranslateStatus = function(){
+    var lang = window.currentLang;
+    var cache = lang && lang !== SOURCE_LANG ? loadCache(lang) : {};
+    console.log('🌐 Auto-translate status:', { lang: lang, disabled: _disabled, failCount: _failCount, running: _running, cacheSize: Object.keys(cache).length });
+  };
   window.clearAutoTranslateCache = function(lang){
     if(lang){ memCache[lang] = {}; localStorage.removeItem(CACHE_PREFIX + lang); }
     else { memCache = {}; ['ru','en'].forEach(function(l){ localStorage.removeItem(CACHE_PREFIX + l); }); }

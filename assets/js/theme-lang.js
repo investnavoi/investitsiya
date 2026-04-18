@@ -24,8 +24,11 @@ function setLang(l){
   applyTranslations();
   renderAll();
   renderOverview();
-  // Auto-translate everything else (Gemini-powered, cached)
+  // Auto-translate everything else (Gemini-powered, cached).
+  // Run in waves to catch late-rendered Firebase data, modals, charts.
   if(typeof autoTranslatePage === 'function'){
-    setTimeout(function(){ autoTranslatePage(l); }, 100);
+    [100, 1500, 4000, 8000].forEach(function(delay){
+      setTimeout(function(){ autoTranslatePage(l); }, delay);
+    });
   }
 }
