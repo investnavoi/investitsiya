@@ -3548,7 +3548,10 @@ async function analyzeInvestmentMaterial(){
       body:JSON.stringify({
         materialName: material,
         geminiKey: (typeof getGeminiKey === 'function' ? getGeminiKey() : ''),
-        tradeContext: tradeContext
+        tradeContext: tradeContext,
+        // Prefer Gemma (higher free quota) over Gemini-2.5-flash
+        model: 'gemma-3-27b-it',
+        modelFallbacks: ['gemma-3-12b-it','gemma-3-4b-it','gemini-2.5-flash']
       })
     });
 
