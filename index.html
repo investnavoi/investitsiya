@@ -29,10 +29,10 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <link rel="stylesheet" href="assets/css/custom.min.css">
 <!-- AOS Animation -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
-<!-- jsvectormap for world map -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css">
-<script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/js/jsvectormap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js"></script>
+<!-- jsvectormap for world map (jsdelivr primary, unpkg fallback) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css" onerror="this.onerror=null;this.href='https://unpkg.com/jsvectormap/dist/css/jsvectormap.min.css'">
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/js/jsvectormap.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/jsvectormap/dist/js/jsvectormap.min.js';document.head.appendChild(s)"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/jsvectormap/dist/maps/world.js';document.head.appendChild(s)"></script>
 <link rel="stylesheet" href="assets/css/main.css">
 <script src="assets/js/state.js"></script>
 <script src="assets/js/utils.js"></script>
