@@ -369,9 +369,9 @@ function renderProductRawAiBlock(section, sectionRaws, sectionProds){
     '<div class="prod-ai-shell" id="productRawAiShell">' +
       '<div class="prod-ai-head">' +
         '<div>' +
-          '<div class="prod-ai-eyebrow">AI Invest Lens</div>' +
+          '<div class="prod-ai-eyebrow">Excel hisobot</div>' +
           '<div class="prod-ai-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> '+escapeHtmlText(rawName)+'</div>' +
-          '<div class="prod-ai-sub">'+escapeHtmlText(getProductSectionLabel(section))+' bo\'limidagi ushbu xomashyoga tegishli mahsulotlar, TN VED kodlar va UN Comtrade asosidagi investitsiya tahlili shu yerda ishlaydi.</div>' +
+          '<div class="prod-ai-sub">'+escapeHtmlText(getProductSectionLabel(section))+' bo\'limidagi ushbu xomashyo va undan chiqadigan mahsulotlar bo\'yicha 12 ta davlat bilan UN Comtrade savdo tahlili (Excel formatda yuklab olinadi).</div>' +
           '<div class="prod-ai-pills">' +
             '<span class="prod-ai-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> '+relatedProducts.length+' ta mahsulot</span>' +
             '<span class="prod-ai-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><path d="M4 7h16M4 12h16M4 17h10"/></svg> '+hsCodes.length+' ta HS kod</span>' +
@@ -381,9 +381,6 @@ function renderProductRawAiBlock(section, sectionRaws, sectionProds){
         '</div>' +
         '<div class="prod-ai-actions">' +
           '<button class="btn btn-green btn-sm" onclick="exportRawMaterialReport(\''+section+'\',\''+raw.id+'\')">📊 Excel hisobot (12 davlat)</button>' +
-          '<button class="btn btn-blue btn-sm" id="productRawAiAnalyzeBtn" onclick="analyzeSelectedProductRaw()">🧠 AI tahlil qilish</button>' +
-          '<button class="btn btn-ghost btn-sm" onclick="loadProductRawAiHistory()">🕘 Oxirgi tahlilni ochish</button>' +
-          '<button class="btn btn-ghost btn-sm" onclick="openProductRawAiPage()">↗ To\'liq AI sahifada ochish</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="closeProductRawAi(\''+section+'\')">✕ Yopish</button>' +
         '</div>' +
       '</div>' +
