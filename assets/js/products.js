@@ -203,6 +203,148 @@ window.openProductRawAiPage = openProductRawAiPage;
 window.loadProductRawAiHistory = loadProductRawAiHistory;
 window.analyzeSelectedProductRaw = analyzeSelectedProductRaw;
 
+// ═══ AI'siz Excel hisobot — xomashyo + mahsulotlar × 12 davlat ═══
+async function exportRawMaterialReport(section, rawId){
+  if(typeof XLSX === 'undefined'){ toast('⚠️ Excel kutubxonasi yuklanmagan','error'); return; }
+  var raws = (DB.rawMaterials||[]).filter(function(r){ return String(r.id) === String(rawId); });
+  var raw = raws[0];
+  if(!raw){ toast('⚠️ Xomashyo topilmadi','error'); return; }
+  var products = (DB.products||[]).filter(function(p){ return String(p.raw_id) === String(rawId); });
+  if(!products.length){ toast('⚠️ Bu xomashyoda mahsulot yo\'q','error'); return; }
+
+  var rawName = raw.name_uz || raw.name_en || 'Xomashyo';
+  var loading = toastLoading('📊 '+products.length+' ta mahsulot uchun '+TARGET_COUNTRIES.length+' davlat ma\'lumotlari yuklanmoqda...');
+
+  var year = (DB.settings && DB.settings.tradeYear) || (new Date().getFullYear() - 1);
+  var wb = XLSX.utils.book_new();
+
+  // ===== Sheet 1: Xulosa =====
+  var summaryRows = [
+    ['Xomashyo bo\'yicha hisobot'],
+    [],
+    ['Xomashyo nomi (UZ):', rawName],
+    ['Xomashyo nomi (EN):', raw.name_en || '—'],
+    ['Bo\'lim:', getProductSectionLabel(section)],
+    ['Mahsulotlar soni:', products.length],
+    ['Davlatlar soni:', TARGET_COUNTRIES.length],
+    ['Yil:', year],
+    ['Hisobot sanasi:', new Date().toISOString().slice(0,10)],
+    [],
+    ['Mahsulotlar ro\'yxati:'],
+    ['#', 'Mahsulot (UZ)', 'Mahsulot (EN)', 'HS kod', 'Soha', 'Import ma\'lumoti']
+  ];
+  products.forEach(function(p, i){
+    summaryRows.push([
+      i+1,
+      p.name_uz || '—',
+      p.name_en || '—',
+      p.hs_code || '—',
+      p.main_sector || p.usage || '—',
+      p.import_info || '—'
+    ]);
+  });
+  var ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws1['!cols'] = [{wch:5},{wch:35},{wch:35},{wch:12},{wch:25},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Xulosa');
+
+  // ===== Sheet 2: Davlatlar bo'yicha import (mahsulot × davlat matritsa) =====
+  var matrixHeader = ['#', 'Mahsulot', 'HS kod'].concat(TARGET_COUNTRIES.map(function(c){ return c.flag+' '+c.name; })).concat(['JAMI ($)']);
+  var matrixRows = [matrixHeader];
+
+  var totalProcessed = 0;
+  for(var pi = 0; pi < products.length; pi++){
+    var p = products[pi];
+    var hs = String(p.hs_code || '').trim();
+    if(!hs){
+      var emptyRow = [pi+1, p.name_uz || p.name_en || '—', '—'];
+      for(var ci = 0; ci < TARGET_COUNTRIES.length; ci++) emptyRow.push('');
+      emptyRow.push(0);
+      matrixRows.push(emptyRow);
+      continue;
+    }
+
+    var row = [pi+1, p.name_uz || p.name_en || '—', hs];
+    var rowTotal = 0;
+    var data = null;
+    try {
+      data = await fetchComtrade(hs, year, TARGET_COUNTRIES, 'comtrade');
+    } catch(e){
+      console.warn('fetchComtrade xato:', hs, e.message);
+    }
+
+    TARGET_COUNTRIES.forEach(function(country){
+      var match = data && data.find(function(d){
+        return String(d.country_code || d.code || '').toLowerCase() === country.code.toLowerCase()
+          || String(d.country_name || d.name || '').toLowerCase().indexOf(country.name.toLowerCase()) !== -1;
+      });
+      var val = match ? (match.import_usd || match.value || 0) : 0;
+      rowTotal += val;
+      row.push(val ? Math.round(val) : '');
+    });
+    row.push(Math.round(rowTotal));
+    matrixRows.push(row);
+    totalProcessed++;
+    // Update progress
+    if(totalProcessed % 3 === 0){
+      toastDone(loading, '📊 '+totalProcessed+'/'+products.length+' mahsulot tayyor...', 'loading');
+      loading = document.querySelector('#navNotifWrap > div:last-child');
+    }
+  }
+
+  // Total row
+  var totalRow = ['', 'JAMI', ''];
+  for(var ci = 0; ci < TARGET_COUNTRIES.length; ci++){
+    var sum = 0;
+    for(var ri = 1; ri < matrixRows.length; ri++){
+      var v = matrixRows[ri][3 + ci];
+      if(typeof v === 'number') sum += v;
+    }
+    totalRow.push(sum || '');
+  }
+  var grand = 0;
+  for(var ri = 1; ri < matrixRows.length; ri++){
+    var v = matrixRows[ri][matrixRows[ri].length - 1];
+    if(typeof v === 'number') grand += v;
+  }
+  totalRow.push(grand);
+  matrixRows.push(totalRow);
+
+  var ws2 = XLSX.utils.aoa_to_sheet(matrixRows);
+  var cols2 = [{wch:5},{wch:30},{wch:12}];
+  for(var i = 0; i < TARGET_COUNTRIES.length; i++) cols2.push({wch:14});
+  cols2.push({wch:16});
+  ws2['!cols'] = cols2;
+  XLSX.utils.book_append_sheet(wb, ws2, 'Davlat × Mahsulot');
+
+  // ===== Sheet 3: Davlat bo'yicha jami (top countries) =====
+  var perCountry = TARGET_COUNTRIES.map(function(c, idx){
+    var sum = 0;
+    for(var ri = 1; ri < matrixRows.length - 1; ri++){
+      var v = matrixRows[ri][3 + idx];
+      if(typeof v === 'number') sum += v;
+    }
+    return { name: c.flag + ' ' + c.name, code: c.code, sum: sum };
+  }).sort(function(a,b){ return b.sum - a.sum; });
+
+  var ws3Rows = [
+    ['Davlatlar reytingi (jami import, USD)'],
+    [],
+    ['#', 'Davlat', 'Kod', 'Jami import ($)', 'Ulush (%)']
+  ];
+  var grandSum = perCountry.reduce(function(s,c){ return s + c.sum; }, 0);
+  perCountry.forEach(function(c, i){
+    ws3Rows.push([i+1, c.name, c.code, c.sum ? Math.round(c.sum) : '', grandSum ? ((c.sum/grandSum*100).toFixed(2)+'%') : '']);
+  });
+  var ws3 = XLSX.utils.aoa_to_sheet(ws3Rows);
+  ws3['!cols'] = [{wch:5},{wch:25},{wch:8},{wch:18},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Davlatlar reytingi');
+
+  var fname = 'Xomashyo-'+rawName.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,40)+'-'+year+'.xlsx';
+  XLSX.writeFile(wb, fname);
+  toastDone(loading, '✅ Excel yuklandi: '+fname, 'success');
+}
+window.exportRawMaterialReport = exportRawMaterialReport;
+
 function renderProductRawAiBlock(section, sectionRaws, sectionProds){
   section = normalizeProductSection(section);
   if(!PRODUCT_AI_STATE.open || PRODUCT_AI_STATE.section !== section || !PRODUCT_AI_STATE.rawId) return '';
@@ -238,7 +380,8 @@ function renderProductRawAiBlock(section, sectionRaws, sectionProds){
           '</div>' +
         '</div>' +
         '<div class="prod-ai-actions">' +
-          '<button class="btn btn-blue btn-sm" id="productRawAiAnalyzeBtn" onclick="analyzeSelectedProductRaw()">🧠 Shu xomashyoni tahlil qilish</button>' +
+          '<button class="btn btn-green btn-sm" onclick="exportRawMaterialReport(\''+section+'\',\''+raw.id+'\')">📊 Excel hisobot (12 davlat)</button>' +
+          '<button class="btn btn-blue btn-sm" id="productRawAiAnalyzeBtn" onclick="analyzeSelectedProductRaw()">🧠 AI tahlil qilish</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="loadProductRawAiHistory()">🕘 Oxirgi tahlilni ochish</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="openProductRawAiPage()">↗ To\'liq AI sahifada ochish</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="closeProductRawAi(\''+section+'\')">✕ Yopish</button>' +
