@@ -1,0 +1,14 @@
+{
+  "name": "navoi-investitsiya",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/build-prod.js",
+    "preview": "vite preview --outDir dist"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10",
+    "terser": "^5.36.0"
+  }
+}
