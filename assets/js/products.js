@@ -103,6 +103,13 @@ function findInvestAiHistoryIndexForRaw(raw){
   return -1;
 }
 
+// Mirror hidden section body -> visible expand body (chips/AI panel update)
+function _syncExpandBody(){
+  var srcBody = document.getElementById('productSection'+PRODUCT_ACTIVE_SECTION.charAt(0).toUpperCase()+PRODUCT_ACTIVE_SECTION.slice(1)+'Body');
+  var expandBody = document.getElementById('resursExpandBody');
+  if(srcBody && expandBody) expandBody.innerHTML = srcBody.innerHTML;
+}
+
 function focusProductRawAnalysis(section, rawId){
   PRODUCT_ACTIVE_SECTION = normalizeProductSection(section);
   PRODUCT_SECTION_RAW_FILTER = rawId || '';
@@ -112,12 +119,18 @@ function focusProductRawAnalysis(section, rawId){
   var raw = getSelectedProductAiRaw();
   if(raw && typeof fillInvestAiMaterial === 'function') fillInvestAiMaterial(getRawAnalysisMaterialName(raw));
   renderInlineProductSection(PRODUCT_ACTIVE_SECTION);
+  _syncExpandBody();
   setTimeout(function(){
     var shell = document.getElementById('productRawAiShell');
     if(shell) shell.scrollIntoView({behavior:'smooth',block:'center'});
   }, 50);
 }
 window.focusProductRawAnalysis = focusProductRawAnalysis;
+
+window.filterProductsByRaw = function(rawId){
+  filterProductsByRaw(rawId);
+  _syncExpandBody();
+};
 
 // Lazy-load section videos (large mp4s from GitHub Releases — only fetch when card is visible)
 (function lazyLoadSectionVideos(){
@@ -185,7 +198,7 @@ function analyzeSelectedProductRaw(){
   _investAiDirectRawId = String(raw.id || '');
   analyzeInvestmentMaterial();
 }
-window.closeProductRawAi = closeProductRawAi;
+window.closeProductRawAi = function(section){ closeProductRawAi(section); _syncExpandBody(); };
 window.openProductRawAiPage = openProductRawAiPage;
 window.loadProductRawAiHistory = loadProductRawAiHistory;
 window.analyzeSelectedProductRaw = analyzeSelectedProductRaw;
