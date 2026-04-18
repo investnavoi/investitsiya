@@ -16,7 +16,7 @@
   // Don't translate text shorter than this (1-2 char labels usually icons/symbols)
   var MIN_LEN = 2;
   // Skip selectors (inside these, don't translate)
-  var SKIP_SELECTORS = 'script,style,code,pre,svg,[data-no-translate],[contenteditable="true"]';
+  var SKIP_SELECTORS = 'script,style,code,pre,svg,canvas,.apexcharts-canvas,[data-no-translate],[contenteditable="true"]';
   // Skip if attribute present (already handled by data-i18n system)
   var SKIPPED_ATTR = 'data-i18n';
 
@@ -236,9 +236,9 @@
           var result = await translateBatch(batches[i], targetLang);
           if(!result || !Object.keys(result).length){
             _failCount++;
-            if(_failCount >= 3){
+            if(_failCount >= 8){
               _disabled = true;
-              console.error('Auto-translate: 3 marta xato — o\'chirildi. Console: clearAutoTranslateCache() va sahifani yangilang.');
+              console.error('Auto-translate: 8 marta xato — vaqtincha o\'chirildi. Console: enableAutoTranslate() qilib qayta yoqing.');
               return;
             }
           } else {
@@ -271,33 +271,52 @@
 
   // Debounced re-translate after dynamic content changes
   var _retranslateTimer = null;
-  function scheduleRetranslate(){
+  function scheduleRetranslate(delay){
     if(_retranslateTimer) clearTimeout(_retranslateTimer);
     _retranslateTimer = setTimeout(function(){
       _retranslateTimer = null;
       var lang = window.currentLang;
       if(lang && lang !== SOURCE_LANG) autoTranslatePage(lang);
-    }, 400);
+    }, delay || 1500);
   }
 
-  // DOM watcher disabled — too noisy with ApexCharts/maps/Firestore renders.
-  // Re-translate is triggered manually after page navigation instead.
+  // Smart DOM watcher — long debounce (1.5s), ignore chart/map noise
   function watchDom(){
-    // Hook into showPage if present — translate after page render
+    // Hook into showPage — translate after page render
     if(typeof window.showPage === 'function' && !window._showPageTranslateHooked){
       window._showPageTranslateHooked = true;
       var origShowPage = window.showPage;
       window.showPage = function(){
         var r = origShowPage.apply(this, arguments);
-        scheduleRetranslate();
+        scheduleRetranslate(800);
         return r;
       };
     }
+    // Watch for new TEXT (not chart/map redraws)
+    var observer = new MutationObserver(function(mutations){
+      for(var i = 0; i < mutations.length; i++){
+        var m = mutations[i];
+        if(!m.addedNodes || !m.addedNodes.length) continue;
+        for(var j = 0; j < m.addedNodes.length; j++){
+          var node = m.addedNodes[j];
+          if(node.nodeType !== 1) continue;
+          // Skip if added inside chart/map/svg
+          if(node.closest && node.closest('.apexcharts-canvas, svg, canvas, .jvm-container')) continue;
+          // Skip text-less nodes
+          var text = (node.textContent || '').trim();
+          if(text.length < 3) continue;
+          scheduleRetranslate(1500);
+          return;
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   // Expose globals
   window.autoTranslatePage = autoTranslatePage;
   window.scheduleRetranslate = scheduleRetranslate;
+  window.enableAutoTranslate = function(){ _disabled = false; _failCount = 0; console.log('🌐 Auto-translate qayta yoqildi'); };
   window.clearAutoTranslateCache = function(lang){
     if(lang){ memCache[lang] = {}; localStorage.removeItem(CACHE_PREFIX + lang); }
     else { memCache = {}; ['ru','en'].forEach(function(l){ localStorage.removeItem(CACHE_PREFIX + l); }); }
