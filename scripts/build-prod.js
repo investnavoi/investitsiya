@@ -128,7 +128,10 @@ async function build(){
   html = html.replace('</head>', '<script src="assets/js/bundle.min.js"></script>\n</head>');
   await writeFile(join(DIST, 'index.html'), html);
 
-  // 7. Copy static assets
+  // 7. Copy firebase-init.js (ES module — not bundled, used as-is)
+  await copyFile(join(ROOT, 'assets/js/firebase-init.js'), join(DIST, 'assets/js/firebase-init.js'));
+
+  // 8. Copy static assets
   console.log('📁 Static fayllarni nusxalash...');
   for(const dir of ['maps', 'assets/img']){
     const src = join(ROOT, dir);
