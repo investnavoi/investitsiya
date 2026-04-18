@@ -291,6 +291,11 @@ async function generateEmbassyAiLetter(countryCode, type){
   var btn = document.getElementById('emb-ai-btn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ AI yozmoqda...'; }
   var loadingToast = null;
+  // Wait up to 10 seconds for Firebase to load API keys
+  for(var w=0; w<20; w++){
+    if(typeof getGeminiKey === 'function' && getGeminiKey()) break;
+    await new Promise(function(r){setTimeout(r, 500);});
+  }
   try {
     if(typeof callGemini !== 'function'){ throw new Error('Gemini funksiyasi topilmadi'); }
     if(typeof getGeminiKey === 'function' && !getGeminiKey()){ throw new Error('Gemini API kalit yo\'q. Sozlamalardan qo\'shing.'); }
