@@ -1,6 +1,15 @@
 /* ═══════════════════════════════════════
    UTILS
 ═══════════════════════════════════════ */
+function escapeHtmlText(text){
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function fmtDate(s){
   if(!s) return '—';
   // YYYY-MM-DD → DD.MM.YYYY
