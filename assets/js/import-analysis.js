@@ -3542,31 +3542,64 @@ async function analyzeInvestmentMaterial(){
         throw new Error('Bu xomashyo uchun ma\'lumot topilmadi.');
       }
     }
-    var resp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        materialName: material,
-        geminiKey: (typeof getGeminiKey === 'function' ? getGeminiKey() : ''),
-        geminiKey2: (typeof getGeminiKey2 === 'function' ? getGeminiKey2() : ''),
-        tradeContext: tradeContext,
-        // Aggressive cascade — Gemini 2.0/1.5 have separate (higher) free quotas
-        model: 'gemini-2.5-flash',
-        modelFallbacks: [
-          'gemini-2.5-flash-lite',
-          'gemini-2.0-flash',
-          'gemini-2.0-flash-lite',
-          'gemma-3-27b-it',
-          'gemma-3-12b-it',
-          'gemma-3-4b-it'
-        ]
-      })
-    });
+    // Step 1: get system prompt from proxy (no Gemini call, no quota burn)
+    if(!window._cachedSystemPrompt){
+      var promptResp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ promptOnly: true })
+      });
+      if(!promptResp.ok) throw new Error('System prompt olinmadi: ' + promptResp.status);
+      var promptData = await promptResp.json();
+      window._cachedSystemPrompt = promptData.systemPrompt;
+    }
+    var systemPrompt = window._cachedSystemPrompt;
+    if(!systemPrompt) throw new Error('System prompt bo\'sh');
 
-    if(!resp.ok){
-      var errText = await resp.text();
-      var errMsg = extractInvestAiErrorMessage(resp, errText);
-      throw new Error(errMsg || ('API error ' + resp.status));
+    // Step 2: call Gemini DIRECTLY from browser (same path as AI letter — bypasses Vercel IP rate-limit)
+    var contextText = 'Selected raw material: ' + material + '\n\n' +
+      'Strict instruction:\n' +
+      '- Analyze ONLY the selected raw material.\n' +
+      '- Use ONLY the products listed in the official UN Comtrade context below.\n' +
+      '- Do NOT use any sample Excel/template data.\n' +
+      '- Do NOT add other downstream products unless they are present in the context JSON.\n' +
+      '- If data is missing, say it is missing.\n\n' +
+      'Official UN Comtrade context:\n' + JSON.stringify(tradeContext, null, 2);
+
+    var directKeys = (typeof getAllGeminiKeys === 'function') ? getAllGeminiKeys() : [];
+    if(!directKeys.length) throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalardan kiriting.');
+
+    var directModels = ['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.0-flash','gemini-2.0-flash-lite','gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it'];
+    var resp = null;
+    var lastDirectErr = null;
+    outer:
+    for(var ki=0; ki<directKeys.length; ki++){
+      for(var mi=0; mi<directModels.length; mi++){
+        var dModel = directModels[mi];
+        var isGemma = /^gemma/i.test(dModel);
+        var dBody = isGemma ? {
+          contents: [{ role:'user', parts:[{ text: systemPrompt + '\n\n---\n\n' + contextText }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
+        } : {
+          system_instruction: { parts:[{ text: systemPrompt }] },
+          contents: [{ role:'user', parts:[{ text: contextText }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
+        };
+        var dUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(dModel) + ':streamGenerateContent?alt=sse&key=' + directKeys[ki];
+        try {
+          var r = await fetch(dUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dBody) });
+          if(r.ok){ resp = r; console.log('[analyze-material direct] key#'+(ki+1)+' '+dModel+' OK'); break outer; }
+          var eTxt = await r.text();
+          lastDirectErr = { status: r.status, model: dModel, key: ki+1, detail: eTxt };
+          console.warn('[analyze-material direct] key#'+(ki+1)+' '+dModel+' -> '+r.status);
+        } catch(e){
+          lastDirectErr = { message: e.message, model: dModel, key: ki+1 };
+          console.warn('[analyze-material direct] key#'+(ki+1)+' '+dModel+' exception:', e.message);
+        }
+      }
+    }
+    if(!resp){
+      throw new Error('Barcha modellar 429 berdi. Tried: ' + directModels.join(', '));
     }
 
     var reader = resp.body.getReader();
