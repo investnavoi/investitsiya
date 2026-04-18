@@ -329,6 +329,7 @@ waitForDB();
 <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/js/jsvectormap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js"></script>
 <link rel="stylesheet" href="assets/css/main.css">
+<script src="assets/js/state.js"></script>
 <script src="assets/js/utils.js"></script>
 <script src="assets/js/default-data.js"></script>
 <script src="assets/js/api-config.js"></script>
@@ -3657,19 +3658,7 @@ function applyTranslations(){
 
 /* Default Data + DB init moved to assets/js/default-data.js */
 
-/* ═══════════════════════════════════════
-   STATE
-═══════════════════════════════════════ */
-var currentPage = 'overview';
-var currentLang = 'uz';
-var isAdmin = false;
-var isDark = false;
-let pendingAdminTab = null;
-let deleteTarget = null;
-let emailTarget = null;
-let ijOpen = false;
-const IJ_KEYS = ['prez','pa','vm','komissiya','yuqari'];
-const IJ_COLORS = {prez:'#EF233C',pa:'#7209B7',vm:'#4361EE',komissiya:'#059669',yuqari:'#d97706'};
+/* STATE moved to assets/js/state.js */
 
 /* utils + toast moved to assets/js/utils.js */
 /* Navigation moved to assets/js/navigation.js */
