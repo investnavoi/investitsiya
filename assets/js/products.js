@@ -155,7 +155,7 @@ window.filterProductsByRaw = function(rawId){
     v._lazyAttached = true;
     var realSrc = v.getAttribute('data-src');
     if(!realSrc) return;
-    var key = realSrc.split('/').pop();
+    var key = realSrc.split('/').pop().split('?')[0] + '_v2'; // bumped after compressing videos
     // 1. Show cached poster INSTANTLY if available
     var cachedPoster = getPosterCache(key);
     if(cachedPoster){
