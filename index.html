@@ -1612,6 +1612,14 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
         </div>
       </div>
 
+      <!-- Javob vaqti (davlat mahalliy vaqti bo'yicha) -->
+      <div style="margin-bottom:1rem">
+        <div class="tcard" style="border-radius:14px;">
+          <div class="tc-head" style="padding:.85rem 1.1rem .4rem"><div class="tc-title" style="font-size:.82rem;font-weight:700"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Javob kelgan vaqt (davlat mahalliy vaqti)</div><div style="font-size:.62rem;color:var(--text3);margin-top:2px;margin-left:22px">Kompaniyaning davlati vaqt zonasida javob kelgan soatlar taqsimoti</div></div>
+          <div id="crm-reply-hour-chart" style="padding:.4rem 1rem 1rem;min-height:240px;font-size:.75rem"></div>
+        </div>
+      </div>
+
       <!-- Chart row 3: Latest Activities -->
       <div style="margin-bottom:1rem">
         <div class="tcard" style="border-radius:14px;">
@@ -3326,7 +3334,7 @@ Vercel Environment Variables:<br>
 <script src="assets/js/sidebar.js"></script>
 
 <div class="modal-overlay" id="investorDetailModal" onclick="if(event.target===this)closeInvestorDetailModal()">
-  <div style="width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 24px 80px rgba(15,23,42,.28);border:1px solid rgba(67,97,238,.14)">
+  <div style="width:min(1240px,97vw);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 24px 80px rgba(15,23,42,.28);border:1px solid rgba(67,97,238,.14)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.1rem;border-bottom:1px solid var(--border)">
       <div>
         <div style="font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;color:var(--text)">🏢 Kompaniya haqida batafsil</div>

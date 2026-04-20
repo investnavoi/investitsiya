@@ -1424,6 +1424,218 @@ async function enrichAndReopenPaid(id){
 }
 window.enrichAndReopenPaid = enrichAndReopenPaid;
 
+/* Render AI-extracted website profile section */
+function renderWebsiteAiProfileSection(rec){
+  var profile = rec.websiteAiProfile || null;
+  var ts = rec.websiteAiProfileAt || '';
+  if(!profile){
+    return '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#f0f9ff)">'+
+      '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:.3rem">🌐 Saytdan olingan ma\'lumot</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;padding:.8rem 0">'+
+        '<div style="width:18px;height:18px;border:2px solid rgba(14,165,233,.25);border-top-color:#0EA5E9;border-radius:50%;animation:spin 0.8s linear infinite"></div>'+
+        '<div style="font-size:.74rem;color:var(--text2);line-height:1.5">AI kompaniya saytidan ma\'lumot olmoqda... Bu 10-20 soniya olishi mumkin.</div>'+
+      '</div>'+
+      (rec.website ? '' : '<div style="font-size:.7rem;color:#d97706;margin-top:.4rem;padding:.5rem .7rem;background:rgba(217,119,6,.08);border-radius:8px">⚠️ Kompaniya website\'i kiritilmagan — profil tayyorlash uchun website kerak.</div>')+
+    '</div>';
+  }
+  var row = function(lbl, val){
+    if(!val) return '';
+    return '<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed rgba(15,23,42,.07);font-size:.75rem;line-height:1.5"><b style="color:var(--text3);min-width:110px;font-weight:600">'+escHtml(lbl)+'</b><span style="color:var(--text);flex:1">'+escHtml(val)+'</span></div>';
+  };
+  var bullets = function(lbl, arr){
+    if(!arr || !arr.length) return '';
+    return '<div style="margin-top:.55rem"><div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">'+escHtml(lbl)+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:4px">'+
+        arr.slice(0,12).map(function(x){return '<span style="font-size:.68rem;padding:3px 8px;background:rgba(14,165,233,.09);color:#0369A1;border-radius:999px;border:1px solid rgba(14,165,233,.2)">'+escHtml(x)+'</span>';}).join('')+
+      '</div></div>';
+  };
+  var socials = profile.socialLinks || {};
+  var socialHtml = '';
+  ['linkedin','facebook','twitter','instagram','youtube'].forEach(function(k){
+    if(socials[k]){
+      socialHtml += '<a href="'+tgEscapeAttr(socials[k])+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;padding:4px 10px;background:#fff;border:1px solid var(--border);border-radius:8px;color:#2563EB;text-decoration:none;margin-right:6px;margin-top:4px">'+k.charAt(0).toUpperCase()+k.slice(1)+'</a>';
+    }
+  });
+  var textBlock = function(lbl, val){
+    if(!val) return '';
+    return '<div style="margin-top:.65rem"><div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">'+escHtml(lbl)+'</div>'+
+      '<div style="font-size:.74rem;color:var(--text2);line-height:1.55;padding:.5rem .65rem;background:rgba(14,165,233,.05);border-radius:8px;border-left:2px solid rgba(14,165,233,.35)">'+escHtml(val)+'</div></div>';
+  };
+  var contact = profile.contactInfo || {};
+  var contactLines = [];
+  if(contact.phone) contactLines.push('📞 '+escHtml(contact.phone));
+  if(contact.email) contactLines.push('✉️ '+escHtml(contact.email));
+  if(contact.address) contactLines.push('📍 '+escHtml(contact.address));
+
+  return '<div style="padding:1rem;border:1px solid rgba(14,165,233,.28);border-radius:16px;background:linear-gradient(180deg,#fff,#f0f9ff)">'+
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.55rem">'+
+      '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text)">🌐 Saytdan olingan ma\'lumot</div>'+
+      (ts ? '<div style="font-size:.6rem;color:var(--text3)">'+escHtml(new Date(ts).toLocaleDateString())+'</div>' : '')+
+    '</div>'+
+    (profile.about ? '<div style="font-size:.76rem;color:var(--text2);line-height:1.6;margin-bottom:.7rem;padding:.65rem .8rem;background:rgba(14,165,233,.06);border-radius:10px;border-left:3px solid #0EA5E9">'+escHtml(profile.about)+'</div>' : '')+
+    textBlock('Missiya', profile.mission)+
+    textBlock('Tarix', profile.history)+
+    '<div style="margin-top:.55rem">'+
+      row('Asos yili', profile.founded)+
+      row('Bosh ofis', profile.headquarters)+
+      row('Xodimlar', profile.employeeCount)+
+      row('Yillik daromad', profile.annualRevenue)+
+      row('Soha', profile.industry)+
+      row('Tuzilma', profile.legalForm)+
+      row('Asoschi/CEO', profile.ceo || profile.founder)+
+    '</div>'+
+    bullets('Qo\'shimcha ofislar/zavodlar', profile.offices)+
+    bullets('Qo\'shimcha sohalar', profile.subIndustries)+
+    bullets('Kalit shaxslar', profile.keyPeople)+
+    bullets('Asosiy mahsulotlar', profile.products)+
+    bullets('Xizmatlar', profile.services)+
+    bullets('Mahsulot kategoriyalari', profile.productCategories)+
+    bullets('Mutaxassislik', profile.specializations)+
+    bullets('Maqsadli bozorlar', profile.markets)+
+    bullets('Yirik loyihalar', profile.majorProjects)+
+    bullets('Sertifikatlar', profile.certifications)+
+    bullets('Mukofotlar', profile.awards)+
+    textBlock('Barqarorlik', profile.sustainability)+
+    textBlock('Texnologiya', profile.technology)+
+    bullets('Hamkorlar/mijozlar', profile.partners)+
+    bullets('Tillar', profile.languages)+
+    bullets('Kalit so\'zlar', profile.keywords)+
+    (contactLines.length ? '<div style="margin-top:.6rem;padding:.55rem .7rem;background:rgba(14,165,233,.05);border-radius:8px;font-size:.72rem;color:var(--text2);line-height:1.6">'+contactLines.join('<br>')+'</div>' : '')+
+    (socialHtml ? '<div style="margin-top:.65rem"><div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Ijtimoiy tarmoqlar</div>'+socialHtml+'</div>' : '')+
+    '<div style="margin-top:.7rem;display:flex;gap:6px;flex-wrap:wrap">'+
+      '<button type="button" onclick="enrichFromWebsite(\''+rec.id+'\', true)" style="font-size:.68rem;padding:5px 10px;border-radius:8px;background:rgba(14,165,233,.1);color:#0369A1;border:1px solid rgba(14,165,233,.25);cursor:pointer;font-weight:600">🔄 Qayta yangilash</button>'+
+    '</div>'+
+  '</div>';
+}
+window.renderWebsiteAiProfileSection = renderWebsiteAiProfileSection;
+
+/* Extract company profile from website using Gemini */
+async function enrichFromWebsite(id, force){
+  var rec = (DB.investorCompanies || []).find(function(item){ return String(item.id) === String(id); });
+  if(!rec){ toast('Kompaniya topilmadi','error'); return; }
+  if(!rec.website && !rec.kompaniya){ toast('Kompaniya nomi yoki sayti kiritilmagan','error'); return; }
+  if(rec.websiteAiProfile && !force){
+    toast('ℹ️ AI profil allaqachon mavjud. Qayta yangilash uchun "Qayta yangilash" ni bosing');
+    return;
+  }
+  if(typeof getAllGeminiKeys !== 'function'){ toast('Gemini kalit topilmadi','error'); return; }
+  var keys = getAllGeminiKeys();
+  if(!keys.length){ toast('⚙️ Sozlamalardan Gemini API kalit kiriting','error'); return; }
+
+  var lt = toastLoading('🌐 AI saytdan ma\'lumot olmoqda...');
+
+  try {
+    // Step 1: Fetch actual website text via proxy (about pages, home page, etc.)
+    var websiteText = '';
+    var fetchedPages = [];
+    if(rec.website){
+      try {
+        toast('📡 Sayt matnini yuklanmoqda...');
+        var proxyBase = (typeof AI_TRADE_ANALYZER_API_BASE !== 'undefined') ? AI_TRADE_ANALYZER_API_BASE : 'https://navoiy-api-proxy.vercel.app/api';
+        var fResp = await fetch(proxyBase + '/analyze-material', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ mode: 'fetchWebsite', url: rec.website })
+        });
+        if(fResp.ok){
+          var fData = await fResp.json();
+          websiteText = fData.text || '';
+          fetchedPages = fData.pages || [];
+          if(websiteText){
+            toast('🧠 AI matnni tahlil qilmoqda... ('+Math.round(websiteText.length/1000)+' KB, '+fetchedPages.length+' ta sahifa)');
+            console.log('[enrichFromWebsite] fetched pages:', fetchedPages);
+          } else {
+            toast('⚠️ Sayt yuklanmadi: '+(fData.error || 'noma\'lum'),'info');
+            console.warn('[enrichFromWebsite] fetch failed:', fData.reasons);
+          }
+        } else {
+          var errText = await fResp.text();
+          console.warn('[enrichFromWebsite] proxy error:', fResp.status, errText);
+        }
+      } catch(e){ console.warn('Website fetch failed:', e); }
+    }
+
+    var prompt = 'You are a business intelligence extractor. Analyze the company using (1) the actual website text provided below, and (2) your existing knowledge.\n\n'+
+      'Company name: ' + (rec.kompaniya || '(unknown)') + '\n'+
+      'Website: ' + (rec.website || '(unknown)') + '\n'+
+      'Country: ' + (rec.davlat || '') + '\n'+
+      'City/Address: ' + (rec.manzil || '') + '\n'+
+      'Industry/Product (from our DB): ' + (rec.soha || rec.mahsulotNomi || '') + '\n'+
+      'LinkedIn: ' + (rec.linkedin || '') + '\n\n'+
+      (websiteText
+        ? '=== ACTUAL WEBSITE CONTENT (home + about pages) ===\n' + websiteText + '\n=== END WEBSITE CONTENT ===\n\nUse this website content as PRIMARY source. Augment with your knowledge only where gaps exist.\n\n'
+        : '(website content could not be retrieved — use your knowledge)\n\n') +
+      'Return STRICT JSON (no markdown, no commentary) with these keys (use null if unknown):\n'+
+      '{\n'+
+      '  "about": "4-6 DETAILED sentences describing the company — what they do, their core business, key strengths, unique value (in Uzbek/lotincha)",\n'+
+      '  "mission": "mission statement or core philosophy, 1-2 sentences in Uzbek",\n'+
+      '  "history": "brief history — founding story, key milestones, 2-3 sentences in Uzbek",\n'+
+      '  "founded": "year founded",\n'+
+      '  "headquarters": "full HQ address — city, country",\n'+
+      '  "offices": ["list of additional office/factory locations if any"],\n'+
+      '  "employeeCount": "employee count/range (e.g., \\"50-100 xodim\\")",\n'+
+      '  "annualRevenue": "revenue estimate (e.g., \\"$5-10M\\" or \\"~€20M\\")",\n'+
+      '  "industry": "primary industry/sector in Uzbek",\n'+
+      '  "subIndustries": ["secondary industries/niches"],\n'+
+      '  "legalForm": "LLC, PLC, SPA, GmbH, Lda, etc.",\n'+
+      '  "ceo": "founder or current CEO name",\n'+
+      '  "keyPeople": ["other key executives/managers with titles if mentioned"],\n'+
+      '  "products": ["MAIN products — be specific, extract ALL from website"],\n'+
+      '  "services": ["services offered (if different from products)"],\n'+
+      '  "productCategories": ["broader product families/categories"],\n'+
+      '  "specializations": ["technical specializations, capabilities, expertise areas"],\n'+
+      '  "markets": ["target export markets/countries — extract ALL mentioned"],\n'+
+      '  "majorProjects": ["notable projects, clients, or case studies if mentioned"],\n'+
+      '  "certifications": ["ISO 9001, CE, FSC, etc."],\n'+
+      '  "awards": ["awards, recognitions if any"],\n'+
+      '  "sustainability": "sustainability/environment practices if mentioned",\n'+
+      '  "technology": "technologies, equipment, innovations used",\n'+
+      '  "partners": ["major partners/clients/suppliers if listed"],\n'+
+      '  "languages": ["languages supported by the company"],\n'+
+      '  "keywords": ["8-12 specific business keywords in Uzbek"],\n'+
+      '  "contactInfo": { "phone": "", "email": "", "address": "" },\n'+
+      '  "socialLinks": { "linkedin": "url", "facebook": "url", "instagram": "url", "twitter": "url", "youtube": "url" }\n'+
+      '}\n\n'+
+      'Rules:\n'+
+      '- Output ONLY valid JSON object, no extra text, no markdown code fences\n'+
+      '- Use Uzbek (lotincha) for descriptive text fields (about, mission, history, industry)\n'+
+      '- Extract AS MUCH as possible from website content — be thorough\n'+
+      '- Product lists should be COMPREHENSIVE, not limited to 3-4 items\n'+
+      '- If website content mentions specific numbers, years, project names — include them\n'+
+      '- If truly unknown, use null (don\'t invent)\n'+
+      '- Markets: list specific countries';
+
+    var body = { contents: [{ role:'user', parts:[{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 4096 } };
+    // Use direct Gemini call via callGemini helper (supports cascade)
+    var data = await callGemini(body);
+    var raw = (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || '';
+    if(!raw){ toastDone(lt, '❌ Bo\'sh javob','error'); return; }
+
+    var profile;
+    try { profile = safeParseJSON(raw); }
+    catch(err){ toastDone(lt, '❌ JSON parse xato: '+err.message,'error'); console.warn('Raw:', raw); return; }
+    if(!profile || typeof profile !== 'object'){ toastDone(lt, '❌ Noto\'g\'ri format','error'); return; }
+
+    rec.websiteAiProfile = profile;
+    rec.websiteAiProfileAt = new Date().toISOString();
+    // 1. Save to Firebase (await — must finish before we say "done")
+    if(typeof fbSave === 'function'){
+      try { await fbSave('investorCompanies', rec); }
+      catch(err){ console.warn('Firebase save error:', err); }
+    }
+    // 2. Update localStorage cache so next page reload has new profile (cache-fresh path)
+    if(typeof setLocalCollectionBackup === 'function' && Array.isArray(DB.investorCompanies)){
+      setLocalCollectionBackup('investorCompanies', DB.investorCompanies);
+    }
+    toastDone(lt, '✅ Saytdan AI profil tayyor! (saqlandi)');
+    openInvestorDetailModal(id); // re-render
+  } catch(e){
+    console.error(e);
+    toastDone(lt, '❌ '+(e.message || 'Xato'),'error');
+  }
+}
+window.enrichFromWebsite = enrichFromWebsite;
+
 function openInvestorDetailModal(id){
   _investorDetailId = String(id || '');
   var rec = (DB.investorCompanies || []).find(function(item){ return String(item.id) === _investorDetailId; });
@@ -1437,7 +1649,7 @@ function openInvestorDetailModal(id){
   var sohaValue = getInvestorSohaValue(rec) || '—';
   var linkedinUrl = rec.linkedin ? (String(rec.linkedin).startsWith('http') ? rec.linkedin : 'https://' + String(rec.linkedin).replace(/^\/+/, '')) : '';
   body.innerHTML =
-    '<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(260px,.8fr);gap:1rem;align-items:start">'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.55fr) minmax(320px,.85fr);gap:1rem;align-items:start">'+
       '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#f8fbff)">'+
         '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:.9rem">'+
           renderPersonNameWithPhoto(rec.rahbar, rec.photoUrl || rec.photo_url, rec.lavozim?'<div style="font-size:.72rem;color:var(--text3);margin-top:2px">'+escHtml(rec.lavozim)+'</div>':'', 56)+
@@ -1470,9 +1682,20 @@ function openInvestorDetailModal(id){
           '</div>'+
         '</div>'+
       '</div>'+
+      '<div>'+renderWebsiteAiProfileSection(rec)+'</div>'+
     '</div>';
   modal.classList.add('open');
   modal.style.display = 'flex';
+
+  // Auto-fetch AI profile from website if not already cached (runs once per company)
+  if(!rec.websiteAiProfile && rec.website && !rec._autoFetchingProfile){
+    rec._autoFetchingProfile = true;
+    setTimeout(function(){
+      if(typeof enrichFromWebsite === 'function'){
+        enrichFromWebsite(rec.id).finally(function(){ rec._autoFetchingProfile = false; });
+      }
+    }, 400);
+  }
 }
 window.openInvestorDetailModal = openInvestorDetailModal;
 
@@ -1646,9 +1869,9 @@ _renderInvestorCompaniesMain = function(){
   hasEmail = Object.keys(hasEmailGroups).length;
   const total = allCo.reduce(function(s, r){ return s + (parseFloat(r.summa) || 0); }, 0);
   var groupCount = Object.keys(allGroupMap).length;
-  document.getElementById('ic-k1').textContent = groupCount;
-  document.getElementById('ic-k2').textContent = tayyor;
-  document.getElementById('ic-k3').textContent = emailSent + '/' + hasEmail;
+  document.getElementById('ic-k1').innerHTML = groupCount + ' <span class="kpi-unit">ta</span>';
+  document.getElementById('ic-k2').innerHTML = tayyor + ' <span class="kpi-unit">ta</span>';
+  document.getElementById('ic-k3').innerHTML = emailSent + '/' + hasEmail + ' <span class="kpi-unit">ta</span>';
   const ic4 = document.getElementById('ic-k4'); if(ic4) ic4.textContent = '$' + Math.round(total / 1e6) + 'M';
   document.getElementById('badge-investorco').textContent = groupCount;
 

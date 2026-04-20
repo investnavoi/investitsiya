@@ -901,6 +901,7 @@ function renderCrmDashboard(){
   _renderCrmFunnel(co);
   _renderCrmPositionPie(co);
   _renderCrmContinentBar(co, finder);
+  _renderCrmReplyHourChart(co);
   _renderCrmIndustryBar(co, finder);
   _renderCrmExporterDonut(co);
   _renderCrmLatestActivities(co, inv, zoom);
@@ -1112,6 +1113,120 @@ function _renderCrmContinentBar(co, finder){
       +'</div>'
     +'</div>';
   }).join('');
+}
+
+/* Reply time distribution — in company's LOCAL timezone */
+// Country → UTC offset in hours (covers most common countries)
+var _CRM_TZ_OFFSETS = {
+  'Uzbekistan':5,'UZ':5,'Russia':3,'RU':3,'Kazakhstan':5,'KZ':5,'Kyrgyzstan':6,'Tajikistan':5,'Turkmenistan':5,
+  'United States':-5,'USA':-5,'US':-5,'Canada':-5,'CA':-5,'Mexico':-6,'MX':-6,'Brazil':-3,'BR':-3,'Argentina':-3,'AR':-3,'Chile':-4,'CL':-4,'Colombia':-5,'CO':-5,'Peru':-5,'PE':-5,
+  'United Kingdom':0,'UK':0,'GB':0,'Ireland':0,'IE':0,'Portugal':0,'PT':0,
+  'Germany':1,'DE':1,'France':1,'FR':1,'Italy':1,'IT':1,'Spain':1,'ES':1,'Netherlands':1,'NL':1,'Belgium':1,'BE':1,'Austria':1,'AT':1,'Switzerland':1,'CH':1,'Sweden':1,'SE':1,'Norway':1,'NO':1,'Denmark':1,'DK':1,'Poland':1,'PL':1,'Czech Republic':1,'CZ':1,'Czechia':1,
+  'Finland':2,'FI':2,'Greece':2,'GR':2,'Romania':2,'RO':2,'Egypt':2,'EG':2,'South Africa':2,'ZA':2,'Turkey':3,'TR':3,
+  'UAE':4,'Saudi Arabia':3,'SA':3,'Qatar':3,'QA':3,'Israel':2,'IL':2,'Iran':3.5,'IR':3.5,
+  'Pakistan':5,'PK':5,'India':5.5,'IN':5.5,'Bangladesh':6,'BD':6,
+  'China':8,'CN':8,'Thailand':7,'TH':7,'Vietnam':7,'VN':7,'Indonesia':7,'ID':7,'Malaysia':8,'MY':8,'Singapore':8,'SG':8,'Philippines':8,'PH':8,
+  'Japan':9,'JP':9,'South Korea':9,'KR':9,'Korea':9,
+  'Australia':10,'AU':10,'New Zealand':12,'NZ':12,
+  'Nigeria':1,'NG':1,'Kenya':3,'KE':3,'Morocco':1,'MA':1,'Ghana':0,'GH':0
+};
+function _crmGetCountryOffset(country){
+  if(!country) return null;
+  var raw = String(country).trim();
+  if(_CRM_TZ_OFFSETS[raw] !== undefined) return _CRM_TZ_OFFSETS[raw];
+  // Try case-insensitive match
+  var lc = raw.toLowerCase();
+  var keys = Object.keys(_CRM_TZ_OFFSETS);
+  for(var i=0;i<keys.length;i++){
+    if(keys[i].toLowerCase() === lc) return _CRM_TZ_OFFSETS[keys[i]];
+  }
+  return null;
+}
+function _renderCrmReplyHourChart(co){
+  var el = document.getElementById('crm-reply-hour-chart');
+  if(!el) return;
+  var buckets = new Array(24).fill(0);
+  var matched = 0, noCountry = 0, noReply = 0;
+  co.forEach(function(c){
+    // Only count companies that have replied
+    var replied = c.emailReplied || c.pipelineStage === 'replied' || c.pipelineStage === 'meeting';
+    if(!replied){ noReply++; return; }
+    // Find reply timestamp — check common fields
+    var ts = c.replyAt || c.emailRepliedAt || c.lastReplyAt || c.replyTimestamp || c.repliedAt || null;
+    if(!ts){ noReply++; return; }
+    var country = c.davlat || c.country || '';
+    var offset = _crmGetCountryOffset(country);
+    if(offset === null){ noCountry++; return; }
+    var d = new Date(ts);
+    if(isNaN(d.getTime())){ noReply++; return; }
+    // Get UTC hour, then add country offset
+    var utcHour = d.getUTCHours() + d.getUTCMinutes()/60;
+    var localHour = Math.floor((utcHour + offset + 24) % 24);
+    buckets[localHour]++;
+    matched++;
+  });
+
+  if(matched === 0){
+    el.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:.82rem;padding:2rem 1rem">'
+      + '<div style="font-size:1.8rem;margin-bottom:.5rem">⏰</div>'
+      + '<div style="font-weight:600;color:var(--text2);margin-bottom:.3rem">Javob vaqti ma\'lumoti yo\'q</div>'
+      + '<div style="font-size:.72rem">Kompaniyalardan javob kelganda vaqt avtomatik qayd qilinadi va shu yerda davlat mahalliy vaqti bo\'yicha taqsimot ko\'rsatiladi.</div>'
+      + '</div>';
+    return;
+  }
+
+  // Build bar chart — 24 hours on X
+  var max = Math.max.apply(null, buckets) || 1;
+  var labels = [];
+  for(var h=0;h<24;h++) labels.push(h);
+  var peakHour = buckets.indexOf(max);
+
+  if(typeof ApexCharts !== 'undefined'){
+    apexRender('crm-reply-hour', el, {
+      chart:{type:'bar',height:240,fontFamily:'Inter,sans-serif',toolbar:{show:false},animations:{enabled:true,speed:800},dropShadow:{enabled:true,top:2,left:0,blur:6,color:'#4361EE',opacity:.15}},
+      series:[{name:'Javoblar', data:buckets}],
+      xaxis:{categories:labels.map(function(h){return String(h).padStart(2,'0')+':00';}),labels:{style:{fontSize:'10px'},rotate:0}},
+      yaxis:{labels:{style:{fontSize:'10px'}},decimalsInFloat:0},
+      fill:{
+        type:'gradient',
+        gradient:{shade:'dark',type:'vertical',shadeIntensity:.3,opacityFrom:1,opacityTo:.88,stops:[0,100],colorStops:[
+          {offset:0,color:'#5168ff',opacity:1},
+          {offset:100,color:'#3b4fd9',opacity:.85}
+        ]}
+      },
+      stroke:{show:false},
+      plotOptions:{bar:{borderRadius:6,columnWidth:'62%',distributed:false}},
+      dataLabels:{enabled:false},
+      tooltip:{
+        theme:'light',
+        custom:function(o){
+          var v = o.series[0][o.dataPointIndex];
+          var hr = o.dataPointIndex;
+          return '<div style="padding:8px 12px;font-size:.72rem"><b>'+String(hr).padStart(2,'0')+':00 — '+String((hr+1)%24).padStart(2,'0')+':00</b><br><span style="color:#4361EE;font-weight:700">'+v+'</span> ta javob</div>';
+        }
+      },
+      grid:{borderColor:'rgba(15,23,42,.05)',strokeDashArray:4}
+    });
+  } else {
+    // Fallback without ApexCharts — simple HTML bars
+    el.innerHTML = '<div style="display:flex;align-items:flex-end;gap:2px;height:160px;padding:8px 4px">'
+      + buckets.map(function(v,h){
+          var pct = Math.max(Math.round(v/max*100), v?4:0);
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'
+            + '<div style="width:100%;background:linear-gradient(180deg,#5168ff,#3b4fd9);border-radius:4px 4px 0 0;height:'+pct+'%;min-height:'+(v?3:0)+'px" title="'+String(h).padStart(2,'0')+':00 — '+v+' ta"></div>'
+            + '<div style="font-size:9px;color:var(--text3)">'+String(h).padStart(2,'0')+'</div>'
+            + '</div>';
+        }).join('')
+      + '</div>';
+  }
+
+  // Append summary line
+  var summary = document.createElement('div');
+  summary.style.cssText = 'margin-top:8px;padding:8px 10px;background:linear-gradient(135deg,rgba(70,95,255,.08),rgba(70,95,255,.03));border-radius:8px;font-size:.7rem;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap';
+  summary.innerHTML = '<span>📊 Jami tahlillangan: <b style="color:var(--text)">'+matched+'</b></span>'
+    + '<span>⭐ Eng faol vaqt: <b style="color:#4361EE">'+String(peakHour).padStart(2,'0')+':00</b> (<b>'+max+'</b> ta javob)</span>'
+    + (noCountry ? '<span style="color:var(--text3)">⚠️ '+noCountry+' ta davlat noma\'lum</span>' : '');
+  el.appendChild(summary);
 }
 
 /* Top 10 industries */

@@ -161,14 +161,18 @@ function renderOverviewDonut(vals,labels,colors){
   var el=document.getElementById('ov-donut-chart');
   if(!el)return;
   apexRender('ov-donut', el, {
-    chart:{type:'donut',height:240,fontFamily:'Inter, sans-serif'},
+    chart:{type:'donut',height:240,fontFamily:'Inter, sans-serif',dropShadow:{enabled:true,top:2,left:0,blur:8,color:'#4361EE',opacity:.18}},
     series:vals,
     labels:labels,
     colors:colors,
+    fill:{
+      type:'gradient',
+      gradient:{shade:'dark',type:'diagonal2',shadeIntensity:.35,inverseColors:false,opacityFrom:1,opacityTo:1,stops:[0,100]}
+    },
     plotOptions:{pie:{donut:{size:'65%',labels:{show:true,name:{fontSize:'13px',fontWeight:700},value:{fontSize:'18px',fontWeight:800},total:{show:true,label:'Jami',fontSize:'12px',fontWeight:600,formatter:function(w){return w.globals.seriesTotals.reduce(function(a,b){return a+b},0)}}}}}},
     dataLabels:{enabled:false},
     legend:{position:'bottom',fontSize:'11px',fontWeight:600,labels:{colors:'#8A92A6'},markers:{width:8,height:8,radius:8}},
-    stroke:{width:2,colors:['var(--card, #fff)']},
+    stroke:{width:2,colors:['#fff']},
     tooltip:{theme:'light'}
   });
 }
@@ -260,9 +264,11 @@ function renderInvCharts(inv){
   var el2=document.getElementById('inv-country-donut');
   if(el2&&typeof ApexCharts!=='undefined'&&cLabels.length){
     apexRender('inv-country-donut', el2, {
-      chart:{type:'donut',height:260,fontFamily:'Inter,sans-serif',animations:{enabled:true,speed:1800,easing:'easeinout',dynamicAnimation:{enabled:true,speed:1500}}},
+      chart:{type:'donut',height:260,fontFamily:'Inter,sans-serif',animations:{enabled:true,speed:1800,easing:'easeinout',dynamicAnimation:{enabled:true,speed:1500}},dropShadow:{enabled:true,top:2,left:0,blur:8,color:'#4361EE',opacity:.18}},
       series:cVals,labels:cLabels,
       colors:['#4361EE','#059669','#f97316','#8b5cf6','#ef4444','#06b6d4','#d946ef','#eab308'],
+      fill:{type:'gradient',gradient:{shade:'dark',type:'diagonal2',shadeIntensity:.35,inverseColors:false,opacityFrom:1,opacityTo:1,stops:[0,100]}},
+      stroke:{width:2,colors:['#fff']},
       legend:{position:'bottom',fontSize:'11px'},
       dataLabels:{enabled:false},
       plotOptions:{pie:{donut:{size:'65%',labels:{show:true,total:{show:true,label:'Jami',fontSize:'13px',fontWeight:700}}}}}
@@ -310,12 +316,26 @@ function renderIcCharts(companies){
   var COLORS = ['#4361EE','#059669','#f97316','#8b5cf6','#ef4444','#06b6d4','#d946ef','#eab308'];
   var donutOpts = function(vals, labels, totalLabel){
     return {
-      chart:{type:'donut',height:180,fontFamily:'Inter,sans-serif',animations:{enabled:true,speed:1500}},
+      chart:{type:'donut',height:180,fontFamily:'Inter,sans-serif',animations:{enabled:true,speed:1500},dropShadow:{enabled:true,top:2,left:0,blur:8,color:'#4361EE',opacity:.18}},
       series:vals,labels:labels,
       colors:COLORS,
+      fill:{
+        type:'gradient',
+        gradient:{
+          shade:'dark',
+          type:'diagonal2',
+          shadeIntensity:.35,
+          gradientToColors:['#1e3a8a','#065f46','#c2410c','#6b21a8','#991b1b','#0e7490','#a21caf','#854d0e'],
+          inverseColors:false,
+          opacityFrom:1,
+          opacityTo:1,
+          stops:[0,100]
+        }
+      },
+      stroke:{width:2,colors:['#fff']},
       legend:{position:'right',fontSize:'10px',offsetX:-10,offsetY:0,height:160,itemMargin:{vertical:2}},
       dataLabels:{enabled:false},
-      plotOptions:{pie:{customScale:1,offsetX:-20,donut:{size:'60%',labels:{show:true,total:{show:true,label:totalLabel||'Jami',fontSize:'12px',fontWeight:700},value:{fontSize:'16px',fontWeight:700}}}}}
+      plotOptions:{pie:{customScale:1,offsetX:-20,donut:{size:'62%',labels:{show:true,total:{show:true,label:totalLabel||'Jami',fontSize:'12px',fontWeight:700},value:{fontSize:'16px',fontWeight:700}}}}}
     };
   };
 
@@ -430,9 +450,11 @@ function renderLocCharts(loc){
   var el1=document.getElementById('loc-status-chart');
   if(el1&&typeof ApexCharts!=='undefined'&&sLabels.length){
     apexRender('loc-status', el1, {
-      chart:{type:'donut',height:260,fontFamily:'Inter,sans-serif',animations:{enabled:true,speed:1800,easing:'easeinout',dynamicAnimation:{enabled:true,speed:1500}}},
+      chart:{type:'donut',height:260,fontFamily:'Inter,sans-serif',animations:{enabled:true,speed:1800,easing:'easeinout',dynamicAnimation:{enabled:true,speed:1500}},dropShadow:{enabled:true,top:2,left:0,blur:8,color:'#4361EE',opacity:.18}},
       series:sVals,labels:sLabels,
       colors:['#059669','#f97316','#4361EE','#ef4444','#8b5cf6'],
+      fill:{type:'gradient',gradient:{shade:'dark',type:'diagonal2',shadeIntensity:.35,inverseColors:false,opacityFrom:1,opacityTo:1,stops:[0,100]}},
+      stroke:{width:2,colors:['#fff']},
       legend:{position:'bottom',fontSize:'11px'},
       dataLabels:{enabled:false},
       plotOptions:{pie:{donut:{size:'65%',labels:{show:true,total:{show:true,label:'Jami',fontSize:'13px',fontWeight:700}}}}}

@@ -390,7 +390,7 @@ function updateRepliesKpi(){
   const unread = _notifications.filter(x=>x.unread).length;
   const el = document.getElementById('ic-k5');
   const badge = document.getElementById('ic-k5-new');
-  if(el) el.textContent = n;
+  if(el) el.innerHTML = n + ' <span class="kpi-unit">ta</span>';
   if(badge) badge.style.display = unread > 0 ? 'block' : 'none';
 }
 
