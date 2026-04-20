@@ -676,45 +676,57 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     taCountries = targetCodes.slice();
   }
 
-  // Shipments/count — ishlaydigan /shipments/search bilan bir xil payload (firms/count buyruqi ishlamayotgan bo'lishi mumkin)
-  var shipmentsPayload = {
-    countries: targetCodes.slice(0, 5),
-    flowType: 'IMPORT',
-    firmFilter: [1, 2],
-    parameters: [{ HS_CODE: hsCode }]
-  };
-  // Firms/count — ishlaydigan /firms/search bilan bir xil
-  var firmsPayload = {
-    countries: taCountries.slice(0, 5),
-    firmType: taFirmType,
-    flowType: taFlowType,
-    firmFilter: [1, 2],
-    parameters: [{ HS_CODE: hsCode }]
-  };
-  if(sourceCodes.length === 1){
-    shipmentsPayload.parameters.push({ EXPORTER_COUNTRY_CODE: sourceCodes[0] });
+  // 5 talik chunk'larga bolamiz — TradeAtlas API cheklovi
+  function _chunk5(arr){
+    var out = [];
+    for(var i = 0; i < arr.length; i += 5) out.push(arr.slice(i, i + 5));
+    if(!out.length) out = [[]];
+    return out;
   }
-  // Yil filtrini ikkalasiga ham qoshamiz
-  if(dateRange && dateRange.startDate){
-    shipmentsPayload.startDate = dateRange.startDate;
-    firmsPayload.startDate = dateRange.startDate;
+  var shipmentChunks = _chunk5(targetCodes);
+  var firmChunks = _chunk5(taCountries);
+
+  function _buildShipmentPayload(chunk){
+    var p = { countries: chunk, flowType: 'IMPORT', firmFilter: [1,2], parameters: [{ HS_CODE: hsCode }] };
+    if(sourceCodes.length === 1) p.parameters.push({ EXPORTER_COUNTRY_CODE: sourceCodes[0] });
+    if(dateRange && dateRange.startDate) p.startDate = dateRange.startDate;
+    if(dateRange && dateRange.endDate) p.endDate = dateRange.endDate;
+    return p;
   }
-  if(dateRange && dateRange.endDate){
-    shipmentsPayload.endDate = dateRange.endDate;
-    firmsPayload.endDate = dateRange.endDate;
+  function _buildFirmPayload(chunk){
+    var p = { countries: chunk, firmType: taFirmType, flowType: taFlowType, firmFilter: [1,2], parameters: [{ HS_CODE: hsCode }] };
+    if(dateRange && dateRange.startDate) p.startDate = dateRange.startDate;
+    if(dateRange && dateRange.endDate) p.endDate = dateRange.endDate;
+    return p;
   }
 
-  var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit)...');
+  var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit, '+(shipmentChunks.length+firmChunks.length)+' chunk)...');
   var firmsCount = null, shipmentsCount = null, errMsg = '';
   try {
-    var results = await Promise.allSettled([
-      fetchTradeAtlasCount('firms/count', firmsPayload),
-      fetchTradeAtlasCount('shipments/count', shipmentsPayload)
-    ]);
-    if(results[0].status === 'fulfilled') firmsCount = _extractCountNumber(results[0].value);
-    if(results[1].status === 'fulfilled') shipmentsCount = _extractCountNumber(results[1].value);
+    var shipmentPromises = shipmentChunks.map(function(ch){ return fetchTradeAtlasCount('shipments/count', _buildShipmentPayload(ch)); });
+    var firmPromises = firmChunks.map(function(ch){ return fetchTradeAtlasCount('firms/count', _buildFirmPayload(ch)); });
+    var all = await Promise.allSettled([].concat(firmPromises, shipmentPromises));
+    var firmResults = all.slice(0, firmPromises.length);
+    var shipmentResults = all.slice(firmPromises.length);
+    var firmSum = 0, firmAny = false;
+    firmResults.forEach(function(r){
+      if(r.status === 'fulfilled'){
+        var n = _extractCountNumber(r.value);
+        if(n != null){ firmSum += Number(n) || 0; firmAny = true; }
+      }
+    });
+    var shipSum = 0, shipAny = false;
+    shipmentResults.forEach(function(r){
+      if(r.status === 'fulfilled'){
+        var n = _extractCountNumber(r.value);
+        if(n != null){ shipSum += Number(n) || 0; shipAny = true; }
+      }
+    });
+    if(firmAny) firmsCount = firmSum;
+    if(shipAny) shipmentsCount = shipSum;
     if(firmsCount == null && shipmentsCount == null){
-      errMsg = (results[0].reason && results[0].reason.message) || (results[1].reason && results[1].reason.message) || 'Count endpointi javob qaytarmadi';
+      var firstErr = all.find(function(r){ return r.status === 'rejected'; });
+      errMsg = (firstErr && firstErr.reason && firstErr.reason.message) || 'Count endpointi javob qaytarmadi';
     }
   } catch(e){ errMsg = e.message; }
   if(loading && loading.parentNode){ clearTimeout(loading._toastTimer); loading.remove(); }
