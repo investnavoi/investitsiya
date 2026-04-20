@@ -1005,15 +1005,16 @@ function renderFinderContactCard(contact){
   extras += finderContactHasEmail(contact)
     ? '<div style="font-size:.6rem;color:#0ea5e9;margin-top:2px">'+escHtml(contact.email)+'</div>'
     : '<div style="font-size:.58rem;color:var(--text3)">— Email yo\'q</div>';
-  extras += finderContactHasPhone(contact)
-    ? '<div style="font-size:.58rem;color:#059669;margin-top:2px">'+escHtml(contact.telefon)+'</div>'
-    : '<div style="font-size:.58rem;color:var(--text3)">— Tel yo\'q</div>';
+  if(finderContactHasPhone(contact)){
+    extras += '<div style="font-size:.58rem;color:#059669;margin-top:2px">'+escHtml(contact.telefon)+'</div>';
+  }
   return renderPersonNameWithPhoto(contact.name, contact.photoUrl, extras, 28);
 }
 
 function renderFinderContactsHtml(contacts){
   var list = Array.isArray(contacts) ? contacts.filter(finderContactIsQualified) : [];
-  if(!finderHasMinimumContactSet(list)){
+  // Email alone is enough — don't require phone or 2 contacts
+  if(!list.length){
     return '<span style="color:var(--text3)">—</span>';
   }
   return '<div style="display:flex;flex-direction:column;gap:8px">' + list.map(function(contact){
