@@ -115,6 +115,28 @@ function toastDone(loadingToast, msg, type){
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+/* Format large numbers into human-readable ($127M, €5.2M) */
+function formatRevenue(val){
+  if(val === null || val === undefined || val === '') return '—';
+  var s = String(val).trim();
+  if(!s || s === '—' || s === '-') return '—';
+  // Already formatted with letter (M/K/B) or currency text — pass through
+  if(/[MKBmkb]\b|million|thousand|billion/i.test(s)) return s;
+  var raw = s.replace(/[^\d.\-]/g,'');
+  var n = parseFloat(raw);
+  if(!isFinite(n) || n === 0) return s;
+  var curMatch = s.match(/[\$€£¥₽]|USD|EUR|GBP|UZS|RUB/i);
+  var cur = curMatch ? curMatch[0] : '$';
+  var abs = Math.abs(n);
+  var out;
+  if(abs >= 1e9) out = (n/1e9).toFixed(n >= 10e9 ? 0 : 1).replace(/\.0$/,'')+'B';
+  else if(abs >= 1e6) out = (n/1e6).toFixed(n >= 10e6 ? 0 : 1).replace(/\.0$/,'')+'M';
+  else if(abs >= 1e3) out = (n/1e3).toFixed(n >= 10e3 ? 0 : 1).replace(/\.0$/,'')+'K';
+  else out = String(n);
+  return cur + out;
+}
+window.formatRevenue = formatRevenue;
+
 // Attribute escape — used by forum-detail / products / many renderers (must load before defer scripts)
 function tgEscapeAttr(value){
   return String(value||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
