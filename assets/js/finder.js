@@ -1963,8 +1963,18 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
   }).sort(function(a,b){
     return getFinderRenderableContacts(b).length - getFinderRenderableContacts(a).length || (Number(b.score || 0) - Number(a.score || 0));
   });
-  var strong = unique.filter(function(item){ return apolloHasMinimumContactCoverage(item); });
-  return (strong.length ? strong : unique).slice(0, Math.min(2, perCountry || 2));
+  // Faqat email'i bor kompaniyalar — email leadda bo'lishi shart
+  var withEmail = unique.filter(function(item){ return apolloCountEmailContacts(item) >= 1; });
+  if(!withEmail.length) return [];
+  // Email kontaktini birinchi o'ringa (leadga) qo'yamiz
+  withEmail.forEach(function(item){
+    var candidates = Array.isArray(item._contactCandidates) ? item._contactCandidates : [];
+    var emailFirst = candidates.filter(finderContactHasEmail);
+    var rest = candidates.filter(function(c){ return !finderContactHasEmail(c); });
+    item._contactCandidates = emailFirst.concat(rest);
+    apolloApplyCompanyContacts(item);
+  });
+  return withEmail.slice(0, Math.min(2, perCountry || 2));
 }
 
 function finderCountryMatchesRecord(record, country){
@@ -2955,12 +2965,55 @@ async function runCompanyFinder(source){
       top100Results.sort(function(a,b){ return (b.score||0)-(a.score||0) || (b.xodimlar||0)-(a.xodimlar||0); });
       top100Results = top100Results.slice(0, TOP100_CAP);
 
+      // Har bir Top kompaniya uchun email'i bor kontakt qidirish
+      document.getElementById('finderProgressText').textContent = '📧 Top kompaniyalar uchun email qidirilmoqda...';
+      for(var tpi = 0; tpi < top100Results.length; tpi++){
+        var tpItem = top100Results[tpi];
+        if(!tpItem._orgId) continue;
+        try {
+          var peopleReq = {
+            search_type: 'people',
+            page: 1,
+            per_page: 5,
+            api_key: getApolloApiKey(),
+            organization_ids: [tpItem._orgId],
+            person_titles: ['CEO','Founder','Owner','President','Director','Sales Manager','Export Manager','Procurement Manager']
+          };
+          var peopleData = await apolloRequestJson(peopleReq);
+          var persons = normalizeApolloArray(peopleData, ['people','contacts']);
+          var emailContacts = [];
+          persons.forEach(function(person){
+            var c = apolloPersonToContact(person, person.organization || {});
+            if(c && finderContactHasEmail(c)) emailContacts.push(c);
+          });
+          if(emailContacts.length){
+            tpItem._contactCandidates = emailContacts.concat(persons.map(function(p){
+              return apolloPersonToContact(p, p.organization || {});
+            }).filter(function(c){ return c && !finderContactHasEmail(c); }));
+            apolloApplyCompanyContacts(tpItem);
+            var lead = tpItem.contacts && tpItem.contacts[0];
+            if(lead){
+              tpItem.rahbar = lead.name || lead.ism || tpItem.rahbar;
+              tpItem.lavozim = lead.lavozim || tpItem.lavozim;
+              tpItem.email = lead.email || tpItem.email;
+              tpItem.telefon = lead.telefon || tpItem.telefon;
+            }
+          }
+        } catch(emailErr){
+          console.log('Top email fetch error for '+tpItem.kompaniya+':', emailErr && emailErr.message);
+        }
+      }
+      // Faqat email'i bor kompaniyalar qoldiriladi
+      top100Results = top100Results.filter(function(item){
+        return String(item.email || '').trim() || apolloCountEmailContacts(item) >= 1;
+      });
+
       // Add rank
       top100Results.forEach(function(item, idx){ item.top100Rank = idx + 1; });
 
       _finderResults = top100Results;
       if(!_finderResults.length){
-        throw new Error('Apollo Top '+TOP100_CAP+' qidiruvi natija qaytarmadi.' + (top100Errors.length ? ' Xatolar: '+top100Errors.slice(0,3).join(' | ') : ''));
+        throw new Error('Apollo Top '+TOP100_CAP+' qidiruvi email\'i bor kompaniya topa olmadi.' + (top100Errors.length ? ' Xatolar: '+top100Errors.slice(0,3).join(' | ') : ''));
       }
     } else if(source==='apollo'){
       // Apollo proxy — organization search first, then people fallback
