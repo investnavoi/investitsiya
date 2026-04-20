@@ -616,6 +616,125 @@ function mapTradeAtlasFirmToFinderResult(firm, meta, prod){
   };
 }
 
+async function fetchTradeAtlasUsage(){
+  var resp = await fetch(TRADEATLAS_PROXY, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ mode: 'usage', endpoint: 'statistics/usage' })
+  });
+  var data = {};
+  try { data = await resp.json(); } catch(_e){}
+  if(!resp.ok){
+    throw new Error((data && data.error) || ('TradeAtlas error ' + resp.status));
+  }
+  return data || {};
+}
+
+function _parseTradeAtlasUsage(data){
+  // Try common shapes — proxy may forward raw /statistics/usage response
+  if(!data) return null;
+  var out = { limit: null, used: null, remaining: null, raw: data };
+  var root = data.usage || data.data || data;
+  if(typeof root === 'object'){
+    // Look for numeric fields in any nested structure
+    var searchKeys = ['remaining','limit','used','quota','total','count','downloadLimit','downloadUsed','downloadRemaining'];
+    function walk(obj){
+      if(!obj || typeof obj !== 'object') return;
+      Object.keys(obj).forEach(function(k){
+        var v = obj[k];
+        var kl = k.toLowerCase();
+        if(typeof v === 'number'){
+          if(kl.indexOf('remain') !== -1 && out.remaining == null) out.remaining = v;
+          else if(kl === 'limit' || kl.indexOf('limit') !== -1) { if(out.limit == null) out.limit = v; }
+          else if(kl.indexOf('used') !== -1 && out.used == null) out.used = v;
+        } else if(typeof v === 'object'){ walk(v); }
+      });
+    }
+    walk(root);
+  }
+  if(out.remaining == null && typeof out.limit === 'number' && typeof out.used === 'number'){
+    out.remaining = out.limit - out.used;
+  }
+  return out;
+}
+
+async function showTradeAtlasUsageDialog(){
+  var loading = toastLoading('⏳ TradeAtlas kredit holati tekshirilmoqda...');
+  var usage = null, errMsg = '';
+  try {
+    var raw = await fetchTradeAtlasUsage();
+    usage = _parseTradeAtlasUsage(raw);
+  } catch(e){
+    errMsg = (e && e.message) || 'Noma\'lum xato';
+  }
+  if(loading && loading.parentNode){ clearTimeout(loading._toastTimer); loading.remove(); }
+
+  var bodyHtml;
+  if(usage && (usage.remaining != null || usage.limit != null || usage.used != null)){
+    var remTxt = usage.remaining != null ? Number(usage.remaining).toLocaleString() : '—';
+    var limTxt = usage.limit != null ? Number(usage.limit).toLocaleString() : '—';
+    var usedTxt = usage.used != null ? Number(usage.used).toLocaleString() : '—';
+    var pct = (usage.limit && usage.used != null) ? Math.min(100, Math.round(usage.used/usage.limit*100)) : 0;
+    bodyHtml =
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-bottom:1rem">'+
+        '<div style="padding:.85rem;border-radius:12px;background:linear-gradient(135deg,rgba(5,150,105,.12),rgba(6,214,160,.08));border:1px solid rgba(5,150,105,.25)"><div style="font-size:.6rem;color:#065F46;font-weight:700;letter-spacing:.04em">QOLDI</div><div style="font-size:1.3rem;font-weight:800;color:#059669;margin-top:2px">'+remTxt+'</div></div>'+
+        '<div style="padding:.85rem;border-radius:12px;background:rgba(67,97,238,.08);border:1px solid rgba(67,97,238,.2)"><div style="font-size:.6rem;color:#1E3A8A;font-weight:700;letter-spacing:.04em">SARFLANDI</div><div style="font-size:1.3rem;font-weight:800;color:#4361EE;margin-top:2px">'+usedTxt+'</div></div>'+
+        '<div style="padding:.85rem;border-radius:12px;background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.25)"><div style="font-size:.6rem;color:#475569;font-weight:700;letter-spacing:.04em">JAMI LIMIT</div><div style="font-size:1.3rem;font-weight:800;color:#334155;margin-top:2px">'+limTxt+'</div></div>'+
+      '</div>'+
+      (usage.limit ? ('<div style="height:8px;border-radius:999px;background:rgba(148,163,184,.15);overflow:hidden;margin-bottom:1rem"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#059669,#06D6A0)"></div></div>') : '');
+  } else {
+    bodyHtml = '<div style="padding:1rem;border-radius:10px;background:rgba(239,35,60,.08);border:1px solid rgba(239,35,60,.25);color:#991B1B;font-size:.78rem">⚠️ Kredit ma\'lumotlari olinmadi.<br><span style="color:#475569">'+escHtml(errMsg || 'Proxy endpointi statistics/usage ni qo\'llab-quvvatlamaydi.')+'</span></div>';
+  }
+
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:16px;padding:1.6rem;max-width:460px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)';
+  box.innerHTML =
+    '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.1rem"><div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0F766E,#059669);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M2 12h20M12 2c2.5 2.8 4 6.2 4 10s-1.5 7.2-4 10c-2.5-2.8-4-6.2-4-10s1.5-7.2 4-10z" stroke="currentColor" stroke-width="1.8"/></svg></div><div><h3 style="margin:0;font-size:1.05rem;color:#1a1a2e">TradeAtlas kredit holati</h3><div style="font-size:.7rem;color:#64748B">GET /statistics/usage</div></div></div>'+
+    bodyHtml+
+    '<div style="display:flex;justify-content:flex-end"><button id="taUsageClose" style="padding:.55rem 1.3rem;border-radius:10px;border:none;background:linear-gradient(135deg,#0F766E,#059669);color:#fff;font-weight:600;cursor:pointer;font-size:.82rem">Yopish</button></div>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  var close = function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); };
+  document.getElementById('taUsageClose').onclick = close;
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) close(); });
+
+  if(usage && usage.remaining != null){
+    try { localStorage.setItem('tradeAtlasCreditsRemaining', String(usage.remaining)); } catch(_e){}
+    _updateTradeAtlasCreditBadge(usage.remaining);
+  }
+}
+
+function _updateTradeAtlasCreditBadge(remaining){
+  var btns = document.querySelectorAll('button[onclick*="runCompanyFinder(\'tradeatlas\')"]');
+  btns.forEach(function(btn){
+    var badge = btn.querySelector('.ta-credit-badge');
+    if(!badge){
+      badge = document.createElement('span');
+      badge.className = 'ta-credit-badge';
+      badge.style.cssText = 'margin-left:6px;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.22);font-size:.62rem;font-weight:700;letter-spacing:.02em';
+      btn.appendChild(badge);
+    }
+    var num = Number(remaining);
+    var label = num >= 1000 ? (num/1000).toFixed(num>=10000?0:1).replace(/\.0$/,'')+'K' : String(num);
+    badge.textContent = label;
+  });
+}
+
+(function _initTradeAtlasCreditBadge(){
+  try {
+    var cached = localStorage.getItem('tradeAtlasCreditsRemaining');
+    if(cached) _updateTradeAtlasCreditBadge(cached);
+  } catch(_e){}
+  document.addEventListener('DOMContentLoaded', function(){
+    try {
+      var cached = localStorage.getItem('tradeAtlasCreditsRemaining');
+      if(cached) _updateTradeAtlasCreditBadge(cached);
+    } catch(_e){}
+  });
+})();
+
 async function tradeAtlasRequestJson(payload){
   var resp = await fetch(TRADEATLAS_PROXY, {
     method: 'POST',
@@ -2362,7 +2481,11 @@ async function runCompanyFinder(source){
   updateFinderModeUI();
   var sel = document.getElementById('finder-product-select');
   var prodId = sel.value;
-  if(!prodId){ toast('⚠️ Mahsulot tanlang','error'); return; }
+  if(!prodId){
+    if(source === 'tradeatlas'){ showTradeAtlasUsageDialog(); return; }
+    toast('⚠️ Mahsulot tanlang','error');
+    return;
+  }
   var prod = (DB.products||[]).find(function(p){return p.id==prodId;});
   if(!prod) return;
   var meta = getFinderModeMeta((document.getElementById('finder-mode')||{}).value || 'importers');
