@@ -939,30 +939,41 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
   var dateRange = getImportAnalysisDateRange();
 
   var found = [];
-  // Legacy firms shape — proxy shuni /firms/search ga yuboradi (hasTargetShape=false)
-  for(var page = 1; page <= 20; page++){
-    var payload = {
-      countries: taCountries.slice(0, 5),
-      hsCode: hsCode,
-      mode: meta.mode,
-      page: page,
-      firmType: taFirmType,
-      flowType: (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT',
-      firmFilter: [1, 2],
-      parameters: [{ HS_CODE: hsCode }]
-    };
-    if(dateRange && dateRange.startDate) payload.startDate = dateRange.startDate;
-    if(dateRange && dateRange.endDate) payload.endDate = dateRange.endDate;
-    var data = await tradeAtlasRequestJson(payload);
-    var firms = tradeAtlasNormalizeArray(data);
-    if(!firms.length) break;
-    firms.forEach(function(firm){
-      var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
-      if(!item || !String(item.kompaniya || '').trim()) return;
-      apolloUpsertFinderItem(found, item, meta);
-    });
-    // /firms/search page limit is 1-20 and typically 50-100 per page; break on short page
-    if(firms.length < 50) break;
+  // TradeAtlas cheklovi: countries max 5 ta — 5 talik chunk'larga bolamiz
+  var chunks = [];
+  for(var i = 0; i < taCountries.length; i += 5){
+    chunks.push(taCountries.slice(i, i + 5));
+  }
+  if(!chunks.length) chunks = [[]];
+
+  for(var ch = 0; ch < chunks.length; ch++){
+    var chunkCountries = chunks[ch];
+    // Legacy firms shape — proxy shuni /firms/search ga yuboradi (hasTargetShape=false)
+    for(var page = 1; page <= 20; page++){
+      var payload = {
+        countries: chunkCountries,
+        hsCode: hsCode,
+        mode: meta.mode,
+        page: page,
+        firmType: taFirmType,
+        flowType: (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT',
+        firmFilter: [1, 2],
+        parameters: [{ HS_CODE: hsCode }]
+      };
+      if(dateRange && dateRange.startDate) payload.startDate = dateRange.startDate;
+      if(dateRange && dateRange.endDate) payload.endDate = dateRange.endDate;
+      var data = await tradeAtlasRequestJson(payload);
+      var firms = tradeAtlasNormalizeArray(data);
+      if(!firms.length) break;
+      var beforeCount = found.length;
+      firms.forEach(function(firm){
+        var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
+        if(!item || !String(item.kompaniya || '').trim()) return;
+        apolloUpsertFinderItem(found, item, meta);
+      });
+      if(found.length === beforeCount) break;
+      if(firms.length < 50) break;
+    }
   }
   return found.filter(finderResultIsRenderable).sort(function(a,b){
     return (Number(b._tradeAtlasTradeValue || 0) - Number(a._tradeAtlasTradeValue || 0)) || ((b.score || 0) - (a.score || 0));
