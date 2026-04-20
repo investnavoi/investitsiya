@@ -2372,10 +2372,11 @@ async function runCompanyFinder(source){
   var requestedCount = countSettings.count;
   var strategy = getFinderStrategyFilters();
 
-  // ═══ TOP 100 GLOBAL MODE ═══
+  // ═══ TOP 100 GLOBAL MODE (kredit tejash uchun 2 ta bilan cheklangan) ═══
   var isTop100Global = !!(strategy.top100 && source === 'apollo');
+  var TOP100_CAP = 2;
   if(isTop100Global){
-    requestedCount = 100;
+    requestedCount = TOP100_CAP;
   }
 
   var effectiveRequestedCount = (source === 'apollo' && !isTop100Global) ? Math.min(2, Math.max(1, requestedCount || 2)) : requestedCount;
@@ -2402,16 +2403,16 @@ async function runCompanyFinder(source){
 
   // ═══ TOP 100: Confirmation before API calls ═══
   if(isTop100Global){
-    var estimatedCredits = 10;
+    var estimatedCredits = 1;
     var confirmed = await new Promise(function(resolve){
       var overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
       var box = document.createElement('div');
       box.style.cssText = 'background:#fff;border-radius:16px;padding:2rem;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)';
-      box.innerHTML = '<div style="text-align:center;margin-bottom:1.2rem"><div style="width:56px;height:56px;border-radius:50%;background:#FEF3C7;display:inline-flex;align-items:center;justify-content:center;margin-bottom:.8rem"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 19h20L12 2z" stroke="#D97706" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="14" r="1.5" fill="#D97706"/><path d="M12 8v3" stroke="#D97706" stroke-width="2" stroke-linecap="round"/></svg></div><h3 style="margin:0;font-size:1.1rem;color:#1a1a2e">Apollo Top 100 Qidiruvi</h3></div>'+
+      box.innerHTML = '<div style="text-align:center;margin-bottom:1.2rem"><div style="width:56px;height:56px;border-radius:50%;background:#FEF3C7;display:inline-flex;align-items:center;justify-content:center;margin-bottom:.8rem"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 19h20L12 2z" stroke="#D97706" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="14" r="1.5" fill="#D97706"/><path d="M12 8v3" stroke="#D97706" stroke-width="2" stroke-linecap="round"/></svg></div><h3 style="margin:0;font-size:1.1rem;color:#1a1a2e">Apollo Top '+TOP100_CAP+' Qidiruvi</h3></div>'+
         '<div style="background:#F8FAFC;border-radius:10px;padding:1rem;margin-bottom:1rem;font-size:.82rem;color:#475569">'+
         '<div style="margin-bottom:.5rem"><strong>Mahsulot:</strong> '+(prod.name_en||prod.name_uz||'')+'</div>'+
-        '<div style="margin-bottom:.5rem"><strong>Rejim:</strong> Dunyo bo\'yicha Top 100 ishlab chiqaruvchi</div>'+
+        '<div style="margin-bottom:.5rem"><strong>Rejim:</strong> Dunyo bo\'yicha Top '+TOP100_CAP+' ishlab chiqaruvchi</div>'+
         '<div style="margin-bottom:.5rem"><strong>Saralash:</strong> Daromad va xodimlar soni bo\'yicha</div>'+
         '<div><strong>Taxminiy kredit:</strong> ~'+estimatedCredits+' ta Apollo so\'rov</div>'+
         '</div>'+
@@ -2428,7 +2429,7 @@ async function runCompanyFinder(source){
     if(!confirmed) return;
   }
 
-  var _finderToast = toastLoading('⏳ ' + (source==='tradeatlas'?'TradeAtlas':source==='apollo'?(isTop100Global?'Apollo Top 100':'Apollo'):'Gemini') + ': "'+prod.name_en+'" qidirilmoqda...');
+  var _finderToast = toastLoading('⏳ ' + (source==='tradeatlas'?'TradeAtlas':source==='apollo'?(isTop100Global?('Apollo Top '+TOP100_CAP):'Apollo'):'Gemini') + ': "'+prod.name_en+'" qidirilmoqda...');
   document.getElementById('finderEmpty').style.display = 'none';
   document.getElementById('finderResultCard').style.display = 'none';
   document.getElementById('finderKpiGrid').style.display = 'none';
@@ -2436,7 +2437,7 @@ async function runCompanyFinder(source){
   document.getElementById('finderBar').style.width = '10%';
       document.getElementById('finderProgressText').textContent =
         isTop100Global
-          ? ('🏆 Dunyo bo\'yicha "'+prod.name_en+'" Top 100 yirik kompaniyalar qidirilmoqda...')
+          ? ('🏆 Dunyo bo\'yicha "'+prod.name_en+'" Top '+TOP100_CAP+' yirik kompaniyalar qidirilmoqda...')
           : (meta.mode === 'exporters'
             ? ('Manba: '+searchCountries.map(getFinderCountryLabel).slice(0,5).join(', ')+(searchCountries.length>5?'...':'')+' | Maqsad: '+targetCountries.map(getFinderCountryLabel).slice(0,4).join(', ')+(targetCountries.length>4?'...':''))
             : (searchCountries.length+' ta davlatda "'+prod.name_en+'" '+meta.resultWord+' qidirilmoqda...')
@@ -2470,7 +2471,7 @@ async function runCompanyFinder(source){
     } else if(source==='apollo' && isTop100Global){
       // ═══ APOLLO TOP 100 GLOBAL SEARCH ═══
       document.getElementById('finderBar').style.width = '15%';
-      document.getElementById('finderProgressText').textContent = '🏆 Apollo Top 100: "'+prod.name_en+'" — dunyo bo\'yicha yirik kompaniyalar qidirilmoqda...';
+      document.getElementById('finderProgressText').textContent = '🏆 Apollo Top '+TOP100_CAP+': "'+prod.name_en+'" — dunyo bo\'yicha yirik kompaniyalar qidirilmoqda...';
       var apolloKey = getApolloApiKey();
       if(!apolloKey) throw new Error('Apollo API key topilmadi. Sozlamalar sahifasiga kiriting.');
       var preferredKeywords = getApolloPreferredKeywords(prod);
@@ -2498,14 +2499,14 @@ async function runCompanyFinder(source){
       var totalPages = sizeRanges.length * 2; // org search + people enrichment
 
       for(var si=0; si<sizeRanges.length; si++){
-        if(top100Results.length >= 100) break;
+        if(top100Results.length >= TOP100_CAP) break;
         var sizeRange = sizeRanges[si];
-        document.getElementById('finderProgressText').textContent = '🏆 Apollo Top 100: xodimlar '+sizeRange+' — qidirilmoqda... ('+top100Results.length+'/100)';
+        document.getElementById('finderProgressText').textContent = '🏆 Apollo Top: xodimlar '+sizeRange+' — qidirilmoqda... ('+top100Results.length+'/'+TOP100_CAP+')';
         try {
           var orgReq100 = {
             search_type:'organizations',
             page:1,
-            per_page:25,
+            per_page:TOP100_CAP,
             api_key:apolloKey,
             organization_num_employees_ranges:[sizeRange],
             q_keywords: softQuery100
@@ -2517,7 +2518,7 @@ async function runCompanyFinder(source){
           var orgList100 = normalizeApolloArray(orgData100, ['organizations','accounts','companies']);
 
           orgList100.forEach(function(org){
-            if(top100Results.length >= 100) return;
+            if(top100Results.length >= TOP100_CAP) return;
             var name = org.name || '';
             if(!name || name.length > 120) return;
             // Dedupe
@@ -2554,11 +2555,11 @@ async function runCompanyFinder(source){
           });
 
           // Page 2 if needed
-          if(top100Results.length < 100 && orgList100.length >= 20){
+          if(top100Results.length < TOP100_CAP && orgList100.length >= 20){
             var orgReq100p2 = Object.assign({}, orgReq100, {page:2});
             var orgData100p2 = await apolloRequestJson(orgReq100p2);
             normalizeApolloArray(orgData100p2, ['organizations','accounts','companies']).forEach(function(org){
-              if(top100Results.length >= 100) return;
+              if(top100Results.length >= TOP100_CAP) return;
               var name = org.name || '';
               if(!name || name.length > 120) return;
               var key = name.toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -2590,14 +2591,14 @@ async function runCompanyFinder(source){
 
       // Sort by score (which is based on employee count)
       top100Results.sort(function(a,b){ return (b.score||0)-(a.score||0) || (b.xodimlar||0)-(a.xodimlar||0); });
-      top100Results = top100Results.slice(0, 100);
+      top100Results = top100Results.slice(0, TOP100_CAP);
 
       // Add rank
       top100Results.forEach(function(item, idx){ item.top100Rank = idx + 1; });
 
       _finderResults = top100Results;
       if(!_finderResults.length){
-        throw new Error('Apollo Top 100 qidiruvi natija qaytarmadi.' + (top100Errors.length ? ' Xatolar: '+top100Errors.slice(0,3).join(' | ') : ''));
+        throw new Error('Apollo Top '+TOP100_CAP+' qidiruvi natija qaytarmadi.' + (top100Errors.length ? ' Xatolar: '+top100Errors.slice(0,3).join(' | ') : ''));
       }
     } else if(source==='apollo'){
       // Apollo proxy — organization search first, then people fallback
