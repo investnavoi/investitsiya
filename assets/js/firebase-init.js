@@ -201,16 +201,38 @@ window.ensureCollectionLoaded = async function(col){
   }
 };
 
+// Cache freshness — if cache was synced recently, skip Firebase fetch entirely
+const FB_CACHE_FRESH_MS = 5 * 60 * 1000; // 5 minutes
+function _getCacheTimestamp(){
+  try { return parseInt(localStorage.getItem('_fbCacheTs') || '0', 10) || 0; } catch(e){ return 0; }
+}
+function _setCacheTimestamp(){
+  try { localStorage.setItem('_fbCacheTs', String(Date.now())); } catch(e){}
+}
+function _isCacheFresh(){
+  return (Date.now() - _getCacheTimestamp()) < FB_CACHE_FRESH_MS;
+}
+
 async function loadFromFirestore(){
   try {
     const loadEl = document.getElementById('fb-loading');
     if(loadEl) loadEl.style.display = 'flex';
 
-    // 1. Show cached data instantly (all collections, including lazy ones if cached)
+    // 1. Show cached data INSTANTLY
     var hadCache = _loadCacheAndRenderFast();
     if(hadCache && loadEl) loadEl.style.display = 'none';
 
-    // 2. Load CRITICAL collections + apiKeys + settings in PARALLEL (fast — small)
+    // 2. If cache is FRESH (< 5 min) → skip Firebase fetch entirely. Site is instant.
+    if(hadCache && _isCacheFresh()){
+      console.log('✅ Kesh fresh — Firebase fetch o\'tkazib yuborildi (instant load)');
+      // Still load apiKeys + settings (small, needed for AI/auth)
+      try { await Promise.all([loadApiKeys(), fbLoadSettings()]); } catch(e){}
+      // Mark all collections as "loaded" so lazy fetch doesn't re-fire
+      COLLECTIONS.forEach(col => { window._lazyLoaded[col] = true; });
+      return;
+    }
+
+    // 3. Cache stale or missing → load CRITICAL collections + apiKeys + settings in PARALLEL
     const t0 = Date.now();
     const critPromises = COLLECTIONS_CRITICAL.map(col =>
       _loadOneCollection(col).then(rows => ({ col, rows }))
@@ -225,7 +247,7 @@ async function loadFromFirestore(){
     let totalDocs = 0;
     for(const { col, rows } of critResults){
       totalDocs += _applyCollectionToDb(col, rows, batchRef);
-      window._lazyLoaded[col] = true; // mark critical as loaded
+      window._lazyLoaded[col] = true;
     }
     if(batchRef.needSeed) await batchRef.batch.commit();
 
@@ -235,12 +257,13 @@ async function loadFromFirestore(){
     if(typeof applyTranslations==='function') applyTranslations();
     console.log(`✅ Firebase critical: ${totalDocs} ta yozuv (${Date.now()-t0}ms)`);
 
-    // 3. Load LAZY (heavy) collections in background — don't block UI
+    // 4. Load LAZY (heavy) collections in background — don't block UI
     setTimeout(() => {
       Promise.all(COLLECTIONS_LAZY.map(col => window.ensureCollectionLoaded(col)))
         .then(() => {
           if(typeof renderProducts==='function') renderProducts();
           if(typeof renderEntrepreneurs==='function') renderEntrepreneurs();
+          _setCacheTimestamp(); // mark cache fresh AFTER all collections loaded
           console.log('✅ Firebase lazy: barcha qolgan collectionlar yuklandi');
         });
     }, 100);
@@ -253,6 +276,13 @@ async function loadFromFirestore(){
     if(typeof applyTranslations==='function') applyTranslations();
   }
 }
+
+// Manual refresh — force Firebase reload regardless of cache
+window.forceRefreshFromFirebase = function(){
+  try { localStorage.removeItem('_fbCacheTs'); } catch(e){}
+  window._lazyLoaded = {};
+  return loadFromFirestore();
+};
 window.loadFromFirestore = loadFromFirestore;
 
 // Save single record to Firestore
