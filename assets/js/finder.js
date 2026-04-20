@@ -668,12 +668,12 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     firmFilter: [1, 2],
     parameters: [{ HS_CODE: hsCode }]
   };
-  // Firms/count — agar ishlasa
+  // Firms/count — ishlaydigan /firms/search bilan bir xil
   var firmsPayload = {
     countries: taCountries.slice(0, 5),
     firmType: taFirmType,
     flowType: taFlowType,
-    firmFilter: [0, 1, 2],
+    firmFilter: [1, 2],
     parameters: [{ HS_CODE: hsCode }]
   };
   if(sourceCodes.length === 1){
@@ -697,7 +697,14 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
 
   return await new Promise(function(resolve){
     var estimatedCredits = shipmentsCount != null ? Math.min(shipmentsCount, 5000) : (firmsCount != null ? firmsCount * 5 : '?');
-    var firmsTxt = firmsCount != null ? Number(firmsCount).toLocaleString() : '—';
+    // Agar firms/count 0 qaytarsa, lekin shipments bor bolsa — shipments/avg_per_firm taxmin
+    var firmsTxtValue = firmsCount;
+    var firmsEstimated = false;
+    if((firmsCount == null || firmsCount === 0) && shipmentsCount){
+      firmsTxtValue = Math.max(1, Math.round(shipmentsCount / 10)); // ~10 shipment/firma
+      firmsEstimated = true;
+    }
+    var firmsTxt = firmsTxtValue != null ? (firmsEstimated ? '~' : '') + Number(firmsTxtValue).toLocaleString() : '—';
     var shipTxt = shipmentsCount != null ? Number(shipmentsCount).toLocaleString() : '—';
 
     var bodyCards =
