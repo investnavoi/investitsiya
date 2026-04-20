@@ -661,22 +661,31 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
   var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
   var taCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
 
-  var basePayload = {
+  // Shipments/count — ishlaydigan /shipments/search bilan bir xil payload (firms/count buyruqi ishlamayotgan bo'lishi mumkin)
+  var shipmentsPayload = {
+    countries: targetCodes.slice(0, 5),
+    flowType: 'IMPORT',
+    firmFilter: [1, 2],
+    parameters: [{ HS_CODE: hsCode }]
+  };
+  // Firms/count — agar ishlasa
+  var firmsPayload = {
     countries: taCountries.slice(0, 5),
     firmType: taFirmType,
     flowType: taFlowType,
     firmFilter: [0, 1, 2],
     parameters: [{ HS_CODE: hsCode }]
   };
-  if(dateRange && dateRange.startDate) basePayload.startDate = dateRange.startDate;
-  if(dateRange && dateRange.endDate) basePayload.endDate = dateRange.endDate;
+  if(sourceCodes.length === 1){
+    shipmentsPayload.parameters.push({ EXPORTER_COUNTRY_CODE: sourceCodes[0] });
+  }
 
   var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit)...');
   var firmsCount = null, shipmentsCount = null, errMsg = '';
   try {
     var results = await Promise.allSettled([
-      fetchTradeAtlasCount('firms/count', basePayload),
-      fetchTradeAtlasCount('shipments/count', basePayload)
+      fetchTradeAtlasCount('firms/count', firmsPayload),
+      fetchTradeAtlasCount('shipments/count', shipmentsPayload)
     ]);
     if(results[0].status === 'fulfilled') firmsCount = _extractCountNumber(results[0].value);
     if(results[1].status === 'fulfilled') shipmentsCount = _extractCountNumber(results[1].value);
