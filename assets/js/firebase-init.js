@@ -130,6 +130,8 @@ function _loadCacheAndRenderFast(){
     if(local.length){
       DB[col] = local;
       cached = true;
+      // Mark as loaded so lazy fetch doesn't re-fire from Firebase
+      window._lazyLoaded[col] = true;
     }
   }
   if(cached){
@@ -235,9 +237,12 @@ async function loadFromFirestore(){
       console.log('⚠️ Kesh fresh, ammo ba\'zi collectionlar bo\'sh — Firebase\'dan to\'ldirilmoqda');
     }
 
-    // 3. Cache stale or missing → load CRITICAL collections + apiKeys + settings in PARALLEL
+    // 3. Load CRITICAL collections — only those NOT already cached
     const t0 = Date.now();
-    const critPromises = COLLECTIONS_CRITICAL.map(col =>
+    const missingCrit = COLLECTIONS_CRITICAL.filter(function(col){
+      return !(Array.isArray(DB[col]) && DB[col].length > 0);
+    });
+    const critPromises = missingCrit.map(col =>
       _loadOneCollection(col).then(rows => ({ col, rows }))
     );
     const [critResults] = await Promise.all([
@@ -252,6 +257,10 @@ async function loadFromFirestore(){
       totalDocs += _applyCollectionToDb(col, rows, batchRef);
       window._lazyLoaded[col] = true;
     }
+    // Mark cached critical collections as loaded too
+    COLLECTIONS_CRITICAL.forEach(function(col){
+      if(Array.isArray(DB[col]) && DB[col].length > 0) window._lazyLoaded[col] = true;
+    });
     if(batchRef.needSeed) await batchRef.batch.commit();
 
     if(loadEl) loadEl.style.display = 'none';
@@ -260,14 +269,21 @@ async function loadFromFirestore(){
     if(typeof applyTranslations==='function') applyTranslations();
     console.log(`✅ Firebase critical: ${totalDocs} ta yozuv (${Date.now()-t0}ms)`);
 
-    // 4. Load LAZY (heavy) collections in background — don't block UI
+    // 4. Load LAZY collections in background — ONLY ones not already cached/loaded
     setTimeout(() => {
-      Promise.all(COLLECTIONS_LAZY.map(col => window.ensureCollectionLoaded(col)))
+      var missing = COLLECTIONS_LAZY.filter(function(col){ return !window._lazyLoaded[col]; });
+      if(!missing.length){
+        _setCacheTimestamp();
+        console.log('✅ Lazy collections allaqachon keshdan yuklangan — Firebase fetch shart emas');
+        return;
+      }
+      console.log('🔄 Firebase\'dan yuklanmagan lazy collectionlar:', missing.join(', '));
+      Promise.all(missing.map(col => window.ensureCollectionLoaded(col)))
         .then(() => {
           if(typeof renderProducts==='function') renderProducts();
           if(typeof renderEntrepreneurs==='function') renderEntrepreneurs();
-          _setCacheTimestamp(); // mark cache fresh AFTER all collections loaded
-          console.log('✅ Firebase lazy: barcha qolgan collectionlar yuklandi');
+          _setCacheTimestamp();
+          console.log('✅ Firebase lazy: '+missing.length+' ta collection yuklandi');
         });
     }, 100);
   } catch(e){
