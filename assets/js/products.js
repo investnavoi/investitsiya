@@ -132,36 +132,57 @@ window.filterProductsByRaw = function(rawId){
   _syncExpandBody();
 };
 
-// Section videos (~41 MB total from GitHub Releases) — start loading IMMEDIATELY in parallel
-// when products page is active. No IntersectionObserver — user is on this page already.
-(function eagerLoadSectionVideos(){
+// Section videos: cache first-frame poster to localStorage so video appears INSTANTLY next time
+// Real video downloads in background after poster is shown.
+(function smartVideoLoader(){
+  function getPosterCache(key){
+    try { return localStorage.getItem('_videoPoster_' + key); } catch(e){ return null; }
+  }
+  function setPosterCache(key, dataUrl){
+    try { localStorage.setItem('_videoPoster_' + key, dataUrl); } catch(e){}
+  }
+  function captureFirstFrame(v, key){
+    try {
+      var canvas = document.createElement('canvas');
+      canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+      canvas.getContext('2d').drawImage(v, 0, 0);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      setPosterCache(key, dataUrl);
+    } catch(e){}
+  }
   function attachVideo(v){
     if(v._lazyAttached) return;
     v._lazyAttached = true;
     var realSrc = v.getAttribute('data-src');
     if(!realSrc) return;
+    var key = realSrc.split('/').pop();
+    // 1. Show cached poster INSTANTLY if available
+    var cachedPoster = getPosterCache(key);
+    if(cachedPoster){
+      v.poster = cachedPoster;
+      v.style.opacity = 1;
+    }
+    // 2. Start downloading real video in background
     v.preload = 'auto';
     v.src = realSrc;
     v.load();
-    var p = v.play();
-    if(p && p.catch) p.catch(function(){});
+    v.addEventListener('loadeddata', function(){
+      v.style.opacity = 1;
+      if(!cachedPoster) captureFirstFrame(v, key);
+      var p = v.play();
+      if(p && p.catch) p.catch(function(){});
+    }, { once: true });
   }
   function startAll(){
     var videos = document.querySelectorAll('.resurs-slide video[data-src]');
     if(!videos.length) return setTimeout(startAll, 300);
-    // Load all 3 in parallel — browser handles concurrency
     videos.forEach(attachVideo);
-    console.log('🎬 ' + videos.length + ' ta video parallel yuklanmoqda...');
+    console.log('🎬 ' + videos.length + ' ta video — keshlangan poster + parallel yuklash');
   }
-  // Wait until products page is visible OR DOM ready
   function check(){
     var productsPage = document.getElementById('page-products');
-    if(productsPage && productsPage.classList.contains('active')){
-      startAll();
-    } else {
-      // Try again on page change
-      setTimeout(check, 500);
-    }
+    if(productsPage && productsPage.classList.contains('active')) startAll();
+    else setTimeout(check, 500);
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', check);
   else check();
