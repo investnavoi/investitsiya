@@ -284,48 +284,19 @@ function cancelIcExcel(){
 }
 
 function renderAll(){
-  // Render ONLY the currently visible page first (avoids UI freeze on data load)
-  // Other pages render lazily when navigated to (via showPage in navigation.js)
-  var active = (typeof currentPage !== 'undefined' && currentPage) ? currentPage : 'overview';
-  try {
-    if(active === 'overview') renderOverview();
-    else if(active === 'investors') renderInvestors();
-    else if(active === 'local') renderLocal();
-    else if(active === 'zoom') renderZoom();
-    else if(active === 'forums'){ renderForums(); if(typeof renderIntlForums==='function') renderIntlForums(); }
-    else if(active === 'investor') renderInvestorCompanies();
-    else if(active === 'admin' && isAdmin && typeof renderAdminLists==='function') renderAdminLists();
-    else if(active === 'products' && typeof renderProducts==='function') renderProducts();
-    else if(active === 'pipeline' && typeof renderPipeline==='function') renderPipeline();
-    else if(active === 'finder'){
-      if(typeof updateFinderModeUI==='function') updateFinderModeUI();
-      if(typeof renderFinderSourceFilters==='function') renderFinderSourceFilters();
-    }
-    else if(active === 'settings' && typeof loadSettings==='function') loadSettings();
-    else if(active === 'trade' && typeof updateTradeFirebaseCount==='function') updateTradeFirebaseCount();
-    else { renderOverview(); }
-  } catch(e){ console.warn('renderAll active page error:', e); }
-  // Background: render heavy widgets on next idle tick (not blocking)
-  var idle = window.requestIdleCallback || function(cb){ return setTimeout(cb, 250); };
-  idle(function(){
-    try {
-      if(active !== 'overview') renderOverview(); // overview cards always update (sidebar counters)
-      if(typeof renderEntrepreneurs==='function' && active !== 'overview') renderEntrepreneurs();
-    } catch(e){}
-  });
+  renderOverview();
+  renderInvestors();
+  renderLocal();
+  renderZoom();
+  renderForums();
+  renderIntlForums();
+  renderInvestorCompanies();
+  if(isAdmin) renderAdminLists();
+  if(typeof renderProducts==='function') renderProducts();
+  if(typeof renderPipeline==='function') renderPipeline();
+  if(typeof updateFinderModeUI==='function') updateFinderModeUI();
+  if(typeof renderFinderSourceFilters==='function') renderFinderSourceFilters();
+  if(typeof loadSettings==='function') loadSettings();
+  if(typeof updateTradeFirebaseCount==='function') updateTradeFirebaseCount();
+  if(typeof renderEntrepreneurs==='function') renderEntrepreneurs();
 }
-// Full re-render on demand (use only when really needed, e.g., language switch)
-function renderAllPages(){
-  try { renderOverview(); } catch(e){}
-  try { renderInvestors(); } catch(e){}
-  try { renderLocal(); } catch(e){}
-  try { renderZoom(); } catch(e){}
-  try { renderForums(); } catch(e){}
-  try { if(typeof renderIntlForums==='function') renderIntlForums(); } catch(e){}
-  try { renderInvestorCompanies(); } catch(e){}
-  try { if(isAdmin && typeof renderAdminLists==='function') renderAdminLists(); } catch(e){}
-  try { if(typeof renderProducts==='function') renderProducts(); } catch(e){}
-  try { if(typeof renderPipeline==='function') renderPipeline(); } catch(e){}
-  try { if(typeof renderEntrepreneurs==='function') renderEntrepreneurs(); } catch(e){}
-}
-window.renderAllPages = renderAllPages;
