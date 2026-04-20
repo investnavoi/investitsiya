@@ -204,16 +204,18 @@ function _showPageInner(id){
   }
   else if(id==='admin')renderAdminLists();
   else if(id==='products'){
+    var _doRenderProducts = function(){ if(typeof renderProducts==='function') renderProducts(); };
     if(window.ensureCollectionLoaded){
       Promise.all([window.ensureCollectionLoaded('rawMaterials'), window.ensureCollectionLoaded('products')])
-        .then(function(){ renderProducts(); });
-    } else { renderProducts(); }
+        .then(_doRenderProducts);
+    } else { _doRenderProducts(); }
   }
   else if(id==='import'){
+    var _doImport = function(){ if(typeof populateProductSelects==='function') populateProductSelects(); };
     if(window.ensureCollectionLoaded){
       Promise.all([window.ensureCollectionLoaded('importSnapshots'), window.ensureCollectionLoaded('rawMaterials'), window.ensureCollectionLoaded('products')])
-        .then(function(){ populateProductSelects(); });
-    } else { populateProductSelects(); }
+        .then(_doImport);
+    } else { _doImport(); }
   }
   else if(id==='materialai'){if(typeof renderInvestAiPage==='function')renderInvestAiPage();}
   else if(id==='finder'){if(typeof populateProductSelects==='function')populateProductSelects();if(typeof updateFinderModeUI==='function')updateFinderModeUI();if(typeof handleImportProductChange==='function')handleImportProductChange();}

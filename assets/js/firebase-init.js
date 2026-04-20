@@ -222,14 +222,17 @@ async function loadFromFirestore(){
     var hadCache = _loadCacheAndRenderFast();
     if(hadCache && loadEl) loadEl.style.display = 'none';
 
-    // 2. If cache is FRESH (< 5 min) → skip Firebase fetch entirely. Site is instant.
-    if(hadCache && _isCacheFresh()){
-      console.log('✅ Kesh fresh — Firebase fetch o\'tkazib yuborildi (instant load)');
-      // Still load apiKeys + settings (small, needed for AI/auth)
+    // 2. If cache is FRESH (<5 min) AND has data for ALL critical+main collections → skip Firebase
+    var requiredCols = COLLECTIONS_CRITICAL.concat(['rawMaterials','products']);
+    var allCached = requiredCols.every(function(c){ return Array.isArray(DB[c]) && DB[c].length > 0; });
+    if(hadCache && _isCacheFresh() && allCached){
+      console.log('✅ Kesh fresh + to\'liq — Firebase fetch o\'tkazib yuborildi (instant load)');
       try { await Promise.all([loadApiKeys(), fbLoadSettings()]); } catch(e){}
-      // Mark all collections as "loaded" so lazy fetch doesn't re-fire
       COLLECTIONS.forEach(col => { window._lazyLoaded[col] = true; });
       return;
+    }
+    if(hadCache && _isCacheFresh() && !allCached){
+      console.log('⚠️ Kesh fresh, ammo ba\'zi collectionlar bo\'sh — Firebase\'dan to\'ldirilmoqda');
     }
 
     // 3. Cache stale or missing → load CRITICAL collections + apiKeys + settings in PARALLEL
