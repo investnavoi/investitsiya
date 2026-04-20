@@ -969,6 +969,11 @@ aside.sidebar.sidebar-mini .sidebar-header .navbar-brand{pointer-events:none;}
 .page .form-control,.page .form-select{border-radius:8px;border:1.5px solid var(--border);font-size:.8rem;transition:border-color .15s,box-shadow .15s;}
 .page .form-control:focus,.page .form-select:focus{border-color:#3a57e8;box-shadow:0 0 0 3px rgba(58,87,232,.1);}
 /* Dark mode overrides for Hope UI */
+/* ═══ Sidebar gradient + edge separator ═══ */
+aside.sidebar{background:linear-gradient(180deg,#fbfcff 0%,#f5f7fc 100%)!important;border-right:1px solid rgba(15,23,42,.06)!important;box-shadow:4px 0 24px rgba(15,23,42,.04),1px 0 0 rgba(70,95,255,.05)!important;position:relative}
+aside.sidebar::after{content:'';position:absolute;top:0;right:-1px;bottom:0;width:1px;background:linear-gradient(180deg,transparent,rgba(70,95,255,.18) 30%,rgba(70,95,255,.18) 70%,transparent);pointer-events:none}
+[data-bs-theme="dark"] aside.sidebar{background:linear-gradient(180deg,#1a1d2e 0%,#161827 100%)!important;border-color:rgba(255,255,255,.08)!important;box-shadow:4px 0 24px rgba(0,0,0,.35),1px 0 0 rgba(155,176,255,.06)!important}
+[data-bs-theme="dark"] aside.sidebar::after{background:linear-gradient(180deg,transparent,rgba(155,176,255,.18) 30%,rgba(155,176,255,.18) 70%,transparent)}
 [data-bs-theme="dark"] .sidebar{background:#1a1d2e!important;border-color:rgba(255,255,255,.06)!important;}
 [data-bs-theme="dark"] .iq-navbar{background:#222738!important;border-color:rgba(255,255,255,.06)!important;}
 [data-bs-theme="dark"] .kpi-card,[data-bs-theme="dark"] .tcard,[data-bs-theme="dark"] .widget,[data-bs-theme="dark"] .form-card{background:#222738;border-color:rgba(255,255,255,.08);}
