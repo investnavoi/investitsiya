@@ -982,6 +982,9 @@ function getFinderRenderableContacts(item){
   if(source.indexOf('tradeatlas') !== -1 && displayContacts.length){
     return [displayContacts[0]];
   }
+  if(source.indexOf('apollo top') !== -1 && item && item.kompaniya){
+    return [{ name:'', ism:'', email:'', telefon:'', website:item.website||'', _placeholder:true }];
+  }
   return [];
 }
 
