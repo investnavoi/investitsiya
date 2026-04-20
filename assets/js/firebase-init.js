@@ -1,6 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, writeBatch, onSnapshot }
-  from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, doc, setDoc, getDocs, getDocsFromCache, deleteDoc, writeBatch, onSnapshot
+} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBSsZMH6jJCw6dsX479PWusBU9lxTyoVuM",
@@ -13,13 +15,25 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
+// Firestore + IndexedDB persistent cache — 10x tezroq, offline ishlaydi
+let db;
+try {
+  db = initializeFirestore(fbApp, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+  console.log('🚀 Firestore IndexedDB persistent cache yoqildi');
+} catch(e){
+  // Fallback to default (memory cache)
+  console.warn('Persistent cache fail, using memory:', e.message);
+  const { getFirestore } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js");
+  db = getFirestore(fbApp);
+}
 
 // Collections: investors, local, zoom, forums, investorCompanies
-// Critical collections — needed for first paint (overview/investors page)
-const COLLECTIONS_CRITICAL = ['investors','local','zoom','forums','investorCompanies','entrepreneurs'];
-// Heavy collections — lazy-loaded when user navigates to that page
-const COLLECTIONS_LAZY = ['rawMaterials','products','tradeData','tradeSnapshots','tradeSnapshotChunks','importSnapshots'];
+// Critical — load immediately (small, needed for first paint)
+const COLLECTIONS_CRITICAL = ['investors','local','zoom','forums','investorCompanies','entrepreneurs','rawMaterials','products'];
+// On-demand only — load WHEN user navigates to that page (huge: importSnapshots=512, tradeSnapshotChunks=80)
+const COLLECTIONS_LAZY = ['tradeData','tradeSnapshots','tradeSnapshotChunks','importSnapshots'];
 const COLLECTIONS = COLLECTIONS_CRITICAL.concat(COLLECTIONS_LAZY);
 window.COLLECTIONS = COLLECTIONS;
 window.COLLECTIONS_LAZY = COLLECTIONS_LAZY;
@@ -269,23 +283,10 @@ async function loadFromFirestore(){
     if(typeof applyTranslations==='function') applyTranslations();
     console.log(`✅ Firebase critical: ${totalDocs} ta yozuv (${Date.now()-t0}ms)`);
 
-    // 4. Load LAZY collections in background — ONLY ones not already cached/loaded
-    setTimeout(() => {
-      var missing = COLLECTIONS_LAZY.filter(function(col){ return !window._lazyLoaded[col]; });
-      if(!missing.length){
-        _setCacheTimestamp();
-        console.log('✅ Lazy collections allaqachon keshdan yuklangan — Firebase fetch shart emas');
-        return;
-      }
-      console.log('🔄 Firebase\'dan yuklanmagan lazy collectionlar:', missing.join(', '));
-      Promise.all(missing.map(col => window.ensureCollectionLoaded(col)))
-        .then(() => {
-          if(typeof renderProducts==='function') renderProducts();
-          if(typeof renderEntrepreneurs==='function') renderEntrepreneurs();
-          _setCacheTimestamp();
-          console.log('✅ Firebase lazy: '+missing.length+' ta collection yuklandi');
-        });
-    }, 100);
+    // 4. Heavy collections (tradeData, tradeSnapshots, importSnapshots) load ON DEMAND only
+    //    when user navigates to that page (via showPage → ensureCollectionLoaded).
+    //    No background fetch — saves bandwidth and time.
+    _setCacheTimestamp();
   } catch(e){
     console.error('Firebase load error:', e);
     const loadEl = document.getElementById('fb-loading');
