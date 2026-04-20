@@ -625,16 +625,26 @@ function renderInlineProductSection(section){
     ? sectionProds.filter(function(product){ return String(product.raw_id) === String(PRODUCT_SECTION_RAW_FILTER); })
     : sectionProds.slice();
 
-  var chipsHtml = sectionRaws.length ? '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem"><span class="ta-badge ta-badge-info" onclick="filterProductsByRaw(\'\')" style="cursor:pointer;padding:6px 12px">Hammasi ('+sectionProds.length+')</span>' + sectionRaws.map(function(r){
-    var cnt = sectionProds.filter(function(p){ return p.raw_id == r.id; }).length;
-    var isActive = PRODUCT_ACTIVE_SECTION === section && String(PRODUCT_SECTION_RAW_FILTER || '') === String(r.id);
-    var hasHistory = findInvestAiHistoryIndexForRaw(r) >= 0;
-    return '<span class="ta-badge '+(isActive ? 'ta-badge-info' : '')+'" onclick="focusProductRawAnalysis(\''+section+'\',\''+r.id+'\')" style="cursor:pointer;padding:6px 12px">' +
-      escapeHtmlText(r.name_uz||r.name_en||'\u2014')+' <span style="font-size:.6rem;opacity:.7">('+cnt+')</span>' +
-      (hasHistory ? ' <span style="font-size:.55rem;font-weight:800;color:var(--ta-success-600)">AI</span>' : '') +
-      '<span onclick="event.stopPropagation();deleteRawMaterial(\''+r.id+'\')" style="margin-left:3px;font-size:.65rem;opacity:.5">&times;</span>' +
-    '</span>';
-  }).join('') + '</div>' : '<p style="font-size:.78rem;color:var(--ta-gray-400);margin-bottom:1rem">Bu bo\'limda hali xomashyo yo\'q.</p>';
+  var allActive = PRODUCT_ACTIVE_SECTION !== section || !PRODUCT_SECTION_RAW_FILTER;
+  var chipsHtml = sectionRaws.length
+    ? '<div class="prod-chip-bar">' +
+        '<span class="prod-chip prod-chip-all '+(allActive ? 'is-active' : '')+'" onclick="filterProductsByRaw(\'\')">' +
+          '<span class="prod-chip-label">Hammasi</span>' +
+          '<span class="prod-chip-count">'+sectionProds.length+'</span>' +
+        '</span>' +
+        sectionRaws.map(function(r){
+          var cnt = sectionProds.filter(function(p){ return p.raw_id == r.id; }).length;
+          var isActive = PRODUCT_ACTIVE_SECTION === section && String(PRODUCT_SECTION_RAW_FILTER || '') === String(r.id);
+          var hasHistory = findInvestAiHistoryIndexForRaw(r) >= 0;
+          return '<span class="prod-chip '+(isActive ? 'is-active' : '')+'" onclick="focusProductRawAnalysis(\''+section+'\',\''+r.id+'\')">' +
+            '<span class="prod-chip-label">'+escapeHtmlText(r.name_uz||r.name_en||'\u2014')+'</span>' +
+            '<span class="prod-chip-count">'+cnt+'</span>' +
+            (hasHistory ? '<span class="prod-chip-ai" title="AI tahlil mavjud">AI</span>' : '') +
+            '<span class="prod-chip-x" onclick="event.stopPropagation();deleteRawMaterial(\''+r.id+'\')" title="O\'chirish">×</span>' +
+          '</span>';
+        }).join('') +
+      '</div>'
+    : '<div class="prod-empty-hint">Bu bo\'limda hali xomashyo yo\'q.</div>';
   var aiPanelHtml = renderProductRawAiBlock(section, sectionRaws, sectionProds);
 
   var rowsHtml = filteredProds.length ? filteredProds.map(function(p,i){
@@ -643,12 +653,29 @@ function renderInlineProductSection(section){
   }).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text3)">Bu bo\'limda mahsulot qo\'shilmagan</td></tr>';
 
   body.innerHTML =
-    '<div style="padding:0 0 .5rem 0;font-size:.72rem;color:var(--text3)">'+getProductSectionLabel(section)+' bo\'limiga tegishli xomashyo va mahsulotlar</div>' +
-    '<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">' +
-      '<button class="ta-btn ta-btn-primary ta-btn-sm" onclick="showAddRawModal()">➕ Xomashyo qo\'shish</button>' +
-      '<button class="ta-btn ta-btn-primary ta-btn-sm" onclick="showAddProductModal()">➕ Mahsulot qo\'shish</button>' +
-      '<button class="ta-btn ta-btn-sm" onclick="loadSampleProducts()" style="background:linear-gradient(135deg,#7209B7,var(--ta-brand));color:#fff">🤖 AI bilan to\'ldirish</button>' +
-      '<button class="ta-btn ta-btn-sm" onclick="uploadPptxTemplate()" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff">📎 PPTX Template</button>' +
+    '<div class="prod-section-toolbar">' +
+      '<div class="prod-section-meta">' +
+        '<div class="prod-section-eyebrow">'+getProductSectionLabel(section)+'</div>' +
+        '<div class="prod-section-sub">Ushbu bo\'limga tegishli xomashyo va mahsulotlar ro\'yxati</div>' +
+      '</div>' +
+      '<div class="prod-section-actions">' +
+        '<button class="prod-act-btn prod-act-primary" onclick="showAddRawModal()" title="Xomashyo qo\'shish">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+          '<span>Xomashyo</span>' +
+        '</button>' +
+        '<button class="prod-act-btn prod-act-primary" onclick="showAddProductModal()" title="Mahsulot qo\'shish">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+          '<span>Mahsulot</span>' +
+        '</button>' +
+        '<button class="prod-act-btn prod-act-ghost" onclick="loadSampleProducts()" title="AI bilan to\'ldirish">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>' +
+          '<span>AI bilan to\'ldirish</span>' +
+        '</button>' +
+        '<button class="prod-act-btn prod-act-ghost" onclick="uploadPptxTemplate()" title="PPTX Template">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
+          '<span>PPTX Template</span>' +
+        '</button>' +
+      '</div>' +
     '</div>' +
     chipsHtml +
     aiPanelHtml +
