@@ -45,7 +45,8 @@ function getImportAnalysisDateRange(){
 }
 
 function handleImportYearChange(){
-  if(typeof runImportAnalysis === 'function') runImportAnalysis(false);
+  // Avtomatik tahlil o'chirildi — foydalanuvchi "Tahlil qilish" tugmasini bossin
+  resetImportAnalysisUi('Yil o\'zgartirildi. "Tahlil qilish" tugmasini bosing');
 }
 
 function getImportAnalysisFinderMode(){
@@ -1377,12 +1378,7 @@ function handleImportProductChange(){
     resetImportAnalysisUi('Mahsulot tanlandi. Endi "Tahlil qilish" tugmasini bosing');
     return;
   }
-  var hsCode = getExactImportHsCode(prod);
-  var savedSnapshot = getImportSnapshot(prod, hsCode, targetCountries, sourceKey);
-  if(savedSnapshot){
-    restoreImportSnapshot(savedSnapshot, false);
-    return;
-  }
+  // Avtomatik snapshot tiklash o'chirildi — faqat "Tahlil qilish" tugmasi bosilganda tahlil bo'lsin
   resetImportAnalysisUi('Mahsulot tanlandi. Endi "Tahlil qilish" tugmasini bosing');
 }
 
