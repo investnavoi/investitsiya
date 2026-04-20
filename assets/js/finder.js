@@ -696,14 +696,14 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
   if(loading && loading.parentNode){ clearTimeout(loading._toastTimer); loading.remove(); }
 
   return await new Promise(function(resolve){
-    var estimatedCredits = shipmentsCount != null ? Math.min(shipmentsCount, 5000) : (firmsCount != null ? firmsCount * 5 : '?');
-    // Agar firms/count 0 qaytarsa, lekin shipments bor bolsa — shipments/avg_per_firm taxmin
+    // Kredit = faqat kompaniyalar soni (firms/search orqali yuklanadi, shipmentsiz)
     var firmsTxtValue = firmsCount;
     var firmsEstimated = false;
     if((firmsCount == null || firmsCount === 0) && shipmentsCount){
-      firmsTxtValue = Math.max(1, Math.round(shipmentsCount / 10)); // ~10 shipment/firma
+      firmsTxtValue = Math.max(1, Math.round(shipmentsCount / 10));
       firmsEstimated = true;
     }
+    var estimatedCredits = firmsTxtValue != null ? firmsTxtValue : '?';
     var firmsTxt = firmsTxtValue != null ? (firmsEstimated ? '~' : '') + Number(firmsTxtValue).toLocaleString() : '—';
     var shipTxt = shipmentsCount != null ? Number(shipmentsCount).toLocaleString() : '—';
 
@@ -912,6 +912,45 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
     if(found.length === beforeCount) break;
     if(expectedTotal > 0 && found.length >= expectedTotal) break;
     if(firms.length < pageSize) break;
+  }
+  return found.filter(finderResultIsRenderable).sort(function(a,b){
+    return (Number(b._tradeAtlasTradeValue || 0) - Number(a._tradeAtlasTradeValue || 0)) || ((b.score || 0) - (a.score || 0));
+  });
+}
+
+// Faqat /firms/search orqali kompaniyalarni olish (arzon yol — 1 kredit har firma)
+async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScope){
+  var hsCode = getExactImportHsCode(prod);
+  if(!hsCode) throw new Error('TradeAtlas uchun mahsulot HS kodi topilmadi');
+  var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
+  var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
+  var taCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
+
+  var found = [];
+  // Legacy firms shape — proxy shuni /firms/search ga yuboradi (hasTargetShape=false)
+  for(var page = 1; page <= 20; page++){
+    var payload = {
+      countries: taCountries.slice(0, 5),
+      hsCode: hsCode,
+      mode: meta.mode,
+      page: page,
+      firmType: taFirmType,
+      flowType: (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT',
+      firmFilter: [1, 2],
+      parameters: [{ HS_CODE: hsCode }]
+    };
+    var data = await tradeAtlasRequestJson(payload);
+    var firms = tradeAtlasNormalizeArray(data);
+    if(!firms.length) break;
+    firms.forEach(function(firm){
+      var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
+      if(!item || !String(item.kompaniya || '').trim()) return;
+      apolloUpsertFinderItem(found, item, meta);
+    });
+    // /firms/search page limit is 1-20 and typically 50-100 per page; break on short page
+    if(firms.length < 50) break;
   }
   return found.filter(finderResultIsRenderable).sort(function(a,b){
     return (Number(b._tradeAtlasTradeValue || 0) - Number(a._tradeAtlasTradeValue || 0)) || ((b.score || 0) - (a.score || 0));
@@ -2714,7 +2753,8 @@ async function runCompanyFinder(source){
         ' | Eksportyor: ' + (((sourceScope && sourceScope.effectiveCountries) || []).length
           ? sourceScope.effectiveCountries.slice(0,4).map(getFinderCountryLabel).join(', ') + (sourceScope.effectiveCountries.length > 4 ? '...' : '')
           : 'Butun dunyo');
-      var tradeAtlasResults = await tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope);
+      // Arzon yol: /firms/search (har firma = 1 kredit), shipment aggregation yoq
+      var tradeAtlasResults = await tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScope);
       tradeAtlasResults.filter(finderResultIsRenderable).forEach(function(item){
         _finderResults.push(item);
       });
