@@ -2965,8 +2965,9 @@ async function runCompanyFinder(source){
       top100Results.sort(function(a,b){ return (b.score||0)-(a.score||0) || (b.xodimlar||0)-(a.xodimlar||0); });
       top100Results = top100Results.slice(0, TOP100_CAP);
 
-      // Har bir Top kompaniya uchun email'i bor kontakt qidirish
+      // Har bir Top kompaniya uchun email'i bor kontakt qidirish + enrichment orqali unlock
       document.getElementById('finderProgressText').textContent = '📧 Top kompaniyalar uchun email qidirilmoqda...';
+      var apolloKeyTop = getApolloApiKey();
       for(var tpi = 0; tpi < top100Results.length; tpi++){
         var tpItem = top100Results[tpi];
         if(!tpItem._orgId) continue;
@@ -2975,26 +2976,53 @@ async function runCompanyFinder(source){
             search_type: 'people',
             page: 1,
             per_page: 5,
-            api_key: getApolloApiKey(),
+            api_key: apolloKeyTop,
             organization_ids: [tpItem._orgId],
             person_titles: ['CEO','Founder','Owner','President','Director','Sales Manager','Export Manager','Procurement Manager']
           };
           var peopleData = await apolloRequestJson(peopleReq);
           var persons = normalizeApolloArray(peopleData, ['people','contacts']);
-          var emailContacts = [];
-          persons.forEach(function(person){
-            var c = apolloPersonToContact(person, person.organization || {});
-            if(c && finderContactHasEmail(c)) emailContacts.push(c);
-          });
-          if(emailContacts.length){
-            tpItem._contactCandidates = emailContacts.concat(persons.map(function(p){
-              return apolloPersonToContact(p, p.organization || {});
-            }).filter(function(c){ return c && !finderContactHasEmail(c); }));
+          // Candidates: email bor yoki hasEmailHint bor
+          var allContacts = persons.map(function(p){ return apolloPersonToContact(p, p.organization || {}); }).filter(Boolean);
+          var directEmail = allContacts.filter(finderContactHasEmail);
+          var hintEmail = allContacts.filter(function(c){ return !finderContactHasEmail(c) && c.hasEmailHint; });
+
+          // Agar direct email yo'q bo'lsa, hint'dan birini enrichment orqali unlock qilamiz
+          if(!directEmail.length && hintEmail.length){
+            document.getElementById('finderProgressText').textContent = '🔓 '+tpItem.kompaniya+' — email unlock qilinmoqda...';
+            var candidate = hintEmail[0];
+            try {
+              var enrichData = await apolloRequestJson({
+                search_type: 'people_enrichment',
+                api_key: apolloKeyTop,
+                id: candidate.personId || '',
+                first_name: (candidate.name || '').split(' ')[0] || '',
+                last_name: (candidate.name || '').split(' ').slice(1).join(' ') || '',
+                organization_name: tpItem.kompaniya || '',
+                organization_domain: (function(){
+                  try { var u = String(tpItem.website || '').trim(); if(!u) return ''; if(!/^https?:\/\//i.test(u)) u = 'https://' + u; return new URL(u).hostname.replace(/^www\./,''); } catch(_e){ return ''; }
+                })()
+              });
+              var enrichedPerson = enrichData && enrichData.person;
+              if(enrichedPerson){
+                var enriched = apolloPersonToContact(enrichedPerson, enrichedPerson.organization || {});
+                if(finderContactHasEmail(enriched)) directEmail.push(enriched);
+              }
+            } catch(_enrichErr){
+              console.log('Enrich error for '+tpItem.kompaniya+':', _enrichErr && _enrichErr.message);
+            }
+          }
+
+          var finalContacts = directEmail.concat(
+            allContacts.filter(function(c){ return !finderContactHasEmail(c) && !directEmail.some(function(d){ return d.personId === c.personId; }); })
+          );
+          if(finalContacts.length){
+            tpItem._contactCandidates = finalContacts;
             apolloApplyCompanyContacts(tpItem);
             var lead = tpItem.contacts && tpItem.contacts[0];
             if(lead){
               tpItem.rahbar = lead.name || lead.ism || tpItem.rahbar;
-              tpItem.lavozim = lead.lavozim || tpItem.lavozim;
+              tpItem.lavozim = lead.title || lead.lavozim || tpItem.lavozim;
               tpItem.email = lead.email || tpItem.email;
               tpItem.telefon = lead.telefon || tpItem.telefon;
             }
