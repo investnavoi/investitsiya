@@ -132,25 +132,28 @@ window.filterProductsByRaw = function(rawId){
   _syncExpandBody();
 };
 
-// Lazy-load section videos (large mp4s from GitHub Releases — only fetch when card is visible)
+// Lazy-load section videos (~41 MB total) — set src ONLY when card enters viewport
 (function lazyLoadSectionVideos(){
+  function attachVideo(v){
+    if(v._lazyAttached) return;
+    v._lazyAttached = true;
+    var realSrc = v.getAttribute('data-src');
+    if(!realSrc) return;
+    v.preload = 'auto';
+    v.src = realSrc;
+    v.load();
+    v.play().catch(function(){});
+  }
   function tryAttach(){
-    var videos = document.querySelectorAll('.resurs-slide video[src][preload="none"]');
+    var videos = document.querySelectorAll('.resurs-slide video[data-src]');
     if(!videos.length) return setTimeout(tryAttach, 500);
     if(!('IntersectionObserver' in window)){
-      // Old browser — load immediately
-      videos.forEach(function(v){ v.preload='auto'; v.play().catch(function(){}); });
+      videos.forEach(attachVideo);
       return;
     }
     var io = new IntersectionObserver(function(entries){
       entries.forEach(function(e){
-        if(e.isIntersecting){
-          var v = e.target;
-          v.preload = 'auto';
-          v.load();
-          v.play().catch(function(){});
-          io.unobserve(v);
-        }
+        if(e.isIntersecting){ attachVideo(e.target); io.unobserve(e.target); }
       });
     }, { rootMargin: '200px' });
     videos.forEach(function(v){ io.observe(v); });
