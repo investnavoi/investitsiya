@@ -1966,13 +1966,24 @@ function finalizeApolloFinderResults(found, prod, perCountry, strategy, meta){
   // Faqat email'i bor kompaniyalar — email leadda bo'lishi shart
   var withEmail = unique.filter(function(item){ return apolloCountEmailContacts(item) >= 1; });
   if(!withEmail.length) return [];
-  // Email kontaktini birinchi o'ringa (leadga) qo'yamiz
+  // Email kontaktini birinchi o'ringa (leadga) qo'yamiz (1 ta email bor yetarli)
   withEmail.forEach(function(item){
     var candidates = Array.isArray(item._contactCandidates) ? item._contactCandidates : [];
     var emailFirst = candidates.filter(finderContactHasEmail);
     var rest = candidates.filter(function(c){ return !finderContactHasEmail(c); });
     item._contactCandidates = emailFirst.concat(rest);
-    apolloApplyCompanyContacts(item);
+    var lead = emailFirst[0];
+    if(lead){
+      var secondary = rest[0] || emailFirst[1];
+      item.contacts = secondary ? [lead, secondary] : [lead];
+      item.rahbar = lead.name || item.rahbar || '';
+      item.lavozim = lead.title || item.lavozim || '';
+      item.email = lead.email;
+      item.telefon = lead.telefon || item.telefon || '';
+      item.photoUrl = lead.photoUrl || item.photoUrl || '';
+      item.linkedin = lead.linkedin || item.linkedin || '';
+      item._personId = lead.personId || item._personId || '';
+    }
   });
   return withEmail.slice(0, Math.min(2, perCountry || 2));
 }
@@ -3016,24 +3027,29 @@ async function runCompanyFinder(source){
           var finalContacts = directEmail.concat(
             allContacts.filter(function(c){ return !finderContactHasEmail(c) && !directEmail.some(function(d){ return d.personId === c.personId; }); })
           );
+          // Top natijalari uchun oddiy contact biriktirish — 1 ta email bor lead yetarli
           if(finalContacts.length){
             tpItem._contactCandidates = finalContacts;
-            apolloApplyCompanyContacts(tpItem);
-            var lead = tpItem.contacts && tpItem.contacts[0];
-            if(lead){
-              tpItem.rahbar = lead.name || lead.ism || tpItem.rahbar;
-              tpItem.lavozim = lead.title || lead.lavozim || tpItem.lavozim;
-              tpItem.email = lead.email || tpItem.email;
-              tpItem.telefon = lead.telefon || tpItem.telefon;
+            var emailLead = finalContacts.filter(finderContactHasEmail)[0];
+            if(emailLead){
+              var secondary = finalContacts.filter(function(c){ return c !== emailLead; })[0];
+              tpItem.contacts = secondary ? [emailLead, secondary] : [emailLead];
+              tpItem.rahbar = emailLead.name || tpItem.rahbar;
+              tpItem.lavozim = emailLead.title || tpItem.lavozim;
+              tpItem.email = emailLead.email || '';
+              tpItem.telefon = emailLead.telefon || '';
+              tpItem.photoUrl = emailLead.photoUrl || '';
+              tpItem.linkedin = emailLead.linkedin || '';
+              tpItem._personId = emailLead.personId || '';
             }
           }
         } catch(emailErr){
           console.log('Top email fetch error for '+tpItem.kompaniya+':', emailErr && emailErr.message);
         }
       }
-      // Faqat email'i bor kompaniyalar qoldiriladi
+      // Faqat haqiqiy email'i bor kompaniyalar qoldiriladi
       top100Results = top100Results.filter(function(item){
-        return String(item.email || '').trim() || apolloCountEmailContacts(item) >= 1;
+        return !!String(item.email || '').trim();
       });
 
       // Add rank
