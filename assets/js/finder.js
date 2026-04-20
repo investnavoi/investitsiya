@@ -662,10 +662,14 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
   var taCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
 
   var basePayload = {
-    countries: taCountries, firmFilter:[0,1,2], firmType: taFirmType, flowType: taFlowType,
-    parameters:[{ HS_CODE: hsCode }], hsCode: hsCode,
-    startDate: dateRange.startDate, endDate: dateRange.endDate
+    countries: taCountries.slice(0, 5),
+    firmType: taFirmType,
+    flowType: taFlowType,
+    firmFilter: [0, 1, 2],
+    parameters: [{ HS_CODE: hsCode }]
   };
+  if(dateRange && dateRange.startDate) basePayload.startDate = dateRange.startDate;
+  if(dateRange && dateRange.endDate) basePayload.endDate = dateRange.endDate;
 
   var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit)...');
   var firmsCount = null, shipmentsCount = null, errMsg = '';
