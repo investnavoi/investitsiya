@@ -1442,35 +1442,69 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff){
   var productLabel = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || 'selected product';
   var industryLabel = comp.mahsulotNomi || comp.soha || productLabel || 'Manufacturing';
 
-  var letterPrompt = 'Write a FULL, DETAILED professional business letter (minimum 5-7 paragraphs, at least 400 words) in '+langName+'.\n'+
-    'FROM: Navoi Regional Investment Office, Uzbekistan.\n'+
-    'TO: '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+', '+(comp.davlat||'abroad')+'.\n'+
-    'SUBJECT: Strategic investment and export partnership for '+productLabel+' from Navoi, Uzbekistan.\n\n'+
-    'STRUCTURE:\n'+
-    'Paragraph 1 (Opening): Formal greeting, introduce Navoi Regional Investment Office and purpose of letter.\n'+
-    'Paragraph 2 (Company recognition): Acknowledge the recipient company, its market position and the product line.\n'+
-    'Paragraph 3 (Economic opportunity): Use the economic figures below — GDP, trade data, growth rates.\n'+
-    'Paragraph 4 (Logistics & connectivity): Use transport/logistics data below — mention the 13 nearby export markets advantage.\n'+
-    'Paragraph 5 (Tariffs & trade terms): Use tariff comparison data below. Mention customs advantages where relevant.\n'+
-    'Paragraph 6 (Navoi advantages): Industrial zones, free economic zone benefits, skilled workforce, investor support.\n'+
-    'Paragraph 7 (Call to action): Specific invitation — visit, meeting, MOU, next steps. Express eagerness to partner.\n'+
-    'Paragraph 8 (Closing): Warm professional close with full signatory block.\n\n'+
-    'ECONOMIC & LOGISTICS DATA (use ALL relevant figures naturally in the letter):\n'+
-    officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-    transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-    tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n\n'+
-    'Product: ' + productLabel + ' | Industry: '+industryLabel+'\n\n'+
-    'RULES:\n'+
-    '- Minimum 400 words, 5-7 full paragraphs\n'+
-    '- Use ONLY figures from the data above — do not invent numbers\n'+
-    '- Tone: professional, warm, compelling and specific\n'+
-    '- Do NOT use bullet points or headers inside the letter body — write in flowing prose paragraphs\n'+
-    '- Sign as:\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov\n\n'+
-    'FORMAT OUTPUT:\n'+
-    'First line: email subject (no "Subject:" prefix)\n'+
-    'Second line: ===BODY===\n'+
-    'Then: full letter body\n\n'+
-    'Example format:\nStrategic Granite Partnership — Navoi, Uzbekistan\n===BODY===\nDear Mr. Schmidt,\n\n[Full letter body with 5-7 paragraphs]\n\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov';
+  // CEO/yuqori rahbar pozitsiyasini aniqlash — ular uchun qisqa xat
+  var positionRaw = String(comp.lavozim || comp.title || '').toLowerCase();
+  var isCeoLevel = /\b(ceo|chief executive|founder|co-founder|owner|president|chairman|managing director|general director|director general|md|genel mudur|generalny direktor|генеральный директор|директор|основатель)\b/i.test(positionRaw);
+
+  var letterPrompt;
+  if(isCeoLevel){
+    // ═══ QISQA XAT — CEO/yuqori rahbar uchun ═══
+    letterPrompt = 'Write a SHORT, executive-level business letter (STRICTLY 120-180 words, 3 short paragraphs) in '+langName+'.\n'+
+      'FROM: Navoi Regional Investment Office, Uzbekistan.\n'+
+      'TO: '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+', '+(comp.davlat||'abroad')+'.\n'+
+      'SUBJECT: Partnership proposal — '+productLabel+' from Navoi, Uzbekistan.\n\n'+
+      'STRUCTURE (3 paragraphs, time-efficient for a busy executive):\n'+
+      'Paragraph 1 (2-3 sentences): Warm formal greeting; brief introduction of Navoi Regional Investment Office and the specific partnership opportunity.\n'+
+      'Paragraph 2 (3-4 sentences): Cite 2-3 strongest figures from the data below — a headline economic indicator, a tariff advantage, and the 13-market logistics reach. Be crisp and factual.\n'+
+      'Paragraph 3 (2-3 sentences): Direct call-to-action — propose a brief introductory call or delegate meeting; offer to send the full briefing package upon request.\n\n'+
+      'ECONOMIC & LOGISTICS DATA (pick ONLY 2-3 strongest figures):\n'+
+      officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+      transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+      tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n\n'+
+      'Product: ' + productLabel + ' | Industry: '+industryLabel+'\n\n'+
+      'RULES:\n'+
+      '- STRICT WORD LIMIT: 120-180 words total\n'+
+      '- 3 short paragraphs only — no more\n'+
+      '- Respect executive time: every sentence must earn its place\n'+
+      '- Use ONLY figures from the data above — do not invent numbers\n'+
+      '- Tone: crisp, confident, respectful, direct\n'+
+      '- Sign as:\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov\n\n'+
+      'FORMAT OUTPUT:\n'+
+      'First line: email subject (no "Subject:" prefix, max 70 chars)\n'+
+      'Second line: ===BODY===\n'+
+      'Then: the short letter body';
+  } else {
+    // ═══ TO'LIQ XAT — boshqa lavozimlar uchun ═══
+    letterPrompt = 'Write a FULL, DETAILED professional business letter (minimum 5-7 paragraphs, at least 400 words) in '+langName+'.\n'+
+      'FROM: Navoi Regional Investment Office, Uzbekistan.\n'+
+      'TO: '+comp.rahbar+', '+(comp.lavozim||'Manager')+' of '+(comp.kompaniya||'the company')+', '+(comp.davlat||'abroad')+'.\n'+
+      'SUBJECT: Strategic investment and export partnership for '+productLabel+' from Navoi, Uzbekistan.\n\n'+
+      'STRUCTURE:\n'+
+      'Paragraph 1 (Opening): Formal greeting, introduce Navoi Regional Investment Office and purpose of letter.\n'+
+      'Paragraph 2 (Company recognition): Acknowledge the recipient company, its market position and the product line.\n'+
+      'Paragraph 3 (Economic opportunity): Use the economic figures below — GDP, trade data, growth rates.\n'+
+      'Paragraph 4 (Logistics & connectivity): Use transport/logistics data below — mention the 13 nearby export markets advantage.\n'+
+      'Paragraph 5 (Tariffs & trade terms): Use tariff comparison data below. Mention customs advantages where relevant.\n'+
+      'Paragraph 6 (Navoi advantages): Industrial zones, free economic zone benefits, skilled workforce, investor support.\n'+
+      'Paragraph 7 (Call to action): Specific invitation — visit, meeting, MOU, next steps. Express eagerness to partner.\n'+
+      'Paragraph 8 (Closing): Warm professional close with full signatory block.\n\n'+
+      'ECONOMIC & LOGISTICS DATA (use ALL relevant figures naturally in the letter):\n'+
+      officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+      transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+      tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n\n'+
+      'Product: ' + productLabel + ' | Industry: '+industryLabel+'\n\n'+
+      'RULES:\n'+
+      '- Minimum 400 words, 5-7 full paragraphs\n'+
+      '- Use ONLY figures from the data above — do not invent numbers\n'+
+      '- Tone: professional, warm, compelling and specific\n'+
+      '- Do NOT use bullet points or headers inside the letter body — write in flowing prose paragraphs\n'+
+      '- Sign as:\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov\n\n'+
+      'FORMAT OUTPUT:\n'+
+      'First line: email subject (no "Subject:" prefix)\n'+
+      'Second line: ===BODY===\n'+
+      'Then: full letter body\n\n'+
+      'Example format:\nStrategic Granite Partnership — Navoi, Uzbekistan\n===BODY===\nDear Mr. Schmidt,\n\n[Full letter body with 5-7 paragraphs]\n\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov';
+  }
 
   var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.72,maxOutputTokens:8192}};
   // Use streaming to get full letter without truncation
