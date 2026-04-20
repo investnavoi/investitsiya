@@ -132,8 +132,9 @@ window.filterProductsByRaw = function(rawId){
   _syncExpandBody();
 };
 
-// Lazy-load section videos (~41 MB total) — set src ONLY when card enters viewport
-(function lazyLoadSectionVideos(){
+// Section videos (~41 MB total from GitHub Releases) — start loading IMMEDIATELY in parallel
+// when products page is active. No IntersectionObserver — user is on this page already.
+(function eagerLoadSectionVideos(){
   function attachVideo(v){
     if(v._lazyAttached) return;
     v._lazyAttached = true;
@@ -142,24 +143,28 @@ window.filterProductsByRaw = function(rawId){
     v.preload = 'auto';
     v.src = realSrc;
     v.load();
-    v.play().catch(function(){});
+    var p = v.play();
+    if(p && p.catch) p.catch(function(){});
   }
-  function tryAttach(){
+  function startAll(){
     var videos = document.querySelectorAll('.resurs-slide video[data-src]');
-    if(!videos.length) return setTimeout(tryAttach, 500);
-    if(!('IntersectionObserver' in window)){
-      videos.forEach(attachVideo);
-      return;
-    }
-    var io = new IntersectionObserver(function(entries){
-      entries.forEach(function(e){
-        if(e.isIntersecting){ attachVideo(e.target); io.unobserve(e.target); }
-      });
-    }, { rootMargin: '200px' });
-    videos.forEach(function(v){ io.observe(v); });
+    if(!videos.length) return setTimeout(startAll, 300);
+    // Load all 3 in parallel — browser handles concurrency
+    videos.forEach(attachVideo);
+    console.log('🎬 ' + videos.length + ' ta video parallel yuklanmoqda...');
   }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryAttach);
-  else tryAttach();
+  // Wait until products page is visible OR DOM ready
+  function check(){
+    var productsPage = document.getElementById('page-products');
+    if(productsPage && productsPage.classList.contains('active')){
+      startAll();
+    } else {
+      // Try again on page change
+      setTimeout(check, 500);
+    }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', check);
+  else check();
 })();
 
 function closeProductRawAi(section){
