@@ -1039,7 +1039,8 @@ function hashTargetList(items){
 
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
   var sourceScope = getImportAnalysisSourceScopeState();
-  return ['importv5', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries)]
+  var year = (typeof getImportAnalysisSelectedYear === 'function') ? getImportAnalysisSelectedYear() : 'all';
+  return ['importv6', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries), 'y' + year]
     .join('_')
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
@@ -1423,9 +1424,16 @@ async function runImportAnalysis(forceRefresh, sourceOverride){
     return;
   }
 
-  var savedSnapshot = !forceRefresh && getImportSnapshot(prod, hsCode, targetCountries, sourceKey);
+  // 1-qadam: Firebase kolleksiyasini yuklab, snapshot bor-yo'qligini tekshiramiz
+  var _snapshotToast = toastLoading('⏳ Firebase ma\'lumot bazasi tekshirilmoqda...');
+  try {
+    if(typeof ensureCollectionLoaded === 'function') await ensureCollectionLoaded('importSnapshots');
+  } catch(_e){}
+  var savedSnapshot = getImportSnapshot(prod, hsCode, targetCountries, sourceKey);
+  if(_snapshotToast && _snapshotToast.parentNode){ clearTimeout(_snapshotToast._toastTimer); _snapshotToast.remove(); }
   if(savedSnapshot){
     restoreImportSnapshot(savedSnapshot, false);
+    toast('✅ Firebase\'dan saqlangan tahlil tiklandi','success');
     return;
   }
 
