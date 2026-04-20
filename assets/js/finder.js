@@ -659,7 +659,22 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
   var dateRange = (typeof getImportAnalysisDateRange === 'function') ? getImportAnalysisDateRange() : { startDate:'', endDate:'' };
   var taFlowType = (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT';
   var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
-  var taCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
+  var isWorldWide = !sourceCodes.length && meta.mode === 'exporters';
+  var taCountries;
+  if(sourceCodes.length){
+    taCountries = sourceCodes.slice();
+  } else if(isWorldWide){
+    var _worldCodes = [];
+    Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
+      (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(c){
+        var code = getTradeAtlasCountryCode(c);
+        if(code && _worldCodes.indexOf(code) === -1) _worldCodes.push(code);
+      });
+    });
+    taCountries = _worldCodes;
+  } else {
+    taCountries = targetCodes.slice();
+  }
 
   // Shipments/count — ishlaydigan /shipments/search bilan bir xil payload (firms/count buyruqi ishlamayotgan bo'lishi mumkin)
   var shipmentsPayload = {
@@ -724,6 +739,7 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
       '</div>';
 
     var errBlock = errMsg ? ('<div style="padding:.7rem;border-radius:8px;background:rgba(239,35,60,.08);color:#991B1B;font-size:.75rem;margin-bottom:.8rem">⚠️ '+escHtml(errMsg)+'</div>') : '';
+    var worldBlock = isWorldWide ? ('<div style="padding:.75rem .85rem;border-radius:10px;background:linear-gradient(135deg,rgba(217,119,6,.12),rgba(239,68,68,.08));border:1px solid rgba(217,119,6,.35);color:#9A3412;font-size:.78rem;margin-bottom:.9rem;font-weight:600">🌍 Manba tanlanmagan — <u>butun dunyo ('+taCountries.length+' davlat)</u> bo\'yicha qidiriladi. Kam kredit sarflash uchun qit\'a yoki davlat tanlang.</div>') : '';
 
     var overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
@@ -735,7 +751,7 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
         '<div style="margin-bottom:.3rem"><strong>Mahsulot:</strong> '+escHtml(prod.name_en||prod.name_uz||'—')+' (HS '+escHtml(hsCode||'—')+')</div>'+
         '<div><strong>Davlatlar:</strong> '+escHtml(taCountries.slice(0,5).join(', ') || '—')+(taCountries.length>5?'...':'')+'</div>'+
       '</div>'+
-      bodyCards + errBlock +
+      worldBlock + bodyCards + errBlock +
       '<div style="display:flex;gap:.7rem;justify-content:flex-end">'+
         '<button id="taPreCancel" style="padding:.6rem 1.3rem;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;font-size:.82rem">Bekor qilish</button>'+
         '<button id="taPreConfirm" style="padding:.6rem 1.3rem;border-radius:10px;border:none;background:linear-gradient(135deg,#0F766E,#059669);color:#fff;font-weight:600;cursor:pointer;font-size:.82rem">Yuklab olish</button>'+
@@ -935,7 +951,22 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
   if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
   var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
   var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
-  var taCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
+  var taCountries;
+  if(sourceCodes.length){
+    taCountries = sourceCodes.slice();
+  } else if(meta.mode === 'exporters'){
+    // Eksportyor rejimi + manba tanlanmagan → butun dunyo (6 qit'a)
+    var worldCountries = [];
+    Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
+      (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(c){
+        var code = getTradeAtlasCountryCode(c);
+        if(code && worldCountries.indexOf(code) === -1) worldCountries.push(code);
+      });
+    });
+    taCountries = worldCountries;
+  } else {
+    taCountries = targetCodes.slice();
+  }
   var dateRange = getImportAnalysisDateRange();
 
   var found = [];
