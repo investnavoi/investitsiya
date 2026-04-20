@@ -1023,6 +1023,105 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
   });
 }
 
+// TradeAtlas natijasini Apollo orqali boyitish: organization → people → enrichment (email unlock)
+async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
+  if(!item || !item.kompaniya) return item;
+  function getDomain(url){
+    try {
+      var s = String(url || '').trim();
+      if(!s) return '';
+      if(!/^https?:\/\//i.test(s)) s = 'https://' + s;
+      return new URL(s).hostname.replace(/^www\./i,'').trim();
+    } catch(_e){ return ''; }
+  }
+  var domain = getDomain(item.website);
+
+  // 1-qadam: Apollo organization search — kompaniya nomi bo'yicha
+  var orgReq = {
+    search_type: 'organization',
+    page: 1,
+    per_page: 3,
+    api_key: apolloKey,
+    q_organization_name: item.kompaniya
+  };
+  if(domain){ orgReq.organization_domains = [domain]; }
+  var orgData;
+  try { orgData = await apolloRequestJson(orgReq); } catch(_e){ return item; }
+  var orgs = normalizeApolloArray(orgData, ['organizations','accounts','companies']);
+  if(!orgs.length) return item;
+  var org = orgs[0];
+  var orgId = String((org && org.id) || '').trim();
+  if(!orgId) return item;
+
+  // Apollo ma'lumotlari bilan item'ni boyitish
+  item._orgId = orgId;
+  item.website = item.website || apolloAbsoluteUrl(org.website_url || org.website || '');
+  item.shahar = item.shahar || org.city || '';
+  item.soha = item.soha || org.industry || '';
+  item.xodimlar = item.xodimlar || Number(org.estimated_num_employees || 0) || 0;
+  item.daromad = item.daromad || org.organization_revenue_printed || org.annual_revenue_printed || '';
+  item.tpilyil = item.tpilyil || org.founded_year || '';
+  item.description = item.description || org.short_description || '';
+
+  // 2-qadam: People search — decision makers
+  var titles = ['CEO','Founder','Owner','President','Managing Director','Sales Director','Export Manager','Procurement Manager','Purchasing Manager'];
+  var peopleReq = {
+    search_type: 'people',
+    page: 1,
+    per_page: 5,
+    api_key: apolloKey,
+    organization_ids: [orgId],
+    person_titles: titles
+  };
+  var peopleData;
+  try { peopleData = await apolloRequestJson(peopleReq); } catch(_e){ return item; }
+  var persons = normalizeApolloArray(peopleData, ['people','contacts']);
+  if(!persons.length) return item;
+  var allContacts = persons.map(function(p){ return apolloPersonToContact(p, p.organization || org); }).filter(Boolean);
+  var direct = allContacts.filter(finderContactHasEmail);
+  var hintOnly = allContacts.filter(function(c){ return !finderContactHasEmail(c) && c.hasEmailHint; });
+
+  // 3-qadam: Email unlock (people_enrichment) agar direct yo'q bo'lsa
+  if(!direct.length && hintOnly.length){
+    var candidate = hintOnly[0];
+    try {
+      var enrichData = await apolloRequestJson({
+        search_type: 'people_enrichment',
+        api_key: apolloKey,
+        id: candidate.personId || '',
+        first_name: (candidate.name || '').split(' ')[0] || '',
+        last_name: (candidate.name || '').split(' ').slice(1).join(' ') || '',
+        organization_name: item.kompaniya,
+        organization_domain: domain
+      });
+      var enrichedPerson = enrichData && enrichData.person;
+      if(enrichedPerson){
+        var enriched = apolloPersonToContact(enrichedPerson, enrichedPerson.organization || org);
+        if(finderContactHasEmail(enriched)) direct.push(enriched);
+      }
+    } catch(_e){}
+  }
+
+  var finalContacts = direct.concat(allContacts.filter(function(c){ return !finderContactHasEmail(c) && !direct.some(function(d){ return d.personId === c.personId; }); }));
+  if(finalContacts.length){
+    item._contactCandidates = finalContacts;
+    var lead = finalContacts.filter(finderContactHasEmail)[0] || finalContacts[0];
+    if(lead){
+      var secondary = finalContacts.filter(function(c){ return c !== lead; })[0];
+      item.contacts = secondary ? [lead, secondary] : [lead];
+      item.rahbar = lead.name || item.rahbar || '';
+      item.lavozim = lead.title || item.lavozim || '';
+      item.email = lead.email || item.email || '';
+      item.telefon = lead.telefon || item.telefon || '';
+      item.photoUrl = lead.photoUrl || item.photoUrl || '';
+      item.linkedin = lead.linkedin || item.linkedin || '';
+      item._personId = lead.personId || item._personId || '';
+    }
+  }
+  item.manba = (item.manba || 'TradeAtlas') + ' + Apollo';
+  return item;
+}
+
 function tradeAtlasFirmCountryCode(firm){
   var direct = String((firm && (firm.firm_country_code || firm.country_code || firm.countryCode)) || '').trim().toUpperCase();
   if(direct && direct.length === 2) return direct;
@@ -2849,6 +2948,27 @@ async function runCompanyFinder(source){
       _finderResults = _finderResults.filter(finderResultIsRenderable);
       if(!_finderResults.length){
         throw new Error('TradeAtlas qidiruvi natija qaytarmadi');
+      }
+      document.getElementById('finderBar').style.width = '70%';
+
+      // ═══ Apollo orqali avtomatik enrichment: kompaniya + lead + email ═══
+      var apolloEnrichKey = getApolloApiKey();
+      if(apolloEnrichKey){
+        document.getElementById('finderProgressText').textContent = '🅰️ Apollo enrichment: kompaniya va lead topilmoqda...';
+        for(var tei = 0; tei < _finderResults.length; tei++){
+          var taItem = _finderResults[tei];
+          if(!taItem || !taItem.kompaniya) continue;
+          if(String(taItem.email || '').trim()) continue; // email allaqachon bor
+          document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+taItem.kompaniya+' ('+(tei+1)+'/'+_finderResults.length+') — lead qidirilmoqda...';
+          document.getElementById('finderBar').style.width = (70 + (tei/_finderResults.length)*18)+'%';
+          try {
+            await apolloEnrichTradeAtlasItem(taItem, apolloEnrichKey, prod, meta);
+          } catch(enErr){
+            console.log('Apollo enrichment '+taItem.kompaniya+' error:', enErr && enErr.message);
+          }
+        }
+      } else {
+        console.log('Apollo key topilmadi — enrichment qilinmaydi');
       }
       document.getElementById('finderBar').style.width = '88%';
     } else if(source==='apollo' && isTop100Global){
