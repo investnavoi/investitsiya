@@ -679,6 +679,15 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
   if(sourceCodes.length === 1){
     shipmentsPayload.parameters.push({ EXPORTER_COUNTRY_CODE: sourceCodes[0] });
   }
+  // Yil filtrini ikkalasiga ham qoshamiz
+  if(dateRange && dateRange.startDate){
+    shipmentsPayload.startDate = dateRange.startDate;
+    firmsPayload.startDate = dateRange.startDate;
+  }
+  if(dateRange && dateRange.endDate){
+    shipmentsPayload.endDate = dateRange.endDate;
+    firmsPayload.endDate = dateRange.endDate;
+  }
 
   var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit)...');
   var firmsCount = null, shipmentsCount = null, errMsg = '';
@@ -927,6 +936,7 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
   var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
   var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
   var taCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
+  var dateRange = getImportAnalysisDateRange();
 
   var found = [];
   // Legacy firms shape — proxy shuni /firms/search ga yuboradi (hasTargetShape=false)
@@ -941,6 +951,8 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
       firmFilter: [1, 2],
       parameters: [{ HS_CODE: hsCode }]
     };
+    if(dateRange && dateRange.startDate) payload.startDate = dateRange.startDate;
+    if(dateRange && dateRange.endDate) payload.endDate = dateRange.endDate;
     var data = await tradeAtlasRequestJson(payload);
     var firms = tradeAtlasNormalizeArray(data);
     if(!firms.length) break;
