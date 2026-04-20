@@ -616,6 +616,110 @@ function mapTradeAtlasFirmToFinderResult(firm, meta, prod){
   };
 }
 
+async function fetchTradeAtlasCount(endpoint, payload){
+  var resp = await fetch(TRADEATLAS_PROXY, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ mode: endpoint === 'firms/count' ? 'firms_count' : 'shipments_count', endpoint: endpoint, payload: payload || {} })
+  });
+  var data = {};
+  try { data = await resp.json(); } catch(_e){}
+  if(!resp.ok){ throw new Error((data && data.error) || ('TradeAtlas count error ' + resp.status)); }
+  return (data && data.data) || data || {};
+}
+
+function _extractCountNumber(countData){
+  if(!countData || typeof countData !== 'object') return null;
+  var candidates = ['count','total','totalCount','firmsCount','firms_count','shipmentsCount','shipments_count','total_entries','totalEntries','importerCount','exporterCount'];
+  for(var i=0;i<candidates.length;i++){
+    if(typeof countData[candidates[i]] === 'number') return countData[candidates[i]];
+  }
+  // Sum importer + exporter if both present
+  if(typeof countData.importerCount === 'number' || typeof countData.exporterCount === 'number'){
+    return (countData.importerCount||0) + (countData.exporterCount||0);
+  }
+  // Walk nested
+  var found = null;
+  (function walk(o){
+    if(!o || typeof o !== 'object' || found != null) return;
+    Object.keys(o).forEach(function(k){
+      if(found != null) return;
+      var v = o[k], kl = k.toLowerCase();
+      if(typeof v === 'number' && (kl.indexOf('count') !== -1 || kl.indexOf('total') !== -1)){ found = v; }
+      else if(typeof v === 'object'){ walk(v); }
+    });
+  })(countData);
+  return found;
+}
+
+async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope){
+  var hsCode = (typeof getExactImportHsCode === 'function') ? getExactImportHsCode(prod) : (prod && prod.hs_code) || '';
+  var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  var dateRange = (typeof getImportAnalysisDateRange === 'function') ? getImportAnalysisDateRange() : { startDate:'', endDate:'' };
+  var taFlowType = (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT';
+  var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
+  var taCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
+
+  var basePayload = {
+    countries: taCountries, firmFilter:[0,1,2], firmType: taFirmType, flowType: taFlowType,
+    parameters:[{ HS_CODE: hsCode }], hsCode: hsCode,
+    startDate: dateRange.startDate, endDate: dateRange.endDate
+  };
+
+  var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit)...');
+  var firmsCount = null, shipmentsCount = null, errMsg = '';
+  try {
+    var results = await Promise.allSettled([
+      fetchTradeAtlasCount('firms/count', basePayload),
+      fetchTradeAtlasCount('shipments/count', basePayload)
+    ]);
+    if(results[0].status === 'fulfilled') firmsCount = _extractCountNumber(results[0].value);
+    if(results[1].status === 'fulfilled') shipmentsCount = _extractCountNumber(results[1].value);
+    if(firmsCount == null && shipmentsCount == null){
+      errMsg = (results[0].reason && results[0].reason.message) || (results[1].reason && results[1].reason.message) || 'Count endpointi javob qaytarmadi';
+    }
+  } catch(e){ errMsg = e.message; }
+  if(loading && loading.parentNode){ clearTimeout(loading._toastTimer); loading.remove(); }
+
+  return await new Promise(function(resolve){
+    var estimatedCredits = shipmentsCount != null ? Math.min(shipmentsCount, 5000) : (firmsCount != null ? firmsCount * 5 : '?');
+    var firmsTxt = firmsCount != null ? Number(firmsCount).toLocaleString() : '—';
+    var shipTxt = shipmentsCount != null ? Number(shipmentsCount).toLocaleString() : '—';
+
+    var bodyCards =
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-bottom:1rem">'+
+        '<div style="padding:.85rem;border-radius:12px;background:rgba(15,118,110,.08);border:1px solid rgba(15,118,110,.25)"><div style="font-size:.6rem;color:#115E59;font-weight:700;letter-spacing:.04em">KOMPANIYALAR</div><div style="font-size:1.3rem;font-weight:800;color:#0F766E;margin-top:2px">'+firmsTxt+'</div></div>'+
+        '<div style="padding:.85rem;border-radius:12px;background:rgba(67,97,238,.08);border:1px solid rgba(67,97,238,.2)"><div style="font-size:.6rem;color:#1E3A8A;font-weight:700;letter-spacing:.04em">SHIPMENTLAR</div><div style="font-size:1.3rem;font-weight:800;color:#4361EE;margin-top:2px">'+shipTxt+'</div></div>'+
+        '<div style="padding:.85rem;border-radius:12px;background:linear-gradient(135deg,rgba(217,119,6,.12),rgba(245,158,11,.08));border:1px solid rgba(217,119,6,.25)"><div style="font-size:.6rem;color:#9A3412;font-weight:700;letter-spacing:.04em">TAXMINIY KREDIT</div><div style="font-size:1.3rem;font-weight:800;color:#D97706;margin-top:2px">~'+(typeof estimatedCredits === 'number' ? estimatedCredits.toLocaleString() : estimatedCredits)+'</div></div>'+
+      '</div>';
+
+    var errBlock = errMsg ? ('<div style="padding:.7rem;border-radius:8px;background:rgba(239,35,60,.08);color:#991B1B;font-size:.75rem;margin-bottom:.8rem">⚠️ '+escHtml(errMsg)+'</div>') : '';
+
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:16px;padding:1.6rem;max-width:500px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)';
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem"><div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0F766E,#059669);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M2 12h20M12 2c2.5 2.8 4 6.2 4 10s-1.5 7.2-4 10c-2.5-2.8-4-6.2-4-10s1.5-7.2 4-10z" stroke="currentColor" stroke-width="1.8"/></svg></div><div><h3 style="margin:0;font-size:1.05rem;color:#1a1a2e">TradeAtlas so\'rov xulosasi</h3><div style="font-size:.7rem;color:#64748B">Count endpointlari (0 kredit)</div></div></div>'+
+      '<div style="background:#F8FAFC;border-radius:10px;padding:.85rem;margin-bottom:1rem;font-size:.78rem;color:#475569">'+
+        '<div style="margin-bottom:.3rem"><strong>Mahsulot:</strong> '+escHtml(prod.name_en||prod.name_uz||'—')+' (HS '+escHtml(hsCode||'—')+')</div>'+
+        '<div><strong>Davlatlar:</strong> '+escHtml(taCountries.slice(0,5).join(', ') || '—')+(taCountries.length>5?'...':'')+'</div>'+
+      '</div>'+
+      bodyCards + errBlock +
+      '<div style="display:flex;gap:.7rem;justify-content:flex-end">'+
+        '<button id="taPreCancel" style="padding:.6rem 1.3rem;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;font-size:.82rem">Bekor qilish</button>'+
+        '<button id="taPreConfirm" style="padding:.6rem 1.3rem;border-radius:10px;border:none;background:linear-gradient(135deg,#0F766E,#059669);color:#fff;font-weight:600;cursor:pointer;font-size:.82rem">Yuklab olish</button>'+
+      '</div>';
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    var close = function(v){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); resolve(v); };
+    document.getElementById('taPreCancel').onclick = function(){ close(false); };
+    document.getElementById('taPreConfirm').onclick = function(){ close(true); };
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) close(false); });
+  });
+}
+
 async function fetchTradeAtlasUsage(){
   var resp = await fetch(TRADEATLAS_PROXY, {
     method: 'POST',
@@ -2567,6 +2671,15 @@ async function runCompanyFinder(source){
           ) + (!isTop100Global && sourceScope.hasFilter && meta.mode !== 'exporters' ? (' | Manba: '+sourceScope.summary) : '');
 
   _finderResults = [];
+
+  if(source === 'tradeatlas'){
+    var taConfirmed = await showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope);
+    if(!taConfirmed){
+      document.getElementById('finderProgress').style.display = 'none';
+      toast('ℹ️ TradeAtlas qidiruvi bekor qilindi','info');
+      return;
+    }
+  }
 
   try {
     if(source === 'tradeatlas'){
