@@ -1541,6 +1541,11 @@ async function enrichFromWebsite(id, force){
           var fData = await fResp.json();
           websiteText = fData.text || '';
           fetchedPages = fData.pages || [];
+          // Save logo if found
+          if(fData.logoUrl){
+            rec.logoUrl = fData.logoUrl;
+            rec.logoFound = !!fData.logoFound;
+          }
           if(websiteText){
             toast('🧠 AI matnni tahlil qilmoqda... ('+Math.round(websiteText.length/1000)+' KB, '+fetchedPages.length+' ta sahifa)');
             console.log('[enrichFromWebsite] fetched pages:', fetchedPages);
@@ -1988,8 +1993,17 @@ _renderInvestorCompaniesMain = function(){
         (countryName && typeof getFinderCountryFlag === 'function' ? getFinderCountryFlag(countryName)+' ' : '') +
         '<span>'+escHtml((countryLabel||countryName)+(cityText?', '+cityText:''))+'</span></div>';
     }
+    var logoUrl = companyRec.logoUrl || '';
+    var avatarHtml;
+    if(logoUrl){
+      avatarHtml = '<div style="width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid rgba(15,23,42,.08);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+
+        '<img src="'+tgEscapeAttr(logoUrl)+'" alt="'+escHtml(compName)+'" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML=&quot;'+compInitials+'&quot;;this.parentElement.style.background=&quot;'+avatarColor+'18&quot;;this.parentElement.style.color=&quot;'+avatarColor+'&quot;;this.parentElement.style.fontSize=&quot;.76rem&quot;;this.parentElement.style.fontWeight=&quot;800&quot;">'+
+      '</div>';
+    } else {
+      avatarHtml = '<div style="width:38px;height:38px;border-radius:50%;background:'+avatarColor+'18;color:'+avatarColor+';display:flex;align-items:center;justify-content:center;font-size:.76rem;font-weight:800;flex-shrink:0">'+compInitials+'</div>';
+    }
     var companyHtml = '<div onclick="openInvestorDetailModal(\''+companyRec.id+'\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil">' +
-      '<div style="width:38px;height:38px;border-radius:50%;background:'+avatarColor+'18;color:'+avatarColor+';display:flex;align-items:center;justify-content:center;font-size:.76rem;font-weight:800;flex-shrink:0">'+compInitials+'</div>' +
+      avatarHtml +
       '<div><div style="font-size:.85rem;font-weight:700;color:#111827">'+escHtml(compName)+'</div>' +
       (companyRec.website ? '<div style="font-size:.66rem;color:#6366F1;margin-top:1px">'+escHtml(companyRec.website)+'</div>' : '') +
       locationLine +
