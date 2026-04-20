@@ -2365,7 +2365,7 @@ async function runCompanyFinder(source){
   if(!prodId){ toast('⚠️ Mahsulot tanlang','error'); return; }
   var prod = (DB.products||[]).find(function(p){return p.id==prodId;});
   if(!prod) return;
-  var meta = getFinderModeMeta(document.getElementById('finder-mode').value);
+  var meta = getFinderModeMeta((document.getElementById('finder-mode')||{}).value || 'importers');
   _finderMode = meta.mode;
   var sourceScope = getFinderSourceSelection();
   var countSettings = getFinderCountSettings();
