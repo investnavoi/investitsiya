@@ -15,6 +15,7 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
+window.fbApp = fbApp;
 // Firestore + IndexedDB persistent cache — 10x tezroq, offline ishlaydi
 let db;
 try {
@@ -375,11 +376,7 @@ function waitForDB(){
         });
       }
     }
-    // Restore admin session
-    if(localStorage.getItem('_adminLoggedIn')==='1'){
-      window.isAdmin = true;
-      if(typeof applyAdminUI==='function') applyAdminUI(true);
-    }
+    // Firebase Auth handles admin session — see firebase-auth.js
     // URL ?page= parametridan sahifani darhol tiklash
     try{
       var urlParams = new URLSearchParams(window.location.search);

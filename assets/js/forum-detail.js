@@ -2056,8 +2056,10 @@ _renderInvestorCompaniesMain = function(){
       if(!contact.name && !contact.email) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
       contactHtml += '</div>';
 
-      var groupBorderStyle = recIdx === 0 ? 'border-top:2px solid rgba(67,97,238,.15);' : '';
-      html += '<tr id="investor-row-'+rec.id+'" style="transition:background .15s;'+groupBorderStyle+'" onmouseover="this.style.background=\'rgba(70,95,255,.03)\'" onmouseout="this.style.background=\'\'">';
+      var groupBorderStyle = recIdx === 0 ? 'border-top:10px solid transparent;box-shadow:inset 0 2px 0 rgba(70,95,255,.18);' : '';
+      var _groupBg = (groupIdx % 2 === 0) ? 'rgba(248,250,253,.7)' : 'rgba(255,255,255,.85)';
+      var _groupHoverBg = (groupIdx % 2 === 0) ? 'rgba(235,241,255,.85)' : 'rgba(240,244,255,.95)';
+      html += '<tr class="ic-group-row" data-group="'+groupIdx+'" id="investor-row-'+rec.id+'" style="background:'+_groupBg+' !important;transition:background .15s;'+groupBorderStyle+'" onmouseover="this.style.background=\''+_groupHoverBg+'\'" onmouseout="this.style.background=\''+_groupBg+'\'">';
       if(recIdx === 0){
         html += '<td rowspan="'+recs.length+'" style="padding-left:1.25rem;vertical-align:middle">'+(isAdmin ? ('<input type="checkbox" class="ic-check" data-ids="'+tgEscapeAttr(groupIds)+'" onchange="saveIcCheck(this);updateSelectedCount()" style="width:18px;height:18px;border-radius:5px;accent-color:#465fff;cursor:pointer">') : '')+'</td>';
         html += '<td rowspan="'+recs.length+'" style="font-size:.82rem;color:#374151;font-weight:600;vertical-align:middle">'+rowNumber+'</td>';

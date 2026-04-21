@@ -605,9 +605,20 @@ function resursSlideClick(section){
 function renderProducts(){
   var rms = DB.rawMaterials||[];
   var prods = DB.products||[];
-  document.getElementById('pr-k1').innerHTML = rms.length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
-  document.getElementById('pr-k2').innerHTML = prods.length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
-  document.getElementById('pr-k4').innerHTML = (DB.investorCompanies||[]).length+'<span style="font-size:1.1rem;font-weight:700"> ta</span>';
+  document.getElementById('pr-k1').innerHTML = rms.length+'<span>ta</span>';
+  document.getElementById('pr-k2').innerHTML = prods.length+'<span>ta</span>';
+  var _uniqueCompanies = new Set();
+  (DB.investorCompanies||[]).forEach(function(r){
+    var _name = String(r && r.kompaniya || '').trim().toLowerCase();
+    if(_name) _uniqueCompanies.add(_name);
+  });
+  document.getElementById('pr-k4').innerHTML = _uniqueCompanies.size+'<span>ta</span>';
+  // pr-k3 (Eksport) - already has "12" in HTML, add span dynamically if not wrapped
+  var _k3 = document.getElementById('pr-k3');
+  if(_k3 && _k3.innerHTML.indexOf('<span>') === -1){
+    var _val = _k3.textContent.trim().replace(/\s*ta\s*$/i, '').trim();
+    _k3.innerHTML = _val + '<span>ta</span>';
+  }
   document.getElementById('badge-products').textContent = prods.length;
   syncProductSections(rms, prods);
 
@@ -780,20 +791,23 @@ function renderFinderProductPicker(){
   if(!hidden || !display) return;
   var pid = String(hidden.value || '');
   if(!pid){
-    display.textContent = '— Tanlang —';
+    display.textContent = 'Mahsulotni tanlang';
+    display.classList.add('is-placeholder');
     if(dd) dd.querySelectorAll('.csd-item').forEach(function(item){ item.classList.remove('selected'); });
     return;
   }
   var product = (DB.products || []).find(function(p){ return String(p.id) === pid; });
   if(product){
     display.textContent = formatBilingualProductName(product) + (product.hs_code ? ' (' + product.hs_code + ')' : '');
+    display.classList.remove('is-placeholder');
     if(dd){
       dd.querySelectorAll('.csd-item').forEach(function(item){
         item.classList.toggle('selected', String(item.getAttribute('data-pid') || '') === pid);
       });
     }
   } else {
-    display.textContent = '— Tanlang —';
+    display.textContent = 'Mahsulotni tanlang';
+    display.classList.add('is-placeholder');
   }
 }
 

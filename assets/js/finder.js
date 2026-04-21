@@ -3,6 +3,71 @@
 ═══════════════════════════════════════ */
 var _finderResults = [];
 var _finderMode = 'importers';
+
+/* Toggle filter popover panels (Maqsad davlatlar / Eksportyor manbasi) */
+window.toggleFinderFilterPanel = function(panelName){
+  var wrap = document.getElementById('finderSidebarFilters');
+  if(!wrap) return;
+  var targetPanel = document.getElementById('finderTargetPopover');
+  var sourcePanel = document.getElementById('finderSourceScopeWrap');
+  var targetPill = document.querySelector('.finder-pill-btn[data-panel="target"]');
+  var sourcePill = document.querySelector('.finder-pill-btn[data-panel="source"]');
+
+  /* Only ONE panel visible at a time (for clean positioning under the clicked pill) */
+  var showTarget = false, showSource = false;
+  var wasOpen = wrap.style.display !== 'none';
+  var currentlyTarget = wasOpen && targetPanel && targetPanel.style.display !== 'none';
+  var currentlySource = wasOpen && sourcePanel && sourcePanel.style.display !== 'none';
+
+  if(panelName === 'target'){
+    showTarget = !currentlyTarget;
+  } else if(panelName === 'source'){
+    showSource = !currentlySource;
+  }
+
+  if(targetPanel) targetPanel.style.display = showTarget ? '' : 'none';
+  if(sourcePanel) sourcePanel.style.display = showSource ? '' : 'none';
+  wrap.style.display = (showTarget || showSource) ? '' : 'none';
+
+  if(targetPill) targetPill.classList.toggle('active', !!showTarget);
+  if(sourcePill) sourcePill.classList.toggle('active', !!showSource);
+
+  /* Position popover under clicked pill */
+  if(showTarget || showSource){
+    var activePill = showTarget ? targetPill : sourcePill;
+    var activePanel = showTarget ? targetPanel : sourcePanel;
+    if(activePill && activePanel && wrap.parentNode){
+      var pillRect = activePill.getBoundingClientRect();
+      var parentRect = wrap.parentNode.getBoundingClientRect();
+      /* Horizontal centering under pill */
+      var pillCenter = pillRect.left + pillRect.width/2 - parentRect.left;
+      var panelWidth = 420;
+      var maxLeft = parentRect.width - panelWidth - 20;
+      var left = Math.max(10, Math.min(maxLeft, pillCenter - panelWidth/2));
+      activePanel.style.width = panelWidth + 'px';
+      activePanel.style.marginLeft = left + 'px';
+      /* Vertical: position popover just below the pill (not at bottom of form) */
+      var pillBottom = pillRect.bottom - parentRect.top;
+      wrap.style.top = (pillBottom + 8) + 'px';
+    }
+  }
+};
+
+/* Update pill counts when filters change */
+window.updateFinderPillCounts = function(){
+  try{
+    var targetChecked = document.querySelectorAll('#finderCountries input[type="checkbox"]:checked').length;
+    var targetTotal = document.querySelectorAll('#finderCountries input[type="checkbox"]').length;
+    var tPill = document.getElementById('finderTargetPillCount');
+    if(tPill && targetTotal > 0) tPill.textContent = targetChecked + '/' + targetTotal;
+
+    var sourceChecked = document.querySelectorAll('#finderSourceContinentChips input[type="checkbox"]:checked, #finderSourceCountriesList input[type="checkbox"]:checked').length;
+    var sPill = document.getElementById('finderSourcePillCount');
+    if(sPill){
+      sPill.textContent = sourceChecked > 0 ? (sourceChecked + ' ta') : 'Barchasi';
+    }
+  }catch(e){}
+};
 var FINDER_TARGET_COUNTRY_META = {
   'Uzbekistan': {flag:'🇺🇿', label:"O'zbekiston"},
   'Turkmenistan': {flag:'🇹🇲', label:'Turkmaniston'},
@@ -210,6 +275,7 @@ function renderFinderTargetFilters(){
     }
     wrap.appendChild(div);
   });
+  if(typeof window.updateFinderPillCounts === 'function') window.updateFinderPillCounts();
 }
 
 function getImportAnalysisTargetCountries(){
@@ -295,7 +361,7 @@ function renderFinderSourceFilters(){
   var selectedEl = document.getElementById('finderSourceSelected');
   if(!wrap || !chipsEl) return;
   var meta = getFinderModeMeta((document.getElementById('finder-mode')||{}).value || 'importers');
-  wrap.style.display = 'block';
+  /* Visibility controlled by toggleFinderFilterPanel — don't force show */
   syncFinderSourceAgainstTarget();
   var searchEl = document.getElementById('finderSourceSearch');
   var search = searchEl ? searchEl.value.toLowerCase().trim() : '';
@@ -365,6 +431,7 @@ function renderFinderSourceFilters(){
     var sel = getFinderSourceSelection();
     selectedEl.textContent = sel.hasFilter ? ('Tanlangan: '+sel.summary) : '';
   }
+  if(typeof window.updateFinderPillCounts === 'function') window.updateFinderPillCounts();
 }
 
 function getFinderModeMeta(mode){
@@ -2844,8 +2911,8 @@ async function runCompanyFinder(source){
   var requestedCount = countSettings.count;
   var strategy = getFinderStrategyFilters();
 
-  // ═══ TOP 100 GLOBAL MODE (kredit tejash uchun 2 ta bilan cheklangan) ═══
-  var isTop100Global = !!(strategy.top100 && source === 'apollo');
+  // ═══ TOP 100 GLOBAL MODE — Apollo always runs in Top 100 mode (country filter ignored) ═══
+  var isTop100Global = (source === 'apollo');
   var TOP100_CAP = 2;
   if(isTop100Global){
     requestedCount = TOP100_CAP;

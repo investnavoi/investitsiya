@@ -1092,9 +1092,11 @@ function restoreImportSnapshot(snapshot, quiet){
   if(!prod) return false;
   var resultsEl = document.getElementById('importResults');
   var emptyEl = document.getElementById('importEmpty');
+  var finderEmptyEl = document.getElementById('finderEmpty');
   var detailEl = document.getElementById('finderImportDetailWrap');
   if(resultsEl) resultsEl.style.display = 'block';
   if(emptyEl) emptyEl.style.display = 'none';
+  if(finderEmptyEl) finderEmptyEl.style.display = 'none';
   if(detailEl) detailEl.style.display = 'block';
   var countries = (snapshot.countries||[]).map(function(c){
     return {
@@ -1185,10 +1187,12 @@ function restoreLastImportSnapshot(){
 function resetImportAnalysisUi(message){
   var resultsEl = document.getElementById('importResults');
   var emptyEl = document.getElementById('importEmpty');
+  var finderEmptyEl = document.getElementById('finderEmpty');
   var detailEl = document.getElementById('finderImportDetailWrap');
   var emptyText = emptyEl ? emptyEl.querySelector('p') : null;
   if(resultsEl) resultsEl.style.display = 'none';
   if(emptyEl) emptyEl.style.display = 'block';
+  if(finderEmptyEl) finderEmptyEl.style.display = '';
   if(detailEl) detailEl.style.display = 'none';
   if(emptyText) emptyText.textContent = message || 'Mahsulot tanlang va "Tahlil qilish" tugmasini bosing';
 
@@ -1410,15 +1414,18 @@ async function runImportAnalysis(forceRefresh, sourceOverride){
 
   var resultsEl = document.getElementById('importResults');
   var emptyEl = document.getElementById('importEmpty');
+  var finderEmptyEl = document.getElementById('finderEmpty');
   var detailEl = document.getElementById('finderImportDetailWrap');
   if(resultsEl) resultsEl.style.display = 'block';
   if(emptyEl) emptyEl.style.display = 'none';
+  if(finderEmptyEl) finderEmptyEl.style.display = 'none';
   if(detailEl) detailEl.style.display = 'none';
 
   var hsCode = getExactImportHsCode(prod);
   if(hsCode.length < 2){
     if(resultsEl) resultsEl.style.display = 'none';
     if(emptyEl) emptyEl.style.display = 'block';
+    if(finderEmptyEl) finderEmptyEl.style.display = '';
     if(detailEl) detailEl.style.display = 'none';
     toast('Bu mahsulot uchun HS kod topilmadi','error');
     return;

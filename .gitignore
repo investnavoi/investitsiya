@@ -4,3 +4,9 @@ dist/
 .claude/
 *.log
 .DS_Store
+scripts/service-account.json
+.firebaserc
+.env
+.env.local
+mockups/
+mockup-*.html

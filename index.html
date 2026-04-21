@@ -23,6 +23,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <!-- Firebase -->
 <!-- Firebase init -->
 <script type="module" src="assets/js/firebase-init.js"></script>
+<script type="module" src="assets/js/firebase-auth.js"></script>
 <!-- Hope UI CSS -->
 <link rel="stylesheet" href="assets/css/libs.min.css">
 <link rel="stylesheet" href="assets/css/hope-ui.min.css">
@@ -33,6 +34,8 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css" onerror="this.onerror=null;this.href='https://unpkg.com/jsvectormap/dist/css/jsvectormap.min.css'">
 <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/js/jsvectormap.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/jsvectormap/dist/js/jsvectormap.min.js';document.head.appendChild(s)"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/jsvectormap/dist/maps/world.js';document.head.appendChild(s)"></script>
+<script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+<script src="https://unpkg.com/globe.gl@2.34.4/dist/globe.gl.min.js"></script>
 <link rel="stylesheet" href="assets/css/main.css">
 <script src="assets/js/state.js"></script>
 <script src="assets/js/utils.js"></script>
@@ -50,6 +53,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/admin-forms.js" defer></script>
 <script src="assets/js/pipeline-crm.js" defer></script>
 <script src="assets/js/finder.js" defer></script>
+<script src="assets/js/finder-world-map.js" defer></script>
 <script src="assets/js/import-analysis.js" defer></script>
 <script src="assets/js/products.js" defer></script>
 <script src="assets/js/email-modal.js" defer></script>
@@ -1083,26 +1087,30 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
     </div>
 
     <!-- TailAdmin Metric Cards -->
-    <div class="ta-metrics cols-4" data-aos="fade-up" data-aos-delay="50">
-      <div class="ta-metric" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()">
-        <div class="ta-metric-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 16v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" fill="currentColor"/></svg></div>
+    <div class="ta-metrics cols-4 ta-metrics--stage" data-aos="fade-up" data-aos-delay="50">
+      <div class="ta-metric ta-metric--modern" style="cursor:pointer" onclick="(function(){var el=document.getElementById('rawMaterialsCard');if(!el)return;if(el.style.display==='none'||!el.style.display){el.style.display='block';el.scrollIntoView({behavior:'smooth',block:'start'});}else{el.style.display='none';}})()">
+        <div class="ta-metric-icon blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
         <div class="ta-metric-label">Resurs va imkoniyatlar</div>
         <div class="ta-metric-val" id="pr-k1">0</div>
+        <div class="ta-metric-trend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>Faol xomashyo bazasi</div>
       </div>
-      <div class="ta-metric">
-        <div class="ta-metric-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z" fill="currentColor"/></svg></div>
+      <div class="ta-metric ta-metric--modern">
+        <div class="ta-metric-icon green"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/><polyline points="8 6 12 2 16 6"/></svg></div>
         <div class="ta-metric-label">Xomashyo mahsulotlari</div>
         <div class="ta-metric-val" id="pr-k2">0</div>
+        <div class="ta-metric-trend">Katalogda tayyor</div>
       </div>
-      <div class="ta-metric">
-        <div class="ta-metric-icon orange"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg></div>
+      <div class="ta-metric ta-metric--modern">
+        <div class="ta-metric-icon orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></div>
         <div class="ta-metric-label">Eksport yo'nalishlari</div>
-        <div class="ta-metric-val" id="pr-k3">12</div>
+        <div class="ta-metric-val" id="pr-k3">12<span>ta</span></div>
+        <div class="ta-metric-trend">Global bozor</div>
       </div>
-      <div class="ta-metric">
-        <div class="ta-metric-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/></svg></div>
+      <div class="ta-metric ta-metric--modern">
+        <div class="ta-metric-icon red"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
         <div class="ta-metric-label">Maqsadli kompaniyalar</div>
         <div class="ta-metric-val" id="pr-k4">0</div>
+        <div class="ta-metric-trend">Lead pipeline</div>
       </div>
     </div>
 
@@ -1247,20 +1255,28 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
       <div class="pg-badge">Qidiruv</div>
     </div>
 
-    <div class="form-card" style="margin-bottom:1.2rem">
+    <div class="form-card finder-stage" style="margin-bottom:1.2rem">
       <input type="hidden" id="finder-filter-expansion">
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
-        <div class="form-group" style="flex:1;min-width:200px">
-          <label class="form-label">Mahsulot</label>
-          <div class="custom-select-wrap" id="finder-select-wrap">
-            <div class="custom-select-display form-input" id="finder-select-display" onclick="toggleFinderDropdown()">— Tanlang —</div>
-            <input type="hidden" id="finder-product-select" value="">
-            <div class="custom-select-dropdown" id="finder-dropdown"></div>
-          </div>
+
+      <!-- Big search bar (TradeAtlas style) -->
+      <div class="finder-search">
+        <span class="finder-search-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </span>
+        <div class="custom-select-wrap finder-search-input" id="finder-select-wrap">
+          <div class="custom-select-display is-placeholder" id="finder-select-display" onclick="toggleFinderDropdown()">Mahsulotni tanlang</div>
+          <input type="hidden" id="finder-product-select" value="">
+          <div class="custom-select-dropdown" id="finder-dropdown"></div>
         </div>
-        <div class="form-group" style="flex:0 0 140px">
-          <label class="form-label">Yil</label>
-          <select class="form-input" id="finder-year" onchange="handleImportYearChange()" style="background:#fff;color:#1a1a2e;border:1.5px solid #3a57e8;border-left:3px solid #3a57e8">
+        <div class="finder-search-divider"></div>
+
+        <!-- Year pill (inline) -->
+        <div class="finder-pill finder-pill-inline">
+          <span class="finder-pill-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </span>
+          <label>Yil</label>
+          <select id="finder-year" onchange="handleImportYearChange()">
             <option value="2026" selected>2026</option>
             <option value="2025">2025</option>
             <option value="2024">2024</option>
@@ -1269,31 +1285,100 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
             <option value="2021">2021</option>
           </select>
         </div>
-        <div class="form-group" style="flex:0 0 185px">
-          <label class="form-label">Import manbasi</label>
-          <select class="form-input" id="import-source-select" onchange="handleImportSourceChange()" style="background:#fff;color:#1a1a2e;border:1.5px solid #3a57e8;border-left:3px solid #3a57e8">
+
+        <div class="finder-search-divider"></div>
+
+        <!-- Source pill (inline) -->
+        <div class="finder-pill finder-pill-inline">
+          <span class="finder-pill-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          </span>
+          <label>Manba</label>
+          <select id="import-source-select" onchange="handleImportSourceChange()">
             <option value="comtrade" selected>UN Comtrade</option>
             <option value="tradeatlas">TradeAtlas Shipments</option>
           </select>
         </div>
-        <div class="form-group" style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:8px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:.72rem;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap">
-            <input type="checkbox" id="finder-filter-top100">
-            <span>Top 100 talik kompaniyalar</span>
-          </label>
+
+        <div class="finder-search-divider"></div>
+
+        <div class="finder-action-group">
+          <button class="finder-search-btn" type="button" onclick="runImportAnalysis(true)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            Tahlil qilish
+          </button>
+          <button class="finder-action-alt finder-action-alt-tradeatlas" type="button" onclick="runCompanyFinder('tradeatlas')" title="TradeAtlas">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2c2.5 2.8 4 6.2 4 10s-1.5 7.2-4 10c-2.5-2.8-4-6.2-4-10s1.5-7.2 4-10z"/></svg>
+            <span>TradeAtlas</span>
+          </button>
+          <button class="finder-action-alt finder-action-alt-apollo" type="button" onclick="runCompanyFinder('apollo')" title="Apollo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2L2 19h20L12 2z"/><circle cx="12" cy="14" r="2" fill="currentColor"/></svg>
+            <span>Apollo</span>
+          </button>
         </div>
-        <div class="form-group" style="flex:0 0 210px">
-          <div style="display:flex;flex-direction:column;gap:.45rem">
-            <button class="ta-btn" type="button" onclick="runCompanyFinder('tradeatlas')" style="background:#0F766E;color:#fff;border:none;font-weight:600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M2 12h20M12 2c2.5 2.8 4 6.2 4 10s-1.5 7.2-4 10c-2.5-2.8-4-6.2-4-10s1.5-7.2 4-10z" stroke="currentColor" stroke-width="1.8"/></svg> TradeAtlas</button>
-            <button class="ta-btn" type="button" onclick="runCompanyFinder('apollo')" style="background:#D97706;color:#fff;border:none;font-weight:600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 19h20L12 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="14" r="2" fill="currentColor"/></svg> Apollo</button>
-            <button class="ta-btn" type="button" id="finderCsvBtn" onclick="document.getElementById('finderTopCsvImport').click()" style="display:none;background:#8B5CF6;color:#fff;border:none;font-weight:600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> CSV Import</button>
-            <input type="file" id="finderTopCsvImport" accept=".csv,.xlsx,.xls" style="display:none" onchange="importFinderCSV(this)">
-            <button class="ta-btn ta-btn-primary" type="button" onclick="runImportAnalysis(true)" style="font-weight:600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Tahlil qilish</button>
+      </div>
+
+      <!-- Filter pills row -->
+      <div class="finder-filters">
+        <!-- Maqsad davlatlar pill -->
+        <button class="finder-pill finder-pill-btn" type="button" onclick="toggleFinderFilterPanel('target')" data-panel="target">
+          <span class="finder-pill-icon" style="color:#10b981">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          </span>
+          <label style="color:#059669">Maqsadli davlatlar</label>
+          <span class="finder-pill-count" id="finderTargetPillCount">13/13</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+
+        <!-- Eksportyor manbasi pill -->
+        <button class="finder-pill finder-pill-btn" type="button" onclick="toggleFinderFilterPanel('source')" data-panel="source">
+          <span class="finder-pill-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </span>
+          <label>Eksportyor davlatlar</label>
+          <span class="finder-pill-count" id="finderSourcePillCount">Barchasi</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color:#465fff"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+
+        <input type="checkbox" id="finder-filter-top100" style="display:none">
+        <div class="finder-spacer"></div>
+
+        <button class="finder-act finder-act-csv" type="button" id="finderCsvBtn" onclick="document.getElementById('finderTopCsvImport').click()" style="display:none">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          CSV
+        </button>
+        <input type="file" id="finderTopCsvImport" accept=".csv,.xlsx,.xls" style="display:none" onchange="importFinderCSV(this)">
+      </div>
+
+      <!-- Filter popover container (below pills, above content) -->
+      <div id="finderSidebarFilters" style="display:none;margin-top:.85rem">
+        <div id="finderTargetPopover" class="tcard" style="margin:0 0 .5rem 0;border-radius:12px;border:1px solid #E5E7EB;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+          <div style="padding:8px 14px 4px">
+            <div style="position:relative"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;display:flex;align-items:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span><input class="form-input" id="finderTargetSearch" type="text" placeholder="Davlat qidirish..." oninput="renderFinderTargetFilters()" style="border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;padding:6px 10px 6px 30px;font-size:.75rem;width:100%;outline:none"></div>
+          </div>
+          <div style="padding:4px 14px 10px">
+            <label class="form-label" style="margin-bottom:.3rem;display:none" id="finderCountriesLabel">Importyor kompaniyalar qidiriladi</label>
+            <div id="finderCountries" style="display:flex;flex-direction:column;gap:1px;margin-top:.3rem"></div>
+          </div>
+        </div>
+
+        <div id="finderSourceScopeWrap" class="tcard" style="margin:0;border-radius:12px;border:1px solid #E5E7EB;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+          <div style="padding:10px 14px 4px;display:flex;justify-content:flex-end">
+            <button type="button" onclick="clearFinderSourceFilters()" style="font-size:.68rem;color:#6B7280;background:#F3F4F6;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-weight:500">Tozalash</button>
+          </div>
+          <div style="padding:8px 14px 4px">
+            <div style="position:relative"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;display:flex;align-items:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span><input class="form-input" id="finderSourceSearch" type="text" placeholder="Davlat qidirish..." oninput="renderFinderSourceFilters()" style="border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;padding:6px 10px 6px 30px;font-size:.75rem;width:100%;outline:none"></div>
+          </div>
+          <div style="padding:4px 14px 10px">
+            <label class="form-label" style="margin:0 0 .3rem 0;display:none" id="finderSourceLabel">Eksportyor manbasi</label>
+            <div id="finderSourceContinentChips" style="display:flex;flex-direction:column;gap:1px;margin-top:.3rem"></div>
+            <div id="finderSourceSelected" style="display:none"></div>
+            <div id="finderSourceCountriesList"></div>
           </div>
         </div>
       </div>
 
-      <div id="finderAnalysisGrid" style="display:grid;grid-template-columns:minmax(0,1.45fr) minmax(340px,.92fr);gap:1rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);align-items:start">
+      <div id="finderAnalysisGrid" style="display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);align-items:start">
         <div>
           <div id="importResults" style="display:none">
             <div class="ta-card" style="margin-bottom:1rem">
@@ -1320,7 +1405,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
               <div id="importCountryList" style="overflow-x:auto;padding:0 .5rem .75rem"></div>
             </div>
           </div>
-          <div id="importEmpty" class="tc-empty" style="padding:2rem 1rem;margin-bottom:1rem;height:100%"><div class="tc-empty-icon">📊</div><p>Mahsulot tanlang va "Tahlil qilish" tugmasini bosing</p></div>
+          <div id="importEmpty" class="tc-empty" style="display:none"></div>
           <div id="finderImportDetailWrap" style="display:none;margin-top:1rem">
             <div class="ta-card" style="margin-bottom:1rem;display:none">
               <div class="ta-card-head"><div class="ta-card-title" id="import-detail-title">Batafsil import ma'lumotlari</div></div>
@@ -1356,36 +1441,6 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
           </div>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:.5rem">
-          <div class="tcard" style="margin:0;border-radius:12px;border:1px solid #E5E7EB;box-shadow:0 1px 3px rgba(0,0,0,.04)">
-            <div class="tc-head" style="padding:8px 14px;border-bottom:1px solid #F3F4F6;background:none">
-              <div class="tc-title" style="display:flex;align-items:center;gap:6px;font-size:.8rem"><span style="width:22px;height:22px;border-radius:6px;background:rgba(16,185,129,.1);display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span> Maqsad davlatlar</div>
-            </div>
-            <div style="padding:8px 14px 4px">
-              <div style="position:relative"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;display:flex;align-items:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span><input class="form-input" id="finderTargetSearch" type="text" placeholder="Davlat qidirish..." oninput="renderFinderTargetFilters()" style="border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;padding:6px 10px 6px 30px;font-size:.75rem;width:100%;outline:none"></div>
-            </div>
-            <div style="padding:4px 14px 10px">
-              <label class="form-label" style="margin-bottom:.3rem;display:none" id="finderCountriesLabel">Importyor kompaniyalar qidiriladi</label>
-              <div id="finderCountries" style="display:flex;flex-direction:column;gap:1px;margin-top:.3rem"></div>
-            </div>
-          </div>
-
-          <div id="finderSourceScopeWrap" class="tcard" style="margin:0;border-radius:12px;border:1px solid #E5E7EB;box-shadow:0 1px 3px rgba(0,0,0,.04)">
-            <div class="tc-head" style="padding:8px 14px;border-bottom:1px solid #F3F4F6;background:none">
-              <div class="tc-title" style="display:flex;align-items:center;gap:6px;font-size:.8rem"><span style="width:22px;height:22px;border-radius:6px;background:rgba(70,95,255,.1);display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#465fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Eksportyor manbasi</div>
-              <button type="button" onclick="clearFinderSourceFilters()" style="font-size:.68rem;color:#6B7280;background:#F3F4F6;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-weight:500">Tozalash</button>
-            </div>
-            <div style="padding:8px 14px 4px">
-              <div style="position:relative"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;display:flex;align-items:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span><input class="form-input" id="finderSourceSearch" type="text" placeholder="Davlat qidirish..." oninput="renderFinderSourceFilters()" style="border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;padding:6px 10px 6px 30px;font-size:.75rem;width:100%;outline:none"></div>
-            </div>
-            <div style="padding:4px 14px 10px">
-              <label class="form-label" style="margin:0 0 .3rem 0;display:none" id="finderSourceLabel">Eksportyor manbasi</label>
-              <div id="finderSourceContinentChips" style="display:flex;flex-direction:column;gap:1px;margin-top:.3rem"></div>
-              <div id="finderSourceSelected" style="font-size:.65rem;color:#6B7280;margin-top:.3rem"></div>
-              <div id="finderSourceCountriesList"></div>
-            </div>
-          </div>
-        </div>
       </div>
 
     </div>
@@ -1423,7 +1478,217 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
         </table></div>
       </div>
     </div>
-    <div id="finderEmpty" class="tc-empty" style="padding:3rem"><div class="tc-empty-icon">🔍</div><p>Mahsulot tanlang, davlatlarni belgilang va "Topish" bosing</p></div>
+    <div id="finderEmpty" class="fwm-wrap">
+      <div class="fwm-canvas">
+        <div id="finderGlobe"></div>
+      </div>
+    </div>
+    <div style="display:none" class="bcards-grid-hidden">
+
+        <!-- Card 1: Dark navy + green geometric shapes -->
+        <div class="bcard bcard-navy">
+          <svg class="bcard-bg" viewBox="0 0 400 220" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gNav1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#a7f3d0"/>
+                <stop offset="100%" stop-color="#10b981"/>
+              </linearGradient>
+            </defs>
+            <circle cx="80" cy="60" r="70" fill="url(#gNav1)" opacity=".9" class="bcard-shape-rotate"/>
+            <rect x="0" y="140" width="50" height="50" fill="url(#gNav1)" opacity=".7"/>
+            <rect x="60" y="180" width="30" height="30" fill="url(#gNav1)" opacity=".8"/>
+            <circle cx="360" cy="50" r="22" fill="url(#gNav1)" opacity=".85" class="bcard-shape-float"/>
+            <rect x="90" y="100" width="20" height="20" fill="#34d399" opacity=".9"/>
+          </svg>
+          <div class="bcard-flag">🇨🇳</div>
+          <div class="bcard-content">
+            <div class="bcard-tag">TOP EKSPORTYOR</div>
+            <h3 class="bcard-name">Hunan Goldsun</h3>
+            <p class="bcard-sub">Changsha · Mis simi HS 740811</p>
+            <div class="bcard-stats">
+              <div><b>$128M</b><span>EKSPORT</span></div>
+              <div><b>96%</b><span>MOSLIK</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: White + purple wavy curves -->
+        <div class="bcard bcard-wave">
+          <svg class="bcard-bg" viewBox="0 0 400 220" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gW1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#6366f1"/>
+                <stop offset="100%" stop-color="#8b5cf6"/>
+              </linearGradient>
+              <linearGradient id="gW2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#a78bfa" stop-opacity=".4"/>
+                <stop offset="100%" stop-color="#6366f1" stop-opacity=".6"/>
+              </linearGradient>
+            </defs>
+            <path d="M 280 -20 Q 400 80 340 160 T 420 260 L 420 -20 Z" fill="url(#gW1)" class="bcard-wave-motion"/>
+            <path d="M 240 -20 Q 340 100 310 180 T 360 280 L 420 280 L 420 -20 Z" fill="url(#gW2)" class="bcard-wave-motion-2"/>
+          </svg>
+          <div class="bcard-flag">🇩🇪</div>
+          <div class="bcard-content">
+            <h3 class="bcard-name bcard-name-dark">Siemens Wire</h3>
+            <p class="bcard-sub bcard-sub-dark">Nürnberg · Elektrokabel</p>
+            <div class="bcard-row bcard-row-dark"><b>€94M</b><span>REVENUE</span></div>
+          </div>
+        </div>
+
+        <!-- Card 3: Geometric architectural dark purple -->
+        <div class="bcard bcard-archi">
+          <svg class="bcard-bg" viewBox="0 0 400 220" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gA1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#a78bfa"/>
+                <stop offset="100%" stop-color="#ec4899"/>
+              </linearGradient>
+            </defs>
+            <polygon points="0,0 140,0 100,140 0,100" fill="url(#gA1)" opacity=".7"/>
+            <polygon points="160,0 240,0 200,80" fill="url(#gA1)" opacity=".5"/>
+            <rect x="200" y="120" width="60" height="60" fill="url(#gA1)" opacity=".6" class="bcard-shape-rotate"/>
+            <line x1="0" y1="160" x2="400" y2="160" stroke="#a78bfa" stroke-width="1" opacity=".3"/>
+            <line x1="0" y1="180" x2="400" y2="180" stroke="#a78bfa" stroke-width="1" opacity=".2"/>
+          </svg>
+          <div class="bcard-flag">🇹🇷</div>
+          <div class="bcard-content">
+            <h3 class="bcard-name">Nexans Türkiye</h3>
+            <p class="bcard-sub">Istanbul · Quvvat kabellari</p>
+            <div class="bcard-row"><b>€580M</b><span>SAVDO</span></div>
+          </div>
+        </div>
+
+        <!-- Card 4: Textured overlapping rectangles -->
+        <div class="bcard bcard-texture">
+          <svg class="bcard-bg" viewBox="0 0 400 220" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gT1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ec4899"/>
+                <stop offset="50%" stop-color="#8b5cf6"/>
+                <stop offset="100%" stop-color="#3b82f6"/>
+              </linearGradient>
+              <pattern id="dots" width="8" height="8" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,.15)"/>
+              </pattern>
+            </defs>
+            <rect x="0" y="0" width="400" height="220" fill="url(#gT1)"/>
+            <rect x="0" y="0" width="400" height="220" fill="url(#dots)"/>
+            <rect x="50" y="40" width="180" height="100" fill="rgba(255,255,255,.08)" class="bcard-rect-float"/>
+            <rect x="180" y="90" width="200" height="110" fill="rgba(255,255,255,.12)" class="bcard-rect-float-2"/>
+          </svg>
+          <div class="bcard-flag">🇮🇳</div>
+          <div class="bcard-content">
+            <h3 class="bcard-name">Polycab India</h3>
+            <p class="bcard-sub">Mumbai · Qurilish simlari</p>
+            <div class="bcard-row"><b>₹140B</b><span>REVENUE</span></div>
+          </div>
+        </div>
+
+        <!-- Card 5: Large featured -->
+        <div class="bcard bcard-prism bcard-span2">
+          <svg class="bcard-bg" viewBox="0 0 800 260" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gP1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#f43f5e"/>
+                <stop offset="50%" stop-color="#ec4899"/>
+                <stop offset="100%" stop-color="#8b5cf6"/>
+              </linearGradient>
+              <radialGradient id="gP2" cx="70%" cy="30%">
+                <stop offset="0%" stop-color="#fb7185" stop-opacity=".8"/>
+                <stop offset="100%" stop-color="transparent"/>
+              </radialGradient>
+            </defs>
+            <rect width="800" height="260" fill="url(#gP1)"/>
+            <circle cx="600" cy="60" r="120" fill="url(#gP2)" class="bcard-shape-breathe"/>
+            <polygon points="500,260 700,260 800,180 800,260" fill="rgba(255,255,255,.08)"/>
+            <polygon points="0,0 150,0 0,100" fill="rgba(255,255,255,.06)"/>
+            <line x1="0" y1="200" x2="800" y2="200" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
+            <circle cx="100" cy="220" r="3" fill="#fff" opacity=".6"/>
+            <circle cx="250" cy="220" r="3" fill="#fff" opacity=".6"/>
+            <circle cx="400" cy="220" r="3" fill="#fff" opacity=".6"/>
+          </svg>
+          <div class="bcard-flag">🇮🇹</div>
+          <div class="bcard-content">
+            <div class="bcard-tag">OFFSHORE LEADER</div>
+            <h3 class="bcard-name bcard-name-lg">Prysmian Group</h3>
+            <p class="bcard-sub">Milan, Italiya · Energetika + offshore kabellari · 47 davlat</p>
+            <div class="bcard-stats">
+              <div><b>€12B</b><span>REVENUE 2024</span></div>
+              <div><b>47</b><span>FILIAL</span></div>
+              <div><b>28K+</b><span>XODIM</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 6: Orange/amber geometric -->
+        <div class="bcard bcard-sunset">
+          <svg class="bcard-bg" viewBox="0 0 400 220" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gS1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#f59e0b"/>
+                <stop offset="100%" stop-color="#ef4444"/>
+              </linearGradient>
+            </defs>
+            <rect width="400" height="220" fill="url(#gS1)"/>
+            <circle cx="320" cy="60" r="70" fill="rgba(255,255,255,.18)" class="bcard-shape-breathe"/>
+            <polygon points="0,140 100,140 80,220 0,220" fill="rgba(0,0,0,.2)"/>
+            <rect x="40" y="50" width="50" height="50" fill="rgba(255,255,255,.15)" class="bcard-shape-rotate"/>
+          </svg>
+          <div class="bcard-flag">🇯🇵</div>
+          <div class="bcard-content">
+            <h3 class="bcard-name">Sumitomo Electric</h3>
+            <p class="bcard-sub">Osaka · Yarimo'tkazgichlar</p>
+            <div class="bcard-row"><b>¥3.8T</b><span>FY2024</span></div>
+          </div>
+        </div>
+
+        <!-- Card 7: Cyan ocean waves -->
+        <div class="bcard bcard-ocean">
+          <svg class="bcard-bg" viewBox="0 0 400 220" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gO1" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#0891b2"/>
+                <stop offset="100%" stop-color="#0e7490"/>
+              </linearGradient>
+            </defs>
+            <rect width="400" height="220" fill="url(#gO1)"/>
+            <path d="M 0 120 Q 100 90 200 120 T 400 120 L 400 220 L 0 220 Z" fill="rgba(255,255,255,.1)" class="bcard-wave-motion"/>
+            <path d="M 0 150 Q 100 130 200 150 T 400 150 L 400 220 L 0 220 Z" fill="rgba(255,255,255,.15)" class="bcard-wave-motion-2"/>
+            <circle cx="330" cy="50" r="30" fill="rgba(255,255,255,.2)" class="bcard-shape-breathe"/>
+          </svg>
+          <div class="bcard-flag">🇰🇷</div>
+          <div class="bcard-content">
+            <h3 class="bcard-name">LS Cable</h3>
+            <p class="bcard-sub">Seoul · Optik tolali kabel</p>
+            <div class="bcard-row"><b>₩4.2T</b><span>GLOBAL</span></div>
+          </div>
+        </div>
+
+        <!-- Card 8: Lime green modern -->
+        <div class="bcard bcard-lime2">
+          <svg class="bcard-bg" viewBox="0 0 400 220" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gL1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#84cc16"/>
+                <stop offset="100%" stop-color="#059669"/>
+              </linearGradient>
+            </defs>
+            <rect width="400" height="220" fill="url(#gL1)"/>
+            <polygon points="0,0 200,0 120,220 0,220" fill="rgba(255,255,255,.12)"/>
+            <polygon points="250,0 400,0 400,130 320,130" fill="rgba(0,0,0,.18)"/>
+            <circle cx="200" cy="110" r="45" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2" class="bcard-shape-rotate"/>
+          </svg>
+          <div class="bcard-flag">🇦🇪</div>
+          <div class="bcard-content">
+            <h3 class="bcard-name">Ducab</h3>
+            <p class="bcard-sub">Dubai · MENA mintaqasi</p>
+            <div class="bcard-row"><b>$1.4B</b><span>EKSPORT</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2397,7 +2662,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 
 <!-- ===== PAGE: SOZLAMALAR (Settings) ===== -->
 <div class="page" id="page-settings">
-  <div style="max-width:1200px;margin:0 auto;padding:1.2rem 1.8rem;">
+  <div style="max-width:1400px;margin:0 auto;padding:1.2rem 1.8rem;">
     <div style="margin-bottom:1.2rem">
       <h2 style="font-size:1.1rem;font-weight:700;color:var(--text);margin:0;letter-spacing:-.02em">Sozlamalar</h2>
       <nav style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--text3);margin-top:4px">
@@ -2407,8 +2672,10 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
       </nav>
     </div>
 
+    <div class="settings-grid">
+
     <!-- Navoiy IEZ tariflari -->
-    <div class="form-card" style="margin-bottom:1.2rem">
+    <div class="form-card" style="margin-bottom:0">
       <div class="form-title"><div class="form-title-icon">🏭</div> Navoiy IEZ Tariflari</div>
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Elektr ($/kWh)</label><input class="form-input" id="set-elektr" type="number" step="0.01" value="0.03"></div>
@@ -2423,35 +2690,65 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
       <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
     </div>
 
-    <!-- API kalitlar -->
+    <!-- API Kalitlar -->
     <div class="form-card" style="margin-bottom:1.2rem">
       <div class="form-title"><div class="form-title-icon">🔑</div> API Kalitlar</div>
       <div class="form-grid">
         <div class="form-group span-2"><label class="form-label">Gemini API Key (asosiy)</label><input class="form-input" id="set-gemini-key" type="password" placeholder="AIzaSy..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">aistudio.google.com dan oling</div></div>
         <div class="form-group span-2"><label class="form-label">Gemini API Key (zaxira)</label><input class="form-input" id="set-gemini-key2" type="password" placeholder="AIzaSy... (ikkinchi akkaunt)"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">Asosiy kvota tugaganda avtomatik ishlatiladi</div></div>
         <div class="form-group span-2"><label class="form-label">Apollo API Key</label><input class="form-input" id="set-apollo-key" type="password" placeholder="API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">apollo.io dan oling</div></div>
-        <div class="form-group span-2"><label class="form-label">SeaRates API Key</label><input class="form-input" id="set-searates-key" type="password" placeholder="SeaRates API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">searates.com/integrations dan oling (bepul tier — 100 so'rov/oy)</div></div>
-        <div class="form-group span-2"><label class="form-label">🌐 UN Comtrade Subscription Key</label><input class="form-input" id="set-comtrade-key" type="password" placeholder="UN Comtrade subscription key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">comtradeplus.un.org → Sign Up → Subscription → Get Key (bepul: 500 so'rov/kun, 100K qator). <b>Kalitsiz ham ishlaydi</b> (100 so'rov/kun, 500 qator)</div></div>
-        <div class="form-group span-2"><label class="form-label">📊 PPTX Template (Prezentatsiya namunasi)</label><div style="display:flex;gap:.5rem;align-items:center"><button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:#4361EE;color:#fff;border:none">📁 Template yuklash (.pptx)</button><span id="pptx-template-status" style="font-size:.6rem;color:var(--text3)">Yuklanmagan</span></div><div style="font-size:.55rem;color:var(--text3);margin-top:4px">Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi</div></div>
+        <div class="form-group span-2"><label class="form-label">SeaRates API Key</label><input class="form-input" id="set-searates-key" type="password" placeholder="SeaRates API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">searates.com/integrations (bepul — 100 so'rov/oy)</div></div>
+        <div class="form-group span-2"><label class="form-label">UN Comtrade Subscription Key</label><input class="form-input" id="set-comtrade-key" type="password" placeholder="UN Comtrade subscription key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">comtradeplus.un.org → Sign Up → Subscription (bepul: 500 so'rov/kun, 100K qator). Kalitsiz: 100 so'rov/kun.</div></div>
       </div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
     </div>
-    <!-- Telegram MTProto status -->
-    <div class="form-card" style="margin-top:1rem">
-      <div style="font-size:.9rem;font-weight:700;margin-bottom:.8rem">📲 Telegram — Telefon raqamga to'g'ridan-to'g'ri xabar</div>
-      <div id="tg-setup-status" style="margin-bottom:.5rem"></div>
-      <div style="font-size:.6rem;color:var(--text3)">
-Vercel Environment Variables:<br>
-        <code>TG_API_ID = your_api_id</code><br>
-        <code>TG_API_HASH = your_api_hash</code><br>
-        <code>TG_SESSION = your_session_string</code>
+
+    <!-- Prezentatsiya template -->
+    <div class="form-card" style="margin-bottom:1.2rem">
+      <div class="form-title"><div class="form-title-icon">📊</div> Prezentatsiya Template (PPTX)</div>
+      <div class="form-grid">
+        <div class="form-group span-2">
+          <label class="form-label">Template fayl</label>
+          <div style="display:flex;gap:.6rem;align-items:center;padding:.6rem .8rem;background:rgba(67,97,238,.04);border:1px dashed rgba(67,97,238,.25);border-radius:10px">
+            <button class="btn btn-sm" onclick="uploadPptxTemplate()" style="background:#4361EE;color:#fff;border:none">📁 Template yuklash (.pptx)</button>
+            <span id="pptx-template-status" style="font-size:.7rem;color:var(--text3)">Yuklanmagan</span>
+          </div>
+          <div style="font-size:.6rem;color:var(--text3);margin-top:4px">Namuna prezentatsiyani yuklang — har mahsulot uchun xuddi shu dizaynda yaratiladi</div>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Template URL (agar GitHub'da host qilsangiz)</label>
+          <input class="form-input" id="set-pptx-url" type="url" placeholder="https://investnavoi.github.io/investitsiya/template_english.pptx">
+          <div style="font-size:.6rem;color:var(--text3);margin-top:4px">GitHub Pages'da template_english.pptx ni host qiling</div>
+        </div>
       </div>
-        <div class="form-group span-2"><label class="form-label">PPTX Template URL</label><input class="form-input" id="set-pptx-url" type="url" placeholder="https://investnavoi.github.io/investitsiya/template_english.pptx"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">GitHub Pages'da template_english.pptx faylini host qiling | <a href="#" onclick="uploadPptxTemplate();return false" style="color:#4361EE">yoki kompyuterdan yuklang</a></div></div>
-        <div class="form-group span-2"><label class="form-label">Telegram Bot Token (guruhga yuborish uchun)</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling — guruhga xabar uchun</div></div>
-        <div class="form-group span-2"><label class="form-label">Telegram Chat ID (guruh)</label><input class="form-input" id="set-tg-chatid" placeholder="-1001234567890"></div>
-<div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:.8rem"><label class="form-label">📲 Telegram MTProto — telefonga to'g'ridan-to'g'ri xabar</label><div style="font-size:.55rem;color:var(--text3);margin-bottom:.5rem">Bu sozlamalar Vercel env'ga qo'yiladi. Quyidagi ma'lumotlarni Firebase'ga kiritsangiz ham bo'ladi.</div></div>
-        <div class="form-group"><label class="form-label">TG API ID</label><input class="form-input" id="set-tg-apiid" placeholder="12345678"><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
-        <div class="form-group"><label class="form-label">TG API Hash</label><input class="form-input" id="set-tg-apihash" type="password" placeholder="abc123..."><div style="font-size:.55rem;color:var(--text3)">my.telegram.org</div></div>
-        <div class="form-group span-2"><label class="form-label">TG Session String</label><input class="form-input" id="set-tg-session" type="password" placeholder="1BAAOMTQ5LjE1M..."><div style="font-size:.55rem;color:var(--text3)">generate-session.mjs dan oling (bir marta ishga tushiring)</div></div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
+    </div>
+
+    <!-- Telegram Bot (guruhga xabar) -->
+    <div class="form-card" style="margin-bottom:1.2rem">
+      <div class="form-title"><div class="form-title-icon">💬</div> Telegram Bot (guruhga xabar)</div>
+      <div class="form-grid">
+        <div class="form-group span-2"><label class="form-label">Bot Token</label><input class="form-input" id="set-tg-token" placeholder="123456:ABC-DEF..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">@BotFather dan oling</div></div>
+        <div class="form-group span-2"><label class="form-label">Chat ID (guruh)</label><input class="form-input" id="set-tg-chatid" placeholder="-1001234567890"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">Bot guruhga qo'shilgach, ID aniqlanadi</div></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
+    </div>
+
+    <!-- Telegram MTProto (telefonga to'g'ridan to'g'ri) -->
+    <div class="form-card" style="margin-bottom:1.2rem">
+      <div class="form-title"><div class="form-title-icon">📲</div> Telegram MTProto (telefonga to'g'ridan-to'g'ri)</div>
+      <div id="tg-setup-status" style="margin-bottom:.8rem"></div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">API ID</label><input class="form-input" id="set-tg-apiid" placeholder="12345678"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">my.telegram.org</div></div>
+        <div class="form-group"><label class="form-label">API Hash</label><input class="form-input" id="set-tg-apihash" type="password" placeholder="abc123..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">my.telegram.org</div></div>
+        <div class="form-group span-2"><label class="form-label">Session String</label><input class="form-input" id="set-tg-session" type="password" placeholder="1BAAOMTQ5LjE1M..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">generate-session.mjs orqali oling (bir marta)</div></div>
+      </div>
+      <div style="background:rgba(70,95,255,.04);border:1px solid rgba(70,95,255,.15);border-radius:8px;padding:.6rem .8rem;margin-top:.8rem;font-size:.65rem;color:var(--text3);line-height:1.6">
+        <b style="color:var(--text)">Vercel Environment Variables:</b><br>
+        <code style="background:rgba(15,23,42,.06);padding:1px 6px;border-radius:4px">TG_API_ID = your_api_id</code>
+        <code style="background:rgba(15,23,42,.06);padding:1px 6px;border-radius:4px;margin-left:4px">TG_API_HASH = your_api_hash</code>
+        <code style="background:rgba(15,23,42,.06);padding:1px 6px;border-radius:4px;margin-left:4px">TG_SESSION = your_session_string</code>
+      </div>
       <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
     </div>
 
@@ -2468,7 +2765,7 @@ Vercel Environment Variables:<br>
     </div>
 
     <!-- 12 davlat ro'yxati -->
-    <div class="form-card">
+    <div class="form-card settings-full">
       <div class="form-title"><div class="form-title-icon">🌍</div> Maqsadli 12 Davlat</div>
       <div style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.5rem 0">
         <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇷🇺 Rossiya</span>
@@ -2485,6 +2782,8 @@ Vercel Environment Variables:<br>
         <span style="padding:6px 12px;background:var(--bg2);border-radius:8px;font-size:.75rem">🇲🇳 Mo'g'uliston</span>
       </div>
     </div>
+
+    </div><!-- /.settings-grid -->
   </div>
 </div>
 
@@ -2882,19 +3181,22 @@ Vercel Environment Variables:<br>
       <div style="width:48px;height:48px;border-radius:12px;background:rgba(70,95,255,.08);display:inline-flex;align-items:center;justify-content:center;margin-bottom:.8rem">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#465fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       </div>
-      <div style="font-size:1.1rem;font-weight:700;color:#1a1a2e;margin-bottom:4px">Admin Panel</div>
-      <div style="font-size:.75rem;color:#64748b">Faqat vakolatli xodim uchun</div>
+      <div style="font-size:1.1rem;font-weight:700;color:#1a1a2e;margin-bottom:4px">Tizimga kirish</div>
+      <div style="font-size:.75rem;color:#64748b">Faqat ro'yxatdan o'tgan xodimlar</div>
     </div>
     <div style="margin-bottom:.8rem">
-      <label style="display:block;font-size:.72rem;font-weight:500;color:#344054;margin-bottom:6px">Login</label>
-      <input class="login-input" type="text" id="loginInput" placeholder="Login kiriting..." autocomplete="username" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;outline:none;transition:border .15s" onfocus="this.style.borderColor='#465fff';this.style.boxShadow='0 0 0 3px rgba(70,95,255,.08)'" onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
+      <label style="display:block;font-size:.72rem;font-weight:500;color:#344054;margin-bottom:6px">Email</label>
+      <input class="login-input" type="email" id="loginInput" placeholder="email@example.com" autocomplete="email" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;outline:none;transition:border .15s" onfocus="this.style.borderColor='#465fff';this.style.boxShadow='0 0 0 3px rgba(70,95,255,.08)'" onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
     </div>
     <div style="margin-bottom:.6rem">
       <label style="display:block;font-size:.72rem;font-weight:500;color:#344054;margin-bottom:6px">Parol</label>
       <input class="login-input" type="password" id="passInput" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;outline:none;transition:border .15s" onfocus="this.style.borderColor='#465fff';this.style.boxShadow='0 0 0 3px rgba(70,95,255,.08)'" onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
     </div>
-    <div class="login-err" id="loginErr" style="display:none;font-size:.7rem;color:#EF4444;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:6px 10px;margin-bottom:.6rem">Login yoki parol noto'g'ri!</div>
-    <button onclick="doLogin()" style="width:100%;padding:9px;border:none;border-radius:8px;background:#465fff;color:#fff;font-size:.8rem;font-weight:600;cursor:pointer;margin-top:.5rem;transition:background .15s" onmouseenter="this.style.background='#3b50e0'" onmouseleave="this.style.background='#465fff'">Kirish</button>
+    <div class="login-err" id="loginErr" style="display:none;font-size:.7rem;color:#EF4444;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:6px 10px;margin-bottom:.6rem"></div>
+    <button id="loginBtn" onclick="doLogin()" style="width:100%;padding:9px;border:none;border-radius:8px;background:#465fff;color:#fff;font-size:.8rem;font-weight:600;cursor:pointer;margin-top:.5rem;transition:background .15s" onmouseenter="this.style.background='#3b50e0'" onmouseleave="this.style.background='#465fff'">Kirish</button>
+    <div style="text-align:center;margin-top:.8rem">
+      <button onclick="forgotPassword()" style="background:none;border:none;color:#465fff;font-size:.72rem;cursor:pointer;text-decoration:underline">Parolni unutdingizmi?</button>
+    </div>
   </div>
 </div>
 
