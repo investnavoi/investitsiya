@@ -85,8 +85,22 @@ function deleteRecord(table, id){
   newBtn.onclick = () => {
     DB[table] = DB[table].filter(r => String(r.id) !== String(id));
     if(typeof fbDelete==='function') fbDelete(table, id);
-    ({investors:renderInvestors, local:renderLocal, zoom:renderZoom, forums:renderForums})[table]?.();
-    renderOverview();
+    const _renderers = {
+      investors: typeof renderInvestors === 'function' ? renderInvestors : null,
+      local: typeof renderLocal === 'function' ? renderLocal : null,
+      zoom: typeof renderZoom === 'function' ? renderZoom : null,
+      forums: typeof renderForums === 'function' ? renderForums : null,
+      investorCompanies: typeof renderInvestorCompanies === 'function' ? renderInvestorCompanies : null,
+      rawMaterials: typeof renderRawMaterials === 'function' ? renderRawMaterials : null,
+      products: typeof renderProducts === 'function' ? renderProducts : null,
+      entrepreneurs: typeof renderEntrepreneurs === 'function' ? renderEntrepreneurs : null
+    };
+    if(_renderers[table]) _renderers[table]();
+    if(table === 'investorCompanies'){
+      if(typeof refreshFinderResultTabs === 'function') try { refreshFinderResultTabs(); } catch(_e){}
+      if(typeof renderCurrentFinderTable === 'function') try { renderCurrentFinderTable(); } catch(_e){}
+    }
+    if(typeof renderOverview === 'function') renderOverview();
     modal.classList.remove('open');
     modal.style.display = '';
     toast(`"${name}" o'chirildi`, 'info');
