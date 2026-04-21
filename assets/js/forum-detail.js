@@ -1266,23 +1266,46 @@ function deleteFinderContactResult(resultIdx, contactIdx){
     });
     if(typeof fbDelete === 'function') fbDelete('investorCompanies', existing.id);
   }
+  var _matchContact = function(candidate){
+    if(!candidate) return false;
+    var same = apolloContactKey(candidate) === apolloContactKey(contact);
+    if(!same){
+      same = !!contact.email && String(candidate.email || '').trim().toLowerCase() === String(contact.email || '').trim().toLowerCase();
+    }
+    return same;
+  };
   if(Array.isArray(item.contacts) && item.contacts.length){
-    var removed = false;
-    item.contacts = item.contacts.filter(function(candidate){
-      if(removed) return true;
-      var same = apolloContactKey(candidate) === apolloContactKey(contact);
-      if(!same){
-        same = !!contact.email && String(candidate.email || '').trim().toLowerCase() === String(contact.email || '').trim().toLowerCase();
-      }
-      if(same){
-        removed = true;
-        return false;
-      }
+    var _removed1 = false;
+    item.contacts = item.contacts.filter(function(c){
+      if(_removed1) return true;
+      if(_matchContact(c)){ _removed1 = true; return false; }
       return true;
     });
-    apolloApplyCompanyContacts(item);
   }
-  if(getFinderVisibleContacts(item).length < 1){
+  if(Array.isArray(item._contactCandidates) && item._contactCandidates.length){
+    var _removed2 = false;
+    item._contactCandidates = item._contactCandidates.filter(function(c){
+      if(_removed2) return true;
+      if(_matchContact(c)){ _removed2 = true; return false; }
+      return true;
+    });
+  }
+  var _primary = (item.contacts && item.contacts[0]) || null;
+  if(_primary){
+    item.rahbar = _primary.name || '';
+    item.lavozim = _primary.title || '';
+    item.email = _primary.email || '';
+    item.telefon = _primary.telefon || '';
+    item.photoUrl = _primary.photoUrl || '';
+    item.photo_url = item.photoUrl;
+    item.linkedin = _primary.linkedin || '';
+    item._personId = _primary.personId || '';
+  } else {
+    item.rahbar = ''; item.lavozim = ''; item.email = ''; item.telefon = '';
+    item.photoUrl = ''; item.photo_url = ''; item.linkedin = ''; item._personId = '';
+  }
+  var _remaining = Array.isArray(item.contacts) ? item.contacts.filter(finderContactIsQualified) : [];
+  if(!_remaining.length){
     _finderResults.splice(resultIdx, 1);
   }
   refreshFinderResultTabs();
