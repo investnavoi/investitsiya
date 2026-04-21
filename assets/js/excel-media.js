@@ -60,13 +60,22 @@ function confirmDelete(){
 
 function deleteRecord(table, id){
   const rec = DB[table].find(r => String(r.id) === String(id));
-  const name  = rec ? (rec.kompaniya||rec.ism||rec.nom||rec.rahbar||'Yozuv') : 'Yozuv';
+  let name;
+  if(table === 'investorCompanies' && rec){
+    const _lead = String(rec.rahbar || '').trim();
+    const _comp = String(rec.kompaniya || '').trim();
+    if(_lead && _comp) name = `${_lead} (${_comp})`;
+    else name = _lead || _comp || 'Yozuv';
+  } else {
+    name = rec ? (rec.kompaniya||rec.ism||rec.nom||rec.rahbar||'Yozuv') : 'Yozuv';
+  }
 
   const modal   = document.getElementById('deleteModal');
   const msgEl   = document.getElementById('deleteMsg');
   const confirmBtn = document.getElementById('deleteConfirmBtn');
 
-  msgEl.textContent = `"${name}" yozuvini o'chirishni tasdiqlaysizmi?`;
+  const _msgLabel = (table === 'investorCompanies') ? `Lead "${name}" ni o'chirishni tasdiqlaysizmi?` : `"${name}" yozuvini o'chirishni tasdiqlaysizmi?`;
+  msgEl.textContent = _msgLabel;
   modal.style.display = 'flex';
   modal.classList.add('open');
 
