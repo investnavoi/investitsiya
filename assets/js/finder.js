@@ -3452,11 +3452,19 @@ function renderFinderTable(results){
   if(!tb) return;
   var rows = [];
   var allResults = Array.isArray(_finderResults) ? _finderResults : [];
-  (results || []).slice().sort(function(a,b){
+  var _sortedResults = (results || []).slice().sort(function(a,b){
     return (b.score || 0) - (a.score || 0);
-  }).forEach(function(r, i){
+  });
+  var _visibleResults = _sortedResults.filter(function(_r){
+    var _c = getFinderVisibleContacts(_r);
+    return _c && _c.length > 0;
+  });
+  var _lastVisibleIdx = _visibleResults.length - 1;
+  var _renderedIdx = -1;
+  _sortedResults.forEach(function(r, i){
     var contacts = getFinderVisibleContacts(r);
     if(!contacts.length) return;
+    _renderedIdx++;
     var sourceIdx = allResults.indexOf(r);
     if(sourceIdx < 0) sourceIdx = i;
     var scoreColor = r.score>=80 ? '#059669' : r.score>=60 ? '#FFB703' : '#EF233C';
@@ -3515,6 +3523,15 @@ function renderFinderTable(results){
         );
       }
     });
+    if(_renderedIdx < _lastVisibleIdx){
+      rows.push(
+        '<tr class="finder-company-separator" aria-hidden="true">'+
+          '<td colspan="9" style="padding:0;border:none;background:transparent">'+
+            '<div style="height:3px;margin:4px 0;border-radius:999px;background:linear-gradient(90deg,transparent 0%,rgba(67,97,238,.18) 12%,rgba(67,97,238,.55) 35%,rgba(245,124,0,.7) 50%,rgba(67,97,238,.55) 65%,rgba(67,97,238,.18) 88%,transparent 100%);box-shadow:0 0 6px rgba(245,124,0,.15)"></div>'+
+          '</td>'+
+        '</tr>'
+      );
+    }
   });
   tb.innerHTML = rows.join('');
   mountInvestorAiWorkspace();
