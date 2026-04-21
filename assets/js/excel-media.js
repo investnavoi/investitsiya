@@ -84,6 +84,7 @@ function deleteRecord(table, id){
   confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
   newBtn.onclick = () => {
     DB[table] = DB[table].filter(r => String(r.id) !== String(id));
+    if(typeof setLocalCollectionBackup === 'function') try { setLocalCollectionBackup(table, DB[table] || []); } catch(_e){}
     if(typeof fbDelete==='function') fbDelete(table, id);
     const _renderers = {
       investors: typeof renderInvestors === 'function' ? renderInvestors : null,

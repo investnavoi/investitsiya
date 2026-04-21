@@ -320,10 +320,11 @@ window.fbSave = async function(colName, record){
 window.fbDelete = async function(colName, id){
   try {
     await deleteDoc(doc(db, colName, String(id)));
-    if(colName==='entrepreneurs'){
-      var list = Array.isArray(DB.entrepreneurs) ? DB.entrepreneurs : [];
-      setLocalCollectionBackup('entrepreneurs', list.filter(function(item){ return String(item.id)!==String(id); }));
-    }
+    // Keep localStorage backup in sync so page refresh doesn't resurrect deleted rows
+    try {
+      var _list = Array.isArray(DB[colName]) ? DB[colName] : [];
+      setLocalCollectionBackup(colName, _list.filter(function(item){ return String(item && item.id) !== String(id); }));
+    } catch(_e){}
   } catch(e){ console.error('fbDelete error:', e); }
 };
 
