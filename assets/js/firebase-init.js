@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, setDoc, getDocs, getDocsFromCache, deleteDoc, writeBatch, onSnapshot
+  collection, doc, setDoc, getDoc, getDocs, getDocsFromCache, deleteDoc, writeBatch, onSnapshot
 } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -107,6 +107,103 @@ async function fbLoadSettings(){
   } catch(e){}
 }
 window.fbLoadSettings = fbLoadSettings;
+
+/* ═══════════════════════════════════════
+   Per-user cross-device settings sync
+   Stored in users/{uid} — theme, language, Gmail config, prefs.
+═══════════════════════════════════════ */
+const USER_SETTINGS_KEYS = [
+  'theme',
+  '_lang',
+  '_gmailClientId',
+  '_myEmail',
+  '_gmailUserEmail',
+  '_pollSecs',
+  '_autotr_disabled'
+];
+
+function _currentUid(){
+  try {
+    return (window._currentUser && window._currentUser.uid)
+      || localStorage.getItem('_auth_uid') || '';
+  } catch(e){ return ''; }
+}
+
+function _readSyncedLocal(){
+  var out = {};
+  for(var i=0;i<USER_SETTINGS_KEYS.length;i++){
+    var k = USER_SETTINGS_KEYS[i];
+    try {
+      var v = localStorage.getItem(k);
+      if(v !== null && v !== undefined) out[k] = v;
+    } catch(e){}
+  }
+  return out;
+}
+
+var _syncUserSettingsTimer = null;
+window.syncUserSettings = function(immediate){
+  var uid = _currentUid();
+  if(!uid) return;
+  if(_syncUserSettingsTimer) clearTimeout(_syncUserSettingsTimer);
+  var run = async function(){
+    try {
+      var payload = _readSyncedLocal();
+      payload.updatedAt = new Date().toISOString();
+      await setDoc(doc(db, 'users', uid), payload, { merge: true });
+    } catch(e){ console.warn('syncUserSettings failed:', e && e.message); }
+  };
+  if(immediate) run(); else _syncUserSettingsTimer = setTimeout(run, 1500);
+};
+
+window.loadUserSettings = async function(){
+  var uid = _currentUid();
+  if(!uid) return;
+  try {
+    var snap = await getDoc(doc(db, 'users', uid));
+    if(!snap.exists()) return;
+    var data = snap.data() || {};
+    var changed = 0;
+    for(var i=0;i<USER_SETTINGS_KEYS.length;i++){
+      var k = USER_SETTINGS_KEYS[i];
+      if(data[k] !== undefined && data[k] !== null){
+        try {
+          var cur = localStorage.getItem(k);
+          var val = String(data[k]);
+          if(cur !== val){
+            // Use raw setter to avoid triggering sync-back loop
+            Storage.prototype._origSetItem
+              ? Storage.prototype._origSetItem.call(localStorage, k, val)
+              : localStorage.setItem(k, val);
+            changed++;
+          }
+        } catch(e){}
+      }
+    }
+    if(changed > 0){
+      console.log('☁️ '+changed+' ta sozlama Firebase\'dan tiklandi');
+      try {
+        if(typeof applyTheme === 'function') applyTheme();
+        if(typeof applyTranslations === 'function') applyTranslations();
+      } catch(e){}
+    }
+  } catch(e){ console.warn('loadUserSettings failed:', e && e.message); }
+};
+
+/* Auto-sync: intercept localStorage.setItem for whitelisted keys only */
+(function _instrumentLocalStorage(){
+  try {
+    if(Storage.prototype._origSetItem) return; // already instrumented
+    var orig = Storage.prototype.setItem;
+    Storage.prototype._origSetItem = orig;
+    Storage.prototype.setItem = function(key, value){
+      orig.apply(this, arguments);
+      if(USER_SETTINGS_KEYS.indexOf(String(key)) !== -1){
+        try { window.syncUserSettings && window.syncUserSettings(); } catch(e){}
+      }
+    };
+  } catch(e){ /* silent */ }
+})();
 
 function getLocalCollectionBackup(colName){
   try {

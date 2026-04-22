@@ -84,6 +84,8 @@ function applyAuthState(state){
       localStorage.setItem('_auth_email', state.user.email || '');
       localStorage.setItem('_auth_admin', state.isAdmin ? '1' : '0');
     } catch(e){}
+    /* Pull cross-device user settings from Firebase (theme, lang, Gmail config, prefs) */
+    try { if(typeof window.loadUserSettings === 'function') window.loadUserSettings(); } catch(e){}
   } else {
     window._currentUser = null;
     window.isAdmin = false;

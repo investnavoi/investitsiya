@@ -1457,7 +1457,6 @@ function renderWebsiteAiProfileSection(rec){
   var ts = rec.websiteAiProfileAt || '';
   if(!profile){
     return '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#f0f9ff)">'+
-      '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:.3rem">🌐 Saytdan olingan ma\'lumot</div>'+
       '<div style="display:flex;align-items:center;gap:10px;padding:.8rem 0">'+
         '<div style="width:18px;height:18px;border:2px solid rgba(14,165,233,.25);border-top-color:#0EA5E9;border-radius:50%;animation:spin 0.8s linear infinite"></div>'+
         '<div style="font-size:.74rem;color:var(--text2);line-height:1.5">AI kompaniya saytidan ma\'lumot olmoqda... Bu 10-20 soniya olishi mumkin.</div>'+
@@ -1495,10 +1494,7 @@ function renderWebsiteAiProfileSection(rec){
   if(contact.address) contactLines.push('📍 '+escHtml(contact.address));
 
   return '<div style="padding:1rem;border:1px solid rgba(14,165,233,.28);border-radius:16px;background:linear-gradient(180deg,#fff,#f0f9ff)">'+
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.55rem">'+
-      '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text)">🌐 Saytdan olingan ma\'lumot</div>'+
-      (ts ? '<div style="font-size:.6rem;color:var(--text3)">'+escHtml(new Date(ts).toLocaleDateString())+'</div>' : '')+
-    '</div>'+
+    (ts ? '<div style="display:flex;justify-content:flex-end;margin-bottom:.55rem"><div style="font-size:.6rem;color:var(--text3)">'+escHtml(new Date(ts).toLocaleDateString())+'</div></div>' : '')+
     (profile.about ? '<div style="font-size:.76rem;color:var(--text2);line-height:1.6;margin-bottom:.7rem;padding:.65rem .8rem;background:rgba(14,165,233,.06);border-radius:10px;border-left:3px solid #0EA5E9">'+escHtml(profile.about)+'</div>' : '')+
     textBlock('Missiya', profile.mission)+
     textBlock('Tarix', profile.history)+
@@ -1681,7 +1677,8 @@ function openInvestorDetailModal(id){
   var sohaValue = getInvestorSohaValue(rec) || '—';
   var linkedinUrl = rec.linkedin ? (String(rec.linkedin).startsWith('http') ? rec.linkedin : 'https://' + String(rec.linkedin).replace(/^\/+/, '')) : '';
   body.innerHTML =
-    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.55fr) minmax(320px,.85fr);gap:1rem;align-items:start">'+
+    '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.85fr);gap:1rem;align-items:start">'+
+      '<div style="display:grid;gap:1rem">'+
       '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#f8fbff)">'+
         '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:.9rem">'+
           renderPersonNameWithPhoto(rec.rahbar, rec.photoUrl || rec.photo_url, rec.lavozim?'<div style="font-size:.72rem;color:var(--text3);margin-top:2px">'+escHtml(rec.lavozim)+'</div>':'', 56)+
@@ -1696,23 +1693,24 @@ function openInvestorDetailModal(id){
           '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">T/yil</div><div style="font-size:.95rem;font-weight:800;color:var(--text);margin-top:4px">'+escHtml(rec.tpilyil || '—')+'</div></div>'+
           '<div style="padding:.8rem;border:1px solid var(--border);border-radius:12px;background:#fff"><div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Telefon</div><div style="font-size:.85rem;font-weight:700;color:var(--text);margin-top:4px">'+escHtml(rec.telefon || rec.tel || '—')+'</div></div>'+
         '</div>'+
+        '<div style="margin-top:.9rem;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem">'+
+          '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#fbfcff)">'+
+            '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:.55rem">Aloqa va status</div>'+
+            '<div style="font-size:.76rem;color:var(--text2);line-height:1.7"><b>Rahbar:</b> '+escHtml(rec.rahbar || '—')+'<br><b>Lavozim:</b> '+escHtml(rec.lavozim || '—')+'<br><b>Email holati:</b> '+getEmailStatusBadge(rec)+'<br><b>Manba:</b> '+escHtml(rec.manba || '—')+'</div>'+
+          '</div>'+
+          '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#fbfcff)">'+
+            '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:.55rem">Tashqi havolalar</div>'+
+            '<div style="display:grid;gap:.55rem">'+
+              '<div style="font-size:.76rem;color:var(--text2)"><b>Website:</b> '+(rec.website ? '<a href="'+tgEscapeAttr(rec.website)+'" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:none">'+escHtml(rec.website)+'</a>' : '—')+'</div>'+
+              '<div style="font-size:.76rem;color:var(--text2)"><b>LinkedIn:</b> '+(linkedinUrl ? '<a href="'+tgEscapeAttr(linkedinUrl)+'" target="_blank" rel="noopener" style="color:#0A66C2;text-decoration:none">Profilni ochish</a>' : '—')+'</div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
         '<div style="margin-top:.9rem;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">'+
           '<button type="button" onclick="enrichAndReopen(\''+rec.id+'\')" style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;border:none;border-radius:10px;font-size:.78rem;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(5,150,105,.25)" title="Apollo people_search — credit ishlatmaydi">⚡ Yangilash <span style="font-size:.62rem;background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px">bepul</span></button>'+
           '<button type="button" onclick="enrichAndReopenPaid(\''+rec.id+'\')" style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:10px;font-size:.78rem;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.25)" title="Apollo org_enrichment — telefon va to\'liq ma\'lumot, 1 credit">💎 To\'liq ma\'lumot <span style="font-size:.62rem;background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px">1 credit</span></button>'+
         '</div>'+
       '</div>'+
-      '<div style="display:grid;gap:.85rem">'+
-        '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#fbfcff)">'+
-          '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:.55rem">Aloqa va status</div>'+
-          '<div style="font-size:.76rem;color:var(--text2);line-height:1.7"><b>Rahbar:</b> '+escHtml(rec.rahbar || '—')+'<br><b>Lavozim:</b> '+escHtml(rec.lavozim || '—')+'<br><b>Email holati:</b> '+getEmailStatusBadge(rec)+'<br><b>Manba:</b> '+escHtml(rec.manba || '—')+'</div>'+
-        '</div>'+
-        '<div style="padding:1rem;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fff,#fbfcff)">'+
-          '<div style="font-family:\'Sora\',sans-serif;font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:.55rem">Tashqi havolalar</div>'+
-          '<div style="display:grid;gap:.55rem">'+
-            '<div style="font-size:.76rem;color:var(--text2)"><b>Website:</b> '+(rec.website ? '<a href="'+tgEscapeAttr(rec.website)+'" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:none">'+escHtml(rec.website)+'</a>' : '—')+'</div>'+
-            '<div style="font-size:.76rem;color:var(--text2)"><b>LinkedIn:</b> '+(linkedinUrl ? '<a href="'+tgEscapeAttr(linkedinUrl)+'" target="_blank" rel="noopener" style="color:#0A66C2;text-decoration:none">Profilni ochish</a>' : '—')+'</div>'+
-          '</div>'+
-        '</div>'+
       '</div>'+
       '<div>'+renderWebsiteAiProfileSection(rec)+'</div>'+
     '</div>';
