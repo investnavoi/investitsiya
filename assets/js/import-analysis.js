@@ -2201,6 +2201,13 @@ function fillInvestAiMaterial(name){
 }
 
 function getInvestAiHistory(){
+  // Prefer Firebase-backed DB if populated (cross-device sync)
+  if(typeof window.DB !== 'undefined' && Array.isArray(window.DB.investAiHistory) && window.DB.investAiHistory.length){
+    return window.DB.investAiHistory.slice().sort(function(a,b){
+      return new Date(b.savedAt || 0).getTime() - new Date(a.savedAt || 0).getTime();
+    });
+  }
+  // Fall back to localStorage cache (offline / before Firebase load completes)
   try{
     var raw = localStorage.getItem(INVEST_AI_HISTORY_KEY);
     var parsed = raw ? JSON.parse(raw) : [];
@@ -2210,22 +2217,124 @@ function getInvestAiHistory(){
   }
 }
 
+// One-time migration: push legacy localStorage-only AI history to Firebase
+// so past analyses are recoverable from any device.
+var _INVEST_AI_MIGRATED_KEY = '_invest_ai_fb_migrated_v1';
+function _migrateLocalInvestAiToFirebase(){
+  try{
+    if(localStorage.getItem(_INVEST_AI_MIGRATED_KEY) === '1') return;
+    if(typeof window.fbSave !== 'function') return;
+    if(typeof window.DB === 'undefined') return;
+    var local = [];
+    try {
+      var rawStr = localStorage.getItem(INVEST_AI_HISTORY_KEY);
+      local = rawStr ? JSON.parse(rawStr) : [];
+      if(!Array.isArray(local)) local = [];
+    } catch(e){ local = []; }
+    if(!local.length){
+      localStorage.setItem(_INVEST_AI_MIGRATED_KEY, '1');
+      return;
+    }
+    // Merge into DB and push any that Firebase doesn't already have
+    window.DB.investAiHistory = Array.isArray(window.DB.investAiHistory) ? window.DB.investAiHistory : [];
+    var existingMaterials = {};
+    window.DB.investAiHistory.forEach(function(item){
+      if(item && item.material) existingMaterials[String(item.material).toLowerCase()] = true;
+    });
+    var migrated = 0;
+    local.forEach(function(item){
+      if(!item || !item.material) return;
+      var mKey = String(item.material).toLowerCase();
+      if(existingMaterials[mKey]) return;
+      var rec = {
+        id: item.id || ('ai_' + Date.now() + '_' + Math.random().toString(36).slice(2,8)),
+        material: item.material,
+        markdown: item.markdown || '',
+        headline: item.headline || '',
+        savedAt: item.savedAt || new Date().toISOString(),
+        tradeContext: item.tradeContext || null
+      };
+      window.DB.investAiHistory.unshift(rec);
+      existingMaterials[mKey] = true;
+      try { window.fbSave('investAiHistory', rec); } catch(e){}
+      migrated++;
+    });
+    if(migrated > 0){
+      console.log('☁️ '+migrated+' ta AI tahlil Firebase\'ga migrate qilindi');
+      // Re-render chips so AI badges appear on migrated materials
+      _refreshProductChipsWithAi();
+    }
+    localStorage.setItem(_INVEST_AI_MIGRATED_KEY, '1');
+  }catch(e){
+    console.warn('AI history migration failed:', e);
+  }
+}
+
+// Run migration when Firebase finishes loading
+(function scheduleAiHistoryMigration(){
+  var tries = 0;
+  var timer = setInterval(function(){
+    tries++;
+    if(typeof window.DB !== 'undefined' && typeof window.fbSave === 'function'){
+      clearInterval(timer);
+      _migrateLocalInvestAiToFirebase();
+    } else if(tries > 60){ // ~30 seconds max
+      clearInterval(timer);
+    }
+  }, 500);
+})();
+
 function saveInvestAiHistory(material, markdown, tradeContext){
   var headline = String(markdown || '').split(/\r?\n/).map(function(line){
     return String(line || '').replace(/^#+\s*/, '').trim();
   }).find(function(line){ return !!line; }) || investAiT('emptyHeadline');
-  var next = [{
+  var record = {
+    id: 'ai_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
     material: material,
     markdown: markdown,
     headline: headline,
     savedAt: new Date().toISOString(),
     tradeContext: tradeContext || null
-  }].concat(getInvestAiHistory()).filter(function(item, idx, arr){
-    return idx === arr.findIndex(function(other){
-      return other.material === item.material && other.savedAt === item.savedAt;
+  };
+
+  // Update in-memory DB (so re-renders show instantly)
+  if(typeof window.DB !== 'undefined'){
+    window.DB.investAiHistory = Array.isArray(window.DB.investAiHistory) ? window.DB.investAiHistory : [];
+    // Dedupe by material — keep the freshest analysis per material
+    window.DB.investAiHistory = window.DB.investAiHistory.filter(function(item){
+      return item && item.material !== material;
     });
-  }).slice(0,5);
-  localStorage.setItem(INVEST_AI_HISTORY_KEY, JSON.stringify(next));
+    window.DB.investAiHistory.unshift(record);
+    window.DB.investAiHistory = window.DB.investAiHistory.slice(0, 50);
+  }
+
+  // Persist to localStorage cache (offline fallback + instant load on next visit)
+  var cachedList = (typeof window.DB !== 'undefined' && Array.isArray(window.DB.investAiHistory))
+    ? window.DB.investAiHistory
+    : [record].concat(getInvestAiHistory()).filter(function(item, idx, arr){
+        return idx === arr.findIndex(function(other){ return other.material === item.material; });
+      }).slice(0, 50);
+  try { localStorage.setItem(INVEST_AI_HISTORY_KEY, JSON.stringify(cachedList)); } catch(e){}
+
+  // Save to Firebase for cross-device sync (fire-and-forget)
+  if(typeof window.fbSave === 'function'){
+    try { window.fbSave('investAiHistory', record); } catch(e){ console.warn('fbSave investAiHistory failed', e); }
+  }
+
+  // Trigger chip re-render so the "AI" badge appears on the analyzed raw material
+  _refreshProductChipsWithAi();
+}
+
+// Re-render inline product section chips so AI badge reflects latest history
+function _refreshProductChipsWithAi(){
+  try {
+    if(typeof window.renderInlineProductSection === 'function' && typeof window.PRODUCT_ACTIVE_SECTION !== 'undefined'){
+      window.renderInlineProductSection(window.PRODUCT_ACTIVE_SECTION);
+      if(typeof window._syncExpandBody === 'function') window._syncExpandBody();
+    } else if(typeof window.renderProducts === 'function'){
+      window.renderProducts();
+    }
+  } catch(e){ /* silent */ }
 }
 
 function renderInvestAiHistory(){
@@ -3558,19 +3667,33 @@ async function analyzeInvestmentMaterial(){
         throw new Error('Bu xomashyo uchun ma\'lumot topilmadi.');
       }
     }
-    // Step 1: get system prompt from proxy (no Gemini call, no quota burn)
+    // Step 1: try to get system prompt from proxy; fall back to built-in if proxy fails
+    var FALLBACK_SYSTEM_PROMPT = 'You are an expert investment analyst for Navoiy region of Uzbekistan. ' +
+      'Produce a Markdown-formatted investment analysis in Uzbek for the given raw material, using ONLY the UN Comtrade data provided in the context. ' +
+      'Required sections: 1) Executive summary 2) Top importing countries (table) 3) Trade trends (2021-2023) 4) Investment opportunities for Navoiy ' +
+      '5) Recommended downstream products (from context only) 6) Risks and mitigations 7) Next steps. ' +
+      'Use concrete numbers from the context. If data is missing, say it is missing. Keep it under 2000 words. Write in fluent Uzbek.';
+
     if(!window._cachedSystemPrompt){
-      var promptResp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ promptOnly: true })
-      });
-      if(!promptResp.ok) throw new Error('System prompt olinmadi: ' + promptResp.status);
-      var promptData = await promptResp.json();
-      window._cachedSystemPrompt = promptData.systemPrompt;
+      try {
+        var promptResp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ promptOnly: true })
+        });
+        if(promptResp.ok){
+          var promptData = await promptResp.json();
+          if(promptData && promptData.systemPrompt) window._cachedSystemPrompt = promptData.systemPrompt;
+        } else {
+          console.warn('Proxy system prompt failed ('+promptResp.status+') — using built-in fallback');
+        }
+      } catch(e){
+        console.warn('Proxy unreachable — using built-in system prompt:', e && e.message);
+      }
+      if(!window._cachedSystemPrompt) window._cachedSystemPrompt = FALLBACK_SYSTEM_PROMPT;
     }
     var systemPrompt = window._cachedSystemPrompt;
-    if(!systemPrompt) throw new Error('System prompt bo\'sh');
+    if(!systemPrompt) systemPrompt = FALLBACK_SYSTEM_PROMPT;
 
     // Step 2: TRIM tradeContext to fit free-tier 15K token/min limit
     // Strip large fields: full snapshot.countries arrays, full raw object, etc.

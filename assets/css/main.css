@@ -2159,7 +2159,7 @@ body{padding:0!important;}
 .fempty-globe #finderGlobe{
   width:100%;
   height:100%;
-  transform:translateX(-40px);
+  transform:translateX(-90px);
 }
 .fempty-globe #finderGlobe canvas{display:block;width:100%!important;height:100%!important}
 @media(max-width:1100px){
@@ -2211,12 +2211,89 @@ body{padding:0!important;}
 .bcard:nth-child(7){top:235px;left:255px;--bcard-rot:rotate(-2deg);transform:rotate(-2deg);animation-delay:.29s;z-index:6}
 
 .bcard-span2{}
-.bcard:hover{
-  transform:translateY(-8px) scale(1.06) rotate(0deg) !important;
-  box-shadow:0 30px 60px -12px rgba(15,23,42,.45),0 8px 16px -4px rgba(15,23,42,.18);
-  z-index:100;
-  transition:transform .35s cubic-bezier(.34,1.56,.64,1),box-shadow .35s,z-index 0s;
+
+/* Enable 3D perspective on grid */
+.bcards-grid{perspective:1200px;perspective-origin:50% 50%}
+
+.bcard{
+  transform-style:preserve-3d;
+  will-change:transform;
 }
+
+/* Creative "pop-out reveal" hover — elastic bounce + content stagger + shape burst */
+@keyframes bcardPop{
+  0%{transform:rotate(var(--bcard-rot-angle,0deg)) scale(1) translateY(0)}
+  45%{transform:rotate(0deg) scale(1.12) translateY(-18px)}
+  65%{transform:rotate(0deg) scale(1.04) translateY(-10px)}
+  85%{transform:rotate(0deg) scale(1.08) translateY(-14px)}
+  100%{transform:rotate(0deg) scale(1.07) translateY(-12px)}
+}
+@keyframes bcardContentReveal{
+  from{opacity:.5;transform:translateY(12px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes bcardTagPulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.08)}
+}
+@keyframes bcardShapeBurst{
+  0%{transform:scale(1) rotate(0deg)}
+  50%{transform:scale(1.25) rotate(20deg)}
+  100%{transform:scale(1.1) rotate(12deg)}
+}
+
+.bcard:hover{
+  animation:bcardPop .7s cubic-bezier(.34,1.56,.64,1) forwards !important;
+  box-shadow:
+    0 28px 56px -18px rgba(15,23,42,.4),
+    0 10px 20px -6px rgba(15,23,42,.18);
+  z-index:100;
+  filter:saturate(1.2) contrast(1.05);
+  transition:box-shadow .4s,filter .4s;
+}
+
+/* Content slides up with reveal */
+.bcard:hover .bcard-content{
+  animation:bcardContentReveal .5s .1s cubic-bezier(.22,1.2,.36,1) backwards;
+}
+
+/* Tag pulses rhythmically on hover */
+.bcard:hover .bcard-tag{
+  animation:bcardTagPulse 1.2s ease-in-out infinite;
+  box-shadow:0 0 0 2px rgba(255,255,255,.15),0 4px 12px rgba(0,0,0,.3);
+}
+
+/* Shapes burst outward */
+.bcard:hover .bcard-bg circle,
+.bcard:hover .bcard-bg rect,
+.bcard:hover .bcard-bg path{
+  animation:bcardShapeBurst .8s cubic-bezier(.34,1.56,.64,1) forwards;
+  transform-origin:center;
+  transform-box:fill-box;
+}
+
+/* Flag pops dramatically */
+.bcard-flag{transition:transform .5s cubic-bezier(.34,1.8,.64,1)}
+.bcard:hover .bcard-flag{transform:translateZ(40px) scale(1.3) rotate(12deg)}
+
+/* Numbers/stats get a glow */
+.bcard-stat strong,
+.bcard-revenue{
+  transition:text-shadow .4s,transform .4s cubic-bezier(.34,1.56,.64,1);
+}
+.bcard:hover .bcard-stat strong,
+.bcard:hover .bcard-revenue{
+  text-shadow:0 0 12px rgba(255,255,255,.6),0 2px 4px rgba(0,0,0,.5);
+  transform:scale(1.08);
+}
+
+/* Content lifts slightly on hover */
+.bcard:hover .bcard-content{transform:translateZ(20px)}
+.bcard-content{transition:transform .5s cubic-bezier(.22,1.3,.36,1)}
+
+/* Flag bounces on hover */
+.bcard-flag{transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+.bcard:hover .bcard-flag{transform:translateZ(30px) scale(1.2) rotate(-8deg)}
 
 .bcard-bg{
   position:absolute;

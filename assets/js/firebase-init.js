@@ -32,7 +32,7 @@ try {
 
 // Collections: investors, local, zoom, forums, investorCompanies
 // Critical — load immediately (small, needed for first paint)
-const COLLECTIONS_CRITICAL = ['investors','local','zoom','forums','investorCompanies','entrepreneurs','rawMaterials','products'];
+const COLLECTIONS_CRITICAL = ['investors','local','zoom','forums','investorCompanies','entrepreneurs','rawMaterials','products','investAiHistory'];
 // On-demand only — load WHEN user navigates to that page (huge: importSnapshots=512, tradeSnapshotChunks=80)
 const COLLECTIONS_LAZY = ['tradeData','tradeSnapshots','tradeSnapshotChunks','importSnapshots'];
 const COLLECTIONS = COLLECTIONS_CRITICAL.concat(COLLECTIONS_LAZY);

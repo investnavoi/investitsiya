@@ -132,6 +132,39 @@ window.filterProductsByRaw = function(rawId){
   _syncExpandBody();
 };
 
+// Expose function helpers for other modules (import-analysis) to trigger chip re-render.
+// PRODUCT_ACTIVE_SECTION is already auto-exposed on window via top-level `var`.
+window.renderInlineProductSection = renderInlineProductSection;
+window._syncExpandBody = _syncExpandBody;
+
+// Delegated click handler — guarantees chip clicks work even if inline onclick
+// misfires after innerHTML replacements in resursExpandBody.
+(function _bindChipDelegation(){
+  if(window._prodChipDelegated) return;
+  window._prodChipDelegated = true;
+  document.addEventListener('click', function(e){
+    var chip = e.target && e.target.closest ? e.target.closest('.prod-chip') : null;
+    if(!chip) return;
+    // Skip the × remove button (it has its own handler + stopPropagation)
+    if(e.target.classList && e.target.classList.contains('prod-chip-x')) return;
+    // "Hammasi" chip — reset filter
+    if(chip.classList.contains('prod-chip-all')){
+      e.preventDefault();
+      e.stopPropagation();
+      window.filterProductsByRaw('');
+      return;
+    }
+    // Raw-material chip — activate AI panel for this raw
+    var onclickAttr = chip.getAttribute('onclick') || '';
+    var m = onclickAttr.match(/focusProductRawAnalysis\(\s*'([^']+)'\s*,\s*'([^']+)'\s*\)/);
+    if(m){
+      e.preventDefault();
+      e.stopPropagation();
+      window.focusProductRawAnalysis(m[1], m[2]);
+    }
+  }, true);
+})();
+
 // Section videos: cache first-frame poster to localStorage so video appears INSTANTLY next time
 // Real video downloads in background after poster is shown.
 (function smartVideoLoader(){

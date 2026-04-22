@@ -87,6 +87,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    /* AI Invest Analyzer history — authed users can read and write
+       (so analyses sync across devices for the same team) */
+    match /investAiHistory/{id} {
+      allow read: if hasAllowedEmail();
+      allow write: if isAuthed();
+    }
+
     /* API Keys — ADMIN ONLY — contains 3rd-party secrets */
     match /apiKeys/{id} {
       allow read: if isAdmin();

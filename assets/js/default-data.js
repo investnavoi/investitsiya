@@ -55,4 +55,5 @@ const DB = {
   ],
   investorCompanies: [
   ],
+  investAiHistory: [],
 };

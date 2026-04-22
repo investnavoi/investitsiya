@@ -2024,7 +2024,7 @@ _renderInvestorCompaniesMain = function(){
     var avatarHtml;
     if(logoUrl){
       avatarHtml = '<div style="width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid rgba(15,23,42,.08);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+
-        '<img src="'+tgEscapeAttr(logoUrl)+'" alt="'+escHtml(compName)+'" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML=&quot;'+compInitials+'&quot;;this.parentElement.style.background=&quot;'+avatarColor+'18&quot;;this.parentElement.style.color=&quot;'+avatarColor+'&quot;;this.parentElement.style.fontSize=&quot;.76rem&quot;;this.parentElement.style.fontWeight=&quot;800&quot;">'+
+        '<img src="'+tgEscapeAttr(logoUrl)+'" alt="'+escHtml(compName)+'" style="width:100%;height:100%;object-fit:contain" onerror="var p=this.parentElement;if(!p)return;p.style.background=&quot;'+avatarColor+'18&quot;;p.style.color=&quot;'+avatarColor+'&quot;;p.style.fontSize=&quot;.76rem&quot;;p.style.fontWeight=&quot;800&quot;;p.innerHTML=&quot;'+compInitials+'&quot;">'+
       '</div>';
     } else {
       avatarHtml = '<div style="width:38px;height:38px;border-radius:50%;background:'+avatarColor+'18;color:'+avatarColor+';display:flex;align-items:center;justify-content:center;font-size:.76rem;font-weight:800;flex-shrink:0">'+compInitials+'</div>';
