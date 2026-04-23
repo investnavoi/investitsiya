@@ -212,7 +212,7 @@ async function refreshInvestorAiOfficialData(comp){
         tariffSummary = getAiTariffUnavailableSummary(comp, analysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
       }
     }
-    var transportSummary = saved.transportSummary || buildAiTransportAnalysis((analysis || {}).country || {});
+    var transportSummary = saved.transportSummary || await buildAiTransportAnalysis((analysis || {}).country || {}, comp);
     comp.aiLetterData = Object.assign({}, saved, {
       analysis: analysis,
       transportSummary: transportSummary,
@@ -851,9 +851,9 @@ function renderAiAnalysis(analysis, scope){
   if(transportSummary && transportSummary.routes && transportSummary.routes.length){
     grid.push(buildAiMetricCard(
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M1 3h15v13H1zM16 8h4l3 4v5h-7V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/></svg>',
-      'Transport kalkulyatori ⚠️ taxminiy',
+      'Transport kalkulyatori 🤖 AI',
       aiFmtTransportUsd(transportSummary.avgSaving) + ' (' + transportSummary.avgSavingPct + '%)',
-      '13 davlat bo\'yicha taxminiy logistika hisobi (real freight API emas)',
+      (transportSummary.volumeSpec || '13 davlat bo\'yicha') + ' · ' + (transportSummary.dataSourceBadge || 'Gemini AI'),
       '#D97706',
       { scope: scope, metricKey: 'transportSummary', selected: selectedMetric === 'transportSummary', countryVal: transportSummary.avgForeign, uzVal: transportSummary.avgNavoi, countryLabel: aiFmtTransportUsd(transportSummary.avgForeign), uzLabel: aiFmtTransportUsd(transportSummary.avgNavoi) }
     ));
@@ -1058,6 +1058,59 @@ function buildOfficialAnalysisLines(analysis){
   return lines;
 }
 
+// Filter metrics to include only those where Uzbekistan has a clear advantage.
+// Used in cold-email prompts so letters never cite numbers that hurt Uzbekistan's case.
+function buildUzbAdvantageLines(analysis){
+  var countryName = (analysis && analysis.country && analysis.country.display) || 'Selected country';
+  var metrics = (analysis && analysis.metrics) || {};
+  var out = [];
+  function pct(a, b){ return (a > 0 && b > 0) ? Math.round(((a-b)/a)*100) : null; }
+
+  var tax = metrics.totalTaxRate;
+  if(tax && Number.isFinite(Number(tax.country)) && Number.isFinite(Number(tax.uzbekistan)) && Number(tax.uzbekistan) < Number(tax.country)){
+    var diff = pct(Number(tax.country), Number(tax.uzbekistan));
+    out.push('Uzbekistan tax burden is '+diff+'% lower than '+countryName+' ('+aiFmtPct(tax.uzbekistan)+' vs '+aiFmtPct(tax.country)+' of GDP; World Bank/IMF '+(tax.uzbekistanYear||'n/a')+').');
+  }
+
+  var wage = metrics.monthlyWage;
+  if(wage && Number.isFinite(Number(wage.country)) && Number.isFinite(Number(wage.uzbekistan)) && Number(wage.uzbekistan) < Number(wage.country)){
+    var d = pct(Number(wage.country), Number(wage.uzbekistan));
+    out.push('Skilled labor cost in Uzbekistan is '+d+'% lower than '+countryName+' (avg monthly wage $'+Math.round(wage.uzbekistan)+' vs $'+Math.round(wage.country)+'; ILOSTAT/stat.uz '+(wage.uzbekistanYear||'n/a')+').');
+  }
+
+  var elec = metrics.electricityPrice;
+  if(elec && Number.isFinite(Number(elec.country)) && Number.isFinite(Number(elec.uzbekistan)) && Number(elec.uzbekistan) < Number(elec.country)){
+    var ed = pct(Number(elec.country), Number(elec.uzbekistan));
+    out.push('Industrial electricity in Uzbekistan is '+ed+'% cheaper than '+countryName+' ('+aiFmtMwh(elec.uzbekistan)+' vs '+aiFmtMwh(elec.country)+'; '+(elec.source||'official')+' '+(elec.uzbekistanYear||'n/a')+').');
+  }
+
+  var gas = metrics.naturalGasPrice;
+  if(gas && Number.isFinite(Number(gas.country)) && Number.isFinite(Number(gas.uzbekistan)) && Number(gas.uzbekistan) < Number(gas.country)){
+    var gd = pct(Number(gas.country), Number(gas.uzbekistan));
+    out.push('Industrial natural gas in Uzbekistan is '+gd+'% cheaper than '+countryName+' ('+aiFmtMwh(gas.uzbekistan)+' vs '+aiFmtMwh(gas.country)+'; IEA '+(gas.uzbekistanYear||'n/a')+').');
+  }
+
+  var ind = metrics.industryShare;
+  if(ind && Number.isFinite(Number(ind.country)) && Number.isFinite(Number(ind.uzbekistan)) && Number(ind.uzbekistan) > Number(ind.country)){
+    out.push('Uzbekistan industrial output is '+aiFmtPct(ind.uzbekistan)+' of GDP (vs '+aiFmtPct(ind.country)+' in '+countryName+') — broader manufacturing base.');
+  }
+  return out;
+}
+
+// Classify the contact's decision-making role so cold emails can match tone + angle.
+function detectContactPersona(position){
+  var p = String(position || '').toLowerCase();
+  if(/\b(ceo|chief executive|founder|co-founder|owner|president|chairman|managing director|general director|director general|md|genel mudur|generalny direktor|генеральный|директор|основатель)\b/i.test(p)) return 'ceo';
+  if(/\b(cfo|finance|treasur|controller)\b/.test(p)) return 'cfo';
+  if(/\b(coo|operations|supply chain|logistics)\b/.test(p)) return 'coo';
+  if(/\b(cto|technology|technical|engineering|quality|r&d|research)\b/.test(p)) return 'technical';
+  if(/\b(export|international|trade|foreign)\b/.test(p)) return 'export';
+  if(/\b(procurement|purchasing|sourcing|buyer|supply)\b/.test(p)) return 'procurement';
+  if(/\b(sales|business development|bdm|account executive|commercial)\b/.test(p)) return 'sales';
+  if(/\b(marketing|brand|growth)\b/.test(p)) return 'marketing';
+  return 'manager';
+}
+
 var AI_TRANSPORT_TARGETS = [
   { iso3:'UZB', code:'UZ', name:"O'zbekiston", lat:40.1039, lon:65.3686, navoiCost:180, navoiDays:1, navoiMode:'Mahalliy / avto' },
   { iso3:'TKM', code:'TM', name:'Turkmaniston', lat:37.9601, lon:58.3261, navoiCost:900, navoiDays:2, navoiMode:'Avto' },
@@ -1181,11 +1234,116 @@ function estimateAiExportRoute(sourceHub, target){
   };
 }
 
-function buildAiTransportAnalysis(countryInfo){
+// Gemini-powered transport estimates — live AI research per source country.
+// Cached to localStorage for 7 days (freight corridors change slowly).
+var AI_TRANSPORT_GEMINI_CACHE = {};
+var AI_TRANSPORT_GEMINI_TTL = 7 * 24 * 60 * 60 * 1000;
+(function hydrateTransportCache(){
+  try {
+    var raw = localStorage.getItem('_aiTransportCache');
+    if(!raw) return;
+    var parsed = JSON.parse(raw);
+    var now = Date.now();
+    Object.keys(parsed || {}).forEach(function(k){
+      var entry = parsed[k];
+      if(entry && entry._ts && (now - entry._ts) < AI_TRANSPORT_GEMINI_TTL){
+        AI_TRANSPORT_GEMINI_CACHE[k] = entry.data;
+      }
+    });
+  } catch(e){}
+})();
+function persistTransportCache(){
+  try {
+    var out = {};
+    Object.keys(AI_TRANSPORT_GEMINI_CACHE).forEach(function(k){
+      out[k] = { _ts: Date.now(), data: AI_TRANSPORT_GEMINI_CACHE[k] };
+    });
+    localStorage.setItem('_aiTransportCache', JSON.stringify(out));
+  } catch(e){}
+}
+
+async function fetchAiTransportEstimatesFromGemini(countryInfo, comp){
+  var sourceName = String((countryInfo && (countryInfo.display || countryInfo.name)) || '').trim();
+  var sourceIso3 = String((countryInfo && countryInfo.iso3) || '').toUpperCase();
+  if(!sourceName || !sourceIso3) return null;
+
+  // Extract TradeAtlas annual export volume if available
+  var taQuantity = comp ? Number(comp._tradeAtlasQuantity || 0) : 0;
+  var taUnit = comp ? String(comp._tradeAtlasQuantityUnit || '').trim() : '';
+  var taValue = comp ? Number(comp._tradeAtlasTradeValue || 0) : 0;
+  var hasVolume = Number.isFinite(taQuantity) && taQuantity > 0 && taUnit;
+
+  // Cache key includes volume signature so different companies get distinct results
+  var cacheKey = sourceIso3 + (hasVolume ? ('|'+Math.round(taQuantity)+taUnit) : '');
+  if(AI_TRANSPORT_GEMINI_CACHE[cacheKey]) return AI_TRANSPORT_GEMINI_CACHE[cacheKey];
+  if(typeof callGemini !== 'function') return null;
+
+  var targetList = AI_TRANSPORT_TARGETS.map(function(t){ return '- '+t.iso3+' ('+t.name+')'; }).join('\n');
+  var volumeSpec;
+  if(hasVolume){
+    volumeSpec = 'CARGO VOLUME: '+taQuantity.toLocaleString('en-US')+' '+taUnit+' per year '+
+      (taValue > 0 ? '(total trade value ~$'+Math.round(taValue).toLocaleString('en-US')+'/year)' : '')+'.\n' +
+      'Calculate cost for shipping THIS TOTAL annual volume to each destination — break into realistic shipment batches (20ft/40ft containers, truckloads, rail wagons, or bulk) as appropriate. Return TOTAL annual freight cost per route, not per-container.';
+  } else {
+    volumeSpec = 'CARGO VOLUME: 1 standard 20ft container of general cargo (~20 tonnes / ~33m³).';
+  }
+
+  var prompt = 'You are a freight logistics expert with knowledge of global shipping rates (2024-2025).\n\n' +
+    volumeSpec + '\n\n' +
+    'ORIGIN A: '+sourceName+' ('+sourceIso3+') — use main industrial hub/port.\n' +
+    'ORIGIN B: Navoi, Uzbekistan (UZB) — central Asia, landlocked.\n\n' +
+    'Destinations (13):\n' + targetList + '\n\n' +
+    'For each destination provide: foreignCost (USD from Origin A), foreignDays (avg transit), foreignMode (short text), navoiCost (USD from Navoi), navoiDays, navoiMode.\n' +
+    'Base on actual freight market rates, distance, corridor complexity, customs borders, mode mix (sea/rail/road/multimodal).\n' +
+    'For Central Asia neighbors of Uzbekistan — Navoi should be significantly cheaper/faster.\n' +
+    'For sea-accessible destinations — foreign origin with port access should be cheaper.\n' +
+    'Return ONLY valid JSON array: [{"iso3":"UZB","foreignCost":..,"foreignDays":..,"foreignMode":"..","navoiCost":..,"navoiDays":..,"navoiMode":".."}, ...]';
+
+  try {
+    var resp = await callGemini({
+      contents: [{ role:'user', parts:[{ text: prompt }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: 'application/json' }
+    });
+    var text = resp?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    var parsed = safeParseJSON(text);
+    if(!Array.isArray(parsed)) return null;
+    var byIso = {};
+    parsed.forEach(function(row){
+      if(row && row.iso3) byIso[String(row.iso3).toUpperCase()] = row;
+    });
+    AI_TRANSPORT_GEMINI_CACHE[cacheKey] = byIso;
+    persistTransportCache();
+    return byIso;
+  } catch(e){
+    console.warn('Gemini transport estimate failed:', e && e.message);
+    return null;
+  }
+}
+
+async function buildAiTransportAnalysis(countryInfo, comp){
   var sourceHub = getAiTransportHub(countryInfo);
+  // Try Gemini first (real market-informed estimates), fall back to formula
+  var geminiMap = await fetchAiTransportEstimatesFromGemini(countryInfo, comp).catch(function(){ return null; });
   var routes = AI_TRANSPORT_TARGETS.map(function(target){
-    var estimate = estimateAiExportRoute(sourceHub, target);
-    var saving = estimate.foreignCost - target.navoiCost;
+    var gRow = geminiMap && geminiMap[target.iso3];
+    var estimate;
+    var navoiCost, navoiDays, navoiMode;
+    if(gRow && Number.isFinite(Number(gRow.foreignCost)) && Number.isFinite(Number(gRow.navoiCost))){
+      estimate = {
+        foreignCost: Math.round(Number(gRow.foreignCost)),
+        foreignDays: Math.max(1, Math.round(Number(gRow.foreignDays) || 1)),
+        foreignMode: String(gRow.foreignMode || '—')
+      };
+      navoiCost = Math.round(Number(gRow.navoiCost));
+      navoiDays = Math.max(1, Math.round(Number(gRow.navoiDays) || 1));
+      navoiMode = String(gRow.navoiMode || target.navoiMode);
+    } else {
+      estimate = estimateAiExportRoute(sourceHub, target);
+      navoiCost = target.navoiCost;
+      navoiDays = target.navoiDays;
+      navoiMode = target.navoiMode;
+    }
+    var saving = estimate.foreignCost - navoiCost;
     var savingPct = estimate.foreignCost > 0 ? Math.round((saving / estimate.foreignCost) * 100) : 0;
     return {
       code: target.code,
@@ -1194,11 +1352,12 @@ function buildAiTransportAnalysis(countryInfo){
       foreignCost: estimate.foreignCost,
       foreignDays: estimate.foreignDays,
       foreignMode: estimate.foreignMode,
-      navoiCost: target.navoiCost,
-      navoiDays: target.navoiDays,
-      navoiMode: target.navoiMode,
+      navoiCost: navoiCost,
+      navoiDays: navoiDays,
+      navoiMode: navoiMode,
       saving: saving,
-      savingPct: savingPct
+      savingPct: savingPct,
+      dataSource: gRow ? 'gemini' : 'formula'
     };
   });
   var totalForeign = routes.reduce(function(sum, row){ return sum + row.foreignCost; }, 0);
@@ -1210,6 +1369,13 @@ function buildAiTransportAnalysis(countryInfo){
   var avgSavingPct = avgForeign > 0 ? Math.round((avgSaving / avgForeign) * 100) : 0;
   var topSaving = routes.filter(function(row){ return row.saving > 0; }).sort(function(a, b){ return b.saving - a.saving; })[0] || null;
   var fastestNavoi = routes.slice().sort(function(a, b){ return a.navoiDays - b.navoiDays; })[0] || null;
+  // Volume signature (TradeAtlas annual export) — shown in card description
+  var taQty = comp ? Number(comp._tradeAtlasQuantity || 0) : 0;
+  var taUnit = comp ? String(comp._tradeAtlasQuantityUnit || '').trim() : '';
+  var volumeSpec = (Number.isFinite(taQty) && taQty > 0 && taUnit)
+    ? ('Yillik ' + Math.round(taQty).toLocaleString('en-US') + ' ' + taUnit + ' hajmda')
+    : '1 × 20ft konteyner (standart)';
+  var dataSourceBadge = geminiMap ? '🤖 Gemini AI' : '📐 Formula (fallback)';
   return {
     sourceCountry: String((countryInfo && countryInfo.display) || sourceHub.name || 'Tanlangan davlat'),
     sourceHub: sourceHub,
@@ -1222,7 +1388,9 @@ function buildAiTransportAnalysis(countryInfo){
     avgSaving: avgSaving,
     avgSavingPct: avgSavingPct,
     topSaving: topSaving,
-    fastestNavoi: fastestNavoi
+    fastestNavoi: fastestNavoi,
+    volumeSpec: volumeSpec,
+    dataSourceBadge: dataSourceBadge
   };
 }
 
@@ -1420,13 +1588,22 @@ function getAiLangName(lang){
   return {en:'English',ru:'Russian',de:'German',zh:'Chinese',fr:'French',fa:'Persian'}[lang]||'English';
 }
 
-async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff){
+async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, opts){
+  opts = opts || {};
+  var contactIdx = Number(opts.contactIdx || 0);
+  var contactTotal = Number(opts.contactTotal || 1);
+  var usedAngles = Array.isArray(opts.usedAngles) ? opts.usedAngles : [];
   var langName = getAiLangName(lang);
   // Reuse pre-computed analysis (saves quota when same company has multiple contacts)
   var analysis = sharedAnalysis || await fetchOfficialAiCountryAnalysis(comp);
-  var officialLines = buildOfficialAnalysisLines(analysis);
-  if(!officialLines.length) throw new Error('Rasmiy iqtisodiy ko\'rsatkichlar topilmadi');
-  var transportSummary = buildAiTransportAnalysis(analysis.country);
+  // Show ONLY metrics where Uzbekistan has a clear advantage — never cite losing numbers
+  var advantageLines = buildUzbAdvantageLines(analysis);
+  if(!advantageLines.length){
+    // Fallback to full analysis if no clear advantages (rare edge case)
+    advantageLines = buildOfficialAnalysisLines(analysis);
+  }
+  if(!advantageLines.length) throw new Error('Rasmiy iqtisodiy ko\'rsatkichlar topilmadi');
+  var transportSummary = await buildAiTransportAnalysis(analysis.country, comp);
   var transportLines = buildAiTransportPromptLines(transportSummary);
   var productInfo = getAiCompanyProductInfo(comp);
   var tariffSummary = null;
@@ -1446,68 +1623,84 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff){
   var productLabel = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || 'selected product';
   var industryLabel = comp.mahsulotNomi || comp.soha || productLabel || 'Manufacturing';
 
-  // CEO/yuqori rahbar pozitsiyasini aniqlash — ular uchun qisqa xat
-  var positionRaw = String(comp.lavozim || comp.title || '').toLowerCase();
-  var isCeoLevel = /\b(ceo|chief executive|founder|co-founder|owner|president|chairman|managing director|general director|director general|md|genel mudur|generalny direktor|генеральный директор|директор|основатель)\b/i.test(positionRaw);
+  // Persona-based prompt tailoring
+  var persona = detectContactPersona(comp.lavozim || comp.title || '');
+  var personaConfig = {
+    ceo:        { wordRange:'70-110',  paras:3, angle:'strategic partnership + ROI — founders/CEOs read 15-20s; skip preamble; open with a specific dollar outcome; max 1 tight paragraph of data; end with "15-minute call" ask',             hook:'strategic value / ROI' },
+    cfo:        { wordRange:'130-180', paras:4, angle:'cost structure — tax, wage, energy savings with exact % figures; ROI math; concrete working capital terms',                                                                                hook:'cost reduction math' },
+    coo:        { wordRange:'140-190', paras:4, angle:'supply chain — Navoi logistics, 13-market reach, freight cost per route, lead times',                                                                                                      hook:'supply reliability + freight' },
+    technical:  { wordRange:'150-200', paras:4, angle:'product/engineering — manufacturing capacity, quality standards (ISO), skilled workforce metrics',                                                                                         hook:'technical capability' },
+    export:     { wordRange:'150-200', paras:4, angle:'trade access — 13 neighboring markets, FTA tariff zeros, multi-modal corridors from Navoi',                                                                                                hook:'market access' },
+    procurement:{ wordRange:'130-180', paras:4, angle:'unit economics — landed cost per ton/container including tariffs and freight; clear "% saving vs current source"',                                                                         hook:'landed cost savings' },
+    sales:      { wordRange:'150-200', paras:4, angle:'new Central Asia revenue channel — 80M regional consumers, FTA access, co-marketing',                                                                                                      hook:'revenue growth' },
+    marketing:  { wordRange:'150-200', paras:4, angle:'Central Asia brand entry, co-branded Navoi FEZ narrative, trade-fair co-presence',                                                                                                         hook:'brand entry' },
+    manager:    { wordRange:'180-230', paras:5, angle:'balanced overview — cost, logistics, tariffs, next steps',                                                                                                                                 hook:'partnership overview' }
+  };
+  var pc = personaConfig[persona] || personaConfig.manager;
+
+  // Cross-contact deduplication: if previous contacts in same company used certain angles,
+  // instruct AI to emphasize a DIFFERENT angle this time
+  var dedupNote = '';
+  if(contactTotal > 1){
+    if(usedAngles.length && usedAngles.length < contactTotal){
+      dedupNote = '\n\nIMPORTANT — DEDUPLICATION: Previous letters to this same company already used these angles: ['+usedAngles.join(' | ')+']. ' +
+        'Your letter MUST emphasize a DIFFERENT dimension of the opportunity. Do NOT reuse the same opening sentence, same headline figure, or same call-to-action wording. Vary vocabulary and structure.';
+    } else {
+      dedupNote = '\n\nIMPORTANT — This is contact #'+(contactIdx+1)+' of '+contactTotal+' at the same company. Use fresh phrasing and a unique opening to avoid sounding like a mass-mailed template.';
+    }
+  }
 
   var letterPrompt;
-  if(isCeoLevel){
-    // ═══ QISQA XAT — CEO/yuqori rahbar uchun ═══
-    letterPrompt = 'Write a SHORT, executive-level business letter (STRICTLY 120-180 words, 3 short paragraphs) in '+langName+'.\n'+
-      'FROM: Navoi Regional Investment Office, Uzbekistan.\n'+
-      'TO: '+comp.rahbar+', '+(comp.lavozim||'CEO')+' of '+(comp.kompaniya||'the company')+', '+(comp.davlat||'abroad')+'.\n'+
-      'SUBJECT: Partnership proposal — '+productLabel+' from Navoi, Uzbekistan.\n\n'+
-      'STRUCTURE (3 paragraphs, time-efficient for a busy executive):\n'+
-      'Paragraph 1 (2-3 sentences): Warm formal greeting; brief introduction of Navoi Regional Investment Office and the specific partnership opportunity.\n'+
-      'Paragraph 2 (3-4 sentences): Cite 2-3 strongest figures from the data below — a headline economic indicator, a tariff advantage, and the 13-market logistics reach. Be crisp and factual.\n'+
-      'Paragraph 3 (2-3 sentences): Direct call-to-action — propose a brief introductory call or delegate meeting; offer to send the full briefing package upon request.\n\n'+
-      'ECONOMIC & LOGISTICS DATA (pick ONLY 2-3 strongest figures):\n'+
-      officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-      transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-      tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n\n'+
-      'Product: ' + productLabel + ' | Industry: '+industryLabel+'\n\n'+
-      'RULES:\n'+
-      '- STRICT WORD LIMIT: 120-180 words total\n'+
-      '- 3 short paragraphs only — no more\n'+
-      '- Respect executive time: every sentence must earn its place\n'+
-      '- Use ONLY figures from the data above — do not invent numbers\n'+
-      '- Tone: crisp, confident, respectful, direct\n'+
-      '- Sign as:\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov\n\n'+
-      'FORMAT OUTPUT:\n'+
-      'First line: email subject (no "Subject:" prefix, max 70 chars)\n'+
-      'Second line: ===BODY===\n'+
-      'Then: the short letter body';
+  if(persona === 'ceo'){
+    // ═══ ULTRA-SHORT CEO LETTER — 70-110 words, 3 micro-paragraphs, one ask ═══
+    letterPrompt = 'Write an EXTREMELY SHORT cold email to a busy CEO ('+pc.wordRange+' words MAX, 3 tight paragraphs) in '+langName+'.\n\n'+
+      'RECIPIENT: '+comp.rahbar+', '+(comp.lavozim||'CEO')+' at '+(comp.kompaniya||'the company')+' ('+(comp.davlat||'abroad')+').\n'+
+      'SENDER: Navoi Regional Investment Office, Uzbekistan.\n'+
+      'PRODUCT: '+productLabel+'.\n'+
+      'ANGLE (required): '+pc.angle+'\n\n'+
+      'REALITY CHECK: CEOs delete cold emails in 3 seconds. They skim for (a) is this about me, (b) what\'s the specific dollar/time value, (c) what\'s the ask. Nothing else matters.\n\n'+
+      'WRITE:\n'+
+      '- Paragraph 1 (1 sentence): Direct opener naming the specific opportunity in dollars or %.\n'+
+      '- Paragraph 2 (2-3 sentences): Cite exactly ONE most compelling Uzbekistan advantage figure from the data, plus ONE logistics/tariff hook. No filler.\n'+
+      '- Paragraph 3 (1 sentence): Ask for a 15-minute call. Offer a specific time-window or defer to their calendar.\n\n'+
+      'UZBEKISTAN ADVANTAGES (cite 1, maybe 2 — pick the biggest relative to '+(comp.kompaniya||'this company')+'):\n'+
+      advantageLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+      (transportLines.length ? '\nLOGISTICS:\n' + transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' : '') +
+      (tariffLines.length ? '\nTARIFFS (only cite if favorable):\n' + tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' : '') +
+      '\nRULES:\n'+
+      '- HARD LIMIT: '+pc.wordRange+' words. Over limit = deleted email.\n'+
+      '- NEVER cite numbers where Uzbekistan loses — only advantages.\n'+
+      '- No marketing fluff, no "we are excited to", no "we would like to introduce".\n'+
+      '- Every sentence must work. Cut anything removable.\n'+
+      '- Sign: Sincerely,\\nDeputy Governor of Navoi region\\nE.I.Gafforov'+
+      dedupNote + '\n\n'+
+      'FORMAT: Line 1 = subject (max 55 chars, specific not generic). Line 2 = ===BODY===. Then letter.';
   } else {
-    // ═══ TO'LIQ XAT — boshqa lavozimlar uchun ═══
-    letterPrompt = 'Write a FULL, DETAILED professional business letter (minimum 5-7 paragraphs, at least 400 words) in '+langName+'.\n'+
-      'FROM: Navoi Regional Investment Office, Uzbekistan.\n'+
-      'TO: '+comp.rahbar+', '+(comp.lavozim||'Manager')+' of '+(comp.kompaniya||'the company')+', '+(comp.davlat||'abroad')+'.\n'+
-      'SUBJECT: Strategic investment and export partnership for '+productLabel+' from Navoi, Uzbekistan.\n\n'+
-      'STRUCTURE:\n'+
-      'Paragraph 1 (Opening): Formal greeting, introduce Navoi Regional Investment Office and purpose of letter.\n'+
-      'Paragraph 2 (Company recognition): Acknowledge the recipient company, its market position and the product line.\n'+
-      'Paragraph 3 (Economic opportunity): Use the economic figures below — GDP, trade data, growth rates.\n'+
-      'Paragraph 4 (Logistics & connectivity): Use transport/logistics data below — mention the 13 nearby export markets advantage.\n'+
-      'Paragraph 5 (Tariffs & trade terms): Use tariff comparison data below. Mention customs advantages where relevant.\n'+
-      'Paragraph 6 (Navoi advantages): Industrial zones, free economic zone benefits, skilled workforce, investor support.\n'+
-      'Paragraph 7 (Call to action): Specific invitation — visit, meeting, MOU, next steps. Express eagerness to partner.\n'+
-      'Paragraph 8 (Closing): Warm professional close with full signatory block.\n\n'+
-      'ECONOMIC & LOGISTICS DATA (use ALL relevant figures naturally in the letter):\n'+
-      officialLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-      transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
-      tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n\n'+
-      'Product: ' + productLabel + ' | Industry: '+industryLabel+'\n\n'+
-      'RULES:\n'+
-      '- Minimum 400 words, 5-7 full paragraphs\n'+
-      '- Use ONLY figures from the data above — do not invent numbers\n'+
-      '- Tone: professional, warm, compelling and specific\n'+
-      '- Do NOT use bullet points or headers inside the letter body — write in flowing prose paragraphs\n'+
-      '- Sign as:\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov\n\n'+
-      'FORMAT OUTPUT:\n'+
-      'First line: email subject (no "Subject:" prefix)\n'+
-      'Second line: ===BODY===\n'+
-      'Then: full letter body\n\n'+
-      'Example format:\nStrategic Granite Partnership — Navoi, Uzbekistan\n===BODY===\nDear Mr. Schmidt,\n\n[Full letter body with 5-7 paragraphs]\n\nSincerely,\nDeputy Governor of Navoi region\nE.I.Gafforov';
+    // ═══ PERSONA-TAILORED LETTER ═══
+    letterPrompt = 'Write a focused cold email ('+pc.wordRange+' words, '+pc.paras+' paragraphs) in '+langName+' to a '+persona.toUpperCase()+'-level contact.\n\n'+
+      'RECIPIENT: '+comp.rahbar+', '+(comp.lavozim||'Manager')+' at '+(comp.kompaniya||'the company')+' ('+(comp.davlat||'abroad')+').\n'+
+      'SENDER: Navoi Regional Investment Office, Uzbekistan.\n'+
+      'PRODUCT: '+productLabel+' | Industry: '+industryLabel+'.\n'+
+      'PERSONA ANGLE (required focus — this shapes EVERY paragraph): '+pc.angle+'.\n'+
+      'HOOK: '+pc.hook+'.\n\n'+
+      'WRITING PRINCIPLES FOR '+persona.toUpperCase()+':\n'+
+      '- Open with something specific to THEIR role — not generic "Dear Sir/Madam, I hope this finds you well".\n'+
+      '- Every paragraph must deliver a concrete fact relevant to a '+persona+' — no fluff.\n'+
+      '- Cite 2-3 Uzbekistan-favorable figures directly tied to the persona angle above.\n'+
+      '- Close with ONE specific ask that fits a '+persona+'\'s decision-making scope.\n\n'+
+      'UZBEKISTAN ADVANTAGES (cite only those that strengthen the letter — NEVER cite numbers where Uzbekistan loses):\n'+
+      advantageLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
+      (transportLines.length ? '\nLOGISTICS/TRANSPORT:\n' + transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' : '') +
+      (tariffLines.length ? '\nTARIFFS:\n' + tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' : '') +
+      '\nRULES:\n'+
+      '- Length: '+pc.wordRange+' words — do not over-write.\n'+
+      '- '+pc.paras+' tight paragraphs — no bullet points, flowing prose only.\n'+
+      '- NEVER cite Uzbekistan disadvantages. Only advantages.\n'+
+      '- Use figures from data above. Do not invent numbers.\n'+
+      '- Tone: professional, peer-to-peer (not hierarchical), concrete, data-backed.\n'+
+      '- Sign: Sincerely,\\nDeputy Governor of Navoi region\\nE.I.Gafforov'+
+      dedupNote + '\n\n'+
+      'FORMAT: Line 1 = subject (max 65 chars, mentions persona benefit). Line 2 = ===BODY===. Then letter body.';
   }
 
   var body2 = {contents:[{role:'user',parts:[{text:letterPrompt}]}],generationConfig:{temperature:0.72,maxOutputTokens:8192}};
@@ -1644,11 +1837,11 @@ async function generateAiLetterForScope(scope){
     window._aiContactLetters = {};
     var sharedAnalysis = null;
     var sharedTariff = null;
+    var usedAngles = []; // track persona/hook already used to avoid repeating across contacts
     for(var ci=0; ci<allContacts.length; ci++){
       var contact = allContacts[ci];
       // First contact: full pipeline (country analysis + tariff). Subsequent: reuse, only letter regenerated.
       if(ci === 0){
-        // Country first (tariff needs iso3 from it). Cache hit = ~0ms.
         sharedAnalysis = await fetchOfficialAiCountryAnalysis(contact);
         try {
           sharedTariff = await fetchOfficialAiTariffSummary(contact, sharedAnalysis);
@@ -1659,7 +1852,13 @@ async function generateAiLetterForScope(scope){
       } else {
         toast('🔁 ' + (contact.rahbar || 'kontakt') + ': tahlil qayta o\'tkazilmadi, faqat xat yangilanmoqda');
       }
-      var payload = await buildAiLetterPackage(contact, lang, sharedAnalysis, sharedTariff);
+      var persona = detectContactPersona(contact.lavozim || contact.title || '');
+      var payload = await buildAiLetterPackage(contact, lang, sharedAnalysis, sharedTariff, {
+        contactIdx: ci,
+        contactTotal: allContacts.length,
+        usedAngles: usedAngles.slice()
+      });
+      usedAngles.push(persona);
       saveAiLetterPackage(contact, payload);
       window._aiContactLetters[String(contact.id)] = {contact: contact, payload: payload};
     }
