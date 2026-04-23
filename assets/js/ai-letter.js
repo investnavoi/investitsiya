@@ -1302,7 +1302,7 @@ async function fetchAiTransportEstimatesFromGemini(countryInfo, comp){
   try {
     var resp = await callGemini({
       contents: [{ role:'user', parts:[{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: 'application/json' }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
     });
     var text = resp?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     var parsed = safeParseJSON(text);
