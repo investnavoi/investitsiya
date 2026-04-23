@@ -1626,15 +1626,15 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   // Persona-based prompt tailoring
   var persona = detectContactPersona(comp.lavozim || comp.title || '');
   var personaConfig = {
-    ceo:        { wordRange:'70-110',  paras:3, angle:'strategic partnership + ROI — founders/CEOs read 15-20s; skip preamble; open with a specific dollar outcome; max 1 tight paragraph of data; end with "15-minute call" ask',             hook:'strategic value / ROI' },
-    cfo:        { wordRange:'130-180', paras:4, angle:'cost structure — tax, wage, energy savings with exact % figures; ROI math; concrete working capital terms',                                                                                hook:'cost reduction math' },
-    coo:        { wordRange:'140-190', paras:4, angle:'supply chain — Navoi logistics, 13-market reach, freight cost per route, lead times',                                                                                                      hook:'supply reliability + freight' },
-    technical:  { wordRange:'150-200', paras:4, angle:'product/engineering — manufacturing capacity, quality standards (ISO), skilled workforce metrics',                                                                                         hook:'technical capability' },
-    export:     { wordRange:'150-200', paras:4, angle:'trade access — 13 neighboring markets, FTA tariff zeros, multi-modal corridors from Navoi',                                                                                                hook:'market access' },
-    procurement:{ wordRange:'130-180', paras:4, angle:'unit economics — landed cost per ton/container including tariffs and freight; clear "% saving vs current source"',                                                                         hook:'landed cost savings' },
-    sales:      { wordRange:'150-200', paras:4, angle:'new Central Asia revenue channel — 80M regional consumers, FTA access, co-marketing',                                                                                                      hook:'revenue growth' },
-    marketing:  { wordRange:'150-200', paras:4, angle:'Central Asia brand entry, co-branded Navoi FEZ narrative, trade-fair co-presence',                                                                                                         hook:'brand entry' },
-    manager:    { wordRange:'180-230', paras:5, angle:'balanced overview — cost, logistics, tariffs, next steps',                                                                                                                                 hook:'partnership overview' }
+    ceo:        { wordRange:'170-230', paras:4, angle:'strategic partnership + ROI — CEO reads in 30s; specific dollar outcome; 2 strong figures; end with "15-minute call" ask, plus one tangible next step',                                    hook:'strategic value / ROI' },
+    cfo:        { wordRange:'210-270', paras:5, angle:'cost structure — tax, wage, energy savings with exact % figures; ROI math; concrete working capital terms',                                                                                hook:'cost reduction math' },
+    coo:        { wordRange:'220-280', paras:5, angle:'supply chain — Navoi logistics, 13-market reach, freight cost per route, lead times',                                                                                                      hook:'supply reliability + freight' },
+    technical:  { wordRange:'220-280', paras:5, angle:'product/engineering — manufacturing capacity, quality standards (ISO), skilled workforce metrics',                                                                                         hook:'technical capability' },
+    export:     { wordRange:'230-300', paras:5, angle:'trade access — 13 neighboring markets, FTA tariff zeros, multi-modal corridors from Navoi',                                                                                                hook:'market access' },
+    procurement:{ wordRange:'210-270', paras:5, angle:'unit economics — landed cost per ton/container including tariffs and freight; clear "% saving vs current source"',                                                                         hook:'landed cost savings' },
+    sales:      { wordRange:'230-300', paras:5, angle:'new Central Asia revenue channel — 80M regional consumers, FTA access, co-marketing',                                                                                                      hook:'revenue growth' },
+    marketing:  { wordRange:'230-300', paras:5, angle:'Central Asia brand entry, co-branded Navoi FEZ narrative, trade-fair co-presence',                                                                                                         hook:'brand entry' },
+    manager:    { wordRange:'260-340', paras:6, angle:'balanced overview — cost, logistics, tariffs, next steps',                                                                                                                                 hook:'partnership overview' }
   };
   var pc = personaConfig[persona] || personaConfig.manager;
 
@@ -1652,29 +1652,30 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
 
   var letterPrompt;
   if(persona === 'ceo'){
-    // ═══ ULTRA-SHORT CEO LETTER — 70-110 words, 3 micro-paragraphs, one ask ═══
-    letterPrompt = 'Write an EXTREMELY SHORT cold email to a busy CEO ('+pc.wordRange+' words MAX, 3 tight paragraphs) in '+langName+'.\n\n'+
+    // ═══ CEO LETTER — concise but substantive, 170-230 words, 4 paragraphs ═══
+    letterPrompt = 'Write a concise but substantive cold email to a CEO ('+pc.wordRange+' words, '+pc.paras+' tight paragraphs) in '+langName+'.\n\n'+
       'RECIPIENT: '+comp.rahbar+', '+(comp.lavozim||'CEO')+' at '+(comp.kompaniya||'the company')+' ('+(comp.davlat||'abroad')+').\n'+
       'SENDER: Navoi Regional Investment Office, Uzbekistan.\n'+
       'PRODUCT: '+productLabel+'.\n'+
       'ANGLE (required): '+pc.angle+'\n\n'+
-      'REALITY CHECK: CEOs delete cold emails in 3 seconds. They skim for (a) is this about me, (b) what\'s the specific dollar/time value, (c) what\'s the ask. Nothing else matters.\n\n'+
-      'WRITE:\n'+
-      '- Paragraph 1 (1 sentence): Direct opener naming the specific opportunity in dollars or %.\n'+
-      '- Paragraph 2 (2-3 sentences): Cite exactly ONE most compelling Uzbekistan advantage figure from the data, plus ONE logistics/tariff hook. No filler.\n'+
-      '- Paragraph 3 (1 sentence): Ask for a 15-minute call. Offer a specific time-window or defer to their calendar.\n\n'+
-      'UZBEKISTAN ADVANTAGES (cite 1, maybe 2 — pick the biggest relative to '+(comp.kompaniya||'this company')+'):\n'+
+      'REALITY CHECK: CEOs read cold emails in 30 seconds. They want specificity, respect for their time, and a concrete path forward — not fluff, not long backgrounders. Every paragraph earns its place.\n\n'+
+      'STRUCTURE:\n'+
+      '- Paragraph 1 (Opener, 1-2 sentences): Direct, specific — name the opportunity in dollars, % savings or revenue. No "Hope this finds you well".\n'+
+      '- Paragraph 2 (2-3 sentences): Cite 2 strongest Uzbekistan advantage figures (cost/tariff/logistics) — with hard numbers. Connect them to the CEO\'s strategic priorities.\n'+
+      '- Paragraph 3 (1-2 sentences): Brief mention of Navoi Free Economic Zone / institutional support / why this is timely now.\n'+
+      '- Paragraph 4 (1-2 sentences): Specific ask — 15-minute call, proposed day/time-window, optional alternative (delegate meeting, briefing packet).\n\n'+
+      'UZBEKISTAN ADVANTAGES (cite 2 strongest, pick what matters most for '+(comp.kompaniya||'this company')+'):\n'+
       advantageLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' +
       (transportLines.length ? '\nLOGISTICS:\n' + transportLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' : '') +
       (tariffLines.length ? '\nTARIFFS (only cite if favorable):\n' + tariffLines.map(function(line){ return '- ' + line; }).join('\n') + '\n' : '') +
       '\nRULES:\n'+
-      '- HARD LIMIT: '+pc.wordRange+' words. Over limit = deleted email.\n'+
+      '- Word range: '+pc.wordRange+'. Do not under-write (sub-150 words looks lazy) or over-write (400+ words loses them).\n'+
       '- NEVER cite numbers where Uzbekistan loses — only advantages.\n'+
-      '- No marketing fluff, no "we are excited to", no "we would like to introduce".\n'+
-      '- Every sentence must work. Cut anything removable.\n'+
+      '- No marketing fluff, no "we are excited to", no "we would like to introduce". Confident peer-to-peer tone.\n'+
+      '- Each paragraph has ONE point. Concrete > vague.\n'+
       '- Sign: Sincerely,\\nDeputy Governor of Navoi region\\nE.I.Gafforov'+
       dedupNote + '\n\n'+
-      'FORMAT: Line 1 = subject (max 55 chars, specific not generic). Line 2 = ===BODY===. Then letter.';
+      'FORMAT: Line 1 = subject (max 65 chars, specific not generic — mention a number or outcome). Line 2 = ===BODY===. Then letter.';
   } else {
     // ═══ PERSONA-TAILORED LETTER ═══
     letterPrompt = 'Write a focused cold email ('+pc.wordRange+' words, '+pc.paras+' paragraphs) in '+langName+' to a '+persona.toUpperCase()+'-level contact.\n\n'+
@@ -1761,7 +1762,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     transportSummary: transportSummary,
     tariffSummary: tariffSummary,
     productInfo: productInfo,
-    officialLines: officialLines,
+    officialLines: advantageLines,
     transportLines: transportLines,
     tariffLines: tariffLines,
     letterSubject: letterSubject,
@@ -1871,11 +1872,114 @@ async function generateAiLetterForScope(scope){
 
     toastDone(lt, '✅ AI xat tayyor! ' + escHtml(comp.kompaniya || '') + ' — ' + allContacts.length + ' ta kontakt');
 
+    // Push to AI bell — visible even if user navigated away
+    try {
+      pushAiReadyNotification({
+        companyId: String(comp.id),
+        companyName: String(comp.kompaniya || ''),
+        contactCount: allContacts.length,
+        scope: scope
+      });
+    } catch(e){}
+
   } catch(e){
     toastDone(lt, '❌ Xato: '+e.message,'error');
     console.error(e);
   }
 }
+
+/* ═══════════════════════════════════════
+   AI BELL — notifications for ready analyses
+═══════════════════════════════════════ */
+var AI_BELL_KEY = '_aiBellNotifications';
+function getAiBellList(){
+  try {
+    var raw = localStorage.getItem(AI_BELL_KEY);
+    var parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch(e){ return []; }
+}
+function saveAiBellList(list){
+  try { localStorage.setItem(AI_BELL_KEY, JSON.stringify(list || [])); } catch(e){}
+}
+function pushAiReadyNotification(entry){
+  if(!entry || !entry.companyId) return;
+  var list = getAiBellList();
+  // Dedupe — replace existing entry for same company
+  list = list.filter(function(n){ return String(n.companyId) !== String(entry.companyId); });
+  list.unshift({
+    companyId: String(entry.companyId),
+    companyName: String(entry.companyName || ''),
+    contactCount: Number(entry.contactCount || 1),
+    scope: String(entry.scope || 'investor'),
+    timestamp: new Date().toISOString(),
+    seen: false
+  });
+  list = list.slice(0, 30);
+  saveAiBellList(list);
+  renderAiBellList();
+}
+window.pushAiReadyNotification = pushAiReadyNotification;
+
+function renderAiBellList(){
+  var list = getAiBellList();
+  var container = document.getElementById('aiBellList');
+  var countEl = document.getElementById('aiBellCount');
+  var unseen = list.filter(function(n){ return !n.seen; }).length;
+  if(countEl){
+    if(unseen > 0){
+      countEl.textContent = String(unseen);
+      countEl.style.display = '';
+    } else {
+      countEl.style.display = 'none';
+    }
+  }
+  if(!container) return;
+  if(!list.length){
+    container.innerHTML = '<div class="p-3 text-center text-muted" style="font-size:.8rem">Hozircha tayyor tahlillar yo\'q</div>';
+    return;
+  }
+  container.innerHTML = list.map(function(n){
+    var when = '';
+    try { when = new Date(n.timestamp).toLocaleString('uz-UZ'); } catch(e){ when = n.timestamp; }
+    var unreadDot = n.seen ? '' : '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7C3AED;margin-right:6px"></span>';
+    return '<div onclick="openAiBellNotification(\''+n.companyId+'\')" style="padding:.75rem 1rem;border-bottom:1px solid rgba(15,23,42,.06);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'rgba(70,95,255,.04)\'" onmouseout="this.style.background=\'\'">' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'+unreadDot+'<div style="font-size:.85rem;font-weight:700;color:#111827">'+escapeHtmlText(n.companyName||'Kompaniya')+'</div></div>' +
+      '<div style="font-size:.68rem;color:#6B7280">'+n.contactCount+' ta kontakt · '+escapeHtmlText(when)+'</div>' +
+    '</div>';
+  }).join('');
+}
+window.openAiBellNotification = function(companyId){
+  var list = getAiBellList();
+  var entry = list.find(function(n){ return String(n.companyId) === String(companyId); });
+  if(entry){
+    entry.seen = true;
+    saveAiBellList(list);
+    renderAiBellList();
+  }
+  // Open the investor AI workspace for that company
+  if(typeof openInvestorAiWorkspace === 'function'){
+    openInvestorAiWorkspace(String(companyId));
+  }
+  // Close bell dropdown
+  var bell = document.getElementById('ai-bell-drop');
+  if(bell && bell.click) {
+    try { document.body.click(); } catch(e){}
+  }
+};
+window.clearAiBellNotifications = function(){
+  saveAiBellList([]);
+  renderAiBellList();
+};
+
+// Hydrate on load
+(function initAiBell(){
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', renderAiBellList);
+  } else {
+    setTimeout(renderAiBellList, 100);
+  }
+})();
 
 function renderAiContactsList(contacts, scope){
   var container = scope === 'investor'
