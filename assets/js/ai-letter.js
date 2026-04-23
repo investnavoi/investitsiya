@@ -165,9 +165,11 @@ async function fetchOfficialAiTariffSummary(comp, analysis){
 function isAiAnalysisStale(analysis){
   var tax = ((((analysis || {}).metrics || {}).totalTaxRate) || {});
   var indicator = String(tax.indicator || '');
+  // Treat discontinued Doing Business indicators as stale; new active indicator is
+  // GC.TAX.TOTL.GD.ZS (World Bank / IMF Tax revenue, % of GDP).
   return !Number.isFinite(Number(tax.country)) ||
     !Number.isFinite(Number(tax.uzbekistan)) ||
-    /IC\.TAX\.TOTL\.CP\.ZS/i.test(indicator);
+    /IC\.TAX\.TOTL\.CP\.ZS|PAY\.TAX\.(LABR|PRFT|OTHR)/i.test(indicator);
 }
 
 function isAiTariffSummaryMissing(summary){
@@ -317,7 +319,7 @@ function getAiMetricDescriptor(metricKey, analysis){
   var metrics = (analysis && analysis.metrics) || {};
   if(metricKey === 'gdpPerCapita') return { key:metricKey, icon:'📈', label:'YaIM / kishi', accent:'#2563EB', metric:metrics.gdpPerCapita || {}, formatter:aiFmtUsdExact, inverse:false };
   if(metricKey === 'industryShare') return { key:metricKey, icon:'🏭', label:'Sanoat ulushi', accent:'#F59E0B', metric:metrics.industryShare || {}, formatter:aiFmtPct, inverse:false };
-  if(metricKey === 'totalTaxRate') return { key:metricKey, icon:'🧾', label:'Soliq yuklamasi (% foyda)', accent:'#7C3AED', metric:metrics.totalTaxRate || {}, formatter:aiFmtPct, inverse:true };
+  if(metricKey === 'totalTaxRate') return { key:metricKey, icon:'🧾', label:'Soliq daromadi (% YaIM)', accent:'#7C3AED', metric:metrics.totalTaxRate || {}, formatter:aiFmtPct, inverse:true };
   if(metricKey === 'monthlyWage') return { key:metricKey, icon:'👷', label:'Mehnat narxi (oylik)', accent:'#2563EB', metric:metrics.monthlyWage || {}, formatter:aiFmtWageValue, inverse:true };
   if(metricKey === 'electricityPrice') return { key:metricKey, icon:'⚡', label:'Elektr energiyasi', accent:'#DC2626', metric:metrics.electricityPrice || {}, secondaryMetric:metrics.naturalGasPrice || {}, formatter:aiFmtMwh, inverse:true };
   return null;
@@ -849,9 +851,9 @@ function renderAiAnalysis(analysis, scope){
   if(transportSummary && transportSummary.routes && transportSummary.routes.length){
     grid.push(buildAiMetricCard(
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M1 3h15v13H1zM16 8h4l3 4v5h-7V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/></svg>',
-      'Transport kalkulyatori',
+      'Transport kalkulyatori ⚠️ taxminiy',
       aiFmtTransportUsd(transportSummary.avgSaving) + ' (' + transportSummary.avgSavingPct + '%)',
-      '13 davlat bo\'yicha o\'rtacha logistika ustunligi',
+      '13 davlat bo\'yicha taxminiy logistika hisobi (real freight API emas)',
       '#D97706',
       { scope: scope, metricKey: 'transportSummary', selected: selectedMetric === 'transportSummary', countryVal: transportSummary.avgForeign, uzVal: transportSummary.avgNavoi, countryLabel: aiFmtTransportUsd(transportSummary.avgForeign), uzLabel: aiFmtTransportUsd(transportSummary.avgNavoi) }
     ));
@@ -1382,11 +1384,13 @@ function renderAiTariffAnalysis(summary, scope){
   metaEl.style.display = 'block';
   metaEl.innerHTML =
     '<div style="padding-top:.3rem;border-top:1px dashed rgba(124,58,237,.25)">' +
-      '<strong>Rasmiy tarif manbasi:</strong><br>' +
-      '• WITS - UNCTAD TRAINS API ishlatildi.<br>' +
+      '<strong>✅ Rasmiy manba — WITS · UNCTAD · TRAINS</strong> (Jahon Banki + UNCTAD + WTO hamkorligi, gold-standard)<br>' +
       '• Reporter = maqsad import bozori, partner = kompaniya davlati yoki O\'zbekiston.<br>' +
       '• Mahsulot HS kodi: ' + escapeHtmlText(String(summary.hsCode || '—')) + '.<br>' +
-      '• Musbat farq O\'zbekiston uchun pastroq bojxona tarifini bildiradi.' +
+      '• AHS = Applied (bilateral), MFN = Most-Favoured-Nation (umumiy).<br>' +
+      '• 0% qiymati — FTA (erkin savdo) natijasi yoki o\'sha davlat uchun bojxona yo\'q degani.<br>' +
+      '• Musbat farq = O\'zbekiston uchun pastroq bojxona tarifi.<br>' +
+      '• Ma\'lumot yili ustunda — WITS ~1-2 yil lag bilan yangilanadi.' +
     '</div>';
   /* tariff card stays hidden until user clicks tariff metric */
 }
