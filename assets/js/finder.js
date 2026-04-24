@@ -943,8 +943,9 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
       if(breakdownState.loading || breakdownState.loaded) return;
       breakdownState.loading = true;
       _renderBox();
-      // Source codes — agar tanlangan bo'lsa shu, aks holda butun dunyo (Afrikasiz)
-      var breakdownCodes = sourceCodes.length ? sourceCodes.slice() : (function(){
+      // Breakdown uchun har doim butun dunyo (Afrikasiz) — shipments/count 2+ manbada filter qo'llamaydi,
+      // shuning uchun source tanlangan bo'lsa ham total shipments dunyoviy. To'liq taqsimot chiqsin.
+      var breakdownCodes = (function(){
         var codes = [];
         Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
           if(cont === 'Afrika') return;
