@@ -821,48 +821,90 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
   if(loading && loading.parentNode){ clearTimeout(loading._toastTimer); loading.remove(); }
 
   return await new Promise(function(resolve){
-    // Kredit = faqat kompaniyalar soni (firms/search orqali yuklanadi, shipmentsiz)
+    var selectedApiMode = 'firms'; // default — arzon yo'l
     var firmsTxtValue = firmsCount;
     var firmsEstimated = false;
     if((firmsCount == null || firmsCount === 0) && shipmentsCount){
       firmsTxtValue = Math.max(1, Math.round(shipmentsCount / 10));
       firmsEstimated = true;
     }
-    var estimatedCredits = firmsTxtValue != null ? firmsTxtValue : '?';
     var firmsTxt = firmsTxtValue != null ? (firmsEstimated ? '~' : '') + Number(firmsTxtValue).toLocaleString() : '—';
     var shipTxt = shipmentsCount != null ? Number(shipmentsCount).toLocaleString() : '—';
 
-    var bodyCards =
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-bottom:1rem">'+
-        '<div style="padding:.85rem;border-radius:12px;background:rgba(15,118,110,.08);border:1px solid rgba(15,118,110,.25)"><div style="font-size:.6rem;color:#115E59;font-weight:700;letter-spacing:.04em">KOMPANIYALAR</div><div style="font-size:1.3rem;font-weight:800;color:#0F766E;margin-top:2px">'+firmsTxt+'</div></div>'+
-        '<div style="padding:.85rem;border-radius:12px;background:rgba(67,97,238,.08);border:1px solid rgba(67,97,238,.2)"><div style="font-size:.6rem;color:#1E3A8A;font-weight:700;letter-spacing:.04em">SHIPMENTLAR</div><div style="font-size:1.3rem;font-weight:800;color:#4361EE;margin-top:2px">'+shipTxt+'</div></div>'+
-        '<div style="padding:.85rem;border-radius:12px;background:linear-gradient(135deg,rgba(217,119,6,.12),rgba(245,158,11,.08));border:1px solid rgba(217,119,6,.25)"><div style="font-size:.6rem;color:#9A3412;font-weight:700;letter-spacing:.04em">TAXMINIY KREDIT</div><div style="font-size:1.3rem;font-weight:800;color:#D97706;margin-top:2px">~'+(typeof estimatedCredits === 'number' ? estimatedCredits.toLocaleString() : estimatedCredits)+'</div></div>'+
-      '</div>';
+    function _creditsForMode(m){
+      if(m === 'shipments') return shipmentsCount;
+      return firmsTxtValue;
+    }
+    function _creditTxtForMode(m){
+      var v = _creditsForMode(m);
+      if(v == null) return '~?';
+      return '~' + Number(v).toLocaleString();
+    }
 
     var errBlock = errMsg ? ('<div style="padding:.7rem;border-radius:8px;background:rgba(239,35,60,.08);color:#991B1B;font-size:.75rem;margin-bottom:.8rem">⚠️ '+escHtml(errMsg)+'</div>') : '';
     var worldBlock = isWorldWide ? ('<div style="padding:.75rem .85rem;border-radius:10px;background:linear-gradient(135deg,rgba(217,119,6,.12),rgba(239,68,68,.08));border:1px solid rgba(217,119,6,.35);color:#9A3412;font-size:.78rem;margin-bottom:.9rem;font-weight:600">🌍 Manba tanlanmagan — <u>butun dunyo ('+taCountries.length+' davlat)</u> bo\'yicha qidiriladi. Kam kredit sarflash uchun qit\'a yoki davlat tanlang.</div>') : '';
+
+    function _modeToggleHtml(){
+      var firmsActive = selectedApiMode === 'firms';
+      var shipActive = selectedApiMode === 'shipments';
+      return ''+
+        '<div style="margin-bottom:1rem">'+
+          '<div style="font-size:.62rem;color:#64748B;font-weight:700;letter-spacing:.04em;margin-bottom:.45rem">API REJIM</div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">'+
+            '<button type="button" data-mode="firms" class="taModeBtn" style="text-align:left;padding:.7rem .85rem;border-radius:10px;cursor:pointer;border:'+(firmsActive?'1.5px solid #0F766E':'1.5px solid #E5E7EB')+';background:'+(firmsActive?'rgba(15,118,110,.08)':'#fff')+';transition:all .15s">'+
+              '<div style="font-size:.75rem;font-weight:800;color:'+(firmsActive?'#0F766E':'#1a1a2e')+';margin-bottom:2px">🏢 Firmalar (arzon)</div>'+
+              '<div style="font-size:.62rem;color:#64748B;line-height:1.35">Faqat kompaniya + aloqa. Hajm/qiymat <u>yo\'q</u>.</div>'+
+            '</button>'+
+            '<button type="button" data-mode="shipments" class="taModeBtn" style="text-align:left;padding:.7rem .85rem;border-radius:10px;cursor:pointer;border:'+(shipActive?'1.5px solid #4361EE':'1.5px solid #E5E7EB')+';background:'+(shipActive?'rgba(67,97,238,.08)':'#fff')+';transition:all .15s">'+
+              '<div style="font-size:.75rem;font-weight:800;color:'+(shipActive?'#4361EE':'#1a1a2e')+';margin-bottom:2px">📦 Shipmentlar (aniq)</div>'+
+              '<div style="font-size:.62rem;color:#64748B;line-height:1.35">Hajm + FOB qiymat + davlatlar. Kredit ko\'proq.</div>'+
+            '</button>'+
+          '</div>'+
+        '</div>';
+    }
+
+    function _bodyCardsHtml(){
+      return ''+
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-bottom:1rem">'+
+          '<div style="padding:.85rem;border-radius:12px;background:rgba(15,118,110,.08);border:1px solid rgba(15,118,110,.25)"><div style="font-size:.6rem;color:#115E59;font-weight:700;letter-spacing:.04em">KOMPANIYALAR</div><div style="font-size:1.3rem;font-weight:800;color:#0F766E;margin-top:2px">'+firmsTxt+'</div></div>'+
+          '<div style="padding:.85rem;border-radius:12px;background:rgba(67,97,238,.08);border:1px solid rgba(67,97,238,.2)"><div style="font-size:.6rem;color:#1E3A8A;font-weight:700;letter-spacing:.04em">SHIPMENTLAR</div><div style="font-size:1.3rem;font-weight:800;color:#4361EE;margin-top:2px">'+shipTxt+'</div></div>'+
+          '<div style="padding:.85rem;border-radius:12px;background:linear-gradient(135deg,rgba(217,119,6,.12),rgba(245,158,11,.08));border:1px solid rgba(217,119,6,.25)"><div style="font-size:.6rem;color:#9A3412;font-weight:700;letter-spacing:.04em">TAXMINIY KREDIT</div><div style="font-size:1.3rem;font-weight:800;color:#D97706;margin-top:2px">'+_creditTxtForMode(selectedApiMode)+'</div></div>'+
+        '</div>';
+    }
 
     var overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
     var box = document.createElement('div');
     box.style.cssText = 'background:#fff;border-radius:16px;padding:1.6rem;max-width:500px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)';
-    box.innerHTML =
-      '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem"><div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0F766E,#059669);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M2 12h20M12 2c2.5 2.8 4 6.2 4 10s-1.5 7.2-4 10c-2.5-2.8-4-6.2-4-10s1.5-7.2 4-10z" stroke="currentColor" stroke-width="1.8"/></svg></div><div><h3 style="margin:0;font-size:1.05rem;color:#1a1a2e">TradeAtlas so\'rov xulosasi</h3><div style="font-size:.7rem;color:#64748B">Count endpointlari (0 kredit)</div></div></div>'+
-      '<div style="background:#F8FAFC;border-radius:10px;padding:.85rem;margin-bottom:1rem;font-size:.78rem;color:#475569">'+
-        '<div style="margin-bottom:.3rem"><strong>Mahsulot:</strong> '+escHtml(prod.name_en||prod.name_uz||'—')+' (HS '+escHtml(hsCode||'—')+')</div>'+
-        '<div><strong>Davlatlar:</strong> '+escHtml(taCountries.slice(0,5).join(', ') || '—')+(taCountries.length>5?'...':'')+'</div>'+
-      '</div>'+
-      worldBlock + bodyCards + errBlock +
-      '<div style="display:flex;gap:.7rem;justify-content:flex-end">'+
-        '<button id="taPreCancel" style="padding:.6rem 1.3rem;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;font-size:.82rem">Bekor qilish</button>'+
-        '<button id="taPreConfirm" style="padding:.6rem 1.3rem;border-radius:10px;border:none;background:linear-gradient(135deg,#0F766E,#059669);color:#fff;font-weight:600;cursor:pointer;font-size:.82rem">Yuklab olish</button>'+
-      '</div>';
+    var close = function(v){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); resolve(v); };
+    function _renderBox(){
+      box.innerHTML =
+        '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem"><div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0F766E,#059669);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M2 12h20M12 2c2.5 2.8 4 6.2 4 10s-1.5 7.2-4 10c-2.5-2.8-4-6.2-4-10s1.5-7.2 4-10z" stroke="currentColor" stroke-width="1.8"/></svg></div><div><h3 style="margin:0;font-size:1.05rem;color:#1a1a2e">TradeAtlas so\'rov xulosasi</h3><div style="font-size:.7rem;color:#64748B">Count endpointlari (0 kredit)</div></div></div>'+
+        '<div style="background:#F8FAFC;border-radius:10px;padding:.85rem;margin-bottom:1rem;font-size:.78rem;color:#475569">'+
+          '<div style="margin-bottom:.3rem"><strong>Mahsulot:</strong> '+escHtml(prod.name_en||prod.name_uz||'—')+' (HS '+escHtml(hsCode||'—')+')</div>'+
+          '<div><strong>Davlatlar:</strong> '+escHtml(taCountries.slice(0,5).join(', ') || '—')+(taCountries.length>5?'...':'')+'</div>'+
+        '</div>'+
+        worldBlock + _modeToggleHtml() + _bodyCardsHtml() + errBlock +
+        '<div style="display:flex;gap:.7rem;justify-content:flex-end">'+
+          '<button id="taPreCancel" style="padding:.6rem 1.3rem;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;font-size:.82rem">Bekor qilish</button>'+
+          '<button id="taPreConfirm" style="padding:.6rem 1.3rem;border-radius:10px;border:none;background:linear-gradient(135deg,#0F766E,#059669);color:#fff;font-weight:600;cursor:pointer;font-size:.82rem">Yuklab olish</button>'+
+        '</div>';
+      var btns = box.querySelectorAll('.taModeBtn');
+      for(var bi=0; bi<btns.length; bi++){
+        (function(btn){
+          btn.onclick = function(){
+            selectedApiMode = btn.getAttribute('data-mode') || 'firms';
+            _renderBox();
+          };
+        })(btns[bi]);
+      }
+      document.getElementById('taPreCancel').onclick = function(){ close({confirmed:false, apiMode:selectedApiMode}); };
+      document.getElementById('taPreConfirm').onclick = function(){ close({confirmed:true, apiMode:selectedApiMode}); };
+    }
     overlay.appendChild(box);
     document.body.appendChild(overlay);
-    var close = function(v){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); resolve(v); };
-    document.getElementById('taPreCancel').onclick = function(){ close(false); };
-    document.getElementById('taPreConfirm').onclick = function(){ close(true); };
-    overlay.addEventListener('click', function(e){ if(e.target === overlay) close(false); });
+    _renderBox();
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) close({confirmed:false, apiMode:selectedApiMode}); });
   });
 }
 
@@ -3019,8 +3061,11 @@ async function runCompanyFinder(source){
 
   _finderResults = [];
 
+  var _taApiMode = 'firms';
   if(source === 'tradeatlas'){
-    var taConfirmed = await showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope);
+    var taPreRes = await showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope);
+    var taConfirmed = !!(taPreRes && taPreRes.confirmed);
+    _taApiMode = (taPreRes && taPreRes.apiMode) || 'firms';
     if(!taConfirmed){
       document.getElementById('finderProgress').style.display = 'none';
       toast('ℹ️ TradeAtlas qidiruvi bekor qilindi','info');
@@ -3036,13 +3081,19 @@ async function runCompanyFinder(source){
       });
       document.getElementById('finderBar').style.width = '38%';
       document.getElementById('finderProgressText').textContent =
-        'TradeAtlas: HS ' + (getExactImportHsCode(prod) || '-') +
+        'TradeAtlas ('+(_taApiMode==='shipments'?'📦 shipments':'🏢 firms')+'): HS ' + (getExactImportHsCode(prod) || '-') +
         ' | Importyor: ' + targetCountries.slice(0,4).map(getFinderCountryLabel).join(', ') + (targetCountries.length > 4 ? '...' : '') +
         ' | Eksportyor: ' + (((sourceScope && sourceScope.effectiveCountries) || []).length
           ? sourceScope.effectiveCountries.slice(0,4).map(getFinderCountryLabel).join(', ') + (sourceScope.effectiveCountries.length > 4 ? '...' : '')
           : 'Butun dunyo');
-      // Arzon yol: /firms/search (har firma = 1 kredit), shipment aggregation yoq
-      var tradeAtlasResults = await tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScope);
+      var tradeAtlasResults;
+      if(_taApiMode === 'shipments'){
+        // Aniq yo'l: /shipments/search → per-firm aggregation (hajm + FOB qiymat + counterpart)
+        tradeAtlasResults = await tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope);
+      } else {
+        // Arzon yo'l: /firms/search (har firma = 1 kredit), shipment aggregation yo'q
+        tradeAtlasResults = await tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScope);
+      }
       tradeAtlasResults.filter(finderResultIsRenderable).forEach(function(item){
         _finderResults.push(item);
       });
