@@ -935,8 +935,97 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     var overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
     var box = document.createElement('div');
-    box.style.cssText = 'background:#fff;border-radius:16px;padding:1.6rem;max-width:500px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)';
+    box.style.cssText = 'background:#fff;border-radius:16px;padding:1.6rem;max-width:560px;width:92%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)';
     var close = function(v){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); resolve(v); };
+    var breakdownState = { loading: false, loaded: false, err: '', rows: [], total: 0 };
+
+    async function _loadBreakdown(){
+      if(breakdownState.loading || breakdownState.loaded) return;
+      breakdownState.loading = true;
+      _renderBox();
+      // Source codes — agar tanlangan bo'lsa shu, aks holda butun dunyo (Afrikasiz)
+      var breakdownCodes = sourceCodes.length ? sourceCodes.slice() : (function(){
+        var codes = [];
+        Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
+          if(cont === 'Afrika') return;
+          (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(c){
+            var code = getTradeAtlasCountryCode(c);
+            if(code && codes.indexOf(code) === -1) codes.push(code);
+          });
+        });
+        return codes;
+      })();
+
+      function _buildBreakdownPayload(code){
+        var p = { countries: targetCodes.slice(), flowType: 'IMPORT', firmFilter: [1,2], parameters: [{ HS_CODE: hsCode }, { EXPORTER_COUNTRY_CODE: code }] };
+        if(dateRange && dateRange.startDate) p.startDate = dateRange.startDate;
+        if(dateRange && dateRange.endDate) p.endDate = dateRange.endDate;
+        return p;
+      }
+
+      // Parallel batch'lar — har 10 kod
+      var results = [];
+      try {
+        var BATCH = 10;
+        for(var i=0; i<breakdownCodes.length; i+=BATCH){
+          var batch = breakdownCodes.slice(i, i+BATCH);
+          var promises = batch.map(function(code){
+            return fetchTradeAtlasCount('shipments/count', _buildBreakdownPayload(code))
+              .then(function(r){ return { code: code, count: Number(_extractCountNumber(r) || 0) }; })
+              .catch(function(){ return { code: code, count: 0, err: true }; });
+          });
+          var settled = await Promise.all(promises);
+          settled.forEach(function(r){ if(r.count > 0) results.push(r); });
+          breakdownState.rows = results.slice().sort(function(a,b){ return b.count - a.count; });
+          breakdownState.total = results.reduce(function(s,r){ return s + r.count; }, 0);
+          _renderBox();
+        }
+      } catch(e){
+        breakdownState.err = e && e.message ? e.message : 'Breakdown xatosi';
+      }
+      breakdownState.loading = false;
+      breakdownState.loaded = true;
+      _renderBox();
+    }
+
+    function _breakdownHtml(){
+      if(!breakdownState.loaded && !breakdownState.loading){
+        return '<div style="margin-bottom:1rem"><button id="taBreakdownBtn" type="button" style="width:100%;padding:.7rem .95rem;border-radius:10px;border:1.5px dashed #4361EE;background:rgba(67,97,238,.04);color:#4361EE;font-weight:700;cursor:pointer;font-size:.8rem;transition:all .15s">📊 Davlat taqsimoti (kreditsiz)</button></div>';
+      }
+      var head = '<div style="margin-bottom:1rem;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">'+
+        '<div style="padding:.55rem .85rem;background:#F8FAFC;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between">'+
+          '<div style="font-size:.7rem;font-weight:800;color:#1E3A8A">📊 Davlat taqsimoti'+(breakdownState.loading?' (yuklanyapti...)':'')+'</div>'+
+          '<div style="font-size:.65rem;color:#64748B;font-weight:600">'+breakdownState.rows.length+' davlat / jami '+Number(breakdownState.total).toLocaleString()+' shipment</div>'+
+        '</div>';
+      if(breakdownState.err){
+        head += '<div style="padding:.7rem;color:#991B1B;font-size:.72rem">⚠️ '+escHtml(breakdownState.err)+'</div></div>';
+        return head;
+      }
+      if(!breakdownState.rows.length && !breakdownState.loading){
+        head += '<div style="padding:.7rem;color:#64748B;font-size:.72rem">Hech qaysi davlatdan shipment topilmadi.</div></div>';
+        return head;
+      }
+      var maxCount = Math.max.apply(null, breakdownState.rows.map(function(r){ return r.count; }).concat([1]));
+      var rowsHtml = breakdownState.rows.slice(0, 20).map(function(r){
+        var pct = Math.round((r.count / maxCount) * 100);
+        var pctTotal = breakdownState.total ? ((r.count / breakdownState.total) * 100).toFixed(1) : '0';
+        var flag = _COUNTRY_FLAG_MAP ? (Object.keys(_COUNTRY_FLAG_MAP).find(function(k){ return getTradeAtlasCountryCode(k) === r.code; }) ? _COUNTRY_FLAG_MAP[Object.keys(_COUNTRY_FLAG_MAP).find(function(k){ return getTradeAtlasCountryCode(k) === r.code; })] : '🏳️') : '';
+        return '<div style="padding:6px 10px;border-top:1px solid #F1F5F9;display:grid;grid-template-columns:28px 40px 1fr 70px 50px;gap:8px;align-items:center;font-size:.72rem">'+
+          '<span>'+flag+'</span>'+
+          '<span style="font-weight:700;color:#1a1a2e">'+escHtml(r.code)+'</span>'+
+          '<div style="height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4361EE,#7C3AED);border-radius:4px"></div></div>'+
+          '<span style="font-weight:700;color:#1E3A8A;text-align:right">'+Number(r.count).toLocaleString()+'</span>'+
+          '<span style="color:#64748B;text-align:right">'+pctTotal+'%</span>'+
+        '</div>';
+      }).join('');
+      head += '<div style="max-height:260px;overflow-y:auto">'+rowsHtml+'</div>';
+      if(breakdownState.rows.length > 20){
+        head += '<div style="padding:6px 10px;border-top:1px solid #F1F5F9;font-size:.65rem;color:#64748B;text-align:center">Yana '+(breakdownState.rows.length-20)+' ta davlat (top 20 ko\'rsatildi)</div>';
+      }
+      head += '</div>';
+      return head;
+    }
+
     function _renderBox(){
       box.innerHTML =
         '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem"><div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0F766E,#059669);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M2 12h20M12 2c2.5 2.8 4 6.2 4 10s-1.5 7.2-4 10c-2.5-2.8-4-6.2-4-10s1.5-7.2 4-10z" stroke="currentColor" stroke-width="1.8"/></svg></div><div><h3 style="margin:0;font-size:1.05rem;color:#1a1a2e">TradeAtlas so\'rov xulosasi</h3><div style="font-size:.7rem;color:#64748B">Count endpointlari (0 kredit)</div></div></div>'+
@@ -944,7 +1033,7 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
           '<div style="margin-bottom:.3rem"><strong>Mahsulot:</strong> '+escHtml(prod.name_en||prod.name_uz||'—')+' (HS '+escHtml(hsCode||'—')+')</div>'+
           '<div><strong>Davlatlar:</strong> '+escHtml(taCountries.slice(0,5).join(', ') || '—')+(taCountries.length>5?'...':'')+'</div>'+
         '</div>'+
-        worldBlock + _modeToggleHtml() + _bodyCardsHtml() + errBlock +
+        worldBlock + _modeToggleHtml() + _bodyCardsHtml() + _breakdownHtml() + errBlock +
         '<div style="display:flex;gap:.7rem;justify-content:flex-end">'+
           '<button id="taPreCancel" style="padding:.6rem 1.3rem;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;font-size:.82rem">Bekor qilish</button>'+
           '<button id="taPreConfirm" style="padding:.6rem 1.3rem;border-radius:10px;border:none;background:linear-gradient(135deg,#0F766E,#059669);color:#fff;font-weight:600;cursor:pointer;font-size:.82rem">Yuklab olish</button>'+
@@ -958,6 +1047,8 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
           };
         })(btns[bi]);
       }
+      var bdBtn = document.getElementById('taBreakdownBtn');
+      if(bdBtn) bdBtn.onclick = function(){ _loadBreakdown(); };
       document.getElementById('taPreCancel').onclick = function(){ close({confirmed:false, apiMode:selectedApiMode}); };
       document.getElementById('taPreConfirm').onclick = function(){ close({confirmed:true, apiMode:selectedApiMode}); };
     }
