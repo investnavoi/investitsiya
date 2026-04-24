@@ -778,7 +778,7 @@ async function fetchTradeAtlasCount(endpoint, payload){
 
 function _extractCountNumber(countData){
   if(!countData || typeof countData !== 'object') return null;
-  var candidates = ['count','total','totalCount','firmsCount','firms_count','shipmentsCount','shipments_count','total_entries','totalEntries','importerCount','exporterCount'];
+  var candidates = ['count','total','totalCount','firmsCount','firms_count','firmCount','shipmentsCount','shipments_count','shipmentCount','total_entries','totalEntries','importerCount','exporterCount'];
   for(var i=0;i<candidates.length;i++){
     if(typeof countData[candidates[i]] === 'number') return countData[candidates[i]];
   }
@@ -956,23 +956,37 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
         return codes;
       })();
 
-      function _buildBreakdownPayload(code){
-        var p = { countries: targetCodes.slice(), flowType: 'IMPORT', firmFilter: [1,2], parameters: [{ HS_CODE: hsCode }, { EXPORTER_COUNTRY_CODE: code }] };
+      // TradeAtlas `countries` parametri max 5 — target'ni 5 talik chunklarga bo'lamiz
+      var _targetChunks = [];
+      for(var ti=0; ti<targetCodes.length; ti+=5) _targetChunks.push(targetCodes.slice(ti, ti+5));
+      if(!_targetChunks.length) _targetChunks = [[]];
+
+      function _buildBreakdownPayload(code, targetChunk){
+        var p = { countries: targetChunk.slice(), flowType: 'IMPORT', firmFilter: [1,2], parameters: [{ HS_CODE: hsCode }, { EXPORTER_COUNTRY_CODE: code }] };
         if(dateRange && dateRange.startDate) p.startDate = dateRange.startDate;
         if(dateRange && dateRange.endDate) p.endDate = dateRange.endDate;
         return p;
       }
 
-      // Parallel batch'lar — har 10 kod
+      async function _countForCode(code){
+        var sum = 0, gotAny = false;
+        for(var tc=0; tc<_targetChunks.length; tc++){
+          try {
+            var r = await fetchTradeAtlasCount('shipments/count', _buildBreakdownPayload(code, _targetChunks[tc]));
+            var n = _extractCountNumber(r);
+            if(n != null){ sum += Number(n) || 0; gotAny = true; }
+          } catch(_e){}
+        }
+        return { code: code, count: sum, ok: gotAny };
+      }
+
       var results = [];
       try {
-        var BATCH = 10;
+        var BATCH = 6; // 6 source codes × target chunks parallel
         for(var i=0; i<breakdownCodes.length; i+=BATCH){
           var batch = breakdownCodes.slice(i, i+BATCH);
           var promises = batch.map(function(code){
-            return fetchTradeAtlasCount('shipments/count', _buildBreakdownPayload(code))
-              .then(function(r){ return { code: code, count: Number(_extractCountNumber(r) || 0) }; })
-              .catch(function(){ return { code: code, count: 0, err: true }; });
+            return _countForCode(code).catch(function(){ return { code: code, count: 0, err: true }; });
           });
           var settled = await Promise.all(promises);
           settled.forEach(function(r){ if(r.count > 0) results.push(r); });
