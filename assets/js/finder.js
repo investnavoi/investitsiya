@@ -943,7 +943,8 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
       return '~' + Number(v).toLocaleString();
     }
 
-    var errBlock = errMsg ? ('<div style="padding:.7rem;border-radius:8px;background:rgba(239,35,60,.08);color:#991B1B;font-size:.75rem;margin-bottom:.8rem">⚠️ '+escHtml(errMsg)+'</div>') : '';
+    var isRateLimit = errMsg && /Daily Request Limit|limit.*exceed|kunlik limit/i.test(errMsg);
+    var errBlock = errMsg ? ('<div style="padding:.7rem;border-radius:8px;background:'+(isRateLimit?'rgba(245,158,11,.1)':'rgba(239,35,60,.08)')+';color:'+(isRateLimit?'#92400E':'#991B1B')+';font-size:.75rem;margin-bottom:.8rem;line-height:1.5">⚠️ '+escHtml(errMsg)+(isRateLimit?'<br><b>Tashvishlanmang</b> — <u>Yuklab olish</u> ishlaydi: u alohida <code>/firms/search</code> yoki <code>/shipments/search</code> endpointiga boradi (kredit hisobi mustaqil, 200/kun count cheklovidan boshqa).':'')+'</div>') : '';
     var worldBlock = isWorldWide ? ('<div style="padding:.75rem .85rem;border-radius:10px;background:linear-gradient(135deg,rgba(217,119,6,.12),rgba(239,68,68,.08));border:1px solid rgba(217,119,6,.35);color:#9A3412;font-size:.78rem;margin-bottom:.9rem;font-weight:600">🌍 Manba tanlanmagan — <u>butun dunyo ('+taCountries.length+' davlat)</u> bo\'yicha qidiriladi. Kam kredit sarflash uchun qit\'a yoki davlat tanlang.</div>') : '';
 
     function _modeToggleHtml(){
