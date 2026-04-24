@@ -832,12 +832,12 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     if(!out.length) out = [[]];
     return out;
   }
-  var shipmentChunks = _chunk5(targetCodes);
+  var targetChunks = _chunk5(targetCodes);
   var firmChunks = _chunk5(taCountries);
 
-  function _buildShipmentPayload(chunk){
-    var p = { countries: chunk, flowType: 'IMPORT', firmFilter: [1,2], parameters: [{ HS_CODE: hsCode }] };
-    if(sourceCodes.length === 1) p.parameters.push({ EXPORTER_COUNTRY_CODE: sourceCodes[0] });
+  function _buildShipmentPayload(targetChunk, exporterCode){
+    var p = { countries: targetChunk, flowType: 'IMPORT', firmFilter: [1,2], parameters: [{ HS_CODE: hsCode }] };
+    if(exporterCode) p.parameters.push({ EXPORTER_COUNTRY_CODE: exporterCode });
     if(dateRange && dateRange.startDate) p.startDate = dateRange.startDate;
     if(dateRange && dateRange.endDate) p.endDate = dateRange.endDate;
     return p;
@@ -849,10 +849,24 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     return p;
   }
 
-  var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit, '+(shipmentChunks.length+firmChunks.length)+' chunk)...');
+  // Shipments count promislari: agar manba tanlangan bo'lsa, har bir manba uchun target chunks bo'yicha iteratsiya;
+  // aks holda (butun dunyo) faqat target chunks.
+  var shipmentPromises = [];
+  if(sourceCodes.length){
+    sourceCodes.forEach(function(srcCode){
+      targetChunks.forEach(function(tch){
+        shipmentPromises.push(fetchTradeAtlasCount('shipments/count', _buildShipmentPayload(tch, srcCode)));
+      });
+    });
+  } else {
+    targetChunks.forEach(function(tch){
+      shipmentPromises.push(fetchTradeAtlasCount('shipments/count', _buildShipmentPayload(tch, null)));
+    });
+  }
+
+  var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit, '+(shipmentPromises.length+firmChunks.length)+' so\'rov)...');
   var firmsCount = null, shipmentsCount = null, errMsg = '';
   try {
-    var shipmentPromises = shipmentChunks.map(function(ch){ return fetchTradeAtlasCount('shipments/count', _buildShipmentPayload(ch)); });
     var firmPromises = firmChunks.map(function(ch){ return fetchTradeAtlasCount('firms/count', _buildFirmPayload(ch)); });
     var all = await Promise.allSettled([].concat(firmPromises, shipmentPromises));
     var firmResults = all.slice(0, firmPromises.length);
