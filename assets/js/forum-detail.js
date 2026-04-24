@@ -3,6 +3,35 @@
 ═══════════════════════════════════════ */
 var _forumDetailId = null;
 
+/* Delegated hover for investor company grouped rows — keeps all rows in the same
+   company group painted the same hover color (fixes rowspan'd soha cell appearing
+   faded when a non-first row is hovered). */
+(function bindIcGroupHover(){
+  if(typeof window === 'undefined' || window._icGroupHoverBound) return;
+  window._icGroupHoverBound = true;
+  function paint(tr, bgAttr){
+    if(!tr || !tr.classList || !tr.classList.contains('ic-group-row')) return;
+    var group = tr.getAttribute('data-group');
+    var bg = tr.getAttribute(bgAttr);
+    var tbody = tr.parentNode;
+    if(!group || !bg || !tbody) return;
+    var rows = tbody.querySelectorAll('tr.ic-group-row[data-group="'+group+'"]');
+    for(var i=0;i<rows.length;i++) rows[i].style.background = bg;
+  }
+  document.addEventListener('mouseover', function(e){
+    var tr = e.target && e.target.closest ? e.target.closest('tr.ic-group-row') : null;
+    if(tr) paint(tr, 'data-group-hover');
+  });
+  document.addEventListener('mouseout', function(e){
+    var tr = e.target && e.target.closest ? e.target.closest('tr.ic-group-row') : null;
+    if(!tr) return;
+    // Only restore if mouse actually left the whole group — check relatedTarget
+    var rel = e.relatedTarget;
+    if(rel && rel.closest && rel.closest('tr.ic-group-row[data-group="'+tr.getAttribute('data-group')+'"]')) return;
+    paint(tr, 'data-group-bg');
+  });
+})();
+
 function openForumDetail(id){
   const r = DB.forums.find(f=>f.id===id);
   if(!r) return;
@@ -1664,6 +1693,158 @@ async function enrichFromWebsite(id, force){
 }
 window.enrichFromWebsite = enrichFromWebsite;
 
+// ═══ TradeAtlas batafsil ma'lumot sektsiyasi ═══
+function renderTradeAtlasDetailSection(rec){
+  if(!rec) return '';
+  var isTa = String(rec.manba || '').toLowerCase() === 'tradeatlas';
+  var hasAny = isTa && (
+    rec._tradeAtlasDocCount || rec._tradeAtlasTradeValue || rec._tradeAtlasQuantity ||
+    rec._tradeAtlasGrossWeight || rec._tradeAtlasNetWeight ||
+    (Array.isArray(rec._tradeAtlasShipmentExamples) && rec._tradeAtlasShipmentExamples.length) ||
+    (Array.isArray(rec._tradeAtlasCounterpartCountries) && rec._tradeAtlasCounterpartCountries.length) ||
+    (Array.isArray(rec._tradeAtlasPortsOfDeparture) && rec._tradeAtlasPortsOfDeparture.length)
+  );
+  if(!hasAny) return '';
+
+  function fmtUsd(v){ v = Number(v || 0); if(!v) return '—'; if(v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B'; if(v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M'; if(v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K'; return '$' + Number(v).toLocaleString(); }
+  function fmtNum(v, unit){ v = Number(v || 0); if(!v) return '—'; var out = v >= 1e6 ? (v/1e6).toFixed(2)+'M' : v >= 1e3 ? (v/1e3).toFixed(1)+'K' : String(Math.round(v*100)/100); return out + (unit ? (' ' + unit) : ''); }
+  function fmtDate(v){ if(!v) return '—'; var d = new Date(v); if(!isNaN(d)) return d.toISOString().slice(0, 10); return String(v); }
+  function listChips(arr, max, color){
+    if(!Array.isArray(arr) || !arr.length) return '—';
+    var shown = arr.slice(0, max || 6);
+    var more = arr.length > shown.length ? (' <span style="color:var(--text3);font-size:.7rem">+' + (arr.length - shown.length) + '</span>') : '';
+    return shown.map(function(v){
+      return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;background:'+(color||'rgba(67,97,238,.08)')+';color:var(--text);font-size:.7rem;margin:2px 4px 2px 0;font-weight:600">'+escHtml(String(v))+'</span>';
+    }).join('') + more;
+  }
+
+  function kpi(label, value, accent){
+    return '<div style="padding:.7rem;border:1px solid var(--border);border-radius:10px;background:#fff"><div style="font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:700">'+escHtml(label)+'</div><div style="font-size:.9rem;font-weight:800;color:'+(accent||'var(--text)')+';margin-top:3px;word-break:break-all">'+value+'</div></div>';
+  }
+
+  var kpiFinancial =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.55rem;margin-bottom:.9rem">'+
+      kpi('Shipmentlar', (rec._tradeAtlasDocCount || 0).toLocaleString(), '#4361EE')+
+      kpi('FOB qiymati', fmtUsd(rec._tradeAtlasFobUsd || rec._tradeAtlasTradeValue), '#059669')+
+      kpi('CIF qiymati', fmtUsd(rec._tradeAtlasCifUsd), '#0EA5E9')+
+      kpi('Statistik qiymat', fmtUsd(rec._tradeAtlasStatValueUsd), '#7C3AED')+
+      kpi('Yuk narxi', fmtUsd(rec._tradeAtlasFreightUsd), '#F97316')+
+      kpi('Sug\'urta', fmtUsd(rec._tradeAtlasInsuranceUsd), '#EF4444')+
+      kpi('O\'rt. birlik narx', fmtUsd(rec._tradeAtlasAvgUnitPriceUsd), '#EC4899')+
+    '</div>';
+
+  var kpiVolume =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.55rem;margin-bottom:.9rem">'+
+      kpi('Miqdor', fmtNum(rec._tradeAtlasQuantity, rec._tradeAtlasQuantityUnit), '#059669')+
+      kpi('Gross og\'irlik', fmtNum(rec._tradeAtlasGrossWeight, rec._tradeAtlasGrossWeightUnit || 'kg'), '#4361EE')+
+      kpi('Net og\'irlik', fmtNum(rec._tradeAtlasNetWeight, rec._tradeAtlasNetWeightUnit || 'kg'), '#0EA5E9')+
+      kpi('Konteynerlar', (rec._tradeAtlasContainers || 0).toLocaleString(), '#7C3AED')+
+      kpi('Paketlar', fmtNum(rec._tradeAtlasPackages, rec._tradeAtlasPackageUnit), '#F97316')+
+      kpi('TEU', fmtNum(rec._tradeAtlasTeus), '#EC4899')+
+    '</div>';
+
+  var datesRow = (rec._tradeAtlasFirstArrivalDate || rec._tradeAtlasLastArrivalDate) ?
+    ('<div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:.9rem">'+
+      kpi('Birinchi shipment', fmtDate(rec._tradeAtlasFirstArrivalDate))+
+      kpi('Oxirgi shipment', fmtDate(rec._tradeAtlasLastArrivalDate))+
+    '</div>') : '';
+
+  function chipBlock(title, arr, color){
+    if(!Array.isArray(arr) || !arr.length) return '';
+    return '<div style="margin-bottom:.7rem"><div style="font-size:.62rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">'+escHtml(title)+'</div><div>'+listChips(arr, 10, color)+'</div></div>';
+  }
+
+  var productsBlock =
+    chipBlock('HS kodlar', rec._tradeAtlasHsCodes, 'rgba(124,58,237,.1)')+
+    chipBlock('HS tavsifi', rec._tradeAtlasHsDescriptions, 'rgba(124,58,237,.08)')+
+    chipBlock('Mahsulot tafsilotlari', rec._tradeAtlasProductDetails, 'rgba(67,97,238,.08)')+
+    chipBlock('Brendlar', rec._tradeAtlasBrandNames, 'rgba(236,72,153,.1)')+
+    chipBlock('Kelib chiqish davlatlari', rec._tradeAtlasCountriesOfOrigin, 'rgba(5,150,105,.1)')+
+    chipBlock('Holati (new/used)', rec._tradeAtlasConditionsNewUsed, 'rgba(249,115,22,.1)');
+
+  var logisticsBlock =
+    chipBlock('Jo\'natish portlari', rec._tradeAtlasPortsOfDeparture, 'rgba(14,165,233,.1)')+
+    chipBlock('Qabul portlari', rec._tradeAtlasPortsOfArrival, 'rgba(14,165,233,.1)')+
+    chipBlock('Kemalar', rec._tradeAtlasVessels, 'rgba(67,97,238,.08)')+
+    chipBlock('Incoterms', rec._tradeAtlasIncoterms, 'rgba(124,58,237,.1)')+
+    chipBlock('Transport turi', rec._tradeAtlasTransportTypes, 'rgba(5,150,105,.1)')+
+    chipBlock('To\'lov turi', rec._tradeAtlasPaymentTypes, 'rgba(245,158,11,.1)')+
+    chipBlock('Rejim', rec._tradeAtlasRegimes, 'rgba(239,68,68,.08)');
+
+  var counterpartBlock =
+    chipBlock('Hamkor davlatlar', rec._tradeAtlasCounterpartCountries, 'rgba(5,150,105,.1)')+
+    chipBlock('Hamkor kompaniyalar', rec._tradeAtlasCounterpartCompanies, 'rgba(67,97,238,.08)');
+
+  var partiesBlock =
+    chipBlock('Ishlab chiqaruvchi', rec._tradeAtlasManufacturingCompanies, 'rgba(124,58,237,.08)')+
+    chipBlock('Transport kompaniya', rec._tradeAtlasTransportCompanies, 'rgba(14,165,233,.08)')+
+    chipBlock('Notify party', rec._tradeAtlasNotifyParties, 'rgba(236,72,153,.08)');
+
+  var identityBlock = '';
+  if(rec._tradeAtlasTaxId || rec._tradeAtlasCompanyTypeCode || rec._tradeAtlasFax || rec._tradeAtlasFacebook || rec._tradeAtlasTwitter || rec._tradeAtlasInstagram){
+    identityBlock = '<div style="margin-bottom:.7rem"><div style="font-size:.62rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Qo\'shimcha ma\'lumotlar</div>'+
+      '<div style="font-size:.75rem;color:var(--text2);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.25rem .9rem">'+
+        (rec._tradeAtlasTaxId ? '<div><b>Soliq ID:</b> '+escHtml(rec._tradeAtlasTaxId)+'</div>' : '')+
+        (rec._tradeAtlasCompanyTypeCode ? '<div><b>Kompaniya turi:</b> '+escHtml(rec._tradeAtlasCompanyTypeCode)+'</div>' : '')+
+        (rec._tradeAtlasFax ? '<div><b>Faks:</b> '+escHtml(rec._tradeAtlasFax)+'</div>' : '')+
+        (rec._tradeAtlasFacebook ? '<div><b>Facebook:</b> <a href="'+tgEscapeAttr(rec._tradeAtlasFacebook)+'" target="_blank" rel="noopener" style="color:#1877F2">ochish</a></div>' : '')+
+        (rec._tradeAtlasTwitter ? '<div><b>Twitter/X:</b> <a href="'+tgEscapeAttr(rec._tradeAtlasTwitter)+'" target="_blank" rel="noopener" style="color:#000">ochish</a></div>' : '')+
+        (rec._tradeAtlasInstagram ? '<div><b>Instagram:</b> <a href="'+tgEscapeAttr(rec._tradeAtlasInstagram)+'" target="_blank" rel="noopener" style="color:#E4405F">ochish</a></div>' : '')+
+      '</div></div>';
+  }
+
+  // Shipment examples (oxirgi 5 ta misol)
+  var examplesBlock = '';
+  var examples = Array.isArray(rec._tradeAtlasShipmentExamples) ? rec._tradeAtlasShipmentExamples : [];
+  if(examples.length){
+    var rows = examples.map(function(ex){
+      var cells = [];
+      cells.push('<td style="padding:6px 8px;font-size:.68rem;color:var(--text2)">'+escHtml(fmtDate(ex.arrivalDate))+'</td>');
+      cells.push('<td style="padding:6px 8px;font-size:.68rem">'+escHtml(String(ex.exporterCountry || '')+' → '+String(ex.importerCountry || ''))+'</td>');
+      cells.push('<td style="padding:6px 8px;font-size:.68rem">'+escHtml(String(ex.hsCode || ''))+'</td>');
+      cells.push('<td style="padding:6px 8px;font-size:.68rem;font-weight:700">'+fmtUsd(ex.usdFob || ex.statisticalValueUsd)+'</td>');
+      cells.push('<td style="padding:6px 8px;font-size:.68rem">'+escHtml(fmtNum(ex.quantity, ex.quantityUnit))+'</td>');
+      cells.push('<td style="padding:6px 8px;font-size:.68rem">'+escHtml(String(ex.portOfDeparture || '')+' → '+String(ex.portOfArrival || ''))+'</td>');
+      cells.push('<td style="padding:6px 8px;font-size:.68rem">'+escHtml(String(ex.vesselName || '—'))+'</td>');
+      cells.push('<td style="padding:6px 8px;font-size:.68rem">'+escHtml(String(ex.incoterms || ex.transportType || '—'))+'</td>');
+      return '<tr>'+cells.join('')+'</tr>';
+    }).join('');
+    examplesBlock = '<div style="margin-top:.9rem"><div style="font-size:.62rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Oxirgi shipmentlar (5 tagacha)</div>'+
+      '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:.7rem">'+
+        '<thead style="background:#F8FAFC"><tr>'+
+          '<th style="padding:7px 8px;text-align:left;font-weight:700;color:var(--text2)">Sana</th>'+
+          '<th style="padding:7px 8px;text-align:left;font-weight:700;color:var(--text2)">Yo\'nalish</th>'+
+          '<th style="padding:7px 8px;text-align:left;font-weight:700;color:var(--text2)">HS</th>'+
+          '<th style="padding:7px 8px;text-align:left;font-weight:700;color:var(--text2)">FOB</th>'+
+          '<th style="padding:7px 8px;text-align:left;font-weight:700;color:var(--text2)">Hajm</th>'+
+          '<th style="padding:7px 8px;text-align:left;font-weight:700;color:var(--text2)">Portlar</th>'+
+          '<th style="padding:7px 8px;text-align:left;font-weight:700;color:var(--text2)">Kema</th>'+
+          '<th style="padding:7px 8px;text-align:left;font-weight:700;color:var(--text2)">Incoterms</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table></div></div>';
+  }
+
+  return '<div style="padding:1rem;border:1px solid rgba(67,97,238,.25);border-radius:16px;background:linear-gradient(180deg,#fff,#f0f4ff)">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.85rem">'+
+      '<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#1E3A8A,#4361EE);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.7rem;letter-spacing:-.02em">TA</div>'+
+      '<div style="font-family:\'Sora\',sans-serif;font-size:.9rem;font-weight:800;color:var(--text)">TradeAtlas — Shipment tahlili</div>'+
+    '</div>'+
+    '<div style="font-size:.62rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Moliya</div>'+
+    kpiFinancial +
+    '<div style="font-size:.62rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Hajm va qadoqlash</div>'+
+    kpiVolume +
+    datesRow +
+    identityBlock +
+    counterpartBlock +
+    productsBlock +
+    logisticsBlock +
+    partiesBlock +
+    examplesBlock +
+  '</div>';
+}
+window.renderTradeAtlasDetailSection = renderTradeAtlasDetailSection;
+
 function openInvestorDetailModal(id){
   _investorDetailId = String(id || '');
   var rec = (DB.investorCompanies || []).find(function(item){ return String(item.id) === _investorDetailId; });
@@ -1711,6 +1892,7 @@ function openInvestorDetailModal(id){
           '<button type="button" onclick="enrichAndReopenPaid(\''+rec.id+'\')" style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:10px;font-size:.78rem;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.25)" title="Apollo org_enrichment — telefon va to\'liq ma\'lumot, 1 credit">💎 To\'liq ma\'lumot <span style="font-size:.62rem;background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px">1 credit</span></button>'+
         '</div>'+
       '</div>'+
+      renderTradeAtlasDetailSection(rec)+
       '</div>'+
       '<div>'+renderWebsiteAiProfileSection(rec)+'</div>'+
     '</div>';
@@ -2055,9 +2237,9 @@ _renderInvestorCompaniesMain = function(){
       contactHtml += '</div>';
 
       var groupBorderStyle = recIdx === 0 ? 'border-top:10px solid transparent;box-shadow:inset 0 2px 0 rgba(70,95,255,.18);' : '';
-      var _groupBg = (groupIdx % 2 === 0) ? 'rgba(248,250,253,.7)' : 'rgba(255,255,255,.85)';
-      var _groupHoverBg = (groupIdx % 2 === 0) ? 'rgba(235,241,255,.85)' : 'rgba(240,244,255,.95)';
-      html += '<tr class="ic-group-row" data-group="'+groupIdx+'" data-group-bg="'+_groupBg+'" data-group-hover="'+_groupHoverBg+'" id="investor-row-'+rec.id+'" style="background:'+_groupBg+';transition:background .15s;'+groupBorderStyle+'" onmouseover="var g=this.getAttribute(\'data-group\'),h=this.getAttribute(\'data-group-hover\'),tb=this.parentNode;if(tb)tb.querySelectorAll(\'tr[data-group=&quot;\'+g+\'&quot;]\').forEach(function(r){r.style.background=h;});" onmouseout="var g=this.getAttribute(\'data-group\'),b=this.getAttribute(\'data-group-bg\'),tb=this.parentNode;if(tb)tb.querySelectorAll(\'tr[data-group=&quot;\'+g+\'&quot;]\').forEach(function(r){r.style.background=b;});">';
+      var _groupBg = (groupIdx % 2 === 0) ? '#f8fafd' : '#ffffff';
+      var _groupHoverBg = '#eef2ff';
+      html += '<tr class="ic-group-row" data-group="'+groupIdx+'" data-group-bg="'+_groupBg+'" data-group-hover="'+_groupHoverBg+'" id="investor-row-'+rec.id+'" style="background:'+_groupBg+';transition:background .15s;'+groupBorderStyle+'">';
       if(recIdx === 0){
         html += '<td rowspan="'+recs.length+'" style="padding-left:1.25rem;vertical-align:middle">'+(isAdmin ? ('<input type="checkbox" class="ic-check" data-ids="'+tgEscapeAttr(groupIds)+'" onchange="saveIcCheck(this);updateSelectedCount()" style="width:18px;height:18px;border-radius:5px;accent-color:#465fff;cursor:pointer">') : '')+'</td>';
         html += '<td rowspan="'+recs.length+'" style="font-size:.82rem;color:#374151;font-weight:600;vertical-align:middle">'+rowNumber+'</td>';

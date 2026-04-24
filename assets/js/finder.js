@@ -686,6 +686,9 @@ function mapTradeAtlasFirmToFinderResult(firm, meta, prod){
     linkedin: String((firm && firm.linkedin) || '').trim(),
     website: website, source: 'TradeAtlas'
   };
+  var _strArr = function(v){ return Array.isArray(v) ? v.slice() : []; };
+  var _num = function(v){ return Number(v || 0) || 0; };
+  var _str = function(v){ return String(v || '').trim(); };
   return {
     id: 'fc_ta_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
     kompaniya: companyName, rahbar: contact.name, lavozim: contact.title,
@@ -700,7 +703,64 @@ function mapTradeAtlasFirmToFinderResult(firm, meta, prod){
     products_imported: prod ? formatBilingualProductName(prod) : '',
     import_volume: tradeValue ? String(tradeValue) : '',
     contacts: [contact], _contactCandidates: [contact], _contactsBootstrapped: true,
-    _tradeAtlasTradeValue: tradeValue, _tradeAtlasQuantity: quantity, _tradeAtlasQuantityUnit: quantityUnit
+    // Core shipment aggregates
+    _tradeAtlasTradeValue: tradeValue,
+    _tradeAtlasQuantity: quantity,
+    _tradeAtlasQuantityUnit: quantityUnit,
+    _tradeAtlasDocCount: _num(firm && firm.doc_count),
+    _tradeAtlasCountryCode: _str(firm && firm.firm_country_code),
+    _tradeAtlasAddress: _str(firm && firm.firm_address),
+    // Identity extras
+    _tradeAtlasTaxId: _str(firm && firm.tax_id),
+    _tradeAtlasCompanyTypeCode: _str(firm && firm.company_type_code),
+    _tradeAtlasFax: _str(firm && firm.fax),
+    _tradeAtlasFacebook: _str(firm && firm.facebook),
+    _tradeAtlasTwitter: _str(firm && firm.twitter),
+    _tradeAtlasInstagram: _str(firm && firm.instagram),
+    // Financial breakdown
+    _tradeAtlasFobUsd: _num(firm && firm.total_fob_usd),
+    _tradeAtlasCifUsd: _num(firm && firm.total_cif_usd),
+    _tradeAtlasStatValueUsd: _num(firm && firm.total_statistical_value_usd),
+    _tradeAtlasFreightUsd: _num(firm && firm.total_freight_usd),
+    _tradeAtlasInsuranceUsd: _num(firm && firm.total_insurance_usd),
+    _tradeAtlasAvgUnitPriceUsd: _num(firm && firm.avg_unit_price_usd),
+    // Volume breakdown
+    _tradeAtlasGrossWeight: _num(firm && firm.total_gross_weight),
+    _tradeAtlasNetWeight: _num(firm && firm.total_net_weight),
+    _tradeAtlasGrossWeightUnit: _str(firm && firm.gross_weight_unit),
+    _tradeAtlasNetWeightUnit: _str(firm && firm.net_weight_unit),
+    // Packaging
+    _tradeAtlasContainers: _num(firm && firm.total_containers),
+    _tradeAtlasPackages: _num(firm && firm.total_packages),
+    _tradeAtlasPackageUnit: _str(firm && firm.package_unit),
+    _tradeAtlasTeus: _num(firm && firm.total_teus),
+    // Counterpart
+    _tradeAtlasCounterpartCountries: _strArr(firm && firm.counterpart_countries),
+    _tradeAtlasCounterpartCountryCodes: _strArr(firm && firm.counterpart_country_codes),
+    _tradeAtlasCounterpartCompanies: _strArr(firm && firm.counterpart_companies),
+    // Products
+    _tradeAtlasHsCodes: _strArr(firm && firm.hs_codes),
+    _tradeAtlasHsDescriptions: _strArr(firm && firm.hs_descriptions),
+    _tradeAtlasProductDetails: _strArr(firm && firm.product_details),
+    _tradeAtlasBrandNames: _strArr(firm && firm.brand_names),
+    _tradeAtlasCountriesOfOrigin: _strArr(firm && firm.countries_of_origin),
+    _tradeAtlasConditionsNewUsed: _strArr(firm && firm.conditions_new_used),
+    // Logistics
+    _tradeAtlasPortsOfDeparture: _strArr(firm && firm.ports_of_departure),
+    _tradeAtlasPortsOfArrival: _strArr(firm && firm.ports_of_arrival),
+    _tradeAtlasVessels: _strArr(firm && firm.vessels),
+    _tradeAtlasIncoterms: _strArr(firm && firm.incoterms),
+    _tradeAtlasTransportTypes: _strArr(firm && firm.transport_types),
+    _tradeAtlasPaymentTypes: _strArr(firm && firm.payment_types),
+    _tradeAtlasRegimes: _strArr(firm && firm.regimes),
+    _tradeAtlasFirstArrivalDate: _str(firm && firm.first_arrival_date),
+    _tradeAtlasLastArrivalDate: _str(firm && firm.last_arrival_date),
+    // Other parties
+    _tradeAtlasManufacturingCompanies: _strArr(firm && firm.manufacturing_companies),
+    _tradeAtlasTransportCompanies: _strArr(firm && firm.transport_companies),
+    _tradeAtlasNotifyParties: _strArr(firm && firm.notify_parties),
+    // Shipment examples (up to 5, rich payload)
+    _tradeAtlasShipmentExamples: Array.isArray(firm && firm.shipment_examples) ? firm.shipment_examples.slice() : []
   };
 }
 
