@@ -47,6 +47,17 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/snov.js" defer></script>
 <script src="assets/js/ai-letter.js" defer></script>
 <script src="assets/js/settings.js" defer></script>
+<script>
+/* Inline stub — defer scripts hali yuklanmagan paytda foydalanuvchi bosib yuborsa, xato chiqmasin */
+(function(){
+  var names = ['toggleFinderDropdown','toggleFinderFilterPanel','toggleCsdGroup','selectCsdItem'];
+  names.forEach(function(n){
+    if(typeof window[n] !== 'function'){
+      window[n] = function(){ /* placeholder — real function defer ichida keladi */ };
+    }
+  });
+})();
+</script>
 <script src="assets/js/theme-lang.js" defer></script>
 <script src="assets/js/auto-translate.js" defer></script>
 <script src="assets/js/admin-login.js" defer></script>
