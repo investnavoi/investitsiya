@@ -764,7 +764,22 @@ function mapTradeAtlasFirmToFinderResult(firm, meta, prod){
   };
 }
 
+// 10 daqiqali cache — TradeAtlas count endpoint kundalik 200-limitni yeb qo'ymaslik uchun
+var _TA_COUNT_CACHE = window._TA_COUNT_CACHE || {};
+window._TA_COUNT_CACHE = _TA_COUNT_CACHE;
+var _TA_COUNT_TTL_MS = 10 * 60 * 1000;
+
+function _taCountCacheKey(endpoint, payload){
+  try { return endpoint + '|' + JSON.stringify(payload || {}); } catch(_e){ return endpoint + '|' + Math.random(); }
+}
+
 async function fetchTradeAtlasCount(endpoint, payload){
+  var key = _taCountCacheKey(endpoint, payload);
+  var now = Date.now();
+  var cached = _TA_COUNT_CACHE[key];
+  if(cached && (now - cached.ts) < _TA_COUNT_TTL_MS){
+    return cached.value;
+  }
   var resp = await fetch(TRADEATLAS_PROXY, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -773,7 +788,14 @@ async function fetchTradeAtlasCount(endpoint, payload){
   var data = {};
   try { data = await resp.json(); } catch(_e){}
   if(!resp.ok){ throw new Error((data && data.error) || ('TradeAtlas count error ' + resp.status)); }
-  return (data && data.data) || data || {};
+  // Rate-limit aniqlanishi — xato data.error ichida kelishi mumkin
+  var embeddedErr = data && (data.error || (data.data && data.data.error));
+  if(embeddedErr && /Daily Request Limit|limit.*exceed|rate.*limit/i.test(String(embeddedErr))){
+    throw new Error('TradeAtlas kunlik limit: ' + embeddedErr);
+  }
+  var out = (data && data.data) || data || {};
+  _TA_COUNT_CACHE[key] = { ts: now, value: out };
+  return out;
 }
 
 function _extractCountNumber(countData){
@@ -849,11 +871,15 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     return p;
   }
 
-  // Shipments count promislari: agar manba tanlangan bo'lsa, har bir manba uchun target chunks bo'yicha iteratsiya;
-  // aks holda (butun dunyo) faqat target chunks.
+  // Shipments count — 200/kun limitni tejash uchun:
+  // - 1 manba: per target-chunk (3 so'rov)
+  // - 2-5 manba: per manba × target-chunks (5×3=15 max)
+  // - 6+ yoki 0 manba: single filter-siz per target-chunk (3 so'rov) + warning
   var shipmentPromises = [];
-  if(sourceCodes.length){
+  var sourcesInCount = []; // qaysi manbalar count'ga qo'shilgan
+  if(sourceCodes.length >= 1 && sourceCodes.length <= 5){
     sourceCodes.forEach(function(srcCode){
+      sourcesInCount.push(srcCode);
       targetChunks.forEach(function(tch){
         shipmentPromises.push(fetchTradeAtlasCount('shipments/count', _buildShipmentPayload(tch, srcCode)));
       });
@@ -864,10 +890,12 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     });
   }
 
-  var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit, '+(shipmentPromises.length+firmChunks.length)+' so\'rov)...');
+  // firms/count — agar taCountries 50+ bo'lsa (butun dunyo) skip, aks holda 200/kun limitni yeydi
+  var skipFirms = taCountries.length > 50;
+  var loading = toastLoading('⏳ TradeAtlas: so\'rov hajmi tekshirilmoqda (0 kredit, '+(shipmentPromises.length+(skipFirms?0:firmChunks.length))+' so\'rov)...');
   var firmsCount = null, shipmentsCount = null, errMsg = '';
   try {
-    var firmPromises = firmChunks.map(function(ch){ return fetchTradeAtlasCount('firms/count', _buildFirmPayload(ch)); });
+    var firmPromises = skipFirms ? [] : firmChunks.map(function(ch){ return fetchTradeAtlasCount('firms/count', _buildFirmPayload(ch)); });
     var all = await Promise.allSettled([].concat(firmPromises, shipmentPromises));
     var firmResults = all.slice(0, firmPromises.length);
     var shipmentResults = all.slice(firmPromises.length);
@@ -958,7 +986,8 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
       breakdownState.loading = true;
       _renderBox();
       // Breakdown: source tanlangan bo'lsa faqat shu davlatlar; aks holda butun dunyo (Afrikasiz)
-      var breakdownCodes = sourceCodes.length ? sourceCodes.slice() : (function(){
+      // 200/kun limitni yeb qo'ymaslik uchun max 30 davlat bilan cheklanadi (≈90 so'rov)
+      var allSourceCodes = sourceCodes.length ? sourceCodes.slice() : (function(){
         var codes = [];
         Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
           if(cont === 'Afrika') return;
@@ -969,6 +998,9 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
         });
         return codes;
       })();
+      var MAX_BREAKDOWN_CODES = 30;
+      var breakdownCodes = allSourceCodes.slice(0, MAX_BREAKDOWN_CODES);
+      breakdownState.truncated = allSourceCodes.length > MAX_BREAKDOWN_CODES ? allSourceCodes.length - MAX_BREAKDOWN_CODES : 0;
 
       // TradeAtlas `countries` parametri max 5 — target'ni 5 talik chunklarga bo'lamiz
       var _targetChunks = [];
