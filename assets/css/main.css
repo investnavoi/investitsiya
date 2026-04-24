@@ -4078,9 +4078,17 @@ aside.sidebar{background:linear-gradient(160deg,#eef1fb 0%,#e3ebf8 40%,#d5e3f6 7
   .sidebar-mobile-backdrop.show{display:block;}
 }
 @media(min-width:1200px){
-  aside.sidebar{left:0!important;transition:all .3s cubic-bezier(.4,0,.2,1)!important;}
+  aside.sidebar{left:0!important;transition:width .35s cubic-bezier(.22,.61,.36,1),max-width .35s cubic-bezier(.22,.61,.36,1),box-shadow .35s ease!important;will-change:width}
   .sidebar-mobile-backdrop{display:none!important;}
-  .main-content{margin-left:260px!important;transition:margin-left .3s cubic-bezier(.4,0,.2,1);}
+  .main-content{margin-left:260px!important;transition:margin-left .35s cubic-bezier(.22,.61,.36,1);}
+  /* Smooth fade for text / logo / nav labels during expand/collapse */
+  .sidebar .nav-link{transition:background .2s ease,color .2s ease,padding .35s cubic-bezier(.22,.61,.36,1)}
+  .sidebar .nav-link span,.sidebar .navbar-brand .logo-title{transition:opacity .28s ease .05s,transform .35s cubic-bezier(.22,.61,.36,1)}
+  aside.sidebar.sidebar-mini:not(.sidebar-force-hover) .nav-link span,
+  aside.sidebar.sidebar-mini:not(.sidebar-force-hover) .navbar-brand .logo-title{opacity:0;transform:translateX(-6px)}
+  aside.sidebar.sidebar-mini.sidebar-force-hover .nav-link span,
+  aside.sidebar.sidebar-mini.sidebar-force-hover .navbar-brand .logo-title{opacity:1;transform:translateX(0);transition-delay:.12s}
+  .sidebar .nav-link .icon{transition:transform .3s cubic-bezier(.22,.61,.36,1),width .3s ease,height .3s ease}
   /* Collapsed sidebar */
   aside.sidebar.sidebar-mini~.main-content{margin-left:80px!important;}
   /* Hide static-item section headers and mini-icons in collapsed sidebar */
