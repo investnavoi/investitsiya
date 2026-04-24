@@ -596,6 +596,27 @@ function getTradeAtlasCountryCode(countryName){
   return reverse[key] || '';
 }
 
+// Afrika qit'asini TradeAtlas manba sifatida bloklaymiz — kredit ko'p sarflaydi
+function getTradeAtlasAfricanCodeSet(){
+  if(window._tradeAtlasAfricanCodeSet) return window._tradeAtlasAfricanCodeSet;
+  var set = {};
+  (FINDER_SOURCE_REGIONS['Afrika'] || []).forEach(function(name){
+    var code = getTradeAtlasCountryCode(name);
+    if(code) set[String(code).toUpperCase()] = true;
+  });
+  window._tradeAtlasAfricanCodeSet = set;
+  return set;
+}
+
+function filterTradeAtlasAfricanCodes(codes){
+  var set = getTradeAtlasAfricanCodeSet();
+  return (codes || []).filter(function(c){ return !set[String(c || '').toUpperCase()]; });
+}
+
+function isTradeAtlasAfricanCode(code){
+  return !!getTradeAtlasAfricanCodeSet()[String(code || '').toUpperCase()];
+}
+
 function getTradeAtlasProductKeyword(prod){
   var preferred = getApolloPreferredKeywords(prod).map(apolloStripHsNoise).filter(Boolean);
   var base = apolloStripHsNoise((prod && prod.name_en) || (prod && prod.raw_name) || '');
@@ -722,7 +743,7 @@ function _extractCountNumber(countData){
 async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope){
   var hsCode = (typeof getExactImportHsCode === 'function') ? getExactImportHsCode(prod) : (prod && prod.hs_code) || '';
   var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
-  var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  var sourceCodes = filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
   var dateRange = (typeof getImportAnalysisDateRange === 'function') ? getImportAnalysisDateRange() : { startDate:'', endDate:'' };
   var taFlowType = (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT';
   var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
@@ -733,6 +754,7 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
   } else if(isWorldWide){
     var _worldCodes = [];
     Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
+      if(cont === 'Afrika') return; // Afrika bloklangan — kredit tejash
       (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(c){
         var code = getTradeAtlasCountryCode(c);
         if(code && _worldCodes.indexOf(code) === -1) _worldCodes.push(code);
@@ -986,7 +1008,7 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   if(!hsCode) throw new Error('TradeAtlas uchun mahsulot HS kodi topilmadi');
   var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
   if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
-  var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  var sourceCodes = filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
   var dateRange = getImportAnalysisDateRange();
   var taFlowType = (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT';
   var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
@@ -1008,6 +1030,11 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
     if(!expectedTotal) expectedTotal = Number((data && data.count) || 0) || 0;
     var beforeCount = found.length;
     firms.forEach(function(firm){
+      // Afrika qit'asidagi firmalarni chiqarmaymiz
+      if(meta.mode === 'exporters'){
+        var firmCode = tradeAtlasFirmCountryCode(firm);
+        if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
+      }
       var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
       if(!item || !String(item.kompaniya || '').trim()) return;
       apolloUpsertFinderItem(found, item, meta);
@@ -1028,15 +1055,16 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
   if(!hsCode) throw new Error('TradeAtlas uchun mahsulot HS kodi topilmadi');
   var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
   if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
-  var sourceCodes = ((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  var sourceCodes = filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
   var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
   var taCountries;
   if(sourceCodes.length){
     taCountries = sourceCodes.slice();
   } else if(meta.mode === 'exporters'){
-    // Eksportyor rejimi + manba tanlanmagan → butun dunyo (6 qit'a)
+    // Eksportyor rejimi + manba tanlanmagan → butun dunyo (Afrikasiz — kredit tejash)
     var worldCountries = [];
     Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
+      if(cont === 'Afrika') return;
       (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(c){
         var code = getTradeAtlasCountryCode(c);
         if(code && worldCountries.indexOf(code) === -1) worldCountries.push(code);
@@ -1077,6 +1105,11 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
       if(!firms.length) break;
       var beforeCount = found.length;
       firms.forEach(function(firm){
+        // Afrika qit'asidagi firmalarni chiqarmaymiz (eksportyor rejimida ham, import rejimida ham manba Afrika bolsa)
+        if(meta.mode === 'exporters'){
+          var firmCode = tradeAtlasFirmCountryCode(firm);
+          if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
+        }
         var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
         if(!item || !String(item.kompaniya || '').trim()) return;
         apolloUpsertFinderItem(found, item, meta);
@@ -1297,7 +1330,7 @@ async function fetchTradeAtlasImportAnalysis(prod, targetCountries, sourceScope)
   var years = getImportAnalysisDisplayYears();
   var accountId = (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz');
   var sourceSelection = sourceScope || getFinderSourceSelection();
-  var sourceCodes = ((sourceSelection && sourceSelection.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean);
+  var sourceCodes = filterTradeAtlasAfricanCodes(((sourceSelection && sourceSelection.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
   var sourceCodeSet = {};
   sourceCodes.forEach(function(code){ sourceCodeSet[String(code || '').toUpperCase()] = true; });
   var out = [];
@@ -1337,6 +1370,8 @@ async function fetchTradeAtlasImportAnalysis(prod, targetCountries, sourceScope)
           var row = buildTradeAtlasAnalysisRow(firm, targetLabel, year);
           if(!row) return;
           var firmCode = String(row.exporterCountryCode || '').toUpperCase();
+          // Afrika qit'asidagi firmalarni chiqarmaymiz (eksportyor rejimida)
+          if(modeMeta.mode === 'exporters' && firmCode && isTradeAtlasAfricanCode(firmCode)) return;
           if(sourceCodes.length && firmCode && !sourceCodeSet[firmCode]) return;
           var dedupeKey = [apolloNormalizeText(row.companyName || row.partner || ''), firmCode || apolloNormalizeText(row.exporterCountry || ''), row.period].join('|');
           if(!yearFirmMap[dedupeKey]){ yearFirmMap[dedupeKey] = row; return; }
