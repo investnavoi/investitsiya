@@ -1398,11 +1398,11 @@ function handleImportSourceChange(){
 
 async function runImportAnalysis(forceRefresh, sourceOverride){
   var targetCountries = getImportAnalysisTargetCountries();
-  var sourceKey = 'comtrade';
-  var sourceLabel = 'UN Comtrade';
+  var sourceKey = (typeof sourceOverride === 'string' && sourceOverride) ? sourceOverride : 'comtrade';
+  var sourceLabel = sourceKey === 'tradeatlas' ? 'TradeAtlas' : 'UN Comtrade';
   var selectedYear = getImportAnalysisPrimaryYear();
   syncImportSourceSelect(sourceKey);
-  initImportAnalysisComtradeOnly(targetCountries, sourceKey);
+  if(sourceKey !== 'tradeatlas') initImportAnalysisComtradeOnly(targetCountries, sourceKey);
 
   var sel = getImportAnalysisProductSelect();
   var prodId = sel ? sel.value : '';
