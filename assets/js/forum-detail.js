@@ -2717,7 +2717,7 @@ _renderInvestorCompaniesMain = function(){
     // Avatar oldida child bo'lsa indentation (orphan importerlar uchun ham qo'llanmaydi endi)
     var _avatarPrefixHtml = '';
 
-    var companyHtml = '<div onclick="openInvestorDetailModal(\''+companyRec.id+'\')" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s'+(_isChild?';padding-left:20px':'')+'" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil">' +
+    var companyHtml = '<div onclick="openInvestorDetailModal(\''+companyRec.id+'\')" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s'+(_isChild?';padding-left:20px':'')+'" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil — eksport hajmi, qiymati va sanasi modalda">' +
       _avatarPrefixHtml +
       avatarHtml +
       '<div style="flex:1;min-width:0">' +
@@ -2726,8 +2726,6 @@ _renderInvestorCompaniesMain = function(){
         '<div style="font-size:.85rem;font-weight:700;color:#111827">'+escHtml(compName)+'</div>' +
         (companyRec.website ? '<div style="font-size:.66rem;color:#6366F1;margin-top:1px">'+escHtml(companyRec.website)+'</div>' : '') +
         locationLine +
-        _exportInfoLine +
-        _parentSubLine +
         _hoverImporterBadge +
       '</div></div>';
 
