@@ -2999,16 +2999,11 @@ _renderInvestorCompaniesMain = function(){
     }
 
     // ═══ Gradient ajratuvchi — keyingi kompaniyadan ajratish uchun ═══
-    // Hidden child'larni o'tkazib, keyingi visible (parent/orphan) kompaniyani topamiz
-    var _isCurrentTopLevel = !group._isHiddenChild;
-    var _nextVisibleGroup = null;
-    for(var _lookIdx = groupIdx + 1; _lookIdx < groupPage.length; _lookIdx++){
-      var _candidate = groupPage[_lookIdx];
-      if(!_candidate || _candidate._isHiddenChild) continue;
-      if(_candidate._isParent || _candidate._isOrphan){ _nextVisibleGroup = _candidate; break; }
-    }
-    var _nextIsTopLevel = !!_nextVisibleGroup;
-    if(_isCurrentTopLevel && _nextIsTopLevel){
+    // Faqat IMMEDIATE next group parent/orphan bo'lsa separator qo'yiladi
+    // (current parent va next hidden child bo'lsa, separator keyinroq — child'dan keyin chiqadi)
+    var _nextGroup = groupPage[groupIdx + 1];
+    var _nextIsTopLevel = _nextGroup && (_nextGroup._isParent || _nextGroup._isOrphan);
+    if(_nextIsTopLevel){
       html += '<tr class="ic-company-separator" aria-hidden="true">'+
         '<td colspan="7" style="padding:6px 12px !important;border:none !important;background:transparent !important">'+
           '<div style="height:2px !important;background:linear-gradient(90deg,transparent 0%,rgba(67,97,238,.25) 12%,rgba(67,97,238,.55) 35%,rgba(245,124,0,.6) 50%,rgba(67,97,238,.55) 65%,rgba(67,97,238,.25) 88%,transparent 100%) !important;border-radius:99px !important;box-shadow:0 0 4px rgba(245,124,0,.15) !important;display:block !important"></div>'+
