@@ -3,6 +3,97 @@
 ═══════════════════════════════════════ */
 /* COMTRADE_PROXY, WORLDBANK_PROXY, TRADEATLAS_PROXY, COUNTRY_COMTRADE moved to assets/js/api-config.js */
 
+// Import-analysis partnerlarini investor bazaga eksportyor sifatida saqlash (kreditsiz, snapshot'dan)
+window.saveImportPartnersToInvestorBase = function(payloadJson, btnEl){
+  var data;
+  try { data = JSON.parse(decodeURIComponent(payloadJson)); }
+  catch(e){ if(typeof toast === 'function') toast('Ma\'lumotni o\'qib bo\'lmadi','error'); return; }
+  if(!data || !Array.isArray(data.partners) || !data.partners.length){
+    if(typeof toast === 'function') toast('Saqlanadigan partner topilmadi','error');
+    return;
+  }
+  if(!Array.isArray(DB.investorCompanies)) DB.investorCompanies = [];
+  var existingNames = Object.create(null);
+  DB.investorCompanies.forEach(function(r){
+    var k = String(r.kompaniya || '').trim().toLowerCase();
+    if(k) existingNames[k] = r;
+  });
+  var added = 0, updated = 0;
+  var importerName = String(data.targetCountry || '').trim();
+  data.partners.forEach(function(p){
+    var name = String(p.kompaniya || '').trim();
+    if(!name) return;
+    var key = name.toLowerCase();
+    var lastDate = p.year ? (String(p.year) + '-12-31') : (data.year + '-12-31');
+    var existing = existingNames[key];
+    if(existing){
+      // Mavjud — eksport ma'lumotlarini yangilaymiz, partner aloqasini qo'shamiz
+      existing.finderMode = existing.finderMode || 'exporters';
+      existing.manba = existing.manba || 'TradeAtlas';
+      existing._tradeAtlasQuantity = Math.max(Number(existing._tradeAtlasQuantity || 0), Number(p.weight || 0));
+      existing._tradeAtlasTradeValue = Math.max(Number(existing._tradeAtlasTradeValue || 0), Number(p.value || 0));
+      existing._tradeAtlasDocCount = Number(existing._tradeAtlasDocCount || 0) + Number(p.docCount || 0);
+      if(!existing._tradeAtlasLastArrivalDate || lastDate > existing._tradeAtlasLastArrivalDate){
+        existing._tradeAtlasLastArrivalDate = lastDate;
+      }
+      // Partner (importyor xaridor) ro'yxatiga qo'shish
+      if(!Array.isArray(existing._partners)) existing._partners = [];
+      var importerKey = importerName.toLowerCase();
+      var existingPartner = existing._partners.find(function(p){
+        return String(p.kompaniya || '').trim().toLowerCase() === importerKey;
+      });
+      if(!existingPartner && importerName){
+        existing._partners.push({
+          kompaniya: importerName, davlat: importerName, role: 'importer',
+          totalValue: Number(p.value || 0), totalQty: Number(p.weight || 0),
+          docCount: Number(p.docCount || 0), lastDate: lastDate
+        });
+      }
+      if(typeof fbSave === 'function') fbSave('investorCompanies', existing);
+      updated++;
+    } else {
+      // Yangi eksportyor record
+      var newRec = {
+        id: 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+        kompaniya: name,
+        davlat: '', shahar: '',
+        soha: p.productName || '',
+        mahsulotNomi: p.productName || '',
+        productId: p.productId || '',
+        mahsulotHs: p.hsCode || '',
+        manba: 'TradeAtlas',
+        finderMode: 'exporters',
+        score: 70,
+        rahbar: '', lavozim: '',
+        email: '', telefon: '', website: '', linkedin: '',
+        emailSent: false, holat: 'Yangi',
+        _tradeAtlasTradeValue: Number(p.value || 0),
+        _tradeAtlasQuantity: Number(p.weight || 0),
+        _tradeAtlasDocCount: Number(p.docCount || 0),
+        _tradeAtlasLastArrivalDate: lastDate,
+        _partners: importerName ? [{
+          kompaniya: importerName, davlat: importerName, role: 'importer',
+          totalValue: Number(p.value || 0), totalQty: Number(p.weight || 0),
+          docCount: Number(p.docCount || 0), lastDate: lastDate
+        }] : []
+      };
+      DB.investorCompanies.push(newRec);
+      existingNames[key] = newRec;
+      if(typeof fbSave === 'function') fbSave('investorCompanies', newRec);
+      added++;
+    }
+  });
+  if(btnEl){
+    btnEl.textContent = '✅ '+added+' yangi · '+updated+' yangilangan';
+    btnEl.style.background = 'linear-gradient(135deg,#059669,#16A34A)';
+    btnEl.disabled = true;
+    setTimeout(function(){ btnEl.style.opacity = '.6'; }, 200);
+  }
+  if(typeof toast === 'function') toast('💾 '+added+' ta yangi eksportyor + '+updated+' ta yangilandi · Investor bazada ko\'rinadi','success');
+  // Investor companies sahifasini yangilab qo'yamiz (agar ochiq bo'lsa)
+  if(typeof renderInvestorCompanies === 'function') try { renderInvestorCompanies(); } catch(_e){}
+};
+
 function getImportAnalysisSource(){
   var sel = document.getElementById('import-source-select');
   return sel ? String(sel.value || 'comtrade').toLowerCase() : 'comtrade';
@@ -1335,13 +1426,36 @@ function renderCountryImportAccordion(countries, getCountryMeta){
             '</tr>';
           }).join('') + '</tbody></table></div></div>')
         : '<div class="import-source-table-wrap"><div class="import-source-empty">Bu yil uchun partner kesimidagi import ma\'lumotlari topilmadi.</div></div>';
+      // "Bazaga saqlash" tugmasi — bu yildagi partnerlarni investor base'ga eksportyor sifatida saqlash
+      var saveBtnHtml = '';
+      if(partnerRows.length){
+        var partnerPayload = {
+          year: year,
+          targetCountry: country.name || '',
+          targetCountryCode: country.code || '',
+          partners: partnerRows.map(function(r){
+            return {
+              kompaniya: r.partner || r.partnerDesc || '',
+              importer: r.reporter || country.name || '',
+              value: Number(r.value || 0),
+              weight: Number(r.weight || 0),
+              docCount: Number(r.docCount || 0),
+              hsCode: r.hsCode || (prod && prod.hs_code) || '',
+              productName: (prod && (prod.name_en || prod.name_uz)) || '',
+              productId: String((prod && prod.id) || '')
+            };
+          })
+        };
+        var payloadJson = encodeURIComponent(JSON.stringify(partnerPayload));
+        saveBtnHtml = '<button type="button" onclick="event.stopPropagation();saveImportPartnersToInvestorBase(\''+payloadJson+'\',this)" style="background:linear-gradient(135deg,#465fff,#7C3AED);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:.7rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin-left:8px;box-shadow:0 2px 6px rgba(70,95,255,.25)" title="Bu yildagi '+partnerRows.length+' ta partnerni Investor bazaga saqlash (eksportyor sifatida)">💾 Bazaga saqlash ('+partnerRows.length+')</button>';
+      }
       return '<details class="import-year-item"' + (index === 0 && year === '2024' ? ' open' : '') + '>' +
         '<summary class="import-year-summary">' +
           '<div class="import-year-main">' +
             '<span class="import-year-arrow"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>' +
             '<div><div class="import-year-label">' + escHtml(year) + '</div><div class="import-year-sources">' + sourcesCount + ' ta manba</div></div>' +
           '</div>' +
-          '<div class="import-year-meta"><span class="import-year-total">' + escHtml(yearLabel) + '</span><span class="import-year-volume">' + escHtml(yearVolume) + '</span></div>' +
+          '<div class="import-year-meta"><span class="import-year-total">' + escHtml(yearLabel) + '</span><span class="import-year-volume">' + escHtml(yearVolume) + '</span>' + saveBtnHtml + '</div>' +
         '</summary>' +
         sourceRowsHtml +
       '</details>';

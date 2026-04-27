@@ -1665,6 +1665,73 @@ function buildTradeAtlasAnalysisRow(firm, reporterLabel, year){
   };
 }
 
+// Import-analysis snapshot'dan eksportyor partnerlarni finder result'iga sintetik item sifatida qo'shish (kreditsiz)
+function _enrichFinderFromImportSnapshots(prod, targetCountries){
+  var out = [];
+  var snapshots = (DB.importSnapshots || []);
+  if(!snapshots.length || !prod) return out;
+  var prodId = String(prod.id || '');
+  var hsCode = getExactImportHsCode(prod);
+  // Target country nomlarini to'plash
+  var targetSet = Object.create(null);
+  (targetCountries || []).forEach(function(t){
+    var n = (typeof t === 'string') ? t : String((t && (t.name || t.label || t.code)) || '');
+    if(n) targetSet[n.toLowerCase()] = true;
+  });
+  snapshots.forEach(function(snap){
+    if(!snap || !Array.isArray(snap.countries)) return;
+    // Mahsulot va target match
+    var snapProdId = String(snap.productId || '');
+    var snapHs = String(snap.hsCode || '');
+    if(prodId && snapProdId && snapProdId !== prodId) return;
+    if(!prodId && hsCode && snapHs && snapHs !== hsCode) return;
+    snap.countries.forEach(function(country){
+      var cName = String(country.n || country.name || '');
+      if(!cName) return;
+      // Target country filterini check qilamiz (agar berilgan bo'lsa)
+      if(Object.keys(targetSet).length && !targetSet[cName.toLowerCase()]) return;
+      var products = country.pr || country.products || [];
+      products.forEach(function(p){
+        var partnerName = p.partner || p.partnerDesc || '';
+        if(!partnerName) return;
+        var lastDate = p.period ? (String(p.period) + '-12-31') : '';
+        out.push({
+          id: 'is_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          kompaniya: partnerName,
+          davlat: '', shahar: '',
+          email: '', telefon: '', linkedin: '', website: '',
+          rahbar: '', lavozim: '',
+          soha: (prod && (prod.name_en || prod.name_uz)) || '',
+          mahsulotNomi: (prod && (prod.name_en || prod.name_uz)) || '',
+          mahsulotHs: snapHs || hsCode || '',
+          productId: prodId || snapProdId || '',
+          manba: 'TradeAtlas',
+          finderMode: 'exporters',
+          score: 70,
+          _tradeAtlasTradeValue: Number(p.value || 0),
+          _tradeAtlasQuantity: Number(p.weight || p.quantity || 0),
+          _tradeAtlasDocCount: Number(p.docCount || 0),
+          _tradeAtlasLastArrivalDate: lastDate,
+          _partners: cName ? [{
+            kompaniya: cName, davlat: cName, role: 'importer',
+            totalValue: Number(p.value || 0), totalQty: Number(p.weight || 0),
+            docCount: Number(p.docCount || 0), lastDate: lastDate
+          }] : []
+        });
+      });
+    });
+  });
+  // Dedupe by company name (eng yirik qiymatni saqlaymiz)
+  var seen = Object.create(null);
+  out.sort(function(a,b){ return Number(b._tradeAtlasTradeValue||0) - Number(a._tradeAtlasTradeValue||0); });
+  return out.filter(function(item){
+    var k = String(item.kompaniya || '').trim().toLowerCase();
+    if(!k || seen[k]) return false;
+    seen[k] = true;
+    return true;
+  });
+}
+
 async function fetchTradeAtlasImportAnalysis(prod, targetCountries, sourceScope){
   var hsCode = getExactImportHsCode(prod);
   if(!hsCode) throw new Error('TradeAtlas uchun mahsulot HS kodi topilmadi');
@@ -3427,6 +3494,14 @@ async function runCompanyFinder(source){
       tradeAtlasResults.filter(finderResultIsRenderable).forEach(function(item){
         _finderResults.push(item);
       });
+      // ═══ Import-analysis snapshot'dan eksportyor partnerlarni qo'shish (kreditsiz) ═══
+      try {
+        var snapshotEnrichment = _enrichFinderFromImportSnapshots(prod, targetCountries);
+        if(snapshotEnrichment && snapshotEnrichment.length){
+          snapshotEnrichment.forEach(function(item){ _finderResults.push(item); });
+          if(typeof toast === 'function') toast('💾 '+snapshotEnrichment.length+' ta eksportyor import-analysis cache\'idan qo\'shildi (kreditsiz)','success');
+        }
+      } catch(_e){ console.error('Snapshot enrichment failed:', _e); }
       dedupeFinderResults();
       _finderResults = _finderResults.filter(finderResultIsRenderable);
       if(!_finderResults.length){
