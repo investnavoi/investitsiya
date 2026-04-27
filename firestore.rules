@@ -9,6 +9,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    /* PUBLIC READ — barcha foydalanuvchilarga ochiq (kirish talab qilinmaydi).
+       Birinchi martta saytga kirayotganlar ham hamma ma'lumotni ko'rishi uchun. */
+    function publicRead() {
+      return true;
+    }
+
     /* Domain whitelist disabled — any authenticated user can read.
        To enable, replace return isAuthed() with:
          return isAuthed() && request.auth.token.email != null
@@ -23,74 +29,78 @@ service cloud.firestore {
 
     /* ═══════════════════════════════════════
        Collections — default DENY, allow explicitly
+       READ — public (har kim, kirishsiz ham ko'radi)
+       WRITE — faqat admin (funksiyalar cheklangan)
     ═══════════════════════════════════════ */
 
-    /* Public-read collections (investors list, raw materials, products, forums, etc.)
-       Anyone authenticated with whitelisted email can read.
-       Only admin can write. */
+    /* Public-read collections (investors list, raw materials, products, forums, etc.) */
     match /investors/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
     match /rawMaterials/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
     match /products/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
     match /forums/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
     match /local/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
     match /zoom/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
     match /entrepreneurs/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
 
-    /* Investor Companies (leads/CRM) — sensitive, whitelisted read only */
+    /* Investor Companies (leads/CRM) — public read */
     match /investorCompanies/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
 
-    /* Trade Atlas / import data — heavy, whitelisted read */
+    /* Trade Atlas / import data — public read */
     match /tradeData/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
     match /tradeSnapshots/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
     match /tradeSnapshotChunks/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
     match /importSnapshots/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
+      allow write: if isAdmin();
+    }
+    match /taFirmSnapshots/{id} {
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
 
-    /* Settings — readable by all authed, writable by admin */
+    /* Settings — public read, admin write */
     match /settings/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAdmin();
     }
 
-    /* AI Invest Analyzer history — authed users can read and write
-       (so analyses sync across devices for the same team) */
+    /* AI Invest Analyzer history — public read (jamoaviy tahlil),
+       autentifikatsiya qilingan foydalanuvchilar yoza oladi */
     match /investAiHistory/{id} {
-      allow read: if hasAllowedEmail();
+      allow read: if publicRead();
       allow write: if isAuthed();
     }
 

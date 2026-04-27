@@ -340,30 +340,21 @@ async function loadFromFirestore(){
     const loadEl = document.getElementById('fb-loading');
     if(loadEl) loadEl.style.display = 'flex';
 
-    // 1. Show cached data INSTANTLY
+    // 1. Show cached data INSTANTLY (instant first paint)
     var hadCache = _loadCacheAndRenderFast();
     if(hadCache && loadEl) loadEl.style.display = 'none';
 
-    // 2. If cache is FRESH (<5 min) AND has data for ALL critical+main collections → skip Firebase
-    var requiredCols = COLLECTIONS_CRITICAL.concat(['rawMaterials','products']);
-    var allCached = requiredCols.every(function(c){ return Array.isArray(DB[c]) && DB[c].length > 0; });
-    if(hadCache && _isCacheFresh() && allCached){
-      console.log('✅ Kesh fresh + to\'liq — Firebase fetch o\'tkazib yuborildi (instant load)');
-      try { await Promise.all([loadApiKeys(), fbLoadSettings()]); } catch(e){}
-      COLLECTIONS.forEach(col => { window._lazyLoaded[col] = true; });
-      return;
-    }
-    if(hadCache && _isCacheFresh() && !allCached){
-      console.log('⚠️ Kesh fresh, ammo ba\'zi collectionlar bo\'sh — Firebase\'dan to\'ldirilmoqda');
-    }
-
-    // 3. Load CRITICAL collections — only those NOT already cached
+    // 2. ALWAYS fetch Firebase — har bir foydalanuvchi yangi va to'liq ma'lumot ko'radi.
+    //    Eski cache "skip" optimizatsiyasi olib tashlandi — har xil hamkasb har xil son
+    //    ko'rishi muammosi shu sababli edi. Cache faqat instant first paint uchun.
     const t0 = Date.now();
-    const missingCrit = COLLECTIONS_CRITICAL.filter(function(col){
-      return !(Array.isArray(DB[col]) && DB[col].length > 0);
-    });
-    const critPromises = missingCrit.map(col =>
-      _loadOneCollection(col).then(rows => ({ col, rows }))
+    const critPromises = COLLECTIONS_CRITICAL.map(col =>
+      _loadOneCollection(col)
+        .then(rows => ({ col, rows }))
+        .catch(err => {
+          console.warn('Firebase load failed for ' + col + ':', err && err.message);
+          return { col, rows: null };
+        })
     );
     const [critResults] = await Promise.all([
       Promise.all(critPromises),
@@ -374,24 +365,29 @@ async function loadFromFirestore(){
     const batchRef = { batch: writeBatch(db), needSeed: false };
     let totalDocs = 0;
     for(const { col, rows } of critResults){
+      // Firebase fetch fail bo'lsa cache'dagi ma'lumot saqlanadi
+      if(rows === null){
+        if(Array.isArray(DB[col]) && DB[col].length){
+          totalDocs += DB[col].length;
+        }
+        window._lazyLoaded[col] = true;
+        continue;
+      }
+      // Firebase javob qaytarsa — DB'ni Firebase ma'lumoti bilan to'liq yangilaymiz
+      // (haqiqat manbai = Firebase, cache faqat fallback)
       totalDocs += _applyCollectionToDb(col, rows, batchRef);
       window._lazyLoaded[col] = true;
     }
-    // Mark cached critical collections as loaded too
-    COLLECTIONS_CRITICAL.forEach(function(col){
-      if(Array.isArray(DB[col]) && DB[col].length > 0) window._lazyLoaded[col] = true;
-    });
     if(batchRef.needSeed) await batchRef.batch.commit();
 
     if(loadEl) loadEl.style.display = 'none';
     renderAll();
     renderOverview();
     if(typeof applyTranslations==='function') applyTranslations();
-    console.log(`✅ Firebase critical: ${totalDocs} ta yozuv (${Date.now()-t0}ms)`);
+    console.log(`✅ Firebase yangilandi: ${totalDocs} ta yozuv (${Date.now()-t0}ms)`);
 
-    // 4. Heavy collections (tradeData, tradeSnapshots, importSnapshots) load ON DEMAND only
+    // 3. Heavy collections (tradeData, tradeSnapshots, importSnapshots) load ON DEMAND only
     //    when user navigates to that page (via showPage → ensureCollectionLoaded).
-    //    No background fetch — saves bandwidth and time.
     _setCacheTimestamp();
   } catch(e){
     console.error('Firebase load error:', e);
