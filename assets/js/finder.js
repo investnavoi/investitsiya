@@ -3966,6 +3966,37 @@ function _fmtTaHajmCell(item){
   return '<span style="font-weight:700">'+disp+'</span><span style="font-size:.6rem;color:var(--text3);margin-left:3px">'+escHtml(unit||'kg')+'</span>';
 }
 
+// Sana cell — eksport/import sanasini ko'rsatish (oxirgi shipment + birinchi shipment)
+function _fmtTaSanaCell(item){
+  if(!item) return '<span style="color:var(--text3)">—</span>';
+  // Asosiy: last_arrival_date (oxirgi shipment), fallback: first counterpart firmaning sanasi
+  var last = String(item._tradeAtlasLastArrivalDate || '').trim();
+  var first = String(item._tradeAtlasFirstArrivalDate || '').trim();
+  // Counterpart firmlardan eng yangi sanani olish (last bo'lmasa)
+  if(!last){
+    var firms = Array.isArray(item._tradeAtlasCounterpartFirms) ? item._tradeAtlasCounterpartFirms : [];
+    if(firms.length){
+      var dates = firms.map(function(cp){ return String(cp.lastDate || '').slice(0,10); }).filter(Boolean).sort();
+      if(dates.length){
+        last = dates[dates.length-1];
+        if(!first && dates.length > 1) first = dates[0];
+      }
+    }
+  }
+  if(!last && !first) return '<span style="color:var(--text3)">—</span>';
+  var lastTxt = last ? String(last).slice(0,10) : '';
+  var firstTxt = first ? String(first).slice(0,10) : '';
+  // Yangi sana yashil, eski sana kulrang
+  var html = '';
+  if(lastTxt){
+    html += '<div style="font-weight:700;color:#059669;line-height:1.25" title="So\'nggi shipment sanasi">📅 '+escHtml(lastTxt)+'</div>';
+  }
+  if(firstTxt && firstTxt !== lastTxt){
+    html += '<div style="font-size:.58rem;color:var(--text3);margin-top:1px" title="Birinchi shipment sanasi">↳ '+escHtml(firstTxt)+'</div>';
+  }
+  return html || '<span style="color:var(--text3)">—</span>';
+}
+
 function _fmtTaCounterpartCell(item){
   if(!item) return '<span style="color:var(--text3)">—</span>';
   var role = String(item.finderMode || '').toLowerCase();
@@ -4172,7 +4203,7 @@ function _fmtTaSectionHeader(role, count){
     '<td style="'+subHeadCellStyle+'">#</td>'+
     '<td style="'+subHeadCellStyle+';color:'+rowColor+'">'+rowLabel+'</td>'+
     '<td style="'+subHeadCellStyle+'">Davlat</td>'+
-    '<td style="'+subHeadCellStyle+'">Shahar</td>'+
+    '<td style="'+subHeadCellStyle+'">Sana</td>'+
     '<td style="'+subHeadCellStyle+'">Hajm</td>'+
     '<td style="'+subHeadCellStyle+';color:'+partnerColor+'">'+partnerLabel+'</td>'+
     '<td style="'+subHeadCellStyle+'">Kontaktlar</td>'+
@@ -4259,7 +4290,7 @@ function renderFinderTable(results){
         row += '<td rowspan="'+rowspan+'">'+(i+1)+'</td>';
         row += '<td rowspan="'+rowspan+'"><div onclick="openFinderContactDetail('+sourceIdx+',0)" style="cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil"><b>'+escHtml(r.kompaniya || '—')+'</b>'+(r.website ? '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.website)+'</div>' : '')+_fmtTaRoleBadge(r)+'</div></td>';
         row += '<td rowspan="'+rowspan+'">'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>';
-        row += '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+escHtml(r.shahar || '—')+'</td>';
+        row += '<td rowspan="'+rowspan+'" style="font-size:.7rem;white-space:nowrap">'+_fmtTaSanaCell(r)+'</td>';
         row += '<td rowspan="'+rowspan+'" style="font-size:.7rem;white-space:nowrap">'+_fmtTaHajmCell(r)+'</td>';
         row += '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+_fmtTaCounterpartCell(r)+'</td>';
       }
