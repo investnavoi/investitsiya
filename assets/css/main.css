@@ -485,25 +485,40 @@ input[type="checkbox"]:checked::after,
   border-bottom:1px solid rgba(15,23,42,.05) !important;
   transition:background .18s cubic-bezier(.4,0,.2,1);
 }
-/* Hide intra-group borders — only group separator (from JS inline style) marks boundaries */
-#ic-tbody tr.ic-group-row{border-bottom:none !important}
-/* Company separator — faqat gradient chiziq ko'rinishi uchun default tr border'ini olib tashlash */
+/* ═══ Investor companies table — barcha default border'larni olib tashlash ═══ */
+/* AGGRESSIVE OVERRIDE — Bootstrap/Hope-UI rule'lardan keyin bo'lishi uchun */
+#ic-tbody,
+#ic-tbody tr,
+#ic-tbody tr td,
+#ic-tbody tr th,
+#ic-tbody tr.ic-group-row,
+#ic-tbody tr.ic-group-row td,
+#ic-tbody tr.ic-partner-panel-row,
+#ic-tbody tr.ic-partner-panel-row td,
 #ic-tbody tr.ic-company-separator,
 #ic-tbody tr.ic-company-separator td,
-.ic-company-separator,
-.ic-company-separator td{border:0 !important;border-top:0 !important;border-bottom:0 !important;background:transparent !important;box-shadow:none !important}
-/* Separator atrofidagi tr'lar — top va bottom border'larini olib tashlash */
-#ic-tbody tr.ic-company-separator + tr,
-#ic-tbody tr.ic-company-separator + tr td{border-top:0 !important}
-/* Separator'dan oldingi har qanday tbody tr ham bottom border'siz */
-#ic-tbody tr.ic-group-row,
-#ic-tbody tr.ic-group-row td{border-bottom:0 !important}
-/* Partner panel row ham faqat gradient ko'rinishi uchun border'siz */
-#ic-tbody tr.ic-partner-panel-row,
-#ic-tbody tr.ic-partner-panel-row td{border-bottom:0 !important;border-top:0 !important}
-/* Hamma ic-tbody tr'lardan default border'ni olib tashlash — faqat gradient separator ko'rinadi */
-#ic-tbody tr{border-bottom:0 !important;border-top:0 !important}
-#ic-tbody tr td{border-bottom:0 !important;border-top:0 !important}
+#ic-tbody > tr,
+#ic-tbody > tr > td,
+#ic-tbody > tr > th{
+  border-top:0 !important;
+  border-bottom:0 !important;
+  border-top-width:0 !important;
+  border-bottom-width:0 !important;
+  border-top-color:transparent !important;
+  border-bottom-color:transparent !important;
+  border-top-style:none !important;
+  border-bottom-style:none !important;
+  box-shadow:none !important;
+}
+/* Separator td uchun ham background:transparent ham olib tashlash */
+#ic-tbody tr.ic-company-separator,
+#ic-tbody tr.ic-company-separator td{
+  background:transparent !important;
+  padding:0 !important;
+}
+/* ic-row-parent uchun border-left ni qaytarib qo'yamiz (yashil) */
+#ic-tbody tr.ic-row-parent{border-left:4px solid #059669 !important}
+#ic-tbody tr.ic-row-child{border-left:4px solid #7C3AED !important}
 
 /* ═══ Investor base — qatorlar orasini qisqartirish + ustun kengliklarini optimallash ═══ */
 /* Qator padding'ini kamaytirib row'lar orasini ixchamlash */
