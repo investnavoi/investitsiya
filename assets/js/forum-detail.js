@@ -2278,16 +2278,80 @@ _renderInvestorCompaniesMain = function(){
       html += '</tr>';
     });
 
-    // ═══ Hamkor firmalar paneli (Variant 4) — eksportyor uchun importyorlar / importyor uchun eksportyorlar ═══
-    var partners = Array.isArray(companyRec._partners) ? companyRec._partners : [];
-    var partnerOf = Array.isArray(companyRec._partnerOf) ? companyRec._partnerOf : [];
-    if(partners.length || partnerOf.length){
-      var arrowDir = partners.length ? '↘️' : '↖️';
-      var panelTitle = partners.length
-        ? '↘️ Hamkor importyorlar (kim sotib olgan): <b>'+partners.length+' ta</b>'
-        : '↖️ Manba eksportyorlar (kimdan olingan): <b>'+partnerOf.length+' ta</b>';
-      var panelColor = partners.length ? '#7C3AED' : '#059669';
-      var partnerList = (partners.length ? partners : partnerOf).slice(0, 12);
+    // ═══ Hamkor firmalar paneli — savdo aloqalarini oddiy ko'rsatish ═══
+    // Logika: companyRec — bu satrning kompaniyasi
+    //   - _partners: bu kompaniya bilan to'g'ridan-to'g'ri savdo qilgan firmalar (har biri o'z roli bilan: importer/exporter)
+    //   - _partnerOf: bu kompaniya boshqa kompaniyaning savdo aloqasida ham counterpart bo'lgan
+    var _partnersDirect = Array.isArray(companyRec._partners) ? companyRec._partners : [];
+    var _partnersReverse = Array.isArray(companyRec._partnerOf) ? companyRec._partnerOf : [];
+    if(_partnersDirect.length || _partnersReverse.length){
+      // Companyrec'ning roli (importyor / eksportyor)
+      var _selfMode = String(companyRec.finderMode || companyRec.role || '').toLowerCase();
+      var _selfIsExp = _selfMode === 'exporters' || _selfMode === 'exporter';
+      var _selfIsImp = _selfMode === 'importers' || _selfMode === 'importer';
+      // Fallback — agar finderMode noma'lum bo'lsa, partnerlardan kelib chiqib aniqlaymiz
+      if(!_selfIsExp && !_selfIsImp){
+        if(_partnersDirect.length){
+          // Partner roli aniq bo'lsa, men teskari rolda bo'laman
+          var fp = _partnersDirect[0];
+          if(fp.role === 'importer') _selfIsExp = true;
+          else if(fp.role === 'exporter') _selfIsImp = true;
+        }
+        if(!_selfIsExp && !_selfIsImp && _partnersReverse.length){
+          // _partnerOf da role parent'ning roli — men teskari rolda
+          var fr = _partnersReverse[0];
+          if(fr.role === 'exporter') _selfIsImp = true;
+          else if(fr.role === 'importer') _selfIsExp = true;
+        }
+      }
+
+      // Barcha partnerlarni 1 ta ro'yxatga to'plash, har biri uchun PARTNER'ning roli aniqlanadi
+      var _allPartners = [];
+      _partnersDirect.forEach(function(p){
+        _allPartners.push({
+          kompaniya: p.kompaniya, davlat: p.davlat || p.country || '',
+          countryCode: p.countryCode || '', cityState: p.cityState || '',
+          email: p.email || '', tel: p.tel || '', web: p.web || '',
+          // _partners ichida role = partnerning ROLI
+          partnerRole: String(p.role || '').toLowerCase(), // 'importer' yoki 'exporter'
+          totalValue: p.totalValue || 0, totalQty: p.totalQty || 0,
+          docCount: p.docCount || 0, lastDate: p.lastDate || ''
+        });
+      });
+      _partnersReverse.forEach(function(p){
+        // _partnerOf da role = parent'ning roli (parent IS our partner now)
+        // ya'ni p.role ni partner roli sifatida olamiz
+        _allPartners.push({
+          kompaniya: p.kompaniya, davlat: p.davlat || p.country || '',
+          countryCode: p.countryCode || '', cityState: p.cityState || '',
+          email: '', tel: '', web: '',
+          partnerRole: String(p.role || '').toLowerCase(),
+          totalValue: p.totalValue || 0, totalQty: p.totalQty || 0,
+          docCount: p.docCount || 0, lastDate: p.lastDate || ''
+        });
+      });
+      // Dublikatlarni olib tashlash (kompaniya nomi bo'yicha)
+      var _seenPart = {};
+      _allPartners = _allPartners.filter(function(p){
+        var k = String(p.kompaniya || '').trim().toLowerCase();
+        if(!k || _seenPart[k]) return false;
+        _seenPart[k] = true;
+        return true;
+      });
+
+      // Companyrec'ning roli aniq bo'lsa va partnerRole bo'sh bo'lsa, qarama-qarshini quyamiz
+      if(_selfIsExp || _selfIsImp){
+        _allPartners.forEach(function(p){
+          if(!p.partnerRole){
+            p.partnerRole = _selfIsExp ? 'importer' : 'exporter';
+          }
+        });
+      }
+
+      // Partnerlarni rolga qarab guruhlaymiz
+      var _expPartners = _allPartners.filter(function(p){ return p.partnerRole === 'exporter'; });
+      var _impPartners = _allPartners.filter(function(p){ return p.partnerRole === 'importer'; });
+      var _otherPartners = _allPartners.filter(function(p){ return p.partnerRole !== 'exporter' && p.partnerRole !== 'importer'; });
 
       function _findInvestorIdByCompany(cName){
         var key = String(cName || '').trim().toLowerCase();
@@ -2298,39 +2362,76 @@ _renderInvestorCompaniesMain = function(){
         return found ? String(found.id) : '';
       }
 
-      function _fmtPartnerCard(p, idx){
+      // Kartochkalar — har bir partner uchun
+      function _fmtPartnerCard(p, accent){
         var qty = Number(p.totalQty || 0);
         var qtyTxt = qty >= 1e6 ? (qty/1e6).toFixed(1)+'M' : qty >= 1e3 ? (qty/1e3).toFixed(1)+'K' : (qty ? Math.round(qty) : '');
         var val = Number(p.totalValue || 0);
         var valTxt = val >= 1e6 ? '$'+(val/1e6).toFixed(1)+'M' : val >= 1e3 ? '$'+(val/1e3).toFixed(0)+'K' : (val ? '$'+val : '');
-        var partnerCountry = String(p.davlat || p.country || '').trim();
+        var partnerCountry = String(p.davlat || '').trim();
         var partnerFlag = (typeof getFinderCountryFlag === 'function' && partnerCountry) ? getFinderCountryFlag(partnerCountry) : '';
+        var partnerLabel = (typeof getFinderCountryLabel === 'function' && partnerCountry) ? getFinderCountryLabel(partnerCountry) : partnerCountry;
         var pid = _findInvestorIdByCompany(p.kompaniya);
         var jumpHandler = pid
-          ? 'document.getElementById(\'investor-row-'+pid+'\').scrollIntoView({behavior:\'smooth\',block:\'center\'});document.getElementById(\'investor-row-'+pid+'\').style.outline=\'2px solid #4361EE\';setTimeout(function(){var el=document.getElementById(\'investor-row-'+pid+'\');if(el)el.style.outline=\'\'},1500);'
+          ? 'document.getElementById(\'investor-row-'+pid+'\').scrollIntoView({behavior:\'smooth\',block:\'center\'});document.getElementById(\'investor-row-'+pid+'\').style.outline=\'2px solid '+accent+'\';setTimeout(function(){var el=document.getElementById(\'investor-row-'+pid+'\');if(el)el.style.outline=\'\'},1500);'
           : '';
         var clickAttr = pid ? ('onclick="'+jumpHandler+'" style="cursor:pointer"') : 'style="cursor:default"';
-        return '<div '+clickAttr+' onmouseover="this.style.borderColor=\''+panelColor+'\'" onmouseout="this.style.borderColor=\'rgba(124,58,237,.18)\'" style="display:inline-flex;flex-direction:column;gap:3px;padding:8px 12px;background:#fff;border:1px solid rgba(124,58,237,.18);border-radius:10px;font-size:.7rem;min-width:180px;max-width:240px;transition:border-color .15s">'+
-          '<div style="font-weight:700;color:#111827;line-height:1.3;display:flex;align-items:center;gap:4px">'+
-            '<span style="color:'+panelColor+';font-weight:800">'+arrowDir+'</span>'+
-            '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.kompaniya || '—')+'</span>'+
+        return '<div '+clickAttr+' onmouseover="this.style.borderColor=\''+accent+'\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.08)\'" onmouseout="this.style.borderColor=\'#E5E7EB\';this.style.boxShadow=\'none\'" style="display:inline-flex;flex-direction:column;gap:4px;padding:10px 14px;background:#fff;border:1px solid #E5E7EB;border-left:3px solid '+accent+';border-radius:10px;font-size:.72rem;min-width:200px;max-width:280px;transition:all .15s">'+
+          '<div style="font-weight:700;color:#111827;line-height:1.3;font-size:.78rem">'+
+            escHtml(p.kompaniya || '—')+
           '</div>'+
-          '<div style="font-size:.62rem;color:#6B7280">'+(partnerFlag?partnerFlag+' ':'')+escHtml(partnerCountry || '')+(p.cityState?' · '+escHtml(p.cityState):'')+'</div>'+
-          (qtyTxt || valTxt ? '<div style="font-size:.62rem;color:#374151;font-weight:600">'+(qtyTxt?qtyTxt+' kg':'')+(qtyTxt&&valTxt?' · ':'')+(valTxt||'')+'</div>' : '')+
-          (p.lastDate?'<div style="font-size:.58rem;color:#9CA3AF">📅 '+escHtml(String(p.lastDate).slice(0,10))+'</div>':'')+
+          (partnerCountry?'<div style="font-size:.66rem;color:#6B7280">'+(partnerFlag?partnerFlag+' ':'')+escHtml(partnerLabel || partnerCountry)+(p.cityState?' · '+escHtml(p.cityState):'')+'</div>':'')+
+          (qtyTxt || valTxt ? '<div style="display:flex;gap:8px;font-size:.66rem;color:#374151;margin-top:2px">'+(qtyTxt?'<span><b>'+qtyTxt+'</b> kg</span>':'')+(valTxt?'<span style="color:#059669"><b>'+valTxt+'</b></span>':'')+'</div>' : '')+
+          (p.lastDate?'<div style="font-size:.6rem;color:#9CA3AF;margin-top:1px">📅 '+escHtml(String(p.lastDate).slice(0,10))+'</div>':'')+
         '</div>';
       }
 
-      var moreCount = (partners.length ? partners : partnerOf).length - partnerList.length;
-      var moreBadge = moreCount > 0 ? '<span style="display:inline-flex;align-items:center;padding:6px 10px;background:#F3F4F6;color:#6B7280;border-radius:8px;font-size:.7rem;font-weight:600">+'+moreCount+' ta ko\'proq</span>' : '';
+      // Section render — har rol guruhi uchun aniq title
+      function _renderPartnerGroup(list, role, parentRole){
+        if(!list.length) return '';
+        var isExp = role === 'exporter';
+        var accent = isExp ? '#059669' : '#7C3AED';
+        var bg = isExp ? 'rgba(5,150,105,.05)' : 'rgba(124,58,237,.05)';
+        var icon = isExp ? '📤' : '📥';
+        var roleLabel = isExp ? 'Eksportyor kompaniyalar' : 'Importyor kompaniyalar';
+        // Kontekst sentence — companyrec'ga nisbatan
+        var ctxSentence = '';
+        if(parentRole === 'exporter'){
+          // Bu kompaniya eksportyor, partner importyor → "ushbu kompaniyadan sotib olganlar"
+          ctxSentence = isExp ? 'Bu eksportyor bilan birga ishlagan eksportyorlar' : 'Bu kompaniyadan sotib olganlar (xaridorlar)';
+        } else if(parentRole === 'importer'){
+          ctxSentence = isExp ? 'Bu kompaniya kimdan sotib olgan (manbalar)' : 'Bu importyor bilan birga ishlagan importyorlar';
+        }
+        var topList = list.slice(0, 8);
+        var moreCount = list.length - topList.length;
+        var cards = topList.map(function(p){ return _fmtPartnerCard(p, accent); }).join('');
+        var moreBadge = moreCount > 0 ? '<span style="display:inline-flex;align-items:center;padding:8px 12px;background:#F3F4F6;color:#6B7280;border-radius:10px;font-size:.7rem;font-weight:600">+'+moreCount+' ta ko\'proq</span>' : '';
+        return '<div style="background:'+bg+';border-radius:10px;padding:10px 12px;margin-bottom:8px">'+
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'+
+            '<span style="font-size:.85rem">'+icon+'</span>'+
+            '<span style="font-size:.78rem;font-weight:700;color:'+accent+'">'+roleLabel+'</span>'+
+            '<span style="background:#fff;color:'+accent+';padding:1px 8px;border-radius:8px;font-size:.65rem;font-weight:700">'+list.length+' ta</span>'+
+            (ctxSentence?'<span style="font-size:.62rem;color:#6B7280;margin-left:4px">— '+ctxSentence+'</span>':'')+
+          '</div>'+
+          '<div style="display:flex;flex-wrap:wrap;gap:8px">'+cards+moreBadge+'</div>'+
+        '</div>';
+      }
 
-      html += '<tr class="ic-partner-panel-row" data-group="'+groupIdx+'" style="background:'+_groupBg+'">';
-      html += '<td colspan="7" style="padding:10px 1.25rem 14px;border-top:1px dashed rgba(124,58,237,.2)">';
-      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.72rem;color:'+panelColor+'">'+panelTitle+'</div>';
-      html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
-      html += partnerList.map(_fmtPartnerCard).join('');
-      html += moreBadge;
-      html += '</div></td></tr>';
+      var _parentRole = _selfIsExp ? 'exporter' : (_selfIsImp ? 'importer' : '');
+      var _panelHtml = '';
+      _panelHtml += _renderPartnerGroup(_expPartners, 'exporter', _parentRole);
+      _panelHtml += _renderPartnerGroup(_impPartners, 'importer', _parentRole);
+      // "Other" — agar role aniq bo'lmasa, neutralda chiqaramiz
+      if(_otherPartners.length){
+        _panelHtml += '<div style="background:rgba(70,95,255,.05);border-radius:10px;padding:10px 12px"><div style="font-size:.78rem;font-weight:700;color:#465fff;margin-bottom:8px">🤝 Hamkorlar <span style="background:#fff;padding:1px 8px;border-radius:8px;font-size:.65rem">'+_otherPartners.length+' ta</span></div><div style="display:flex;flex-wrap:wrap;gap:8px">'+_otherPartners.slice(0,8).map(function(p){ return _fmtPartnerCard(p, '#465fff'); }).join('')+'</div></div>';
+      }
+
+      if(_panelHtml){
+        html += '<tr class="ic-partner-panel-row" data-group="'+groupIdx+'" style="background:'+_groupBg+'">';
+        html += '<td colspan="7" style="padding:10px 1.25rem 14px;border-top:1px dashed rgba(70,95,255,.18)">';
+        html += _panelHtml;
+        html += '</td></tr>';
+      }
     }
 
     return html;
