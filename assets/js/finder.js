@@ -2043,7 +2043,18 @@ function sanitizeUiMojibake(text){
 }
 
 function apolloCompanyKey(name){
-  return apolloNormalizeText(name || '').replace(/\b(co|company|corp|corporation|ltd|llc|inc|group|holding|holdings|limited|plc|sa|ag|gmbh|pte|pty)\b/g,'').replace(/\s+/g,' ').trim();
+  var key = apolloNormalizeText(name || '');
+  // Korporativ suffix'lar (har xil tillarda)
+  key = key.replace(/\b(co|company|corp|corporation|ltd|llc|inc|incorporated|group|holding|holdings|limited|plc|sa|ag|gmbh|pte|pty|as|bv|nv|srl|sas|sasu|spa|oao|ooo|zao|pao|kft|sro|jsc|joint|stock)\b/g, '');
+  // Turkish/multi-lingual ish-fao'liyat so'zlari (ANONIM SIRKETI, SANAYI VE TICARET, TRADE, INDUSTRY)
+  key = key.replace(/\b(sanayi|ticaret|anonim|sirketi|sti|kimyevi|maddeleri|imp|exp|trade|trading|industry|industries|industrial|manufacturing|manufacture|international|intl|export|exports|exporting|exporter|importer|importers|materials|chemical|chemicals|technology|technologies|enterprise|enterprises|business)\b/g, '');
+  // Article/conjunctions (va, ve, and, the, de, la)
+  key = key.replace(/\b(va|ve|and|the|de|la|el|los|las|du|des|di|el)\b/g, '');
+  // Qisqa so'zlar (1-2 harfli — A.S., a.s., va h.k. dan keyin qoladigan parchalar)
+  key = key.replace(/\b\w{1,2}\b/g, '');
+  // Bo'shliqlarni to'g'rilash
+  key = key.replace(/\s+/g, ' ').trim();
+  return key;
 }
 
 function apolloNormalizePhone(value){
@@ -2350,6 +2361,59 @@ function apolloMergeFinderItem(target, source, meta){
   target.xodimlar = Number(target.xodimlar || 0) || Number(source.xodimlar || 0) || 0;
   target.photoUrl = target.photoUrl || target.photo_url || source.photoUrl || source.photo_url || '';
   target.photo_url = target.photoUrl;
+  // ═══ TradeAtlas hajm/qiymat aggregate (bir xil kompaniya merge bo'lganda) ═══
+  function _sumNum(a, b){ return Number(a || 0) + Number(b || 0); }
+  function _maxDate(a, b){
+    var s = String(a || '').slice(0,10);
+    var t = String(b || '').slice(0,10);
+    return (t && t > s) ? t : (s || t);
+  }
+  function _minDate(a, b){
+    var s = String(a || '').slice(0,10);
+    var t = String(b || '').slice(0,10);
+    if(!s) return t;
+    if(!t) return s;
+    return (t < s) ? t : s;
+  }
+  target._tradeAtlasTradeValue = _sumNum(target._tradeAtlasTradeValue, source._tradeAtlasTradeValue);
+  target._tradeAtlasQuantity = _sumNum(target._tradeAtlasQuantity, source._tradeAtlasQuantity);
+  target._tradeAtlasDocCount = _sumNum(target._tradeAtlasDocCount, source._tradeAtlasDocCount);
+  target._tradeAtlasGrossWeight = _sumNum(target._tradeAtlasGrossWeight, source._tradeAtlasGrossWeight);
+  target._tradeAtlasNetWeight = _sumNum(target._tradeAtlasNetWeight, source._tradeAtlasNetWeight);
+  target._tradeAtlasFobUsd = _sumNum(target._tradeAtlasFobUsd, source._tradeAtlasFobUsd);
+  target._tradeAtlasCifUsd = _sumNum(target._tradeAtlasCifUsd, source._tradeAtlasCifUsd);
+  target._tradeAtlasStatValueUsd = _sumNum(target._tradeAtlasStatValueUsd, source._tradeAtlasStatValueUsd);
+  target._tradeAtlasFreightUsd = _sumNum(target._tradeAtlasFreightUsd, source._tradeAtlasFreightUsd);
+  target._tradeAtlasInsuranceUsd = _sumNum(target._tradeAtlasInsuranceUsd, source._tradeAtlasInsuranceUsd);
+  target._tradeAtlasContainers = _sumNum(target._tradeAtlasContainers, source._tradeAtlasContainers);
+  target._tradeAtlasPackages = _sumNum(target._tradeAtlasPackages, source._tradeAtlasPackages);
+  target._tradeAtlasTeus = _sumNum(target._tradeAtlasTeus, source._tradeAtlasTeus);
+  target._tradeAtlasLastArrivalDate = _maxDate(target._tradeAtlasLastArrivalDate, source._tradeAtlasLastArrivalDate);
+  target._tradeAtlasFirstArrivalDate = _minDate(target._tradeAtlasFirstArrivalDate, source._tradeAtlasFirstArrivalDate);
+  // Counterpart firms — birlashtiramiz va dublikatlarni olib tashlaymiz
+  var existingCp = Array.isArray(target._tradeAtlasCounterpartFirms) ? target._tradeAtlasCounterpartFirms : [];
+  var newCp = Array.isArray(source._tradeAtlasCounterpartFirms) ? source._tradeAtlasCounterpartFirms : [];
+  if(newCp.length){
+    var cpSeen = Object.create(null);
+    existingCp.forEach(function(cp){
+      var k = apolloNormalizeText((cp && cp.name) || '') + '|' + apolloNormalizeText((cp && cp.country) || '');
+      cpSeen[k] = cp;
+    });
+    newCp.forEach(function(cp){
+      var k = apolloNormalizeText((cp && cp.name) || '') + '|' + apolloNormalizeText((cp && cp.country) || '');
+      if(cpSeen[k]){
+        // Mavjud counterpart — qiymatlarni qo'shish
+        cpSeen[k].totalValue = _sumNum(cpSeen[k].totalValue, cp.totalValue);
+        cpSeen[k].totalQty = _sumNum(cpSeen[k].totalQty, cp.totalQty);
+        cpSeen[k].docCount = _sumNum(cpSeen[k].docCount, cp.docCount);
+        cpSeen[k].lastDate = _maxDate(cpSeen[k].lastDate, cp.lastDate);
+      } else {
+        existingCp.push(cp);
+        cpSeen[k] = cp;
+      }
+    });
+    target._tradeAtlasCounterpartFirms = existingCp;
+  }
   apolloApplyCompanyContacts(target);
   return target;
 }
