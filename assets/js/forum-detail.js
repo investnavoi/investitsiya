@@ -3010,8 +3010,8 @@ _renderInvestorCompaniesMain = function(){
     var _nextIsTopLevel = !!_nextVisibleGroup;
     if(_isCurrentTopLevel && _nextIsTopLevel){
       html += '<tr class="ic-company-separator" aria-hidden="true">'+
-        '<td colspan="7" style="padding:8px 12px !important;border:none !important;background:transparent !important">'+
-          '<div style="height:4px !important;background:linear-gradient(90deg,#4361EE 0%,#465fff 30%,#F57C00 50%,#465fff 70%,#4361EE 100%) !important;border-radius:99px !important;box-shadow:0 1px 6px rgba(245,124,0,.4),0 0 0 1px rgba(70,95,255,.2) !important;display:block !important"></div>'+
+        '<td colspan="7" style="padding:6px 12px !important;border:none !important;background:transparent !important">'+
+          '<div style="height:2px !important;background:linear-gradient(90deg,transparent 0%,rgba(67,97,238,.25) 12%,rgba(67,97,238,.55) 35%,rgba(245,124,0,.6) 50%,rgba(67,97,238,.55) 65%,rgba(67,97,238,.25) 88%,transparent 100%) !important;border-radius:99px !important;box-shadow:0 0 4px rgba(245,124,0,.15) !important;display:block !important"></div>'+
         '</td>'+
       '</tr>';
     }
