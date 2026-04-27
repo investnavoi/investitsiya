@@ -1208,7 +1208,13 @@ function restoreImportSnapshot(snapshot, quiet){
           partnerDesc:p.partner||'',
           partnerCode:Number(p.partnerCode||0),
           value:Number(p.value||0),
-          weight:Number(p.weight||0)
+          weight:Number(p.weight||0),
+          exporterCountry:p.exporterCountry||'',
+          exporterCountryCode:p.exporterCountryCode||'',
+          companyWebsite:p.companyWebsite||'',
+          companyEmail:p.companyEmail||'',
+          companyPhone:p.companyPhone||'',
+          docCount:Number(p.docCount||0)
         };
       })
     };
@@ -1256,7 +1262,13 @@ function saveImportSnapshot(prod, hsCode, countries, source, targetCountries){
             partner:p.partner||p.partnerDesc||'',
             partnerCode:Number(p.partnerCode||0),
             value:Number(p.value||0),
-            weight:Number(p.weight||0)
+            weight:Number(p.weight||0),
+            exporterCountry:p.exporterCountry||'',
+            exporterCountryCode:p.exporterCountryCode||'',
+            companyWebsite:p.companyWebsite||'',
+            companyEmail:p.companyEmail||'',
+            companyPhone:p.companyPhone||'',
+            docCount:Number(p.docCount||0)
           };
         })
       };
@@ -1407,7 +1419,9 @@ function renderCountryImportAccordion(countries, getCountryMeta){
               '<td class="td-num">' + (rowIndex + 1) + '</td>' +
               '<td class="td-num">' + escHtml(year) + '</td>' +
               '<td class="import-source-reporter">' + escHtml(reporterLabel) + '</td>' +
-              '<td class="import-source-partner">' + escHtml(row.partner || row.partnerDesc || '\u2014') + '</td>' +
+              '<td class="import-source-partner">' + escHtml(row.partner || row.partnerDesc || '\u2014') +
+                (row.exporterCountry ? ' <span style="display:inline-block;padding:1px 6px;border-radius:5px;background:rgba(70,95,255,.08);color:#465fff;font-size:.62rem;font-weight:700;letter-spacing:.04em;margin-left:6px;vertical-align:middle">'+(typeof getFinderCountryFlag==='function'?getFinderCountryFlag(row.exporterCountry)+' ':'')+escHtml(row.exporterCountry)+'</span>' : '') +
+              '</td>' +
               '<td class="import-source-value">' + formatImportDetailUsd(row.value) + '</td>' +
               '<td class="import-source-weight">' + escHtml(formatImportDetailKg(getImportRowWeightKg(row))) + '</td>' +
               (function(){
