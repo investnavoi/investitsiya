@@ -2328,11 +2328,17 @@ _renderInvestorCompaniesMain = function(){
           totalQty: Number(childRec._tradeAtlasQuantity || 0),
           totalValue: Number(childRec._tradeAtlasTradeValue || 0),
           lastDate: childRec._tradeAtlasLastArrivalDate || '',
-          docCount: Number(childRec._tradeAtlasDocCount || 0)
+          docCount: Number(childRec._tradeAtlasDocCount || 0),
+          childGroupKey: child.key  // hover badge'da bosib toggle qilish uchun
         });
       }
+      child._isChild = true;
+      child._isHiddenChild = true;  // boshlang'ich holatda yashirin, bosilganda chiqadi
+      child._parentKey = g.key;
+      child._parentName = g._parentName;
+      child._displayNumber = g._displayNumber;
       _visited[child.key] = true;
-      // child'ni _orderedGroups'ga QO'SHMAYMIZ — yashirin, faqat hover'da ko'rinadi
+      _orderedGroups.push(child);  // QO'SHAMIZ, lekin display:none bilan render qilamiz
     });
   });
   // Eksportyor bo'lmagan orphan recordlarni ko'rsatmaslik — faqat eksportyorlar
@@ -2458,13 +2464,18 @@ _renderInvestorCompaniesMain = function(){
         var flag = (typeof getFinderCountryFlag === 'function' && ci.davlat) ? getFinderCountryFlag(ci.davlat) : '';
         var dateTxt = ci.lastDate ? '📅 '+escHtml(String(ci.lastDate).slice(0,10)) : '';
         var meta = [qtyTxt, valTxt, dateTxt].filter(Boolean).join(' · ');
-        return '<div style="font-size:.7rem;color:#5B21B6;line-height:1.45;padding:3px 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
-          '<span style="font-size:.85rem;color:#7C3AED;font-weight:800">↳</span>'+
+        var childKeyAttr = tgEscapeAttr(ci.childGroupKey || '');
+        // Bosilganda — ushbu importyorning to'liq qatori (kontakt, soha, buttonlar) chiqadi
+        return '<div onclick="event.stopPropagation();toggleHiddenChildRow(\''+childKeyAttr+'\',this)" style="font-size:.7rem;color:#5B21B6;line-height:1.45;padding:5px 8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;cursor:pointer;border-radius:6px;transition:background .15s" onmouseover="this.style.background=\'rgba(124,58,237,.08)\'" onmouseout="this.style.background=\'\'" title="Bosing — to\'liq ma\'lumot va tugmalar chiqadi">'+
+          '<span class="ic-toggle-arrow" style="font-size:.85rem;color:#7C3AED;font-weight:800;transition:transform .15s">▶</span>'+
           '<span>Importyor <b style="color:#7C3AED">'+escHtml(ci.kompaniya || '—')+'</b>'+(flag?' '+flag:'')+(ci.davlat?' '+escHtml(ci.davlat):'')+'</span>'+
           (meta?'<span style="color:#9CA3AF;font-size:.62rem">· '+meta+'</span>':'')+
         '</div>';
       }).join('');
-      _hoverImporterBadge = '<div class="ic-importer-hover" style="display:none;margin-top:6px;padding:7px 11px;background:#FAF5FF;border-left:3px solid #7C3AED;border-radius:6px">'+importerLines+'</div>';
+      _hoverImporterBadge = '<div class="ic-importer-hover" style="display:none;margin-top:6px;padding:6px;background:#FAF5FF;border-left:3px solid #7C3AED;border-radius:6px">'+
+        '<div style="font-size:.6rem;color:#6B21A8;font-weight:600;letter-spacing:.04em;margin-bottom:3px;padding:2px 6px;text-transform:uppercase">▼ Bu eksportyordan import qilgan kompaniyalar — bosing batafsil</div>'+
+        importerLines+
+      '</div>';
     }
     // Parent uchun — ostidagi children sonini ko'rsatish (hint label)
     var _parentChildrenCount = _childrenData.length;
@@ -2528,12 +2539,19 @@ _renderInvestorCompaniesMain = function(){
       contactHtml += '</div>';
 
       var groupBorderStyle = recIdx === 0 ? 'border-top:10px solid transparent;box-shadow:inset 0 2px 0 rgba(70,95,255,.18);' : '';
-      // Parent (eksportyor) qator hover qilganda — ostiga ulangan importyor xaridorlarni ko'rsatamiz
+      // Parent (eksportyor) qator hover qilganda — ostiga ulangan importyor xaridorlar BADGE ko'rinadi (qator emas)
       var _hoverHandlers = '';
       if(_isParent && _childrenData.length){
         _hoverHandlers = ' onmouseenter="var b=this.querySelectorAll(\'.ic-importer-hover\');for(var i=0;i<b.length;i++)b[i].style.display=\'block\'" onmouseleave="var b=this.querySelectorAll(\'.ic-importer-hover\');for(var i=0;i<b.length;i++)b[i].style.display=\'none\'"';
       }
-      html += '<tr class="ic-group-row'+(_isParent?' ic-row-parent':'')+(_isChild?' ic-row-child':'')+'" data-group="'+groupIdx+'" data-group-bg="'+_groupBg+'" data-group-hover="'+_groupHoverBg+'" id="investor-row-'+rec.id+'" style="background:'+_groupBg+';transition:background .15s;'+_groupBorderLeft+groupBorderStyle+'"'+_hoverHandlers+'>';
+      // Yashirin child (importyor) qator — boshlang'ich display:none, bosilgancha
+      var _hiddenChildAttrs = '';
+      var _hiddenChildStyle = '';
+      if(group._isHiddenChild){
+        _hiddenChildAttrs = ' data-child-key="'+tgEscapeAttr(group.key)+'" data-hidden-child="1"';
+        _hiddenChildStyle = 'display:none;';
+      }
+      html += '<tr class="ic-group-row'+(_isParent?' ic-row-parent':'')+(_isChild?' ic-row-child':'')+'" data-group="'+groupIdx+'" data-group-bg="'+_groupBg+'" data-group-hover="'+_groupHoverBg+'" id="investor-row-'+rec.id+'" style="'+_hiddenChildStyle+'background:'+_groupBg+';transition:background .15s;'+_groupBorderLeft+groupBorderStyle+'"'+_hoverHandlers+_hiddenChildAttrs+'>';
       if(recIdx === 0){
         html += '<td rowspan="'+recs.length+'" style="padding-left:1.25rem;vertical-align:middle">'+(isAdmin ? ('<input type="checkbox" class="ic-check" data-ids="'+tgEscapeAttr(groupIds)+'" onchange="saveIcCheck(this);updateSelectedCount()" style="width:18px;height:18px;border-radius:5px;accent-color:#465fff;cursor:pointer">') : '')+'</td>';
         html += '<td rowspan="'+recs.length+'" style="font-size:.82rem;color:#374151;font-weight:600;vertical-align:middle">'+rowNumber+'</td>';
@@ -2846,6 +2864,31 @@ window.toggleSelectMenu = toggleSelectMenu;
 window.selectThisPage = selectThisPage;
 window.selectAll = selectAll;
 window.clearSelection = clearSelection;
+
+// Hover badge'da importyor nomi bosilganda — uning to'liq qatorini (kontakt, soha, buttonlar) ko'rsatadi
+window.toggleHiddenChildRow = function(childKey, badgeEl){
+  if(!childKey) return;
+  var rows = document.querySelectorAll('tr[data-child-key="'+childKey+'"]');
+  if(!rows || !rows.length) return;
+  var firstRow = rows[0];
+  var willShow = firstRow.style.display === 'none' || !firstRow.style.display;
+  for(var i=0;i<rows.length;i++){
+    rows[i].style.display = willShow ? '' : 'none';
+  }
+  // Badge ichidagi strelkani aylantirish ▶ ↔ ▼
+  if(badgeEl){
+    var arrow = badgeEl.querySelector('.ic-toggle-arrow');
+    if(arrow) arrow.textContent = willShow ? '▼' : '▶';
+    if(willShow){
+      // Ochilgan importyorga scroll
+      setTimeout(function(){
+        firstRow.scrollIntoView({behavior:'smooth', block:'nearest'});
+        firstRow.style.outline = '2px solid #7C3AED';
+        setTimeout(function(){ firstRow.style.outline=''; }, 1500);
+      }, 100);
+    }
+  }
+};
 
 function openSentEmailsDrawer(){
   var sent = (DB.investorCompanies||[]).filter(function(r){return r.emailSent;});
