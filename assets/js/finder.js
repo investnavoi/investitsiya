@@ -1336,12 +1336,13 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
   var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
   if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
   var sourceCodes = filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
-  var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
-  var taCountries;
+  var dateRange = getImportAnalysisDateRange();
+
+  // Eksportyor tomoni davlatlari: tanlangan source yoki butun dunyo (Afrikasiz)
+  var exporterCountries;
   if(sourceCodes.length){
-    taCountries = sourceCodes.slice();
-  } else if(meta.mode === 'exporters'){
-    // Eksportyor rejimi + manba tanlanmagan → butun dunyo (Afrikasiz — kredit tejash)
+    exporterCountries = sourceCodes.slice();
+  } else {
     var worldCountries = [];
     Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
       if(cont === 'Afrika') return;
@@ -1350,55 +1351,66 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
         if(code && worldCountries.indexOf(code) === -1) worldCountries.push(code);
       });
     });
-    taCountries = worldCountries;
-  } else {
-    taCountries = targetCodes.slice();
+    exporterCountries = worldCountries;
   }
-  var dateRange = getImportAnalysisDateRange();
+  // Importyor tomoni davlatlari: target (UZ va boshqalar)
+  var importerCountries = targetCodes.slice();
 
-  var found = [];
-  // TradeAtlas cheklovi: countries max 5 ta — 5 talik chunk'larga bolamiz
-  var chunks = [];
-  for(var i = 0; i < taCountries.length; i += 5){
-    chunks.push(taCountries.slice(i, i + 5));
-  }
-  if(!chunks.length) chunks = [[]];
-
-  for(var ch = 0; ch < chunks.length; ch++){
-    var chunkCountries = chunks[ch];
-    // Legacy firms shape — proxy shuni /firms/search ga yuboradi (hasTargetShape=false)
-    for(var page = 1; page <= 20; page++){
-      var payload = {
-        countries: chunkCountries,
-        hsCode: hsCode,
-        mode: meta.mode,
-        page: page,
-        firmType: taFirmType,
-        flowType: (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT',
-        firmFilter: [1, 2],
-        parameters: [{ HS_CODE: hsCode }]
-      };
-      if(dateRange && dateRange.startDate) payload.startDate = dateRange.startDate;
-      if(dateRange && dateRange.endDate) payload.endDate = dateRange.endDate;
-      var data = await tradeAtlasRequestJson(payload);
-      var firms = tradeAtlasNormalizeArray(data);
-      if(!firms.length) break;
-      var beforeCount = found.length;
-      firms.forEach(function(firm){
-        // Afrika qit'asidagi firmalarni chiqarmaymiz (eksportyor rejimida ham, import rejimida ham manba Afrika bolsa)
-        if(meta.mode === 'exporters'){
-          var firmCode = tradeAtlasFirmCountryCode(firm);
-          if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
-        }
-        var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
-        if(!item || !String(item.kompaniya || '').trim()) return;
-        apolloUpsertFinderItem(found, item, meta);
-      });
-      if(found.length === beforeCount) break;
-      if(firms.length < 50) break;
+  // Bir tomon (eksport yoki import) uchun firmalarni qidiramiz
+  async function _searchOneRole(roleMeta, countries){
+    var found = [];
+    var chunks = [];
+    for(var i = 0; i < countries.length; i += 5){
+      chunks.push(countries.slice(i, i + 5));
     }
+    if(!chunks.length) chunks = [[]];
+    var firmType = roleMeta.mode === 'importers' ? 'IMPORTER' : 'EXPORTER';
+    var flowType = roleMeta.mode === 'importers' ? 'IMPORT' : 'EXPORT';
+
+    for(var ch = 0; ch < chunks.length; ch++){
+      var chunkCountries = chunks[ch];
+      for(var page = 1; page <= 20; page++){
+        var payload = {
+          countries: chunkCountries,
+          hsCode: hsCode,
+          mode: roleMeta.mode,
+          page: page,
+          firmType: firmType,
+          flowType: flowType,
+          firmFilter: [1, 2],
+          parameters: [{ HS_CODE: hsCode }]
+        };
+        if(dateRange && dateRange.startDate) payload.startDate = dateRange.startDate;
+        if(dateRange && dateRange.endDate) payload.endDate = dateRange.endDate;
+        var data = await tradeAtlasRequestJson(payload);
+        var firms = tradeAtlasNormalizeArray(data);
+        if(!firms.length) break;
+        var beforeCount = found.length;
+        firms.forEach(function(firm){
+          // Eksportyor tomoni uchun Afrika filtrlash
+          if(roleMeta.mode === 'exporters'){
+            var firmCode = tradeAtlasFirmCountryCode(firm);
+            if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
+          }
+          var item = mapTradeAtlasFirmToFinderResult(firm, roleMeta, prod);
+          if(!item || !String(item.kompaniya || '').trim()) return;
+          apolloUpsertFinderItem(found, item, roleMeta);
+        });
+        if(found.length === beforeCount) break;
+        if(firms.length < 50) break;
+      }
+    }
+    return found;
   }
-  return found.filter(finderResultIsRenderable).sort(function(a,b){
+
+  // Ikkala tomonni parallel qidiramiz: eksportyor + importyor
+  var sides = await Promise.all([
+    _searchOneRole({ mode: 'exporters' }, exporterCountries).catch(function(e){ console.warn('Eksportyor qidiruv xatosi:', e && e.message); return []; }),
+    _searchOneRole({ mode: 'importers' }, importerCountries).catch(function(e){ console.warn('Importyor qidiruv xatosi:', e && e.message); return []; })
+  ]);
+  var combined = (sides[0] || []).concat(sides[1] || []);
+
+  return combined.filter(finderResultIsRenderable).sort(function(a,b){
     return (Number(b._tradeAtlasTradeValue || 0) - Number(a._tradeAtlasTradeValue || 0)) || ((b.score || 0) - (a.score || 0));
   });
 }
@@ -4000,7 +4012,28 @@ function saveFinderResults(){
   var updated = 0;
   var meta = getCurrentFinderProductMeta();
   (_finderResults || []).forEach(function(item){
+    if(!item || !String(item.kompaniya || '').trim()) return;
     var contacts = getFinderVisibleContacts(item);
+    if(!contacts.length){
+      // Lead/kontakt bo'lmasa ham kompaniyaning o'zini saqlaymiz (bo'sh kontakt bilan)
+      var emptyContact = {
+        name: '', title: '', email: '', telefon: '',
+        website: item.website || '', linkedin: item.linkedin || '',
+        photoUrl: '', personId: ''
+      };
+      // Bir xil kompaniya nomli + kontaktsiz mavjud recordni qidiramiz (duplicate oldini olish)
+      var companyKey = String(item.kompaniya || '').trim().toLowerCase();
+      var existing = (DB.investorCompanies || []).find(function(rec){
+        if(String(rec.kompaniya || '').trim().toLowerCase() !== companyKey) return false;
+        return !String(rec.email || '').trim() && !String(rec.rahbar || '').trim();
+      }) || null;
+      var rec = upsertFinderContactInvestorRecord(existing, item, emptyContact, meta);
+      if(rec){
+        if(existing) updated++;
+        else added++;
+      }
+      return;
+    }
     contacts.forEach(function(contact){
       var existing = findFinderContactInvestorRecord(item, contact);
       var rec = upsertFinderContactInvestorRecord(existing, item, contact, meta);
