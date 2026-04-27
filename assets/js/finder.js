@@ -1752,11 +1752,18 @@ function _enrichFinderFromImportSnapshots(prod, targetCountries, excludeNamesSet
         // Counterpart sifatida boshqa rowda allaqachon ko'rinadigan kompaniyani skip qilamiz
         if(excludeNamesSet && excludeNamesSet[partnerName.toLowerCase().trim()]) return;
         var lastDate = p.period ? (String(p.period) + '-12-31') : '';
+        // Importyor counterpart — agar TradeAtlas firma'da importer kompaniya nomi mavjud bo'lsa, shuni ishlatamiz
+        var importerCompName = String(p.importerCompany || '').trim();
+        var counterpartImporter = importerCompName || cName;  // fallback: davlat nomi
         out.push({
           id: 'is_' + Date.now() + '_' + Math.random().toString(36).slice(2,7) + '_' + out.length,
           kompaniya: partnerName,
-          davlat: '', shahar: '',
-          email: '', telefon: '', linkedin: '', website: '',
+          davlat: String(p.exporterCountry || '').trim(),
+          shahar: '',
+          email: String(p.companyEmail || '').trim(),
+          telefon: String(p.companyPhone || '').trim(),
+          linkedin: '',
+          website: String(p.companyWebsite || '').trim(),
           rahbar: '', lavozim: '',
           soha: (prod && (prod.name_en || prod.name_uz)) || '',
           mahsulotNomi: (prod && (prod.name_en || prod.name_uz)) || '',
@@ -1769,8 +1776,20 @@ function _enrichFinderFromImportSnapshots(prod, targetCountries, excludeNamesSet
           _tradeAtlasQuantity: Number(p.weight || p.quantity || 0),
           _tradeAtlasDocCount: Number(p.docCount || 0),
           _tradeAtlasLastArrivalDate: lastDate,
-          _partners: cName ? [{
-            kompaniya: cName, davlat: cName, role: 'importer',
+          // _tradeAtlasCounterpartFirms — importer xaridorni HAMKOR DAVLAT ustunida ko'rsatish uchun
+          _tradeAtlasCounterpartFirms: [{
+            name: counterpartImporter,
+            country: cName,
+            countryCode: cCode,
+            totalValue: Number(p.value || 0),
+            totalQty: Number(p.weight || 0),
+            docCount: Number(p.docCount || 0),
+            lastDate: lastDate
+          }],
+          _tradeAtlasCounterpartCountries: cName ? [cName] : [],
+          _partners: counterpartImporter ? [{
+            kompaniya: counterpartImporter, davlat: cName,
+            role: 'importer',
             totalValue: Number(p.value || 0), totalQty: Number(p.weight || 0),
             docCount: Number(p.docCount || 0), lastDate: lastDate
           }] : []
