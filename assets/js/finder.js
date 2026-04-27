@@ -3969,7 +3969,15 @@ function renderFinderTable(results){
     else if(_role === 'exporters') _roleCounts.exporters++;
     else _roleCounts.other++;
   });
+  // Bo'sh rol uchun ham header chiqaramiz — foydalanuvchi qaysi tomon yo'qligini bilsin
+  var _hasAnyTaResult = (_roleCounts.importers + _roleCounts.exporters) > 0;
+  var _showEmptyRoleHeaders = _hasAnyTaResult;
   var _lastSectionRole = null; // section change'ni aniqlash uchun
+  // Importyor section bo'sh bo'lsa empty header
+  if(_showEmptyRoleHeaders && _roleCounts.importers === 0){
+    rows.push(_fmtTaSectionHeader('importers', 0));
+    rows.push('<tr><td colspan="11" style="padding:.7rem .9rem;font-size:.72rem;color:var(--text3);background:rgba(124,58,237,.02);text-align:center">Bu so\'rov bo\'yicha importyor kompaniyalar topilmadi</td></tr>');
+  }
   _sortedResults.forEach(function(r, i){
     var contacts = getFinderVisibleContacts(r);
     if(!contacts.length) return;
@@ -4052,6 +4060,11 @@ function renderFinderTable(results){
       );
     }
   });
+  // Eksportyor section bo'sh bo'lsa loop tugagandan keyin empty header
+  if(_showEmptyRoleHeaders && _roleCounts.exporters === 0){
+    rows.push(_fmtTaSectionHeader('exporters', 0));
+    rows.push('<tr><td colspan="11" style="padding:.7rem .9rem;font-size:.72rem;color:var(--text3);background:rgba(5,150,105,.02);text-align:center">Bu so\'rov bo\'yicha eksportyor kompaniyalar topilmadi (kunlik limit yetilgan yoki manba davlatda firmalar yo\'q)</td></tr>');
+  }
   tb.innerHTML = rows.join('');
   mountInvestorAiWorkspace();
 }
