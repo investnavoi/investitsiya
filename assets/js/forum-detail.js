@@ -2548,12 +2548,23 @@ _renderInvestorCompaniesMain = function(){
     return;
   }
 
-  var icTotalPages = Math.max(1, Math.ceil(grouped.length / IC_PAGE_SIZE));
+  // Pagination — faqat visible (non-hidden-child) kompaniyalar bo'yicha
+  var visibleGroups = grouped.filter(function(g){ return !g._isHiddenChild; });
+  var icTotalPages = Math.max(1, Math.ceil(visibleGroups.length / IC_PAGE_SIZE));
   if(_icPage > icTotalPages) _icPage = icTotalPages;
   if(_icPage < 1) _icPage = 1;
   var icStart = (_icPage - 1) * IC_PAGE_SIZE;
   var icEnd = icStart + IC_PAGE_SIZE;
-  var groupPage = grouped.slice(icStart, icEnd);
+  // Bu sahifaga 15 ta visible kompaniya
+  var visiblePageGroups = visibleGroups.slice(icStart, icEnd);
+  // Visible parentlarning yashirin child'larini ham qo'shamiz
+  var visibleKeys = Object.create(null);
+  visiblePageGroups.forEach(function(g){ visibleKeys[g.key] = true; });
+  var groupPage = grouped.filter(function(g){
+    if(visibleKeys[g.key]) return true;
+    if(g._isHiddenChild && g._parentKey && visibleKeys[g._parentKey]) return true;
+    return false;
+  });
 
   var paginEl = document.getElementById('ic-pagination');
   if(paginEl){
@@ -2565,7 +2576,7 @@ _renderInvestorCompaniesMain = function(){
       }
       var prevBtn = '<button onclick="if(_icPage>1){_icPage--;renderInvestorCompanies();}" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.75rem;cursor:pointer">&#8592;</button>';
       var nextBtn = '<button onclick="if(_icPage<'+icTotalPages+'){_icPage++;renderInvestorCompanies();}" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.75rem;cursor:pointer">&#8594;</button>';
-      paginEl.innerHTML = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:.75rem 0">'+prevBtn+pages.join('')+nextBtn+'<span style="font-size:.72rem;color:var(--text3);margin-left:6px">'+grouped.length+' ta / '+_icPage+'-bet</span></div>';
+      paginEl.innerHTML = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:.75rem 0">'+prevBtn+pages.join('')+nextBtn+'<span style="font-size:.72rem;color:var(--text3);margin-left:6px">'+visibleGroups.length+' ta / '+_icPage+'-bet</span></div>';
       paginEl.style.display = 'block';
     } else {
       paginEl.innerHTML = '';
