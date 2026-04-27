@@ -36,7 +36,15 @@ async function callGemini(body, _retryCount, _keyIdx){
 
   for(var m=0; m<GEMINI_MODELS.length; m++){
     try {
-      var resp = await fetch(geminiUrl(GEMINI_MODELS[m], key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      // Gemma modellar JSON mode'ni qo'llab-quvvatlamaydi — clone qilib responseMimeType ni olib tashlaymiz
+      var modelName = GEMINI_MODELS[m];
+      var bodyToSend = body;
+      if(modelName.indexOf('gemma') !== -1 && body && body.generationConfig && (body.generationConfig.responseMimeType || body.generationConfig.responseSchema)){
+        bodyToSend = JSON.parse(JSON.stringify(body));
+        delete bodyToSend.generationConfig.responseMimeType;
+        delete bodyToSend.generationConfig.responseSchema;
+      }
+      var resp = await fetch(geminiUrl(modelName, key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bodyToSend)});
       if(resp.ok){
         var data = await resp.json();
         if(data.candidates && data.candidates[0]) return data;
