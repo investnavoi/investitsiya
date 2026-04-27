@@ -969,9 +969,9 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     function _bodyCardsHtml(){
       return ''+
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-bottom:1rem">'+
-          '<div style="padding:.85rem;border-radius:12px;background:rgba(15,118,110,.08);border:1px solid rgba(15,118,110,.25)"><div style="font-size:.6rem;color:#115E59;font-weight:700;letter-spacing:.04em">KOMPANIYALAR</div><div style="font-size:1.3rem;font-weight:800;color:#0F766E;margin-top:2px">'+firmsTxt+'</div></div>'+
-          '<div style="padding:.85rem;border-radius:12px;background:rgba(67,97,238,.08);border:1px solid rgba(67,97,238,.2)"><div style="font-size:.6rem;color:#1E3A8A;font-weight:700;letter-spacing:.04em">SHIPMENTLAR</div><div style="font-size:1.3rem;font-weight:800;color:#4361EE;margin-top:2px">'+shipTxt+'</div></div>'+
-          '<div style="padding:.85rem;border-radius:12px;background:linear-gradient(135deg,rgba(217,119,6,.12),rgba(245,158,11,.08));border:1px solid rgba(217,119,6,.25)"><div style="font-size:.6rem;color:#9A3412;font-weight:700;letter-spacing:.04em">TAXMINIY KREDIT</div><div style="font-size:1.3rem;font-weight:800;color:#D97706;margin-top:2px">'+_creditTxtForMode(selectedApiMode)+'</div></div>'+
+          '<div style="padding:.85rem;border-radius:12px;background:rgba(15,118,110,.08);border:1px solid rgba(15,118,110,.25)" title="Bu HS kod uchun TradeAtlas\'da topilgan firmalar soni (eksportyor + importyor)"><div style="font-size:.6rem;color:#115E59;font-weight:700;letter-spacing:.04em">KOMPANIYALAR</div><div style="font-size:1.3rem;font-weight:800;color:#0F766E;margin-top:2px">'+firmsTxt+'</div><div style="font-size:.55rem;color:#115E59;margin-top:2px;opacity:.7">Topilgan firmalar</div></div>'+
+          '<div style="padding:.85rem;border-radius:12px;background:rgba(67,97,238,.08);border:1px solid rgba(67,97,238,.2)" title="Belgilangan davlatlar va sanalar oraligida TradeAtlas\'dagi shipment yozuvlari soni"><div style="font-size:.6rem;color:#1E3A8A;font-weight:700;letter-spacing:.04em">SHIPMENTLAR</div><div style="font-size:1.3rem;font-weight:800;color:#4361EE;margin-top:2px">'+shipTxt+'</div><div style="font-size:.55rem;color:#1E3A8A;margin-top:2px;opacity:.7">Yuk tashish yozuvlari</div></div>'+
+          '<div style="padding:.85rem;border-radius:12px;background:linear-gradient(135deg,rgba(217,119,6,.12),rgba(245,158,11,.08));border:1px solid rgba(217,119,6,.25)" title="Yuklab olish uchun sarflanadigan TradeAtlas krediti — Firmalar rejimi: 1 firma = 1 kredit; Shipmentlar rejimi: 1 shipment ≈ 1 kredit"><div style="font-size:.6rem;color:#9A3412;font-weight:700;letter-spacing:.04em">TAXMINIY KREDIT</div><div style="font-size:1.3rem;font-weight:800;color:#D97706;margin-top:2px">'+_creditTxtForMode(selectedApiMode)+'</div><div style="font-size:.55rem;color:#9A3412;margin-top:2px;opacity:.7">Yuklab olish narxi</div></div>'+
         '</div>';
     }
 
@@ -1088,11 +1088,16 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     }
 
     function _renderBox(){
+      var targetSummary = targetCodes.slice(0, 5).join(', ') + (targetCodes.length > 5 ? ' (+' + (targetCodes.length-5) + ')' : '');
+      var sourceSummary = sourceCodes.length ?
+        (sourceCodes.slice(0, 5).join(', ') + (sourceCodes.length > 5 ? ' (+' + (sourceCodes.length-5) + ')' : ''))
+        : '<span style="color:#9A3412;font-weight:700">Butun dunyo (Afrikasiz)</span>';
       box.innerHTML =
         '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem"><div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0F766E,#059669);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M2 12h20M12 2c2.5 2.8 4 6.2 4 10s-1.5 7.2-4 10c-2.5-2.8-4-6.2-4-10s1.5-7.2 4-10z" stroke="currentColor" stroke-width="1.8"/></svg></div><div><h3 style="margin:0;font-size:1.05rem;color:#1a1a2e">TradeAtlas so\'rov xulosasi</h3><div style="font-size:.7rem;color:#64748B">Count endpointlari (0 kredit)</div></div></div>'+
-        '<div style="background:#F8FAFC;border-radius:10px;padding:.85rem;margin-bottom:1rem;font-size:.78rem;color:#475569">'+
-          '<div style="margin-bottom:.3rem"><strong>Mahsulot:</strong> '+escHtml(prod.name_en||prod.name_uz||'—')+' (HS '+escHtml(hsCode||'—')+')</div>'+
-          '<div><strong>Davlatlar:</strong> '+escHtml(taCountries.slice(0,5).join(', ') || '—')+(taCountries.length>5?'...':'')+'</div>'+
+        '<div style="background:#F8FAFC;border-radius:10px;padding:.85rem;margin-bottom:1rem;font-size:.78rem;color:#475569;line-height:1.55">'+
+          '<div style="margin-bottom:.35rem"><strong>📦 Mahsulot:</strong> '+escHtml(prod.name_en||prod.name_uz||'—')+' <span style="color:#64748B">(HS '+escHtml(hsCode||'—')+')</span></div>'+
+          '<div style="margin-bottom:.35rem"><strong style="color:#0F766E">🎯 Maqsad davlatlar:</strong> '+escHtml(targetSummary || '—')+' <span style="color:#64748B;font-size:.7rem">(import qiluvchi)</span></div>'+
+          '<div><strong style="color:#7C3AED">🌐 Manba davlatlar:</strong> '+sourceSummary+' <span style="color:#64748B;font-size:.7rem">(eksport qiluvchi)</span></div>'+
         '</div>'+
         worldBlock + _modeToggleHtml() + _bodyCardsHtml() + _breakdownHtml() + errBlock +
         '<div style="display:flex;gap:.7rem;justify-content:flex-end">'+
