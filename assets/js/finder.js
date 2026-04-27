@@ -1667,7 +1667,8 @@ function buildTradeAtlasAnalysisRow(firm, reporterLabel, year){
 
 // Import-analysis snapshot'dan eksportyor partnerlarni finder result'iga sintetik item sifatida qo'shish (kreditsiz)
 // Lenient matching: productId YOKI hsCode mos kelsa, target country bo'lsa filtrlanadi (lekin code/name normalization bilan)
-function _enrichFinderFromImportSnapshots(prod, targetCountries){
+// excludeNamesSet — bu kompaniya nomlari (lowercase) skip qilinadi (counterpart sifatida boshqa joyda allaqachon ko'rinadi)
+function _enrichFinderFromImportSnapshots(prod, targetCountries, excludeNamesSet){
   var out = [];
   var snapshots = (DB.importSnapshots || []);
   if(!snapshots.length || !prod) {
@@ -1748,6 +1749,8 @@ function _enrichFinderFromImportSnapshots(prod, targetCountries){
         if(!partnerName) return;
         // Davlat nomi yoki aggregate (World) bo'lsa skip
         if(isCountryNameOrAggregate(partnerName, p.partnerCode)) return;
+        // Counterpart sifatida boshqa rowda allaqachon ko'rinadigan kompaniyani skip qilamiz
+        if(excludeNamesSet && excludeNamesSet[partnerName.toLowerCase().trim()]) return;
         var lastDate = p.period ? (String(p.period) + '-12-31') : '';
         out.push({
           id: 'is_' + Date.now() + '_' + Math.random().toString(36).slice(2,7) + '_' + out.length,
@@ -3555,7 +3558,22 @@ async function runCompanyFinder(source){
       });
       // ═══ Import-analysis snapshot'dan eksportyor partnerlarni qo'shish (kreditsiz) ═══
       try {
-        var snapshotEnrichment = _enrichFinderFromImportSnapshots(prod, targetCountries);
+        // Counterpart sifatida allaqachon ko'rinadigan eksportyorlar — ulardan takror chiqarmaymiz
+        var _excludeNames = Object.create(null);
+        _finderResults.forEach(function(item){
+          // Importer'larning counterpart firmalari = eksportyorlar
+          var firms = Array.isArray(item._tradeAtlasCounterpartFirms) ? item._tradeAtlasCounterpartFirms : [];
+          firms.forEach(function(cp){
+            var nm = String((cp && cp.name) || '').trim().toLowerCase();
+            if(nm) _excludeNames[nm] = true;
+          });
+          // Mavjud eksportyor result'larining nomlarini ham qo'shamiz (dublikat yo'q)
+          if(String(item.finderMode || '').toLowerCase() === 'exporters'){
+            var nm2 = String(item.kompaniya || '').trim().toLowerCase();
+            if(nm2) _excludeNames[nm2] = true;
+          }
+        });
+        var snapshotEnrichment = _enrichFinderFromImportSnapshots(prod, targetCountries, _excludeNames);
         if(snapshotEnrichment && snapshotEnrichment.length){
           snapshotEnrichment.forEach(function(item){ _finderResults.push(item); });
           if(typeof toast === 'function') toast('💾 '+snapshotEnrichment.length+' ta eksportyor import-analysis cache\'idan qo\'shildi (kreditsiz)','success');
