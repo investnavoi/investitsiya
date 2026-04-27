@@ -1665,9 +1665,8 @@ function buildTradeAtlasAnalysisRow(firm, reporterLabel, year){
   };
 }
 
-// Import-analysis snapshot'dan eksportyor partnerlarni finder result'iga sintetik item sifatida qo'shish (kreditsiz)
-// Lenient matching: productId YOKI hsCode mos kelsa, target country bo'lsa filtrlanadi (lekin code/name normalization bilan)
-// excludeNamesSet — bu kompaniya nomlari (lowercase) skip qilinadi (counterpart sifatida boshqa joyda allaqachon ko'rinadi)
+// Import-analysis snapshot'dan BARCHA eksportyor partnerlarni finder result'iga qo'shish (kreditsiz)
+// Faqat product/HS bo'yicha match qilinadi, target country va exclusion ishlatilmaydi (foydalanuvchi BARCHA partnerni ko'rishni xohlaydi)
 function _enrichFinderFromImportSnapshots(prod, targetCountries, excludeNamesSet){
   var out = [];
   var snapshots = (DB.importSnapshots || []);
@@ -1677,47 +1676,14 @@ function _enrichFinderFromImportSnapshots(prod, targetCountries, excludeNamesSet
   }
   var prodId = String(prod.id || '');
   var hsCode = getExactImportHsCode(prod);
-  // Target country nomlari va kodlarini to'plash (normalization)
-  var targetNameSet = Object.create(null);
-  var targetCodeSet = Object.create(null);
-  (targetCountries || []).forEach(function(t){
-    var n = (typeof t === 'string') ? t : String((t && (t.name || t.label)) || '');
-    var c = (typeof t === 'string') ? '' : String((t && t.code) || '');
-    if(n) targetNameSet[n.toLowerCase().trim()] = true;
-    if(c) targetCodeSet[c.toUpperCase().trim()] = true;
-  });
-  var hasTargetFilter = Object.keys(targetNameSet).length > 0 || Object.keys(targetCodeSet).length > 0;
-  console.log('[Enrichment] Filter:', {prodId, hsCode, targetNames: Object.keys(targetNameSet), targetCodes: Object.keys(targetCodeSet), snapshots: snapshots.length});
+  console.log('[Enrichment] Filter:', {prodId, hsCode, snapshots: snapshots.length});
   var matchedSnapshots = 0, matchedCountries = 0;
-  // Davlat nomlari — filter qilish uchun (comtrade snapshot'lar yoki World/aggregate satrlarni chiqarmaslik)
-  var COUNTRY_BLOCKLIST = {
-    'world':1,'jahon':1,'all':1,'global':1,
-    'germany':1,'usa':1,'china':1,'russia':1,'rossiya':1,'kazakhstan':1,'qozog\'iston':1,
-    'turkey':1,'turkiya':1,'india':1,'hindiston':1,'japan':1,'yaponiya':1,
-    'brazil':1,'braziliya':1,'france':1,'fransiya':1,'italy':1,'italiya':1,
-    'spain':1,'ispaniya':1,'uk':1,'united kingdom':1,'angliya':1,
-    'canada':1,'kanada':1,'mexico':1,'meksika':1,'iran':1,'pakistan':1,
-    'vietnam':1,'thailand':1,'indonesia':1,'malaysia':1,'philippines':1,'south korea':1,
-    'azerbaijan':1,'ozarbayjon':1,'uzbekistan':1,'o\'zbekiston':1,'tajikistan':1,'tojikiston':1,
-    'kyrgyzstan':1,'qirg\'iziston':1,'turkmenistan':1,'turkmaniston':1,'mongolia':1,'mo\'g\'uliston':1,
-    'afghanistan':1,'afg\'oniston':1,'belarus':1,'ukraine':1,'ukraina':1,'poland':1,'polsha':1,
-    'netherlands':1,'gollandiya':1,'belgium':1,'belgiya':1,'sweden':1,'shvetsiya':1,
-    'switzerland':1,'shveytsariya':1,'austria':1,'avstriya':1,'australia':1,'avstraliya':1,
-    'south africa':1,'egypt':1,'misr':1,'saudi arabia':1,'uae':1,'taiwan':1,'hong kong':1,
-    'singapore':1,'singapur':1,'european union':1,'eu':1
-  };
-  function isCountryNameOrAggregate(name, partnerCode){
+  // Aggregate row'larni (World/jami) chiqarmaslik — comtrade snapshot bo'lsa partnerCode=0 ko'rsatadi
+  function isAggregateRow(name, partnerCode){
+    if(partnerCode === 0 || partnerCode === '0') return true;
     var k = String(name || '').trim().toLowerCase();
     if(!k) return true;
-    if(COUNTRY_BLOCKLIST[k]) return true;
-    // Comtrade'da "World" ko'pincha partnerCode=0 yoki maxsus kod
-    if(partnerCode === 0 || partnerCode === '0') return true;
-    // Davlat nomi bo'lsa, odatda "CO." "LTD" "LLC" kabi suffikslar bo'lmaydi
-    var hasCorpSuffix = /\b(co\.|ltd|llc|inc|corp|gmbh|s\.r\.l|s\.a|industri|trading|chemical|materials|company|group)\b/i.test(k);
-    if(hasCorpSuffix) return false;
-    // Juda qisqa nom (1-2 so'z) va corporate suffix yo'q — ehtimol davlat
-    var wordCount = k.split(/\s+/).length;
-    if(wordCount <= 2 && !hasCorpSuffix) return true;
+    if(k === 'world' || k === 'jahon' || k === 'all' || k === 'global') return true;
     return false;
   }
   snapshots.forEach(function(snap){
@@ -1737,19 +1703,14 @@ function _enrichFinderFromImportSnapshots(prod, targetCountries, excludeNamesSet
       var cName = String(country.n || country.name || '').trim();
       var cCode = String(country.c || country.code || '').trim().toUpperCase();
       if(!cName && !cCode) return;
-      if(hasTargetFilter){
-        var nameMatch = cName && targetNameSet[cName.toLowerCase()];
-        var codeMatch = cCode && targetCodeSet[cCode];
-        if(!nameMatch && !codeMatch) return;
-      }
+      // Target country filter olib tashlandi — barcha countries dan partner chiqaramiz
       matchedCountries++;
       var products = country.pr || country.products || [];
       products.forEach(function(p){
         var partnerName = String(p.partner || p.partnerDesc || '').trim();
         if(!partnerName) return;
-        // Davlat nomi yoki aggregate (World) bo'lsa skip
-        if(isCountryNameOrAggregate(partnerName, p.partnerCode)) return;
-        // Counterpart sifatida boshqa rowda allaqachon ko'rinadigan kompaniyani skip qilamiz
+        // Faqat aggregate row (World/Jahon, partnerCode=0) skip
+        if(isAggregateRow(partnerName, p.partnerCode)) return;
         if(excludeNamesSet && excludeNamesSet[partnerName.toLowerCase().trim()]) return;
         var lastDate = p.period ? (String(p.period) + '-12-31') : '';
         // Importyor counterpart — agar TradeAtlas firma'da importer kompaniya nomi mavjud bo'lsa, shuni ishlatamiz
@@ -3575,24 +3536,10 @@ async function runCompanyFinder(source){
       tradeAtlasResults.filter(finderResultIsRenderable).forEach(function(item){
         _finderResults.push(item);
       });
-      // ═══ Import-analysis snapshot'dan eksportyor partnerlarni qo'shish (kreditsiz) ═══
+      // ═══ Import-analysis snapshot'dan BARCHA eksportyor partnerlarni qo'shish (kreditsiz) ═══
+      // Exclusion va target country filter olib tashlandi — dedupeFinderResults dublikatlarni boshqaradi
       try {
-        // Counterpart sifatida allaqachon ko'rinadigan eksportyorlar — ulardan takror chiqarmaymiz
-        var _excludeNames = Object.create(null);
-        _finderResults.forEach(function(item){
-          // Importer'larning counterpart firmalari = eksportyorlar
-          var firms = Array.isArray(item._tradeAtlasCounterpartFirms) ? item._tradeAtlasCounterpartFirms : [];
-          firms.forEach(function(cp){
-            var nm = String((cp && cp.name) || '').trim().toLowerCase();
-            if(nm) _excludeNames[nm] = true;
-          });
-          // Mavjud eksportyor result'larining nomlarini ham qo'shamiz (dublikat yo'q)
-          if(String(item.finderMode || '').toLowerCase() === 'exporters'){
-            var nm2 = String(item.kompaniya || '').trim().toLowerCase();
-            if(nm2) _excludeNames[nm2] = true;
-          }
-        });
-        var snapshotEnrichment = _enrichFinderFromImportSnapshots(prod, targetCountries, _excludeNames);
+        var snapshotEnrichment = _enrichFinderFromImportSnapshots(prod, targetCountries, null);
         if(snapshotEnrichment && snapshotEnrichment.length){
           snapshotEnrichment.forEach(function(item){ _finderResults.push(item); });
           if(typeof toast === 'function') toast('💾 '+snapshotEnrichment.length+' ta eksportyor import-analysis cache\'idan qo\'shildi (kreditsiz)','success');
