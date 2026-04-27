@@ -2203,6 +2203,28 @@ _renderInvestorCompaniesMain = function(){
     });
   }
 
+  // ═══ Filter bypass: xarita davlat filtri tufayli o'tib ketgan PARENT (eksportyor) recordlarini ham qo'shamiz ═══
+  // Misol: xarita filtri "Uzbekistan", co'da UZ importerlar; ularning eksportyor (KZ/CN) parentlari DB'da bor lekin filterdan o'tdi
+  var _coKeysSet = Object.create(null);
+  co.forEach(function(r){
+    var k = String(r.kompaniya || '').trim().toLowerCase();
+    if(k) _coKeysSet[k] = true;
+  });
+  var _coSnapshot = co.slice();
+  _coSnapshot.forEach(function(rec){
+    var linked = [];
+    (rec._partners || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
+    (rec._partnerOf || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
+    linked.forEach(function(nm){
+      if(!nm || _coKeysSet[nm]) return;
+      var existingRec = _existingNamesLower[nm];
+      if(existingRec){
+        co.push(existingRec);
+        _coKeysSet[nm] = true;
+      }
+    });
+  });
+
   var groupedMap = Object.create(null);
   var grouped = [];
   co.forEach(function(rec){
@@ -2409,7 +2431,7 @@ _renderInvestorCompaniesMain = function(){
           '<button type="button" onclick="cancelInvestorSohaEdit()" style="background:var(--ta-gray-100);color:var(--ta-gray-700);border:none;border-radius:8px;padding:5px 10px;font-size:.7rem;cursor:pointer">Bekor</button>' +
         '</div>'
       : (sohaValue
-          ? '<div style="display:flex;align-items:flex-start;gap:6px;min-width:0;word-break:break-word"><span style="font-size:.78rem;color:#1F2937;font-weight:500;word-break:break-word;white-space:normal;line-height:1.35">'+escHtml(sohaValue)+'</span>'+(isAdmin?'<button type="button" onclick="openInvestorSohaEdit(\''+sohaEditRecord.id+'\')" title="Soha tahrirlash" style="border:none;background:none;color:#465fff;cursor:pointer;font-size:.82rem;line-height:1;padding:2px;flex-shrink:0">✏️</button>':'')+'</div>'
+          ? '<div style="display:flex;align-items:flex-start;gap:6px;min-width:0"><span class="ic-soha-cell" style="font-size:.78rem;color:#1F2937;font-weight:500" title="'+tgEscapeAttr(sohaValue)+'">'+escHtml(sohaValue)+'</span>'+(isAdmin?'<button type="button" onclick="openInvestorSohaEdit(\''+sohaEditRecord.id+'\')" title="Soha tahrirlash" style="border:none;background:none;color:#465fff;cursor:pointer;font-size:.82rem;line-height:1;padding:2px;flex-shrink:0">✏️</button>':'')+'</div>'
           : (isAdmin
               ? '<button type="button" onclick="openInvestorSohaEdit(\''+sohaEditRecord.id+'\')" style="background:var(--ta-warning-50);color:var(--ta-warning-600);border:none;border-radius:8px;padding:5px 12px;font-size:.7rem;cursor:pointer;font-weight:500">Soha qo\'shish</button>'
               : '<span style="color:var(--ta-gray-300)">—</span>'));
