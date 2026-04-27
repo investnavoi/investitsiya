@@ -1156,6 +1156,10 @@ function upsertFinderContactInvestorRecord(record, item, contact, meta){
     DB.investorCompanies.push(rec);
   }
   if(typeof fbSave === 'function') fbSave('investorCompanies', rec);
+  // localStorage backup — Firebase fail bo'lsa ham refresh'da yo'qolmasin
+  if(typeof setLocalCollectionBackup === 'function'){
+    try { setLocalCollectionBackup('investorCompanies', DB.investorCompanies); } catch(_e){}
+  }
   return rec;
 }
 

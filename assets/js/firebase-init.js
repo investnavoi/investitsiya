@@ -278,6 +278,14 @@ function _applyCollectionToDb(col, rows, batchRef){
       console.log('♻️ Tadbirkorlar local backupdan tiklandi:', localBackup.length);
     }
   }
+  // investorCompanies uchun ham fallback: Firebase bo'sh javob qaytarsa local backup'dan tiklaymiz
+  if(col==='investorCompanies' && rows.length===0){
+    var icBackup = getLocalCollectionBackup('investorCompanies');
+    if(icBackup.length){
+      rows.push.apply(rows, icBackup);
+      console.log('♻️ Investor kompaniyalar local backupdan tiklandi:', icBackup.length);
+    }
+  }
   DB[col] = rows;
   if(rows.length) setLocalCollectionBackup(col, rows);
   // Seed from defaults if empty
@@ -411,7 +419,21 @@ window.fbSave = async function(colName, record){
       var list = Array.isArray(DB.entrepreneurs) ? DB.entrepreneurs : [];
       setLocalCollectionBackup('entrepreneurs', list);
     }
-  } catch(e){ console.error('fbSave error:', e); }
+    // investorCompanies uchun ham backup yangilanadi — refresh'da yo'qolib ketmasligi uchun
+    if(colName==='investorCompanies'){
+      var icList = Array.isArray(DB.investorCompanies) ? DB.investorCompanies : [];
+      setLocalCollectionBackup('investorCompanies', icList);
+    }
+  } catch(e){
+    console.error('fbSave error:', e);
+    // Firebase fail bo'lsa ham localStorage'da saqlaymiz, foydalanuvchi yo'qotmasin
+    if(colName==='investorCompanies'){
+      try {
+        var fallbackList = Array.isArray(DB.investorCompanies) ? DB.investorCompanies : [];
+        setLocalCollectionBackup('investorCompanies', fallbackList);
+      } catch(_e){}
+    }
+  }
 };
 
 // Delete single record
