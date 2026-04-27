@@ -2999,10 +2999,15 @@ _renderInvestorCompaniesMain = function(){
     }
 
     // ═══ Gradient ajratuvchi — keyingi kompaniyadan ajratish uchun ═══
-    // Faqat top-level (parent yoki orphan) bloklar orasida ko'rinadi, hidden child'lardan keyin yo'q
-    var _nextGroup = groupPage[groupIdx + 1];
+    // Hidden child'larni o'tkazib, keyingi visible (parent/orphan) kompaniyani topamiz
     var _isCurrentTopLevel = !group._isHiddenChild;
-    var _nextIsTopLevel = _nextGroup && (_nextGroup._isParent || _nextGroup._isOrphan);
+    var _nextVisibleGroup = null;
+    for(var _lookIdx = groupIdx + 1; _lookIdx < groupPage.length; _lookIdx++){
+      var _candidate = groupPage[_lookIdx];
+      if(!_candidate || _candidate._isHiddenChild) continue;
+      if(_candidate._isParent || _candidate._isOrphan){ _nextVisibleGroup = _candidate; break; }
+    }
+    var _nextIsTopLevel = !!_nextVisibleGroup;
     if(_isCurrentTopLevel && _nextIsTopLevel){
       html += '<tr class="ic-company-separator" aria-hidden="true">'+
         '<td colspan="7" style="padding:8px 12px !important;border:none !important;background:transparent !important">'+
