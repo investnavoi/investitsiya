@@ -2117,6 +2117,71 @@ _renderInvestorCompaniesMain = function(){
     }
   }
 
+  // ═══ Backfill: eski importyor recordlarda _partnerOf bor lekin eksportyor record yo'q bo'lsa, sintetik yaratamiz ═══
+  // Bu qilmasak, eksportyor faqat panel'da ko'rinadi — alohida row sifatida emas
+  var _existingNamesLower = Object.create(null);
+  (DB.investorCompanies || []).forEach(function(r){
+    var k = String(r.kompaniya || '').trim().toLowerCase();
+    if(k) _existingNamesLower[k] = r;
+  });
+  var _backfillNeeded = [];
+  co.forEach(function(rec){
+    var po = Array.isArray(rec._partnerOf) ? rec._partnerOf : [];
+    po.forEach(function(p){
+      if(!p || !p.kompaniya) return;
+      var nm = String(p.kompaniya).trim().toLowerCase();
+      if(!nm || _existingNamesLower[nm]) return;
+      // Sintetik eksportyor yarataylik
+      var role = String(p.role || '').toLowerCase();
+      if(role !== 'exporter' && role !== 'importer') return; // role aniq bo'lmasa skip
+      var syntheticRec = {
+        id: 'syn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+        kompaniya: p.kompaniya,
+        davlat: p.davlat || p.country || '',
+        shahar: p.cityState || '',
+        soha: rec.soha || '',
+        mahsulotNomi: rec.mahsulotNomi || '',
+        productId: rec.productId || '',
+        mahsulotHs: rec.mahsulotHs || '',
+        manba: 'TradeAtlas',
+        finderMode: role + 's',
+        score: 70,
+        rahbar: '', lavozim: '', email: '', telefon: '',
+        emailSent: false, holat: 'Yangi',
+        _tradeAtlasTradeValue: p.totalValue || 0,
+        _tradeAtlasQuantity: p.totalQty || 0,
+        _tradeAtlasDocCount: p.docCount || 0,
+        _tradeAtlasLastArrivalDate: p.lastDate || '',
+        // _partners ga teskari bog'lanish — mavjud rec endi xaridor
+        _partners: [{
+          kompaniya: rec.kompaniya || '', davlat: rec.davlat || '',
+          countryCode: '', cityState: rec.shahar || '',
+          email: rec.email || '', tel: rec.telefon || '', web: rec.website || '',
+          role: role === 'exporter' ? 'importer' : 'exporter',
+          totalValue: p.totalValue || 0, totalQty: p.totalQty || 0,
+          docCount: p.docCount || 0, lastDate: p.lastDate || ''
+        }]
+      };
+      _existingNamesLower[nm] = syntheticRec;
+      _backfillNeeded.push(syntheticRec);
+    });
+  });
+  // Sintetik recordlarni DB ga qo'shamiz va saqlaymiz
+  if(_backfillNeeded.length){
+    if(!Array.isArray(DB.investorCompanies)) DB.investorCompanies = [];
+    _backfillNeeded.forEach(function(r){
+      DB.investorCompanies.push(r);
+      if(typeof fbSave === 'function') fbSave('investorCompanies', r);
+    });
+    // co arrayini yangilab olamiz (filter'dan o'tgandan keyin sintetiklarni ham qo'shish)
+    _backfillNeeded.forEach(function(r){
+      // Country filter va product filter sintetikani ham filterdan o'tkazsin
+      if(_investorGeoFilterStateCode && getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return;
+      if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return;
+      co.push(r);
+    });
+  }
+
   var groupedMap = Object.create(null);
   var grouped = [];
   co.forEach(function(rec){
@@ -2166,12 +2231,15 @@ _renderInvestorCompaniesMain = function(){
   // Yangi tartib: avval har eksportyor + uning importyor xaridorlari, so'ng orphan importerlar va boshqalar
   var _visited = Object.create(null);
   var _orderedGroups = [];
+  var _displayCounter = 0;
   grouped.forEach(function(g){
     if(_visited[g.key]) return;
     if(g._role !== 'exporter') return;
     g._isParent = true;
     g._parentName = (g.records[0] && g.records[0].kompaniya) || '';
     _visited[g.key] = true;
+    _displayCounter++;
+    g._displayNumber = _displayCounter;
     _orderedGroups.push(g);
     var rec = g.records[0];
     var childNames = [];
@@ -2191,6 +2259,8 @@ _renderInvestorCompaniesMain = function(){
       child._isChild = true;
       child._parentKey = g.key;
       child._parentName = rec.kompaniya || '';
+      // Bir xil raqam — parent va child #N
+      child._displayNumber = g._displayNumber;
       _visited[child.key] = true;
       _orderedGroups.push(child);
     });
@@ -2199,6 +2269,8 @@ _renderInvestorCompaniesMain = function(){
   grouped.forEach(function(g){
     if(_visited[g.key]) return;
     _visited[g.key] = true;
+    _displayCounter++;
+    g._displayNumber = _displayCounter;
     _orderedGroups.push(g);
   });
   grouped = _orderedGroups;
@@ -2239,7 +2311,8 @@ _renderInvestorCompaniesMain = function(){
     var recs = group.records || [];
     if(!recs.length) return '';
     var companyRec = recs[0];
-    var rowNumber = icStart + groupIdx + 1;
+    // Parent va Child bir xil raqamga ega — _displayNumber ishlatamiz
+    var rowNumber = (typeof group._displayNumber === 'number') ? group._displayNumber : (icStart + groupIdx + 1);
     var countryName = String(companyRec.davlat || companyRec.country || '').trim();
     var countryLabel = countryName ? (typeof getFinderCountryLabel === 'function' ? getFinderCountryLabel(countryName) : countryName) : '';
     var cityText = String(companyRec.shahar || companyRec.city || '').trim();
