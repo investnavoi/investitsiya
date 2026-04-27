@@ -3920,6 +3920,25 @@ function _fmtTaRoleBadge(item){
   return '';
 }
 
+// Section header — Importyor / Eksportyor guruhini ajratish uchun
+function _fmtTaSectionHeader(role, count){
+  var isImp = role === 'importers';
+  var label = isImp ? '📥 Importyor kompaniyalar' : '📤 Eksportyor kompaniyalar';
+  var bg = isImp ? 'linear-gradient(90deg,rgba(124,58,237,.12),rgba(124,58,237,.04))' : 'linear-gradient(90deg,rgba(5,150,105,.12),rgba(5,150,105,.04))';
+  var color = isImp ? '#7C3AED' : '#059669';
+  var sub = isImp ? 'Mahsulotni manba davlatdan import qilgan firmalar' : 'Mahsulotni maqsad davlatga eksport qilgan firmalar';
+  return '<tr class="finder-section-header" aria-hidden="true">'+
+    '<td colspan="11" style="padding:.6rem .9rem;background:'+bg+';border:none;border-left:3px solid '+color+'">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:.7rem">'+
+        '<div>'+
+          '<div style="font-family:\'Sora\',sans-serif;font-size:.85rem;font-weight:800;color:'+color+'">'+label+' <span style="background:#fff;color:'+color+';padding:1px 8px;border-radius:8px;font-size:.7rem;margin-left:6px">'+count+'</span></div>'+
+          '<div style="font-size:.62rem;color:var(--text3);margin-top:2px">'+sub+'</div>'+
+        '</div>'+
+      '</div>'+
+    '</td>'+
+  '</tr>';
+}
+
 // Final override: keep one company row-group and show multiple contacts under that company.
 function renderFinderTable(results){
   updateFinderModeUI();
@@ -3927,7 +3946,13 @@ function renderFinderTable(results){
   if(!tb) return;
   var rows = [];
   var allResults = Array.isArray(_finderResults) ? _finderResults : [];
-  var _sortedResults = (results || []).slice().sort(function(a,b){
+  // Avval eksportyor/importyor bo'yicha ajratamiz, har guruh ichida score'ga qarab tartiblanadi
+  var _sortedResults = (results || []).slice().sort(function(a, b){
+    var roleA = String(a.finderMode || '').toLowerCase();
+    var roleB = String(b.finderMode || '').toLowerCase();
+    var pA = roleA === 'importers' ? 0 : (roleA === 'exporters' ? 1 : 2);
+    var pB = roleB === 'importers' ? 0 : (roleB === 'exporters' ? 1 : 2);
+    if(pA !== pB) return pA - pB;
     return (b.score || 0) - (a.score || 0);
   });
   var _visibleResults = _sortedResults.filter(function(_r){
@@ -3936,10 +3961,27 @@ function renderFinderTable(results){
   });
   var _lastVisibleIdx = _visibleResults.length - 1;
   var _renderedIdx = -1;
+  // Har rol uchun nechta visible item borligini sanaymiz — section header'larda ko'rsatamiz
+  var _roleCounts = { importers: 0, exporters: 0, other: 0 };
+  _visibleResults.forEach(function(_r){
+    var _role = String(_r.finderMode || '').toLowerCase();
+    if(_role === 'importers') _roleCounts.importers++;
+    else if(_role === 'exporters') _roleCounts.exporters++;
+    else _roleCounts.other++;
+  });
+  var _lastSectionRole = null; // section change'ni aniqlash uchun
   _sortedResults.forEach(function(r, i){
     var contacts = getFinderVisibleContacts(r);
     if(!contacts.length) return;
     _renderedIdx++;
+    // Section header — rol o'zgarganda kiritiladi
+    var _curRole = String(r.finderMode || '').toLowerCase();
+    if(_curRole === 'importers' || _curRole === 'exporters'){
+      if(_curRole !== _lastSectionRole){
+        rows.push(_fmtTaSectionHeader(_curRole, _roleCounts[_curRole] || 0));
+        _lastSectionRole = _curRole;
+      }
+    }
     var sourceIdx = allResults.indexOf(r);
     if(sourceIdx < 0) sourceIdx = i;
     var scoreColor = r.score>=80 ? '#059669' : r.score>=60 ? '#FFB703' : '#EF233C';
