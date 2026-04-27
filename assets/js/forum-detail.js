@@ -2781,7 +2781,7 @@ _renderInvestorCompaniesMain = function(){
       if(!contact.name && !contact.email) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
       contactHtml += '</div>';
 
-      var groupBorderStyle = recIdx === 0 ? 'border-top:10px solid transparent;box-shadow:inset 0 2px 0 rgba(70,95,255,.18);' : '';
+      var groupBorderStyle = recIdx === 0 ? 'border-top:2px solid transparent;' : '';
       // Parent (eksportyor) qator hover qilganda — ostiga ulangan importyor xaridorlar BADGE ko'rinadi
       // Agar biror importyor ochilgan bo'lsa (pinned), mouseleave'da yashirinmaydi
       var _hoverHandlers = '';

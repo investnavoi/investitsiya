@@ -521,8 +521,11 @@ input[type="checkbox"]:checked::after,
 #ic-tbody tr.ic-row-child{border-left:4px solid #7C3AED !important}
 
 /* ═══ Investor base — qatorlar orasini qisqartirish + ustun kengliklarini optimallash ═══ */
-/* Qator padding'ini kamaytirib row'lar orasini ixchamlash */
-#ic-tbody tr.ic-group-row td{padding-top:8px !important;padding-bottom:8px !important}
+/* Qator padding'ini eng kichik qilamiz — maksimum ixcham */
+#ic-tbody tr.ic-group-row td{padding-top:3px !important;padding-bottom:3px !important;padding-left:8px !important;padding-right:8px !important}
+#ic-tbody tr.ic-partner-panel-row td{padding-top:2px !important;padding-bottom:2px !important}
+#ic-tbody tr.ic-company-separator td{padding:0 !important}
+#ic-tbody tr.ic-company-separator td > div{margin:1px 0 !important;height:2px !important}
 /* Kompaniya nomini max 2 qatorgacha o'rashga yo'l qo'yish (1 qatorga sig'masa 2-ga oshadi, undan ortiq emas) */
 #ic-tbody .ic-company-name-2line{
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
