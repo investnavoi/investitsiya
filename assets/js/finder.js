@@ -3810,6 +3810,48 @@ function _legacyRenderFinderTable_v3(results){
   mountInvestorAiWorkspace();
 }
 
+// TradeAtlas hajm + counterpart cellni formatlash uchun yordamchi funksiyalar
+function _fmtTaHajmCell(item){
+  if(!item) return '<span style="color:var(--text3)">—</span>';
+  var qty = Number(item._tradeAtlasQuantity || 0);
+  var unit = String(item._tradeAtlasQuantityUnit || '').trim();
+  if(!qty){
+    // Fallback: gross/net og'irlik bo'lsa shuni ko'rsat
+    var gw = Number(item._tradeAtlasGrossWeight || 0);
+    var nw = Number(item._tradeAtlasNetWeight || 0);
+    var w = gw || nw;
+    if(!w) return '<span style="color:var(--text3)">—</span>';
+    qty = w;
+    unit = String(item._tradeAtlasGrossWeightUnit || item._tradeAtlasNetWeightUnit || 'kg').trim();
+  }
+  var disp;
+  if(qty >= 1e6) disp = (qty/1e6).toFixed(2) + 'M';
+  else if(qty >= 1e3) disp = (qty/1e3).toFixed(1) + 'K';
+  else disp = String(Math.round(qty * 100) / 100);
+  return '<span style="font-weight:700">'+disp+'</span><span style="font-size:.6rem;color:var(--text3);margin-left:3px">'+escHtml(unit||'kg')+'</span>';
+}
+
+function _fmtTaCounterpartCell(item){
+  if(!item) return '<span style="color:var(--text3)">—</span>';
+  var arr = Array.isArray(item._tradeAtlasCounterpartCountries) ? item._tradeAtlasCounterpartCountries.filter(Boolean) : [];
+  if(!arr.length){
+    // Fallback: description ichida "Hamkor davlatlar: X, Y, Z" bor bo'lsa shundan ol
+    var desc = String(item.description || '').trim();
+    var m = desc.match(/Hamkor davlatlar:\s*(.+)/i);
+    if(m && m[1]){
+      arr = m[1].split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    }
+  }
+  if(!arr.length) return '<span style="color:var(--text3)">—</span>';
+  var shown = arr.slice(0, 3);
+  var more = arr.length > 3 ? ' <span style="color:var(--text3);font-size:.6rem;font-weight:600">+'+(arr.length-3)+'</span>' : '';
+  return shown.map(function(name){
+    var flag = (typeof getFinderCountryFlag === 'function') ? getFinderCountryFlag(name) : '';
+    var label = (typeof getFinderCountryLabel === 'function') ? getFinderCountryLabel(name) : name;
+    return (flag ? flag+' ' : '') + escHtml(String(label || name).slice(0, 12));
+  }).join(', ') + more;
+}
+
 // Final override: keep one company row-group and show multiple contacts under that company.
 function renderFinderTable(results){
   updateFinderModeUI();
@@ -3856,6 +3898,8 @@ function renderFinderTable(results){
         row += '<td rowspan="'+rowspan+'"><div onclick="openFinderContactDetail('+sourceIdx+',0)" style="cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil"><b>'+escHtml(r.kompaniya || '—')+'</b>'+(r.website ? '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.website)+'</div>' : '')+'</div></td>';
         row += '<td rowspan="'+rowspan+'">'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>';
         row += '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+escHtml(r.shahar || '—')+'</td>';
+        row += '<td rowspan="'+rowspan+'" style="font-size:.7rem;white-space:nowrap">'+_fmtTaHajmCell(r)+'</td>';
+        row += '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+_fmtTaCounterpartCell(r)+'</td>';
       }
       row += '<td>'+renderFinderContactCard(state.contact)+'</td>';
       if(contactRowIdx === 0){
@@ -3891,7 +3935,7 @@ function renderFinderTable(results){
     if(_renderedIdx < _lastVisibleIdx){
       rows.push(
         '<tr class="finder-company-separator" aria-hidden="true">'+
-          '<td colspan="9" style="padding:0;border:none;background:transparent">'+
+          '<td colspan="11" style="padding:0;border:none;background:transparent">'+
             '<div style="height:3px;margin:4px 0;border-radius:999px;background:linear-gradient(90deg,transparent 0%,rgba(67,97,238,.18) 12%,rgba(67,97,238,.55) 35%,rgba(245,124,0,.7) 50%,rgba(67,97,238,.55) 65%,rgba(67,97,238,.18) 88%,transparent 100%);box-shadow:0 0 6px rgba(245,124,0,.15)"></div>'+
           '</td>'+
         '</tr>'
