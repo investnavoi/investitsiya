@@ -291,7 +291,8 @@ function getImportAnalysisTargetCountries(){
 }
 
 function getFinderSourceSelection(){
-  var continents = _finderSourceContinents.slice();
+  // Afrika qit'asini chiqarib tashlash — foydalanuvchi tanlamasligi mumkin
+  var continents = _finderSourceContinents.slice().filter(function(c){ return c !== 'Afrika'; });
   var countries = _finderSourceCountries.slice();
   var blockedCountries = getFinderBlockedSourceCountries();
   var effectiveCountries = [];
@@ -301,6 +302,7 @@ function getFinderSourceSelection(){
     });
   } else {
     continents.forEach(function(cont){
+      if(cont === 'Afrika') return; // ikki marta xavfsizlik
       (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(country){
         if(blockedCountries.indexOf(country) !== -1) return;
         if(effectiveCountries.indexOf(country) === -1) effectiveCountries.push(country);
@@ -370,6 +372,8 @@ function renderFinderSourceFilters(){
   var _sourceOpenGroups = window._finderSourceOpenGroups || {};
   window._finderSourceOpenGroups = _sourceOpenGroups;
   Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
+    // Afrika qit'asini foydalanuvchi tanlay olmaydi — UI dan olib tashlanadi
+    if(cont === 'Afrika') return;
     var allC = FINDER_SOURCE_REGIONS[cont]||[];
     var availableC = allC.filter(function(c){ return blockedCountries.indexOf(c)===-1; });
     var filteredC = allC.filter(function(c){ return !search || c.toLowerCase().indexOf(search)!==-1; });
@@ -873,13 +877,13 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     return p;
   }
 
-  // Shipments count — 200/kun limitni tejash uchun:
-  // - 1 manba: per target-chunk (3 so'rov)
-  // - 2-5 manba: per manba × target-chunks (5×3=15 max)
-  // - 6+ yoki 0 manba: single filter-siz per target-chunk (3 so'rov) + warning
+  // Shipments count — har manba davlat alohida iteratsiya qilinadi
+  // TradeAtlas API'da EXPORTER_COUNTRY_CODE faqat 1 davlat qabul qiladi
+  // Cap olib tashlangan — kontinent tanlanganda barcha davlatlar hisoblanadi
+  // 200/kun count limit'iga e'tibor: 50+ source bo'lsa, ko'p so'rov yuboriladi
   var shipmentPromises = [];
-  var sourcesInCount = []; // qaysi manbalar count'ga qo'shilgan
-  if(sourceCodes.length >= 1 && sourceCodes.length <= 5){
+  var sourcesInCount = [];
+  if(sourceCodes.length >= 1){
     sourceCodes.forEach(function(srcCode){
       sourcesInCount.push(srcCode);
       targetChunks.forEach(function(tch){
@@ -887,6 +891,7 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
       });
     });
   } else {
+    // Filter yo'q — butun dunyo (Afrikasiz)
     targetChunks.forEach(function(tch){
       shipmentPromises.push(fetchTradeAtlasCount('shipments/count', _buildShipmentPayload(tch, null)));
     });
@@ -1316,41 +1321,52 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   var dateRange = getImportAnalysisDateRange();
   var taFlowType = (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT';
   var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
-  var taCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
-  var payload = {
-    accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
-    countries: taCountries, firmFilter: [0,1,2], firmType: taFirmType, flowType: taFlowType,
-    page: 1, parameters: [{ HS_CODE: hsCode }], mode: meta.mode,
-    targetCountries: targetCodes, sourceCountries: sourceCodes,
-    hsCode: hsCode, startDate: dateRange.startDate, endDate: dateRange.endDate, size: 250
-  };
-  var pageSize = 250, maxPages = 20;
-  var found = [], expectedTotal = 0;
-  for(var page=1; page<=maxPages; page++){
-    payload.page = page;
-    payload.size = pageSize;
-    var data = await tradeAtlasRequestJson(payload);
-    var firms = tradeAtlasNormalizeArray(data);
-    if(!expectedTotal) expectedTotal = Number((data && data.count) || 0) || 0;
-    var beforeCount = found.length;
-    firms.forEach(function(firm){
-      // Afrika qit'asidagi firmalarni faqat FIRMS mode'da chiqaramiz (kreditlar uchun)
-      // Shipments mode'da BARCHA firmalarni qoldiramiz — kredit allaqachon shipment soniga asoslangan
-      if(meta.mode === 'exporters' && (window._taApiMode || 'firms') === 'firms'){
-        var firmCode = tradeAtlasFirmCountryCode(firm);
-        if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
-      }
-      var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
-      if(!item || !String(item.kompaniya || '').trim()) return;
-      apolloUpsertFinderItem(found, item, meta);
-    });
-    console.log('[ShipmentsSearch] Page', payload.page, 'firms returned:', firms.length, 'found total:', found.length, 'expected:', expectedTotal);
-    if(!firms.length) break;
-    if(found.length === beforeCount) break;
-    if(expectedTotal > 0 && found.length >= expectedTotal) break;
-    if(firms.length < pageSize) break;
+  // Source davlatlarni 5 talik chunk'larga bo'lamiz (TradeAtlas API limit)
+  var allCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
+  var sourceChunks = [];
+  for(var i = 0; i < allCountries.length; i += 5){
+    sourceChunks.push(allCountries.slice(i, i + 5));
   }
-  console.log('[ShipmentsSearch] FINAL firms after filter:', found.length);
+  if(!sourceChunks.length) sourceChunks = [allCountries];
+  console.log('[ShipmentsSearch] Source countries:', allCountries.length, 'chunks:', sourceChunks.length);
+  var pageSize = 250, maxPages = 20;
+  var found = [];
+  // Har chunk uchun alohida search — birorta davlat qoldirilmasin
+  for(var chunkIdx = 0; chunkIdx < sourceChunks.length; chunkIdx++){
+    var chunkCountries = sourceChunks[chunkIdx];
+    var payload = {
+      accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
+      countries: chunkCountries, firmFilter: [0,1,2], firmType: taFirmType, flowType: taFlowType,
+      page: 1, parameters: [{ HS_CODE: hsCode }], mode: meta.mode,
+      targetCountries: targetCodes, sourceCountries: chunkCountries,
+      hsCode: hsCode, startDate: dateRange.startDate, endDate: dateRange.endDate, size: 250
+    };
+    var expectedTotal = 0;
+    for(var page=1; page<=maxPages; page++){
+      payload.page = page;
+      payload.size = pageSize;
+      var data = await tradeAtlasRequestJson(payload);
+      var firms = tradeAtlasNormalizeArray(data);
+      if(!expectedTotal) expectedTotal = Number((data && data.count) || 0) || 0;
+      var beforeCount = found.length;
+      firms.forEach(function(firm){
+        // Shipments mode'da Africa firmalarni qoldiramiz, faqat firms mode'da filtrlanadi
+        if(meta.mode === 'exporters' && (window._taApiMode || 'firms') === 'firms'){
+          var firmCode = tradeAtlasFirmCountryCode(firm);
+          if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
+        }
+        var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
+        if(!item || !String(item.kompaniya || '').trim()) return;
+        apolloUpsertFinderItem(found, item, meta);
+      });
+      console.log('[ShipmentsSearch] Chunk', (chunkIdx+1)+'/'+sourceChunks.length, '['+chunkCountries.join(',')+']', 'page', page, 'firms:', firms.length, 'total:', found.length);
+      if(!firms.length) break;
+      if(found.length === beforeCount && page > 1) break;
+      if(expectedTotal > 0 && firms.length < pageSize) break;
+      if(firms.length < pageSize) break;
+    }
+  }
+  console.log('[ShipmentsSearch] FINAL firms after all chunks:', found.length);
   // ═══ Shipment-level explode: har firma counterpart_firms array bo'yicha alohida rowlarga ajraladi ═══
   // Maqsad: TradeAtlas saytidagi kabi har juftlik (eksportyor + importyor) alohida ko'rinadi
   var exploded = [];
