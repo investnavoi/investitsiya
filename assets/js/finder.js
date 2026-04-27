@@ -3786,17 +3786,44 @@ async function runCompanyFinder(source){
       }
       document.getElementById('finderBar').style.width = '70%';
 
-      // ═══ Apollo + Gemini avtomatik enrichment: kompaniya + lead + email ═══
+      // ═══ Investor base + Apollo + Gemini 3-bosqich enrichment ═══
       var apolloEnrichKey = getApolloApiKey();
       var hasGemini = typeof callGemini === 'function';
       var totalToEnrich = _finderResults.length;
-      var apolloFound = 0, geminiFound = 0, totalSkipped = 0;
+      var apolloFound = 0, geminiFound = 0, dbFound = 0, totalSkipped = 0;
+      // Investor base index (kompaniya nomi → record) — tezkor lookup uchun
+      var _investorIndex = Object.create(null);
+      (DB.investorCompanies || []).forEach(function(rec){
+        if(!rec || !rec.kompaniya) return;
+        var key = apolloCompanyKey(rec.kompaniya);
+        if(!key) return;
+        // Email/rahbar bor bo'lgan recordlarni saqlaymiz
+        if(String(rec.email || '').trim() || String(rec.rahbar || '').trim()){
+          if(!_investorIndex[key]) _investorIndex[key] = rec;
+        }
+      });
       for(var tei = 0; tei < totalToEnrich; tei++){
         var taItem = _finderResults[tei];
         if(!taItem || !taItem.kompaniya) { totalSkipped++; continue; }
         var alreadyHasContact = String(taItem.email || '').trim() || String(taItem.rahbar || '').trim();
         if(alreadyHasContact){ totalSkipped++; continue; }
         var progress = 70 + (tei/totalToEnrich)*18;
+        // 0-qadam: Investor bazadan tekshirish — agar bor bo'lsa, kontaktni nusxalaymiz (kreditsiz)
+        var dbKey = apolloCompanyKey(taItem.kompaniya);
+        var dbRec = dbKey ? _investorIndex[dbKey] : null;
+        if(dbRec){
+          if(!taItem.email && dbRec.email) taItem.email = dbRec.email;
+          if(!taItem.rahbar && dbRec.rahbar) taItem.rahbar = dbRec.rahbar;
+          if(!taItem.lavozim && dbRec.lavozim) taItem.lavozim = dbRec.lavozim;
+          if(!taItem.telefon && dbRec.telefon) taItem.telefon = dbRec.telefon;
+          if(!taItem.linkedin && dbRec.linkedin) taItem.linkedin = dbRec.linkedin;
+          if(!taItem.website && dbRec.website) taItem.website = dbRec.website;
+          if(taItem.email || taItem.rahbar){
+            dbFound++;
+            console.log('[Enrichment] '+taItem.kompaniya+' → DB\'dan topildi (kreditsiz)');
+            continue;
+          }
+        }
         // 1-qadam: Apollo orqali kompaniya + lead qidirish
         if(apolloEnrichKey){
           document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+taItem.kompaniya+' ('+(tei+1)+'/'+totalToEnrich+') — lead qidirilmoqda...';
@@ -3825,9 +3852,9 @@ async function runCompanyFinder(source){
           }
         }
       }
-      console.log('[Enrichment] Apollo:'+apolloFound+', Gemini:'+geminiFound+', Skipped:'+totalSkipped+', Jami:'+totalToEnrich);
-      if(apolloFound + geminiFound > 0){
-        toast('✅ Lead topildi: 🅰️ Apollo:'+apolloFound+' · ✨ Gemini:'+geminiFound, 'success');
+      console.log('[Enrichment] DB:'+dbFound+', Apollo:'+apolloFound+', Gemini:'+geminiFound+', Skipped:'+totalSkipped+', Jami:'+totalToEnrich);
+      if(dbFound + apolloFound + geminiFound > 0){
+        toast('✅ Lead topildi: 🗄️ DB:'+dbFound+' · 🅰️ Apollo:'+apolloFound+' · ✨ Gemini:'+geminiFound, 'success');
       }
       document.getElementById('finderBar').style.width = '88%';
     } else if(source==='apollo' && isTop100Global){
