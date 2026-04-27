@@ -2277,6 +2277,62 @@ _renderInvestorCompaniesMain = function(){
         '</div></td>';
       html += '</tr>';
     });
+
+    // ═══ Hamkor firmalar paneli (Variant 4) — eksportyor uchun importyorlar / importyor uchun eksportyorlar ═══
+    var partners = Array.isArray(companyRec._partners) ? companyRec._partners : [];
+    var partnerOf = Array.isArray(companyRec._partnerOf) ? companyRec._partnerOf : [];
+    if(partners.length || partnerOf.length){
+      var arrowDir = partners.length ? '↘️' : '↖️';
+      var panelTitle = partners.length
+        ? '↘️ Hamkor importyorlar (kim sotib olgan): <b>'+partners.length+' ta</b>'
+        : '↖️ Manba eksportyorlar (kimdan olingan): <b>'+partnerOf.length+' ta</b>';
+      var panelColor = partners.length ? '#7C3AED' : '#059669';
+      var partnerList = (partners.length ? partners : partnerOf).slice(0, 12);
+
+      function _findInvestorIdByCompany(cName){
+        var key = String(cName || '').trim().toLowerCase();
+        if(!key) return '';
+        var found = (DB.investorCompanies || []).find(function(r){
+          return String(r.kompaniya || '').trim().toLowerCase() === key;
+        });
+        return found ? String(found.id) : '';
+      }
+
+      function _fmtPartnerCard(p, idx){
+        var qty = Number(p.totalQty || 0);
+        var qtyTxt = qty >= 1e6 ? (qty/1e6).toFixed(1)+'M' : qty >= 1e3 ? (qty/1e3).toFixed(1)+'K' : (qty ? Math.round(qty) : '');
+        var val = Number(p.totalValue || 0);
+        var valTxt = val >= 1e6 ? '$'+(val/1e6).toFixed(1)+'M' : val >= 1e3 ? '$'+(val/1e3).toFixed(0)+'K' : (val ? '$'+val : '');
+        var partnerCountry = String(p.davlat || p.country || '').trim();
+        var partnerFlag = (typeof getFinderCountryFlag === 'function' && partnerCountry) ? getFinderCountryFlag(partnerCountry) : '';
+        var pid = _findInvestorIdByCompany(p.kompaniya);
+        var jumpHandler = pid
+          ? 'document.getElementById(\'investor-row-'+pid+'\').scrollIntoView({behavior:\'smooth\',block:\'center\'});document.getElementById(\'investor-row-'+pid+'\').style.outline=\'2px solid #4361EE\';setTimeout(function(){var el=document.getElementById(\'investor-row-'+pid+'\');if(el)el.style.outline=\'\'},1500);'
+          : '';
+        var clickAttr = pid ? ('onclick="'+jumpHandler+'" style="cursor:pointer"') : 'style="cursor:default"';
+        return '<div '+clickAttr+' onmouseover="this.style.borderColor=\''+panelColor+'\'" onmouseout="this.style.borderColor=\'rgba(124,58,237,.18)\'" style="display:inline-flex;flex-direction:column;gap:3px;padding:8px 12px;background:#fff;border:1px solid rgba(124,58,237,.18);border-radius:10px;font-size:.7rem;min-width:180px;max-width:240px;transition:border-color .15s">'+
+          '<div style="font-weight:700;color:#111827;line-height:1.3;display:flex;align-items:center;gap:4px">'+
+            '<span style="color:'+panelColor+';font-weight:800">'+arrowDir+'</span>'+
+            '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.kompaniya || '—')+'</span>'+
+          '</div>'+
+          '<div style="font-size:.62rem;color:#6B7280">'+(partnerFlag?partnerFlag+' ':'')+escHtml(partnerCountry || '')+(p.cityState?' · '+escHtml(p.cityState):'')+'</div>'+
+          (qtyTxt || valTxt ? '<div style="font-size:.62rem;color:#374151;font-weight:600">'+(qtyTxt?qtyTxt+' kg':'')+(qtyTxt&&valTxt?' · ':'')+(valTxt||'')+'</div>' : '')+
+          (p.lastDate?'<div style="font-size:.58rem;color:#9CA3AF">📅 '+escHtml(String(p.lastDate).slice(0,10))+'</div>':'')+
+        '</div>';
+      }
+
+      var moreCount = (partners.length ? partners : partnerOf).length - partnerList.length;
+      var moreBadge = moreCount > 0 ? '<span style="display:inline-flex;align-items:center;padding:6px 10px;background:#F3F4F6;color:#6B7280;border-radius:8px;font-size:.7rem;font-weight:600">+'+moreCount+' ta ko\'proq</span>' : '';
+
+      html += '<tr class="ic-partner-panel-row" data-group="'+groupIdx+'" style="background:'+_groupBg+'">';
+      html += '<td colspan="7" style="padding:10px 1.25rem 14px;border-top:1px dashed rgba(124,58,237,.2)">';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.72rem;color:'+panelColor+'">'+panelTitle+'</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+      html += partnerList.map(_fmtPartnerCard).join('');
+      html += moreBadge;
+      html += '</div></td></tr>';
+    }
+
     return html;
   }).join('');
 
