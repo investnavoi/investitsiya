@@ -1516,6 +1516,110 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
 }
 
 // TradeAtlas natijasini Apollo orqali boyitish: organization → people → enrichment (email unlock)
+// Gemini fallback — Apollo'da topilmagan kompaniya kontaktlarini qidiradi
+async function geminiEnrichTradeAtlasItem(item, prod, meta){
+  if(!item || !item.kompaniya) return item;
+  if(typeof callGemini !== 'function') return item;
+  // Allaqachon kontakt bor bo'lsa qaytamiz
+  if(String(item.email || '').trim() && String(item.rahbar || '').trim()) return item;
+  var compName = String(item.kompaniya || '').trim();
+  var country = String(item.davlat || '').trim();
+  var website = String(item.website || '').trim();
+  var sectorHint = (prod && (prod.name_en || prod.name_uz)) || '';
+  var roleHint = meta && meta.mode === 'importers' ? 'importer (buyer)' : 'exporter (seller)';
+  var prompt = 'Find publicly available contact information for the following company. Return ONLY valid JSON, no markdown.\n\n'+
+    'Company name: ' + compName + '\n' +
+    'Country: ' + (country || 'unknown') + '\n' +
+    (website ? 'Website: ' + website + '\n' : '') +
+    'Industry/sector: ' + sectorHint + '\n' +
+    'Role: ' + roleHint + '\n\n' +
+    'Return JSON in this exact format:\n' +
+    '{\n' +
+    '  "found": true/false,\n' +
+    '  "contacts": [\n' +
+    '    {\n' +
+    '      "name": "Full name of decision maker (CEO, Manager)",\n' +
+    '      "title": "Job title",\n' +
+    '      "email": "corporate email if known",\n' +
+    '      "telefon": "phone with country code",\n' +
+    '      "linkedin": "linkedin URL if any"\n' +
+    '    }\n' +
+    '  ],\n' +
+    '  "company_email": "general info@ email",\n' +
+    '  "company_phone": "main phone",\n' +
+    '  "company_website": "official website if found",\n' +
+    '  "industry": "industry/sector",\n' +
+    '  "city": "headquarter city"\n' +
+    '}\n\n' +
+    'IMPORTANT: Only include real, verifiable contacts. If unsure, return empty contacts array. Do NOT fabricate emails or phone numbers.';
+  try {
+    var resp = await callGemini({
+      contents: [{role:'user', parts:[{text: prompt}]}],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 1024, responseMimeType: 'application/json' }
+    });
+    var raw = '';
+    if(resp && resp.candidates && resp.candidates[0]){
+      var cand = resp.candidates[0];
+      if(cand.content && cand.content.parts && cand.content.parts[0]){
+        raw = String(cand.content.parts[0].text || '').trim();
+      }
+    }
+    if(!raw) return item;
+    // JSON parse — markdown bo'lsa olib tashlash
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    var data;
+    try { data = JSON.parse(raw); } catch(_e){ return item; }
+    if(!data || data.found === false) return item;
+    // Item'ni boyitish
+    if(!item.email && data.company_email) item.email = String(data.company_email).trim();
+    if(!item.telefon && data.company_phone) item.telefon = String(data.company_phone).trim();
+    if(!item.website && data.company_website) item.website = String(data.company_website).trim();
+    if(!item.shahar && data.city) item.shahar = String(data.city).trim();
+    if(!item.soha && data.industry) item.soha = String(data.industry).trim();
+    var newContacts = Array.isArray(data.contacts) ? data.contacts.filter(function(c){
+      return c && (c.name || c.email || c.telefon);
+    }) : [];
+    if(newContacts.length){
+      apolloEnsureContactBuckets(item);
+      newContacts.forEach(function(c){
+        var contact = {
+          name: String(c.name || '').trim(),
+          ism: String(c.name || '').trim(),
+          title: String(c.title || '').trim(),
+          email: String(c.email || '').trim(),
+          telefon: String(c.telefon || '').trim(),
+          linkedin: String(c.linkedin || '').trim(),
+          website: String(item.website || '').trim(),
+          source: 'Gemini',
+          _placeholder: false
+        };
+        if(typeof apolloMergeContactCandidate === 'function'){
+          apolloMergeContactCandidate(item, contact);
+        } else {
+          if(!Array.isArray(item.contacts)) item.contacts = [];
+          item.contacts.push(contact);
+          if(!Array.isArray(item._contactCandidates)) item._contactCandidates = [];
+          item._contactCandidates.push(contact);
+        }
+        // Asosiy contact'ni item'ga ham yozish
+        if(!item.rahbar && contact.name) item.rahbar = contact.name;
+        if(!item.lavozim && contact.title) item.lavozim = contact.title;
+        if(!item.email && contact.email) item.email = contact.email;
+        if(!item.telefon && contact.telefon) item.telefon = contact.telefon;
+        if(!item.linkedin && contact.linkedin) item.linkedin = contact.linkedin;
+      });
+      if(typeof apolloApplyCompanyContacts === 'function'){
+        apolloApplyCompanyContacts(item);
+      }
+    }
+    item._geminiEnriched = true;
+    return item;
+  } catch(e){
+    console.warn('[Gemini enrichment] '+compName+' error:', e && e.message);
+    return item;
+  }
+}
+
 async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   if(!item || !item.kompaniya) return item;
   function getDomain(url){
@@ -3682,24 +3786,48 @@ async function runCompanyFinder(source){
       }
       document.getElementById('finderBar').style.width = '70%';
 
-      // ═══ Apollo orqali avtomatik enrichment: kompaniya + lead + email ═══
+      // ═══ Apollo + Gemini avtomatik enrichment: kompaniya + lead + email ═══
       var apolloEnrichKey = getApolloApiKey();
-      if(apolloEnrichKey){
-        document.getElementById('finderProgressText').textContent = '🅰️ Apollo enrichment: kompaniya va lead topilmoqda...';
-        for(var tei = 0; tei < _finderResults.length; tei++){
-          var taItem = _finderResults[tei];
-          if(!taItem || !taItem.kompaniya) continue;
-          if(String(taItem.email || '').trim()) continue; // email allaqachon bor
-          document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+taItem.kompaniya+' ('+(tei+1)+'/'+_finderResults.length+') — lead qidirilmoqda...';
-          document.getElementById('finderBar').style.width = (70 + (tei/_finderResults.length)*18)+'%';
+      var hasGemini = typeof callGemini === 'function';
+      var totalToEnrich = _finderResults.length;
+      var apolloFound = 0, geminiFound = 0, totalSkipped = 0;
+      for(var tei = 0; tei < totalToEnrich; tei++){
+        var taItem = _finderResults[tei];
+        if(!taItem || !taItem.kompaniya) { totalSkipped++; continue; }
+        var alreadyHasContact = String(taItem.email || '').trim() || String(taItem.rahbar || '').trim();
+        if(alreadyHasContact){ totalSkipped++; continue; }
+        var progress = 70 + (tei/totalToEnrich)*18;
+        // 1-qadam: Apollo orqali kompaniya + lead qidirish
+        if(apolloEnrichKey){
+          document.getElementById('finderProgressText').textContent = '🅰️ Apollo: '+taItem.kompaniya+' ('+(tei+1)+'/'+totalToEnrich+') — lead qidirilmoqda...';
+          document.getElementById('finderBar').style.width = progress+'%';
           try {
             await apolloEnrichTradeAtlasItem(taItem, apolloEnrichKey, prod, meta);
+            if(String(taItem.email || '').trim() || String(taItem.rahbar || '').trim()){
+              apolloFound++;
+              continue; // Apollo topdi — Gemini'ga o'tmaymiz
+            }
           } catch(enErr){
             console.log('Apollo enrichment '+taItem.kompaniya+' error:', enErr && enErr.message);
           }
         }
-      } else {
-        console.log('Apollo key topilmadi — enrichment qilinmaydi');
+        // 2-qadam: Apollo topa olmasa, Gemini orqali fallback
+        if(hasGemini){
+          document.getElementById('finderProgressText').textContent = '✨ Gemini: '+taItem.kompaniya+' ('+(tei+1)+'/'+totalToEnrich+') — lead qidirilmoqda (Apollo topmadi)...';
+          document.getElementById('finderBar').style.width = progress+'%';
+          try {
+            await geminiEnrichTradeAtlasItem(taItem, prod, meta);
+            if(String(taItem.email || '').trim() || String(taItem.rahbar || '').trim()){
+              geminiFound++;
+            }
+          } catch(geErr){
+            console.log('Gemini enrichment '+taItem.kompaniya+' error:', geErr && geErr.message);
+          }
+        }
+      }
+      console.log('[Enrichment] Apollo:'+apolloFound+', Gemini:'+geminiFound+', Skipped:'+totalSkipped+', Jami:'+totalToEnrich);
+      if(apolloFound + geminiFound > 0){
+        toast('✅ Lead topildi: 🅰️ Apollo:'+apolloFound+' · ✨ Gemini:'+geminiFound, 'success');
       }
       document.getElementById('finderBar').style.width = '88%';
     } else if(source==='apollo' && isTop100Global){
