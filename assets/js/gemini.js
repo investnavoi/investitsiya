@@ -34,10 +34,14 @@ async function callGemini(body, _retryCount, _keyIdx){
   var key = keys[keyIdx];
   if(!key) throw new Error('Gemini API kalit yo\'q.');
 
+  // Tools (google_search) bo'lsa Gemma'ni o'tkazib yuboramiz — Gemma tools'ni qo'llamaydi
+  var hasTools = body && Array.isArray(body.tools) && body.tools.length > 0;
   for(var m=0; m<GEMINI_MODELS.length; m++){
     try {
-      // Gemma modellar JSON mode'ni qo'llab-quvvatlamaydi — clone qilib responseMimeType ni olib tashlaymiz
       var modelName = GEMINI_MODELS[m];
+      // Tools bor bo'lsa Gemma modellarni skip qilamiz
+      if(hasTools && modelName.indexOf('gemma') !== -1) continue;
+      // Gemma modellar JSON mode'ni qo'llab-quvvatlamaydi — clone qilib responseMimeType ni olib tashlaymiz
       var bodyToSend = body;
       if(modelName.indexOf('gemma') !== -1 && body && body.generationConfig && (body.generationConfig.responseMimeType || body.generationConfig.responseSchema)){
         bodyToSend = JSON.parse(JSON.stringify(body));
