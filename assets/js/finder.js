@@ -3975,19 +3975,40 @@ function _fmtTaCounterpartCell(item){
   } else if(role === 'importers'){
     arrow = '<span style="color:#7C3AED;font-weight:800;margin-right:3px" title="Import qildi (manba tomondan)">←</span>';
   }
+  // Counterpart-ning roli — asosiy item importer bo'lsa, counterpart exporter va aksincha
+  var counterpartRole = (role === 'importers') ? 'exporters' : (role === 'exporters' ? 'importers' : '');
   // Eng yaxshi: counterpart_firms array (har hamkor firma to'liq ma'lumotlari)
   var firms = Array.isArray(item._tradeAtlasCounterpartFirms) ? item._tradeAtlasCounterpartFirms : [];
   if(firms.length){
     var topFirms = firms.slice(0, 2);
     var moreFirms = firms.length > 2 ? '<div style="font-size:.6rem;color:var(--text3);font-weight:600;margin-top:2px">+' + (firms.length - 2) + ' ta hamkor</div>' : '';
-    var firmsHtml = topFirms.map(function(cp){
+    var firmsHtml = topFirms.map(function(cp, cpIdx){
       var qty = Number(cp.totalQty || 0);
       var qtyTxt = qty >= 1e6 ? (qty/1e6).toFixed(1)+'M' : qty >= 1e3 ? (qty/1e3).toFixed(1)+'K' : (qty ? Math.round(qty) : '');
       var val = Number(cp.totalValue || 0);
       var valTxt = val >= 1e6 ? '$'+(val/1e6).toFixed(1)+'M' : val >= 1e3 ? '$'+(val/1e3).toFixed(0)+'K' : (val ? '$'+val : '');
       var flag = (typeof getFinderCountryFlag === 'function' && cp.country) ? getFinderCountryFlag(cp.country) : '';
+      // Counterpart firma uchun unique key — index-based JSON ga teng
+      var payload = {
+        name: cp.name || '',
+        country: cp.country || '',
+        countryCode: cp.countryCode || '',
+        cityState: cp.cityState || '',
+        email: cp.email || '',
+        tel: cp.tel || '',
+        web: cp.web || '',
+        linkedin: cp.linkedin || '',
+        totalQty: cp.totalQty || 0,
+        totalValue: cp.totalValue || 0,
+        docCount: cp.docCount || 0,
+        lastDate: cp.lastDate || '',
+        role: counterpartRole,
+        parentName: item.kompaniya || '',
+        parentCountry: item.davlat || ''
+      };
+      var payloadJson = encodeURIComponent(JSON.stringify(payload));
       return '<div style="font-size:.65rem;line-height:1.35;margin-bottom:2px">'+
-        arrow+'<b style="color:var(--text)">'+escHtml(String(cp.name || '').slice(0, 22))+'</b> '+
+        arrow+'<b onclick="openTaCounterpartDetail(\''+payloadJson+'\')" style="color:var(--text);cursor:pointer;text-decoration:underline;text-decoration-color:rgba(67,97,238,.3);text-underline-offset:2px" title="Batafsil ko\'rish">'+escHtml(String(cp.name || '').slice(0, 22))+'</b> '+
         '<span style="color:var(--text3)">'+(flag || cp.countryCode || '')+'</span>'+
         (qtyTxt || valTxt ? '<div style="font-size:.58rem;color:var(--text3);margin-left:14px">'+(qtyTxt?qtyTxt+' kg ':'')+(valTxt?'· '+valTxt:'')+'</div>' : '')+
       '</div>';
@@ -4027,14 +4048,114 @@ function _fmtTaRoleBadge(item){
   return '';
 }
 
+// Counterpart firma uchun batafsil modal — exporter / importer kim ekanligi va shipment ma'lumotlari
+function openTaCounterpartDetail(payloadJson){
+  var data;
+  try {
+    data = JSON.parse(decodeURIComponent(payloadJson));
+  } catch(e){
+    if(typeof toast === 'function') toast('Ma\'lumotni o\'qib bo\'lmadi','error');
+    return;
+  }
+  if(!data || !data.name){
+    if(typeof toast === 'function') toast('Ma\'lumot yo\'q','error');
+    return;
+  }
+  var role = String(data.role || '').toLowerCase();
+  var isImp = role === 'importers';
+  var roleLabel = isImp ? '📥 IMPORTYOR KOMPANIYA' : (role === 'exporters' ? '📤 EKSPORTYOR KOMPANIYA' : 'KOMPANIYA');
+  var roleColor = isImp ? '#7C3AED' : (role === 'exporters' ? '#059669' : '#465fff');
+  var roleBg = isImp ? 'rgba(124,58,237,.08)' : (role === 'exporters' ? 'rgba(5,150,105,.08)' : 'rgba(70,95,255,.08)');
+  var flag = (typeof getFinderCountryFlag === 'function' && data.country) ? getFinderCountryFlag(data.country) : '';
+  var label = (typeof getFinderCountryLabel === 'function' && data.country) ? getFinderCountryLabel(data.country) : (data.country || '');
+  var qty = Number(data.totalQty || 0);
+  var qtyTxt = qty >= 1e6 ? (qty/1e6).toFixed(2)+'M' : qty >= 1e3 ? (qty/1e3).toFixed(1)+'K' : (qty ? Math.round(qty) : '0');
+  var val = Number(data.totalValue || 0);
+  var valTxt = val >= 1e6 ? '$'+(val/1e6).toFixed(2)+'M' : val >= 1e3 ? '$'+(val/1e3).toFixed(1)+'K' : (val ? '$'+val : '$0');
+  var docs = Number(data.docCount || 0);
+  // Aks tomon (parent kompaniya) info
+  var parentRole = isImp ? 'eksportyor' : 'importyor';
+  var parentColor = isImp ? '#059669' : '#7C3AED';
+  var parentArrow = isImp ? '←' : '→';
+  var parentLabel = isImp ? 'Manba (kimdan olgan)' : 'Maqsad (kimga sotgan)';
+  // Modal HTML
+  var modal = document.getElementById('taCounterpartModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'taCounterpartModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px)';
+    modal.onclick = function(e){ if(e.target === modal) modal.style.display = 'none'; };
+    document.body.appendChild(modal);
+  }
+  var contactsHtml = '';
+  if(data.email){
+    contactsHtml += '<div style="display:flex;gap:8px;align-items:center;font-size:.8rem;color:#1F2937;margin-bottom:6px"><span style="color:#3B82F6;font-weight:700">📧</span><a href="mailto:'+escHtml(data.email)+'" style="color:#3B82F6;text-decoration:none">'+escHtml(data.email)+'</a></div>';
+  }
+  if(data.tel){
+    contactsHtml += '<div style="display:flex;gap:8px;align-items:center;font-size:.8rem;color:#1F2937;margin-bottom:6px"><span style="color:#059669;font-weight:700">📞</span><a href="tel:'+escHtml(data.tel)+'" style="color:#059669;text-decoration:none">'+escHtml(data.tel)+'</a></div>';
+  }
+  if(data.web){
+    var webUrl = data.web.indexOf('http') === 0 ? data.web : 'https://'+data.web;
+    contactsHtml += '<div style="display:flex;gap:8px;align-items:center;font-size:.8rem;color:#1F2937;margin-bottom:6px"><span style="color:#7C3AED;font-weight:700">🌐</span><a href="'+escHtml(webUrl)+'" target="_blank" rel="noopener" style="color:#7C3AED;text-decoration:none">'+escHtml(data.web)+'</a></div>';
+  }
+  if(data.linkedin){
+    var liUrl = data.linkedin.indexOf('http') === 0 ? data.linkedin : 'https://'+data.linkedin;
+    contactsHtml += '<div style="display:flex;gap:8px;align-items:center;font-size:.8rem;color:#1F2937;margin-bottom:6px"><span style="color:#0A66C2;font-weight:700">in</span><a href="'+escHtml(liUrl)+'" target="_blank" rel="noopener" style="color:#0A66C2;text-decoration:none">'+escHtml(data.linkedin)+'</a></div>';
+  }
+  if(!contactsHtml) contactsHtml = '<div style="font-size:.75rem;color:var(--text3);font-style:italic">Kontakt ma\'lumotlari TradeAtlas\'da topilmadi</div>';
+  modal.innerHTML = '<div style="background:#fff;border-radius:16px;max-width:600px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,.25)">'+
+    '<div style="padding:1.25rem;border-bottom:1px solid var(--border);background:'+roleBg+';border-radius:16px 16px 0 0">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:.62rem;font-weight:800;color:'+roleColor+';letter-spacing:.05em;margin-bottom:4px">'+roleLabel+'</div>'+
+          '<div style="font-size:1.15rem;font-weight:800;color:#111827;line-height:1.3;word-break:break-word">'+escHtml(data.name)+'</div>'+
+          '<div style="font-size:.78rem;color:#4B5563;margin-top:4px">'+(flag?flag+' ':'')+escHtml(label || data.country || '—')+(data.cityState?' · '+escHtml(data.cityState):'')+'</div>'+
+        '</div>'+
+        '<button onclick="document.getElementById(\'taCounterpartModal\').style.display=\'none\'" style="border:none;background:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1.1rem;color:#6B7280;flex-shrink:0">×</button>'+
+      '</div>'+
+    '</div>'+
+    '<div style="padding:1.25rem">'+
+      // Parent (aks tomon)
+      '<div style="background:rgba(70,95,255,.04);border-left:3px solid '+parentColor+';padding:.75rem 1rem;border-radius:0 8px 8px 0;margin-bottom:1rem">'+
+        '<div style="font-size:.6rem;font-weight:700;color:'+parentColor+';letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px">'+parentArrow+' '+parentLabel+'</div>'+
+        '<div style="font-size:.85rem;font-weight:700;color:#111827">'+escHtml(data.parentName || '—')+'</div>'+
+        (data.parentCountry?'<div style="font-size:.7rem;color:#6B7280;margin-top:2px">'+(typeof getFinderCountryFlag==='function'?getFinderCountryFlag(data.parentCountry)+' ':'')+escHtml(data.parentCountry)+'</div>':'')+
+      '</div>'+
+      // KPI
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1rem">'+
+        '<div style="background:#F0F9FF;border-radius:10px;padding:.7rem;border:1px solid rgba(14,165,233,.2)"><div style="font-size:.55rem;font-weight:700;color:#0284C7;letter-spacing:.04em">HAJM</div><div style="font-size:1.1rem;font-weight:800;color:#0C4A6E;margin-top:2px">'+qtyTxt+'</div><div style="font-size:.55rem;color:#0284C7;margin-top:1px">kg</div></div>'+
+        '<div style="background:#F0FDF4;border-radius:10px;padding:.7rem;border:1px solid rgba(34,197,94,.2)"><div style="font-size:.55rem;font-weight:700;color:#16A34A;letter-spacing:.04em">QIYMAT</div><div style="font-size:1.1rem;font-weight:800;color:#14532D;margin-top:2px">'+valTxt+'</div><div style="font-size:.55rem;color:#16A34A;margin-top:1px">FOB / CIF</div></div>'+
+        '<div style="background:#FEF3F2;border-radius:10px;padding:.7rem;border:1px solid rgba(239,68,68,.2)"><div style="font-size:.55rem;font-weight:700;color:#DC2626;letter-spacing:.04em">SHIPMENT</div><div style="font-size:1.1rem;font-weight:800;color:#7F1D1D;margin-top:2px">'+docs+'</div><div style="font-size:.55rem;color:#DC2626;margin-top:1px">ta</div></div>'+
+      '</div>'+
+      // Last date
+      (data.lastDate?'<div style="font-size:.72rem;color:#6B7280;margin-bottom:.85rem">📅 So\'nggi shipment: <b style="color:#1F2937">'+escHtml(String(data.lastDate).slice(0,10))+'</b></div>':'')+
+      // Contacts
+      '<div>'+
+        '<div style="font-size:.6rem;font-weight:700;color:#374151;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px">Kontakt ma\'lumotlari</div>'+
+        contactsHtml+
+      '</div>'+
+    '</div>'+
+    '<div style="padding:1rem 1.25rem;border-top:1px solid var(--border);background:#FAFBFF;border-radius:0 0 16px 16px;font-size:.65rem;color:var(--text3);line-height:1.5">💡 <b>Eslatma:</b> Ushbu kompaniya '+(isImp?'parent eksportyor kompaniyaning shipment ma\'lumotlaridan':'parent importyor kompaniyaning shipment ma\'lumotlaridan')+' aggregate qilingan. To\'liq firma profili uchun TradeAtlas\'da alohida qidiring.</div>'+
+  '</div>';
+  modal.style.display = 'flex';
+}
+window.openTaCounterpartDetail = openTaCounterpartDetail;
+
 // Section header — Importyor / Eksportyor guruhini ajratish uchun
+// + sub-header row (column-aligned) — section'ga qarab "Importyor kompaniya" / "Eksportyor kompaniya" labellari
 function _fmtTaSectionHeader(role, count){
   var isImp = role === 'importers';
   var label = isImp ? '📥 Importyor kompaniyalar' : '📤 Eksportyor kompaniyalar';
   var bg = isImp ? 'linear-gradient(90deg,rgba(124,58,237,.12),rgba(124,58,237,.04))' : 'linear-gradient(90deg,rgba(5,150,105,.12),rgba(5,150,105,.04))';
   var color = isImp ? '#7C3AED' : '#059669';
   var sub = isImp ? 'Mahsulotni manba davlatdan import qilgan firmalar' : 'Mahsulotni maqsad davlatga eksport qilgan firmalar';
-  return '<tr class="finder-section-header" aria-hidden="true">'+
+  // Section'ga qarab column nomlari (rol = ushbu sektorning satrlari, partner = aks tomon)
+  var rowLabel = isImp ? '📥 Importyor kompaniya' : '📤 Eksportyor kompaniya';
+  var partnerLabel = isImp ? '📤 Eksportyor kompaniya' : '📥 Importyor kompaniya';
+  var rowColor = isImp ? '#7C3AED' : '#059669';
+  var partnerColor = isImp ? '#059669' : '#7C3AED';
+  var subHeadCellStyle = 'padding:.45rem .55rem;background:#F9FAFB;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--text3);text-transform:uppercase';
+  var bannerRow = '<tr class="finder-section-header" aria-hidden="true">'+
     '<td colspan="11" style="padding:.6rem .9rem;background:'+bg+';border:none;border-left:3px solid '+color+'">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:.7rem">'+
         '<div>'+
@@ -4044,6 +4165,22 @@ function _fmtTaSectionHeader(role, count){
       '</div>'+
     '</td>'+
   '</tr>';
+  // Bo'sh section uchun sub-header'ni chiqarmaslik (count 0 bo'lsa keyingisi empty msg row keladi)
+  if(!count) return bannerRow;
+  var subHeadRow = '<tr class="finder-section-subhead" aria-hidden="true">'+
+    '<td style="'+subHeadCellStyle+'"></td>'+
+    '<td style="'+subHeadCellStyle+'">#</td>'+
+    '<td style="'+subHeadCellStyle+';color:'+rowColor+'">'+rowLabel+'</td>'+
+    '<td style="'+subHeadCellStyle+'">Davlat</td>'+
+    '<td style="'+subHeadCellStyle+'">Shahar</td>'+
+    '<td style="'+subHeadCellStyle+'">Hajm</td>'+
+    '<td style="'+subHeadCellStyle+';color:'+partnerColor+'">'+partnerLabel+'</td>'+
+    '<td style="'+subHeadCellStyle+'">Kontaktlar</td>'+
+    '<td style="'+subHeadCellStyle+'">Score</td>'+
+    '<td style="'+subHeadCellStyle+'">Email holati</td>'+
+    '<td style="'+subHeadCellStyle+'">Amal</td>'+
+  '</tr>';
+  return bannerRow + subHeadRow;
 }
 
 // Final override: keep one company row-group and show multiple contacts under that company.
