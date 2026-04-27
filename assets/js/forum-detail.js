@@ -2061,6 +2061,93 @@ function openInvestorDetailModal(id){
 }
 window.openInvestorDetailModal = openInvestorDetailModal;
 
+// Investor base record uchun: Apollo → Gemini orqali lead topish
+window.findContactsForInvestorRecord = async function(recordId, btnEl){
+  if(!recordId) return;
+  var rec = (DB.investorCompanies || []).find(function(r){ return String(r.id) === String(recordId); });
+  if(!rec){
+    if(typeof toast === 'function') toast('Record topilmadi','error');
+    return;
+  }
+  if(btnEl){
+    btnEl.disabled = true;
+    btnEl.textContent = '⏳ Qidirilmoqda...';
+    btnEl.style.opacity = '.7';
+  }
+  // Sintetik finder result item yaratamiz Apollo/Gemini funksiyalari uchun
+  var item = {
+    id: rec.id,
+    kompaniya: rec.kompaniya || '',
+    davlat: rec.davlat || '',
+    shahar: rec.shahar || '',
+    website: rec.website || '',
+    email: rec.email || '',
+    telefon: rec.telefon || '',
+    rahbar: rec.rahbar || '',
+    lavozim: rec.lavozim || '',
+    linkedin: rec.linkedin || '',
+    soha: rec.soha || '',
+    manba: rec.manba || 'TradeAtlas',
+    finderMode: rec.finderMode || 'exporters',
+    score: rec.score || 70
+  };
+  var prod = null;
+  if(rec.productId){
+    prod = (DB.products || []).find(function(p){ return String(p.id) === String(rec.productId); }) || null;
+  }
+  if(!prod){
+    prod = { name_en: rec.mahsulotNomi || rec.soha || '', hs_code: rec.mahsulotHs || '', id: rec.productId || '' };
+  }
+  var meta = { mode: String(rec.finderMode || 'exporters').toLowerCase() };
+  var foundSource = '';
+  try {
+    // 1-qadam: Apollo
+    var apolloKey = (typeof getApolloApiKey === 'function') ? getApolloApiKey() : '';
+    if(apolloKey && typeof apolloEnrichTradeAtlasItem === 'function'){
+      if(btnEl) btnEl.textContent = '🅰️ Apollo qidirmoqda...';
+      await apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta);
+      if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
+        foundSource = 'Apollo';
+      }
+    }
+    // 2-qadam: Gemini fallback
+    if(!foundSource && typeof geminiEnrichTradeAtlasItem === 'function'){
+      if(btnEl) btnEl.textContent = '✨ Gemini qidirmoqda...';
+      await geminiEnrichTradeAtlasItem(item, prod, meta);
+      if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
+        foundSource = 'Gemini';
+      }
+    }
+  } catch(e){
+    console.error('[findContactsForInvestorRecord] error:', e && e.message);
+    if(typeof toast === 'function') toast('Xatolik: ' + (e && e.message || ''), 'error');
+  }
+  if(foundSource){
+    // Topilgan ma'lumotlarni record'ga yozamiz va saqlaymiz
+    if(item.email) rec.email = item.email;
+    if(item.rahbar) rec.rahbar = item.rahbar;
+    if(item.lavozim) rec.lavozim = item.lavozim;
+    if(item.telefon) rec.telefon = item.telefon;
+    if(item.linkedin) rec.linkedin = item.linkedin;
+    if(item.website && !rec.website) rec.website = item.website;
+    if(item.shahar && !rec.shahar) rec.shahar = item.shahar;
+    if(item.soha && !rec.soha) rec.soha = item.soha;
+    if(typeof fbSave === 'function') fbSave('investorCompanies', rec);
+    if(typeof toast === 'function'){
+      var label = foundSource === 'Apollo' ? '🅰️ Apollo' : '✨ Gemini';
+      toast('✅ Lead topildi: ' + label + ' — ' + rec.kompaniya, 'success');
+    }
+    if(typeof renderInvestorCompanies === 'function') renderInvestorCompanies();
+  } else {
+    if(typeof toast === 'function') toast('⚠️ Lead topilmadi: ' + rec.kompaniya, 'error');
+    if(btnEl){
+      btnEl.disabled = false;
+      btnEl.textContent = '🔍 Lead topish';
+      btnEl.style.opacity = '1';
+    }
+  }
+};
+
 function openInvestorSohaEdit(id){
   _investorSohaEditId = String(id || '');
   renderInvestorCompanies();
@@ -2790,6 +2877,11 @@ _renderInvestorCompaniesMain = function(){
       if(contact.email) contactHtml += '<div style="font-size:.68rem;color:#3B82F6;margin-top:2px;word-break:break-all;font-weight:500">'+escHtml(contact.email)+'</div>';
       if(contact.telefon && contact.telefon !== '—') contactHtml += '<div style="font-size:.65rem;color:#6B7280;margin-top:2px">'+escHtml(contact.telefon)+'</div>';
       if(!contact.name && !contact.email) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
+      // "Lead topish" tugmasi — TradeAtlas firma email yo'q bo'lsa
+      var _isTaRec = String(rec.manba || '').toLowerCase().indexOf('tradeatlas') !== -1;
+      if(_isTaRec && !contact.email && !contact.name){
+        contactHtml += '<div style="margin-top:6px"><button type="button" onclick="event.stopPropagation();findContactsForInvestorRecord(\''+rec.id+'\',this)" style="background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:.65rem;font-weight:700;cursor:pointer;display:inline-block;box-shadow:0 2px 6px rgba(124,58,237,.3);white-space:nowrap" title="Apollo + Gemini orqali lead va email topish">🔍 Lead topish</button></div>';
+      }
       contactHtml += '</div>';
 
       var groupBorderStyle = recIdx === 0 ? 'border-top:2px solid transparent;' : '';
