@@ -806,18 +806,32 @@ function renderInvestorGeoCard(companies){
     return;
   }
 
+  // Unique kompaniyalar — KPI bilan mos (parent + child duplikatlar olib tashlanadi)
   var stateStats = {};
+  var seenGroupsGlobal = {};
+  var uniqueCompanyCount = 0;
   companies.forEach(function(rec){
     var code = getInvestorGeoStateCode(rec, {});
     if(!code) return;
+    var groupKey = (typeof getInvestorCompanyGroupKey === 'function')
+      ? getInvestorCompanyGroupKey(rec)
+      : String(rec.kompaniya || rec.id || '').toLowerCase();
     if(!stateStats[code]){
-      stateStats[code] = { code: code, name: String(getInvestorGeoCountrySource(rec) || code), count: 0, companies: [], lat: null, lon: null };
+      stateStats[code] = { code: code, name: String(getInvestorGeoCountrySource(rec) || code), count: 0, companies: [], lat: null, lon: null, _seenGroups: {} };
     }
-    stateStats[code].count += 1;
-    if(rec.kompaniya) stateStats[code].companies.push(String(rec.kompaniya));
-    if(stateStats[code].lat == null || stateStats[code].lon == null){
+    var st = stateStats[code];
+    if(!st._seenGroups[groupKey]){
+      st._seenGroups[groupKey] = true;
+      st.count += 1;
+      if(rec.kompaniya) st.companies.push(String(rec.kompaniya));
+    }
+    if(!seenGroupsGlobal[groupKey]){
+      seenGroupsGlobal[groupKey] = true;
+      uniqueCompanyCount += 1;
+    }
+    if(st.lat == null || st.lon == null){
       var geo = getInvestorGeoHub(rec);
-      if(geo){ stateStats[code].lat = geo.lat; stateStats[code].lon = geo.lon; }
+      if(geo){ st.lat = geo.lat; st.lon = geo.lon; }
     }
   });
   window._investorGeoStateStats = stateStats;
@@ -838,7 +852,7 @@ function renderInvestorGeoCard(companies){
   });
 
   var countryCount = Object.keys(stateStats).filter(function(c){ return stateStats[c].count > 0; }).length;
-  metaEl.textContent = companies.length + ' ta kompaniya \u00b7 ' + countryCount + ' ta davlat';
+  metaEl.textContent = uniqueCompanyCount + ' ta kompaniya \u00b7 ' + countryCount + ' ta davlat';
 
   mapEl.innerHTML = '';
   var bubblesEl = document.getElementById('investorGeoBubbles');
@@ -2814,10 +2828,10 @@ _renderInvestorCompaniesMain = function(){
     // Avatar oldida child bo'lsa indentation (orphan importerlar uchun ham qo'llanmaydi endi)
     var _avatarPrefixHtml = '';
 
-    // Pastida nechta importyor borligi (kichik kulrang yozuv)
+    // Pastida nechta importyor borligi (clickable — bosilganda importyor badgelar ochiladi)
     var _importerCountLine = '';
     if(_isParent && _childrenData.length){
-      _importerCountLine = '<div style="font-size:.58rem;color:#9CA3AF;margin-top:3px;font-weight:500">'+_childrenData.length+' ta importyor</div>';
+      _importerCountLine = '<div onclick="event.stopPropagation();var p=this.parentNode;var b=p.querySelectorAll(\'.ic-importer-hover\');var open=b[0]&&b[0].style.display===\'block\';for(var i=0;i<b.length;i++){b[i].style.display=open?\'none\':\'block\';b[i].dataset.pinned=open?\'\':\'1\';}var arr=this.querySelector(\'.ic-toggle-arrow\');if(arr)arr.textContent=open?\'▸\':\'▾\';" style="font-size:.62rem;color:#7C3AED;margin-top:3px;font-weight:600;cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:6px;background:rgba(124,58,237,.08);transition:background .15s" onmouseover="this.style.background=\'rgba(124,58,237,.18)\'" onmouseout="this.style.background=\'rgba(124,58,237,.08)\'" title="Importyor xaridorlarni ko\'rsatish/yashirish"><span class="ic-toggle-arrow">▸</span> '+_childrenData.length+' ta importyor</div>';
     }
     var companyHtml = '<div onclick="openInvestorDetailModal(\''+companyRec.id+'\')" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s'+(_isChild?';padding-left:20px':'')+'" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil — eksport hajmi, qiymati va sanasi modalda">' +
       _avatarPrefixHtml +

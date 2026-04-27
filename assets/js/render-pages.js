@@ -355,8 +355,18 @@ function renderIcCharts(companies){
   var thisPeriod = (range && typeof inRange==='function') ? companies.filter(function(c){return inRange(c, range);}) : companies;
 
   var tallyCountries = function(arr){
+    // Unique kompaniyalar bo'yicha sanaymiz (har kompaniyani 1 marta) — KPI 261 ta bilan mos
+    var seenGroups = {};
     var map = {};
-    arr.forEach(function(r){ var k = extractCountry(r); map[k] = (map[k]||0)+1; });
+    arr.forEach(function(r){
+      var groupKey = (typeof getInvestorCompanyGroupKey === 'function')
+        ? getInvestorCompanyGroupKey(r)
+        : String(r.kompaniya || r.id || '').toLowerCase();
+      if(seenGroups[groupKey]) return; // bu kompaniya allaqachon hisoblangan
+      seenGroups[groupKey] = true;
+      var k = extractCountry(r);
+      map[k] = (map[k]||0)+1;
+    });
     var labels = Object.keys(map).sort(function(a,b){return map[b]-map[a];}).slice(0,8);
     return { labels: labels, vals: labels.map(function(k){return map[k];}) };
   };
