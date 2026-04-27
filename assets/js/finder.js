@@ -4735,15 +4735,13 @@ function renderFinderTable(results){
         row += '<td rowspan="'+rowspan+'" style="font-size:.7rem;white-space:nowrap">'+_fmtTaHajmCell(r)+'</td>';
         row += '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+_fmtTaCounterpartCell(r)+'</td>';
       }
-      // Kontakt cell — agar contact placeholder yoki bo'sh bo'lsa, "Lead topish" tugmasi qo'shamiz
+      // Kontakt cell — agar email YO'Q bo'lsa, "Lead topish" tugmasi qo'shamiz
       var _contactCellHtml = renderFinderContactCard(state.contact);
-      var _hasRealContact = state.contact && (
-        String(state.contact.email || '').trim() ||
-        String(state.contact.telefon || '').trim() ||
-        (String(state.contact.name || state.contact.ism || '').trim() && !state.contact._placeholder)
-      );
-      if(!_hasRealContact && contactRowIdx === 0){
-        _contactCellHtml += '<button id="findLeadBtn-'+sourceIdx+'" type="button" onclick="findContactsForFinderItem('+sourceIdx+')" style="margin-top:6px;background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:.65rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 6px rgba(124,58,237,.25)" title="Apollo + Gemini orqali lead va email topish">🔍 Lead topish</button>';
+      var _itemHasEmail = String(r.email || '').trim() || (state.contact && String(state.contact.email || '').trim());
+      var _itemHasName = String(r.rahbar || '').trim() || (state.contact && String(state.contact.name || state.contact.ism || '').trim() && !state.contact._placeholder);
+      var _showFindBtn = !_itemHasEmail && !_itemHasName;
+      if(_showFindBtn && contactRowIdx === 0){
+        _contactCellHtml += '<button id="findLeadBtn-'+sourceIdx+'" type="button" onclick="event.stopPropagation();findContactsForFinderItem('+sourceIdx+')" style="margin-top:8px !important;background:linear-gradient(135deg,#7C3AED,#465fff) !important;color:#fff !important;border:none !important;border-radius:8px !important;padding:6px 12px !important;font-size:.7rem !important;font-weight:700 !important;cursor:pointer !important;display:block !important;width:auto !important;box-shadow:0 2px 8px rgba(124,58,237,.35) !important;white-space:nowrap !important" title="Apollo + Gemini orqali lead va email topish">🔍 Lead topish</button>';
       }
       row += '<td>'+_contactCellHtml+'</td>';
       if(contactRowIdx === 0){
