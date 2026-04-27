@@ -3880,14 +3880,39 @@ function _fmtTaCounterpartCell(item){
       arr = m[1].split(',').map(function(s){ return s.trim(); }).filter(Boolean);
     }
   }
-  if(!arr.length) return '<span style="color:var(--text3)">—</span>';
+  // Yo'nalish o'qi: eksportyor → (qayerga eksport qildi), importyor ← (qayerdan import qildi)
+  var role = String(item.finderMode || '').toLowerCase();
+  var arrow = '';
+  var arrowTitle = '';
+  if(role === 'exporters'){
+    arrow = '<span style="color:#059669;font-weight:800;margin-right:3px" title="Eksport qildi (target tomonga)">→</span>';
+    arrowTitle = 'Eksport qildi';
+  } else if(role === 'importers'){
+    arrow = '<span style="color:#7C3AED;font-weight:800;margin-right:3px" title="Import qildi (manba tomondan)">←</span>';
+    arrowTitle = 'Import qildi';
+  }
+  if(!arr.length) return arrow + '<span style="color:var(--text3)">—</span>';
   var shown = arr.slice(0, 3);
   var more = arr.length > 3 ? ' <span style="color:var(--text3);font-size:.6rem;font-weight:600">+'+(arr.length-3)+'</span>' : '';
-  return shown.map(function(name){
+  var list = shown.map(function(name){
     var flag = (typeof getFinderCountryFlag === 'function') ? getFinderCountryFlag(name) : '';
     var label = (typeof getFinderCountryLabel === 'function') ? getFinderCountryLabel(name) : name;
     return (flag ? flag+' ' : '') + escHtml(String(label || name).slice(0, 12));
   }).join(', ') + more;
+  return arrow + list;
+}
+
+// Eksportyor/Importyor rolini ajratib ko'rsatish uchun badge
+function _fmtTaRoleBadge(item){
+  if(!item) return '';
+  var role = String(item.finderMode || '').toLowerCase();
+  if(role === 'exporters'){
+    return '<span style="display:inline-block;padding:1px 6px;border-radius:4px;background:rgba(5,150,105,.12);color:#059669;font-size:.55rem;font-weight:800;letter-spacing:.04em;margin-top:2px">📤 EKSPORT</span>';
+  }
+  if(role === 'importers'){
+    return '<span style="display:inline-block;padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#7C3AED;font-size:.55rem;font-weight:800;letter-spacing:.04em;margin-top:2px">📥 IMPORT</span>';
+  }
+  return '';
 }
 
 // Final override: keep one company row-group and show multiple contacts under that company.
@@ -3933,7 +3958,7 @@ function renderFinderTable(results){
       if(contactRowIdx === 0){
         row += '<td rowspan="'+rowspan+'"><input type="checkbox" class="fc-check" data-idx="'+sourceIdx+'" checked></td>';
         row += '<td rowspan="'+rowspan+'">'+(i+1)+'</td>';
-        row += '<td rowspan="'+rowspan+'"><div onclick="openFinderContactDetail('+sourceIdx+',0)" style="cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil"><b>'+escHtml(r.kompaniya || '—')+'</b>'+(r.website ? '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.website)+'</div>' : '')+'</div></td>';
+        row += '<td rowspan="'+rowspan+'"><div onclick="openFinderContactDetail('+sourceIdx+',0)" style="cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil"><b>'+escHtml(r.kompaniya || '—')+'</b>'+(r.website ? '<div style="font-size:.55rem;color:var(--text3)">'+escHtml(r.website)+'</div>' : '')+_fmtTaRoleBadge(r)+'</div></td>';
         row += '<td rowspan="'+rowspan+'">'+getFinderCountryFlag(r.davlat)+' '+getFinderCountryLabel(r.davlat)+'</td>';
         row += '<td rowspan="'+rowspan+'" style="font-size:.7rem">'+escHtml(r.shahar || '—')+'</td>';
         row += '<td rowspan="'+rowspan+'" style="font-size:.7rem;white-space:nowrap">'+_fmtTaHajmCell(r)+'</td>';
