@@ -2228,6 +2228,38 @@ _renderInvestorCompaniesMain = function(){
     var nm = String((g.records[0] && g.records[0].kompaniya) || '').trim().toLowerCase();
     if(nm && !_groupByName[nm]) _groupByName[nm] = g;
   });
+  // ═══ Parent → children map qurish (IKKALA yo'nalishdan) ═══
+  // 1) Eksportyor record._partners[].role='importer' → child importerlar
+  // 2) Importer record._partnerOf[].role='exporter' → bu importer parent eksportyorning bolasi
+  var _parentToChildren = Object.create(null);
+  function _addParentChildLink(parentName, childName){
+    var pk = String(parentName || '').trim().toLowerCase();
+    var ck = String(childName || '').trim().toLowerCase();
+    if(!pk || !ck || pk === ck) return;
+    if(!_parentToChildren[pk]) _parentToChildren[pk] = [];
+    if(_parentToChildren[pk].indexOf(ck) === -1) _parentToChildren[pk].push(ck);
+  }
+  grouped.forEach(function(g){
+    var rec = g.records[0];
+    if(!rec) return;
+    // Yo'nalish 1: eksportyor → uning importer xaridorlari (_partners)
+    if(g._role === 'exporter' && Array.isArray(rec._partners)){
+      rec._partners.forEach(function(p){
+        if(String(p.role || '').toLowerCase() === 'importer'){
+          _addParentChildLink(rec.kompaniya, p.kompaniya);
+        }
+      });
+    }
+    // Yo'nalish 2: importer → uning eksportyor manbai (_partnerOf, teskari)
+    if(g._role === 'importer' && Array.isArray(rec._partnerOf)){
+      rec._partnerOf.forEach(function(p){
+        if(String(p.role || '').toLowerCase() === 'exporter'){
+          _addParentChildLink(p.kompaniya, rec.kompaniya);
+        }
+      });
+    }
+  });
+
   // Yangi tartib: avval har eksportyor + uning importyor xaridorlari, so'ng orphan importerlar va boshqalar
   var _visited = Object.create(null);
   var _orderedGroups = [];
@@ -2241,24 +2273,15 @@ _renderInvestorCompaniesMain = function(){
     _displayCounter++;
     g._displayNumber = _displayCounter;
     _orderedGroups.push(g);
-    var rec = g.records[0];
-    var childNames = [];
-    if(Array.isArray(rec._partners)){
-      rec._partners.forEach(function(p){
-        var pr = String(p.role || '').toLowerCase();
-        if(pr === 'importer'){
-          var nm = String(p.kompaniya || '').trim().toLowerCase();
-          if(nm) childNames.push(nm);
-        }
-      });
-    }
+    var pk = String(g._parentName).trim().toLowerCase();
+    var childNames = _parentToChildren[pk] || [];
     childNames.forEach(function(childName){
       var child = _groupByName[childName];
       if(!child || _visited[child.key]) return;
       if(child._role !== 'importer' && child._role !== '') return;
       child._isChild = true;
       child._parentKey = g.key;
-      child._parentName = rec.kompaniya || '';
+      child._parentName = g._parentName;
       // Bir xil raqam — parent va child #N
       child._displayNumber = g._displayNumber;
       _visited[child.key] = true;
