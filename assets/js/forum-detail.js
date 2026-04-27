@@ -2221,6 +2221,8 @@ _renderInvestorCompaniesMain = function(){
       '</div></div>';
 
     var html = '';
+    var _groupBg = (groupIdx % 2 === 0) ? '#f8fafd' : '#ffffff';
+    var _groupHoverBg = '#eef2ff';
     recs.forEach(function(rec, recIdx){
       var isAiOpen = !!_investorAiOpen && String(_investorAiTargetId || '') === String(rec.id);
       var contact = {
@@ -2241,8 +2243,6 @@ _renderInvestorCompaniesMain = function(){
       contactHtml += '</div>';
 
       var groupBorderStyle = recIdx === 0 ? 'border-top:10px solid transparent;box-shadow:inset 0 2px 0 rgba(70,95,255,.18);' : '';
-      var _groupBg = (groupIdx % 2 === 0) ? '#f8fafd' : '#ffffff';
-      var _groupHoverBg = '#eef2ff';
       html += '<tr class="ic-group-row" data-group="'+groupIdx+'" data-group-bg="'+_groupBg+'" data-group-hover="'+_groupHoverBg+'" id="investor-row-'+rec.id+'" style="background:'+_groupBg+';transition:background .15s;'+groupBorderStyle+'">';
       if(recIdx === 0){
         html += '<td rowspan="'+recs.length+'" style="padding-left:1.25rem;vertical-align:middle">'+(isAdmin ? ('<input type="checkbox" class="ic-check" data-ids="'+tgEscapeAttr(groupIds)+'" onchange="saveIcCheck(this);updateSelectedCount()" style="width:18px;height:18px;border-radius:5px;accent-color:#465fff;cursor:pointer">') : '')+'</td>';
