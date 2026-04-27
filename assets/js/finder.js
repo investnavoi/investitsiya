@@ -738,6 +738,8 @@ function mapTradeAtlasFirmToFinderResult(firm, meta, prod){
     _tradeAtlasCounterpartCountries: _strArr(firm && firm.counterpart_countries),
     _tradeAtlasCounterpartCountryCodes: _strArr(firm && firm.counterpart_country_codes),
     _tradeAtlasCounterpartCompanies: _strArr(firm && firm.counterpart_companies),
+    // Hamkor firmalar — to'liq aloqali (Variant 4 layout uchun)
+    _tradeAtlasCounterpartFirms: Array.isArray(firm && firm.counterpart_firms) ? firm.counterpart_firms.slice() : [],
     // Products
     _tradeAtlasHsCodes: _strArr(firm && firm.hs_codes),
     _tradeAtlasHsDescriptions: _strArr(firm && firm.hs_descriptions),
@@ -3966,25 +3968,40 @@ function _fmtTaHajmCell(item){
 
 function _fmtTaCounterpartCell(item){
   if(!item) return '<span style="color:var(--text3)">—</span>';
+  var role = String(item.finderMode || '').toLowerCase();
+  var arrow = '';
+  if(role === 'exporters'){
+    arrow = '<span style="color:#059669;font-weight:800;margin-right:3px" title="Eksport qildi (target tomonga)">→</span>';
+  } else if(role === 'importers'){
+    arrow = '<span style="color:#7C3AED;font-weight:800;margin-right:3px" title="Import qildi (manba tomondan)">←</span>';
+  }
+  // Eng yaxshi: counterpart_firms array (har hamkor firma to'liq ma'lumotlari)
+  var firms = Array.isArray(item._tradeAtlasCounterpartFirms) ? item._tradeAtlasCounterpartFirms : [];
+  if(firms.length){
+    var topFirms = firms.slice(0, 2);
+    var moreFirms = firms.length > 2 ? '<div style="font-size:.6rem;color:var(--text3);font-weight:600;margin-top:2px">+' + (firms.length - 2) + ' ta hamkor</div>' : '';
+    var firmsHtml = topFirms.map(function(cp){
+      var qty = Number(cp.totalQty || 0);
+      var qtyTxt = qty >= 1e6 ? (qty/1e6).toFixed(1)+'M' : qty >= 1e3 ? (qty/1e3).toFixed(1)+'K' : (qty ? Math.round(qty) : '');
+      var val = Number(cp.totalValue || 0);
+      var valTxt = val >= 1e6 ? '$'+(val/1e6).toFixed(1)+'M' : val >= 1e3 ? '$'+(val/1e3).toFixed(0)+'K' : (val ? '$'+val : '');
+      var flag = (typeof getFinderCountryFlag === 'function' && cp.country) ? getFinderCountryFlag(cp.country) : '';
+      return '<div style="font-size:.65rem;line-height:1.35;margin-bottom:2px">'+
+        arrow+'<b style="color:var(--text)">'+escHtml(String(cp.name || '').slice(0, 22))+'</b> '+
+        '<span style="color:var(--text3)">'+(flag || cp.countryCode || '')+'</span>'+
+        (qtyTxt || valTxt ? '<div style="font-size:.58rem;color:var(--text3);margin-left:14px">'+(qtyTxt?qtyTxt+' kg ':'')+(valTxt?'· '+valTxt:'')+'</div>' : '')+
+      '</div>';
+    }).join('');
+    return firmsHtml + moreFirms;
+  }
+  // Fallback: faqat davlat ro'yxati (firms mode yoki backend deploy qilinmagan)
   var arr = Array.isArray(item._tradeAtlasCounterpartCountries) ? item._tradeAtlasCounterpartCountries.filter(Boolean) : [];
   if(!arr.length){
-    // Fallback: description ichida "Hamkor davlatlar: X, Y, Z" bor bo'lsa shundan ol
     var desc = String(item.description || '').trim();
     var m = desc.match(/Hamkor davlatlar:\s*(.+)/i);
     if(m && m[1]){
       arr = m[1].split(',').map(function(s){ return s.trim(); }).filter(Boolean);
     }
-  }
-  // Yo'nalish o'qi: eksportyor → (qayerga eksport qildi), importyor ← (qayerdan import qildi)
-  var role = String(item.finderMode || '').toLowerCase();
-  var arrow = '';
-  var arrowTitle = '';
-  if(role === 'exporters'){
-    arrow = '<span style="color:#059669;font-weight:800;margin-right:3px" title="Eksport qildi (target tomonga)">→</span>';
-    arrowTitle = 'Eksport qildi';
-  } else if(role === 'importers'){
-    arrow = '<span style="color:#7C3AED;font-weight:800;margin-right:3px" title="Import qildi (manba tomondan)">←</span>';
-    arrowTitle = 'Import qildi';
   }
   if(!arr.length) return arrow + '<span style="color:var(--text3)">—</span>';
   var shown = arr.slice(0, 3);
@@ -4185,10 +4202,102 @@ function saveFinderResults(){
   if(!DB.investorCompanies) DB.investorCompanies = [];
   var added = 0;
   var updated = 0;
+  var partnersAdded = 0;
   var meta = getCurrentFinderProductMeta();
+
+  // Counterpart firmni alohida investor record sifatida saqlaymiz, parent bilan _partnerOf orqali bog'laymiz
+  function _savePartnerFirm(parentItem, parentRec, cpFirm){
+    if(!cpFirm || !String(cpFirm.name || '').trim()) return null;
+    var partnerRole = String(parentItem.finderMode || '').toLowerCase() === 'exporters' ? 'importer' : 'exporter';
+    var parentRole = String(parentItem.finderMode || '').toLowerCase() === 'exporters' ? 'exporter' : 'importer';
+    // Synthetic item — counterpart firmadan finder result yasaymiz
+    var partnerItem = {
+      id: 'fc_ta_partner_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      kompaniya: cpFirm.name,
+      davlat: cpFirm.country || '',
+      shahar: cpFirm.cityState || '',
+      website: cpFirm.web || '',
+      email: cpFirm.email || '',
+      telefon: cpFirm.tel || '',
+      linkedin: cpFirm.linkedin || '',
+      soha: parentItem.soha || '',
+      mahsulotNomi: parentItem.mahsulotNomi || (meta && meta.productLabel) || '',
+      productId: parentItem.productId || (meta && meta.productId) || '',
+      mahsulotHs: parentItem.mahsulotHs || (meta && meta.productHs) || '',
+      manba: 'TradeAtlas',
+      finderMode: partnerRole + 's',
+      score: parentItem.score || 70,
+      _tradeAtlasTradeValue: cpFirm.totalValue || 0,
+      _tradeAtlasQuantity: cpFirm.totalQty || 0,
+      _tradeAtlasDocCount: cpFirm.docCount || 0,
+      _tradeAtlasLastArrivalDate: cpFirm.lastDate || ''
+    };
+    var partnerContact = {
+      name: '', title: 'TradeAtlas ' + (partnerRole === 'importer' ? 'import' : 'eksport') + ' kontakti',
+      email: cpFirm.email || '', telefon: cpFirm.tel || '',
+      website: cpFirm.web || '', linkedin: cpFirm.linkedin || '',
+      photoUrl: '', personId: ''
+    };
+    // Mavjud recordni qidiramiz (kompaniya nomi + kontaktsiz)
+    var partnerKey = String(cpFirm.name).trim().toLowerCase();
+    var existingPartner = (DB.investorCompanies || []).find(function(r){
+      return String(r.kompaniya || '').trim().toLowerCase() === partnerKey;
+    }) || null;
+    var partnerRec = upsertFinderContactInvestorRecord(existingPartner, partnerItem, partnerContact, meta);
+    if(!partnerRec) return null;
+    // _partnerOf — qaysi parent kompaniya bilan aloqasi bor
+    if(!Array.isArray(partnerRec._partnerOf)) partnerRec._partnerOf = [];
+    var linkKey = String(parentItem.kompaniya || '').trim().toLowerCase();
+    if(!partnerRec._partnerOf.find(function(p){ return String(p.kompaniya || '').trim().toLowerCase() === linkKey; })){
+      partnerRec._partnerOf.push({
+        kompaniya: parentItem.kompaniya,
+        davlat: parentItem.davlat || '',
+        role: parentRole,
+        totalValue: cpFirm.totalValue || 0,
+        totalQty: cpFirm.totalQty || 0,
+        docCount: cpFirm.docCount || 0,
+        lastDate: cpFirm.lastDate || ''
+      });
+      if(typeof fbSave === 'function') fbSave('investorCompanies', partnerRec);
+    }
+    if(!existingPartner) partnersAdded++;
+    return partnerRec;
+  }
+
+  function _attachPartnersToParent(parentItem, parentRec){
+    var firms = Array.isArray(parentItem._tradeAtlasCounterpartFirms) ? parentItem._tradeAtlasCounterpartFirms : [];
+    if(!firms.length) return;
+    if(!Array.isArray(parentRec._partners)) parentRec._partners = [];
+    firms.forEach(function(cpFirm){
+      _savePartnerFirm(parentItem, parentRec, cpFirm);
+      // Parent record'ga ham ushbu hamkor qo'shiladi
+      var linkKey = String(cpFirm.name || '').trim().toLowerCase();
+      if(!linkKey) return;
+      var partnerSlot = parentRec._partners.find(function(p){ return String(p.kompaniya || '').trim().toLowerCase() === linkKey; });
+      var slot = {
+        kompaniya: cpFirm.name,
+        davlat: cpFirm.country || '',
+        countryCode: cpFirm.countryCode || '',
+        cityState: cpFirm.cityState || '',
+        email: cpFirm.email || '',
+        tel: cpFirm.tel || '',
+        web: cpFirm.web || '',
+        role: String(parentItem.finderMode || '').toLowerCase() === 'exporters' ? 'importer' : 'exporter',
+        totalValue: cpFirm.totalValue || 0,
+        totalQty: cpFirm.totalQty || 0,
+        docCount: cpFirm.docCount || 0,
+        lastDate: cpFirm.lastDate || ''
+      };
+      if(partnerSlot) Object.assign(partnerSlot, slot);
+      else parentRec._partners.push(slot);
+    });
+    if(typeof fbSave === 'function') fbSave('investorCompanies', parentRec);
+  }
+
   (_finderResults || []).forEach(function(item){
     if(!item || !String(item.kompaniya || '').trim()) return;
     var contacts = getFinderVisibleContacts(item);
+    var savedRec = null;
     if(!contacts.length){
       // Lead/kontakt bo'lmasa ham kompaniyaning o'zini saqlaymiz (bo'sh kontakt bilan)
       var emptyContact = {
@@ -4196,7 +4305,6 @@ function saveFinderResults(){
         website: item.website || '', linkedin: item.linkedin || '',
         photoUrl: '', personId: ''
       };
-      // Bir xil kompaniya nomli + kontaktsiz mavjud recordni qidiramiz (duplicate oldini olish)
       var companyKey = String(item.kompaniya || '').trim().toLowerCase();
       var existing = (DB.investorCompanies || []).find(function(rec){
         if(String(rec.kompaniya || '').trim().toLowerCase() !== companyKey) return false;
@@ -4206,23 +4314,30 @@ function saveFinderResults(){
       if(rec){
         if(existing) updated++;
         else added++;
+        savedRec = rec;
       }
-      return;
+    } else {
+      contacts.forEach(function(contact){
+        var existing = findFinderContactInvestorRecord(item, contact);
+        var rec = upsertFinderContactInvestorRecord(existing, item, contact, meta);
+        if(!rec) return;
+        if(existing) updated++;
+        else added++;
+        if(!savedRec) savedRec = rec; // birinchi saqlangan record bilan partnerlar bog'lanadi
+      });
     }
-    contacts.forEach(function(contact){
-      var existing = findFinderContactInvestorRecord(item, contact);
-      var rec = upsertFinderContactInvestorRecord(existing, item, contact, meta);
-      if(!rec) return;
-      if(existing) updated++;
-      else added++;
-    });
+    // Hamkor firmalar — ekspotyor uchun importyorlar; importyor uchun eksportyorlar
+    if(savedRec) _attachPartnersToParent(item, savedRec);
   });
+  var partnerSuffix = partnersAdded > 0 ? ' · 🤝 ' + partnersAdded + ' ta hamkor firma ham qo\'shildi' : '';
   if(added > 0 && updated > 0){
-    toast('✅ '+added+' ta yangi kontakt saqlandi, '+updated+' ta kontakt yangilandi!');
+    toast('✅ '+added+' ta yangi kontakt saqlandi, '+updated+' ta yangilandi!' + partnerSuffix);
   } else if(added > 0){
-    toast('✅ '+added+' ta kontakt bazaga saqlandi!');
+    toast('✅ '+added+' ta kontakt bazaga saqlandi!' + partnerSuffix);
   } else if(updated > 0){
-    toast('✅ Yangi kontakt yo\'q, '+updated+' ta mavjud kontakt yangilandi.');
+    toast('✅ Yangi kontakt yo\'q, '+updated+' ta mavjud kontakt yangilandi.' + partnerSuffix);
+  } else if(partnersAdded > 0){
+    toast('✅ '+partnersAdded+' ta hamkor firma saqlandi.');
   } else {
     toast('⚠️ Saqlanadigan kontakt topilmadi','error');
   }
