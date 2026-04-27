@@ -1849,6 +1849,144 @@ function renderTradeAtlasDetailSection(rec){
 }
 window.renderTradeAtlasDetailSection = renderTradeAtlasDetailSection;
 
+// Eksport / Import savdo tafsilotlari — _partners va _partnerOf'dan aggregate (synthetic record uchun ham ishlaydi)
+function renderExportTradeSection(rec){
+  if(!rec) return '';
+  var partners = Array.isArray(rec._partners) ? rec._partners : [];
+  var partnerOf = Array.isArray(rec._partnerOf) ? rec._partnerOf : [];
+  if(!partners.length && !partnerOf.length) return '';
+
+  var role = String(rec.finderMode || rec.role || '').toLowerCase();
+  var isExp = role === 'exporters' || role === 'exporter';
+  var isImp = role === 'importers' || role === 'importer';
+  // Fallback rol aniqlash
+  if(!isExp && !isImp){
+    if(partners.length && String(partners[0].role||'').toLowerCase() === 'importer') isExp = true;
+    else if(partners.length && String(partners[0].role||'').toLowerCase() === 'exporter') isImp = true;
+    else if(partnerOf.length && String(partnerOf[0].role||'').toLowerCase() === 'exporter') isImp = true;
+    else if(partnerOf.length && String(partnerOf[0].role||'').toLowerCase() === 'importer') isExp = true;
+  }
+
+  // Aggregate
+  var totalQty = 0, totalVal = 0, totalDocs = 0;
+  var firstDate = '', lastDate = '';
+  function aggSrc(arr){
+    arr.forEach(function(p){
+      totalQty += Number(p.totalQty || 0);
+      totalVal += Number(p.totalValue || 0);
+      totalDocs += Number(p.docCount || 0);
+      var d = String(p.lastDate || '').slice(0,10);
+      if(d){
+        if(!lastDate || d > lastDate) lastDate = d;
+        if(!firstDate || d < firstDate) firstDate = d;
+      }
+    });
+  }
+  aggSrc(partners);
+  aggSrc(partnerOf);
+
+  if(!totalQty && !totalVal && !lastDate) return '';
+
+  function fmtKg(v){
+    v = Number(v || 0);
+    if(!v) return '—';
+    if(v >= 1e6) return (v/1e6).toFixed(2)+'M kg';
+    if(v >= 1e3) return (v/1e3).toFixed(1)+'K kg';
+    return Math.round(v)+' kg';
+  }
+  function fmtUsd(v){
+    v = Number(v || 0);
+    if(!v) return '—';
+    if(v >= 1e6) return '$'+(v/1e6).toFixed(2)+'M';
+    if(v >= 1e3) return '$'+(v/1e3).toFixed(1)+'K';
+    return '$'+Math.round(v).toLocaleString();
+  }
+  function kpiCard(label, value, accent, icon){
+    return '<div style="padding:.85rem;border:1px solid var(--border);border-radius:12px;background:#fff;min-width:0">'+
+      '<div style="display:flex;align-items:center;gap:6px;font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:700">'+
+        (icon ? '<span style="font-size:.85rem">'+icon+'</span>' : '')+
+        '<span>'+escHtml(label)+'</span>'+
+      '</div>'+
+      '<div style="font-size:1.1rem;font-weight:800;color:'+(accent||'var(--text)')+';margin-top:5px;word-break:break-all">'+value+'</div>'+
+    '</div>';
+  }
+
+  var roleLabel = isExp ? '📤 Eksport savdo tafsilotlari' : (isImp ? '📥 Import savdo tafsilotlari' : '🤝 Savdo tafsilotlari');
+  var accentColor = isExp ? '#059669' : (isImp ? '#7C3AED' : '#465fff');
+  var bgColor = isExp ? 'linear-gradient(180deg,#fff,#F0FDF4)' : (isImp ? 'linear-gradient(180deg,#fff,#FAF5FF)' : 'linear-gradient(180deg,#fff,#EEF2FF)');
+  var subTitle = isExp ? 'Bu eksportyor kompaniyaning savdo aloqalari' : (isImp ? 'Bu importyor kompaniyaning savdo aloqalari' : 'Savdo aloqalari');
+
+  // Hamkor partnerlar listasi
+  var allPartners = [];
+  partners.forEach(function(p){ allPartners.push(Object.assign({_src:'partners'}, p)); });
+  partnerOf.forEach(function(p){ allPartners.push(Object.assign({_src:'partnerOf'}, p)); });
+  // Dublikat olib tashlash (kompaniya nomi bo'yicha)
+  var seen = Object.create(null);
+  allPartners = allPartners.filter(function(p){
+    var k = String(p.kompaniya||'').trim().toLowerCase();
+    if(!k || seen[k]) return false;
+    seen[k] = true;
+    return true;
+  });
+  // Hajm bo'yicha tartiblash (eng yirikdan)
+  allPartners.sort(function(a, b){ return Number(b.totalQty||0) - Number(a.totalQty||0); });
+
+  var partnerRowsHtml = allPartners.map(function(p){
+    var pCountry = String(p.davlat || p.country || '').trim();
+    var flag = (typeof getFinderCountryFlag === 'function' && pCountry) ? getFinderCountryFlag(pCountry) : '';
+    var pRole = String(p.role || '').toLowerCase();
+    var pRoleLabel = pRole === 'importer' ? '📥 Importyor' : (pRole === 'exporter' ? '📤 Eksportyor' : '');
+    var pAccent = pRole === 'importer' ? '#7C3AED' : (pRole === 'exporter' ? '#059669' : '#465fff');
+    var qtyTxt = fmtKg(p.totalQty);
+    var valTxt = fmtUsd(p.totalValue);
+    var dateTxt = p.lastDate ? String(p.lastDate).slice(0,10) : '';
+    return '<tr>'+
+      '<td style="padding:8px 10px;font-size:.72rem;border-bottom:1px solid var(--border)">'+
+        (pRoleLabel ? '<span style="display:inline-block;padding:2px 7px;border-radius:5px;background:'+pAccent+'18;color:'+pAccent+';font-size:.55rem;font-weight:800;letter-spacing:.04em;margin-right:6px">'+pRoleLabel+'</span>' : '')+
+        '<b style="color:var(--text)">'+escHtml(p.kompaniya || '—')+'</b>'+
+        (pCountry ? '<div style="font-size:.62rem;color:var(--text3);margin-top:2px">'+(flag?flag+' ':'')+escHtml(pCountry)+'</div>' : '')+
+      '</td>'+
+      '<td style="padding:8px 10px;font-size:.72rem;font-weight:700;color:#0EA5E9;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap">'+qtyTxt+'</td>'+
+      '<td style="padding:8px 10px;font-size:.72rem;font-weight:700;color:#16A34A;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap">'+valTxt+'</td>'+
+      '<td style="padding:8px 10px;font-size:.65rem;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);white-space:nowrap">'+(dateTxt?'📅 '+escHtml(dateTxt):'—')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  return '<div style="padding:1rem;border:1px solid '+accentColor+'33;border-radius:16px;background:'+bgColor+';margin-bottom:1rem">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.85rem">'+
+      '<div style="width:32px;height:32px;border-radius:8px;background:'+accentColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.85rem">📊</div>'+
+      '<div>'+
+        '<div style="font-family:\'Sora\',sans-serif;font-size:.9rem;font-weight:800;color:var(--text)">'+roleLabel+'</div>'+
+        '<div style="font-size:.62rem;color:var(--text3);margin-top:2px">'+subTitle+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.55rem;margin-bottom:.9rem">'+
+      kpiCard('Jami hajm', fmtKg(totalQty), '#0EA5E9', '📦')+
+      kpiCard('Jami qiymat', fmtUsd(totalVal), '#16A34A', '💰')+
+      (totalDocs ? kpiCard('Shipmentlar', totalDocs.toLocaleString(), '#F97316', '🚢') : '')+
+      (lastDate ? kpiCard('So\'nggi sana', escHtml(lastDate), '#7C3AED', '📅') : '')+
+      (firstDate && firstDate !== lastDate ? kpiCard('Birinchi sana', escHtml(firstDate), '#6366F1', '📆') : '')+
+    '</div>'+
+    (partnerRowsHtml ?
+      '<div style="font-size:.62rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;margin-top:.5rem">Hamkor kompaniyalar bo\'yicha taqsimot ('+allPartners.length+' ta)</div>'+
+      '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff">'+
+        '<table style="width:100%;border-collapse:collapse">'+
+          '<thead style="background:#F8FAFC">'+
+            '<tr>'+
+              '<th style="padding:8px 10px;text-align:left;font-size:.62rem;font-weight:700;color:var(--text2);letter-spacing:.04em;text-transform:uppercase">Kompaniya</th>'+
+              '<th style="padding:8px 10px;text-align:right;font-size:.62rem;font-weight:700;color:var(--text2);letter-spacing:.04em;text-transform:uppercase">Hajm</th>'+
+              '<th style="padding:8px 10px;text-align:right;font-size:.62rem;font-weight:700;color:var(--text2);letter-spacing:.04em;text-transform:uppercase">Qiymat</th>'+
+              '<th style="padding:8px 10px;text-align:right;font-size:.62rem;font-weight:700;color:var(--text2);letter-spacing:.04em;text-transform:uppercase">Sana</th>'+
+            '</tr>'+
+          '</thead>'+
+          '<tbody>'+partnerRowsHtml+'</tbody>'+
+        '</table>'+
+      '</div>'
+    : '')+
+  '</div>';
+}
+window.renderExportTradeSection = renderExportTradeSection;
+
 function openInvestorDetailModal(id){
   _investorDetailId = String(id || '');
   var rec = (DB.investorCompanies || []).find(function(item){ return String(item.id) === _investorDetailId; });
@@ -1896,6 +2034,7 @@ function openInvestorDetailModal(id){
           '<button type="button" onclick="enrichAndReopenPaid(\''+rec.id+'\')" style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:10px;font-size:.78rem;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.25)" title="Apollo org_enrichment — telefon va to\'liq ma\'lumot, 1 credit">💎 To\'liq ma\'lumot <span style="font-size:.62rem;background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px">1 credit</span></button>'+
         '</div>'+
       '</div>'+
+      renderExportTradeSection(rec)+
       renderTradeAtlasDetailSection(rec)+
       '</div>'+
       '<div>'+renderWebsiteAiProfileSection(rec)+'</div>'+
