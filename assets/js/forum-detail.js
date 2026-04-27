@@ -2117,53 +2117,77 @@ _renderInvestorCompaniesMain = function(){
     }
   }
 
-  // ═══ Backfill: eski importyor recordlarda _partnerOf bor lekin eksportyor record yo'q bo'lsa, sintetik yaratamiz ═══
-  // Bu qilmasak, eksportyor faqat panel'da ko'rinadi — alohida row sifatida emas
+  // ═══ Backfill: hamkor recordlarni avto-yaratish (DB'da yo'q bo'lsa) ═══
+  // IKKALA yo'nalishdan ham — _partnerOf VA _partners (sayohatchi tomonida turli yo'nalishlarda saqlanadi)
   var _existingNamesLower = Object.create(null);
   (DB.investorCompanies || []).forEach(function(r){
     var k = String(r.kompaniya || '').trim().toLowerCase();
     if(k) _existingNamesLower[k] = r;
   });
   var _backfillNeeded = [];
+  function _createSyntheticFromPartner(rec, p, partnerRoleOverride){
+    if(!p || !p.kompaniya) return;
+    var nm = String(p.kompaniya).trim().toLowerCase();
+    if(!nm || _existingNamesLower[nm]) return;
+    var role = partnerRoleOverride || String(p.role || '').toLowerCase();
+    if(role !== 'exporter' && role !== 'importer') return;
+    var oppositeRole = role === 'exporter' ? 'importer' : 'exporter';
+    var syntheticRec = {
+      id: 'syn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      kompaniya: p.kompaniya,
+      davlat: p.davlat || p.country || '',
+      shahar: p.cityState || '',
+      soha: rec.soha || '',
+      mahsulotNomi: rec.mahsulotNomi || '',
+      productId: rec.productId || '',
+      mahsulotHs: rec.mahsulotHs || '',
+      manba: 'TradeAtlas',
+      finderMode: role + 's',
+      score: 70,
+      rahbar: '', lavozim: '',
+      email: p.email || '', telefon: p.tel || '', website: p.web || '',
+      emailSent: false, holat: 'Yangi',
+      _tradeAtlasTradeValue: p.totalValue || 0,
+      _tradeAtlasQuantity: p.totalQty || 0,
+      _tradeAtlasDocCount: p.docCount || 0,
+      _tradeAtlasLastArrivalDate: p.lastDate || ''
+    };
+    // Ikki tomonlama bog'lanish — sintetik record ushbu rec bilan partnerlik aloqasi
+    if(role === 'exporter'){
+      // sintetik = eksportyor parent → uning _partners da rec (importer)
+      syntheticRec._partners = [{
+        kompaniya: rec.kompaniya || '', davlat: rec.davlat || '',
+        countryCode: '', cityState: rec.shahar || '',
+        email: rec.email || '', tel: rec.telefon || '', web: rec.website || '',
+        role: 'importer',
+        totalValue: p.totalValue || 0, totalQty: p.totalQty || 0,
+        docCount: p.docCount || 0, lastDate: p.lastDate || ''
+      }];
+    } else {
+      // sintetik = importer → uning _partnerOf da rec (eksportyor) parent
+      syntheticRec._partnerOf = [{
+        kompaniya: rec.kompaniya || '', davlat: rec.davlat || '',
+        role: 'exporter',
+        totalValue: p.totalValue || 0, totalQty: p.totalQty || 0,
+        docCount: p.docCount || 0, lastDate: p.lastDate || ''
+      }];
+    }
+    _existingNamesLower[nm] = syntheticRec;
+    _backfillNeeded.push(syntheticRec);
+  }
   co.forEach(function(rec){
+    var recRole = String(rec.finderMode || '').toLowerCase();
+    // Yo'nalish A: rec._partnerOf — bu rec hamkor bo'lgan parentlar (parent bilan bog'lanadi)
     var po = Array.isArray(rec._partnerOf) ? rec._partnerOf : [];
     po.forEach(function(p){
-      if(!p || !p.kompaniya) return;
-      var nm = String(p.kompaniya).trim().toLowerCase();
-      if(!nm || _existingNamesLower[nm]) return;
-      // Sintetik eksportyor yarataylik
-      var role = String(p.role || '').toLowerCase();
-      if(role !== 'exporter' && role !== 'importer') return; // role aniq bo'lmasa skip
-      var syntheticRec = {
-        id: 'syn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-        kompaniya: p.kompaniya,
-        davlat: p.davlat || p.country || '',
-        shahar: p.cityState || '',
-        soha: rec.soha || '',
-        mahsulotNomi: rec.mahsulotNomi || '',
-        productId: rec.productId || '',
-        mahsulotHs: rec.mahsulotHs || '',
-        manba: 'TradeAtlas',
-        finderMode: role + 's',
-        score: 70,
-        rahbar: '', lavozim: '', email: '', telefon: '',
-        emailSent: false, holat: 'Yangi',
-        _tradeAtlasTradeValue: p.totalValue || 0,
-        _tradeAtlasQuantity: p.totalQty || 0,
-        _tradeAtlasDocCount: p.docCount || 0,
-        _tradeAtlasLastArrivalDate: p.lastDate || '',
-        // _partners ga teskari bog'lanish — mavjud rec endi xaridor
-        _partners: [{
-          kompaniya: rec.kompaniya || '', davlat: rec.davlat || '',
-          countryCode: '', cityState: rec.shahar || '',
-          email: rec.email || '', tel: rec.telefon || '', web: rec.website || '',
-          role: role === 'exporter' ? 'importer' : 'exporter',
-          totalValue: p.totalValue || 0, totalQty: p.totalQty || 0,
-          docCount: p.docCount || 0, lastDate: p.lastDate || ''
-        }]
-      };
-      _existingNamesLower[nm] = syntheticRec;
-      _backfillNeeded.push(syntheticRec);
+      // p.role = parent'ning roli, parent IS our partner here
+      _createSyntheticFromPartner(rec, p);
+    });
+    // Yo'nalish B: rec._partners — bu rec'ning hamkorlari
+    var ps = Array.isArray(rec._partners) ? rec._partners : [];
+    ps.forEach(function(p){
+      // p.role = partnerning roli (counterpart)
+      _createSyntheticFromPartner(rec, p);
     });
   });
   // Sintetik recordlarni DB ga qo'shamiz va saqlaymiz
@@ -2173,11 +2197,8 @@ _renderInvestorCompaniesMain = function(){
       DB.investorCompanies.push(r);
       if(typeof fbSave === 'function') fbSave('investorCompanies', r);
     });
-    // co arrayini yangilab olamiz (filter'dan o'tgandan keyin sintetiklarni ham qo'shish)
+    // Sintetiklarni co'ga qo'shish — filterdan bypass qilamiz, chunki ular tanlangan recordga bog'liq
     _backfillNeeded.forEach(function(r){
-      // Country filter va product filter sintetikani ham filterdan o'tkazsin
-      if(_investorGeoFilterStateCode && getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return;
-      if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return;
       co.push(r);
     });
   }
@@ -2255,6 +2276,24 @@ _renderInvestorCompaniesMain = function(){
       rec._partnerOf.forEach(function(p){
         if(String(p.role || '').toLowerCase() === 'exporter'){
           _addParentChildLink(p.kompaniya, rec.kompaniya);
+        }
+      });
+    }
+    // Yo'nalish 3: importer → uning eksportyor manbalari (_partners[role='exporter'])
+    // Importer parent search natijasida _partners ga eksportyor counterpartlar saqlangan
+    if(g._role === 'importer' && Array.isArray(rec._partners)){
+      rec._partners.forEach(function(p){
+        if(String(p.role || '').toLowerCase() === 'exporter'){
+          _addParentChildLink(p.kompaniya, rec.kompaniya);
+        }
+      });
+    }
+    // Yo'nalish 4: eksportyor → uning importer xaridorlari (_partnerOf[role='importer'])
+    // Eksportyor counterpart bo'lib saqlanganda, _partnerOf'da importer parent ko'rinadi
+    if(g._role === 'exporter' && Array.isArray(rec._partnerOf)){
+      rec._partnerOf.forEach(function(p){
+        if(String(p.role || '').toLowerCase() === 'importer'){
+          _addParentChildLink(rec.kompaniya, p.kompaniya);
         }
       });
     }
