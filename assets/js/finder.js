@@ -1334,8 +1334,9 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
     if(!expectedTotal) expectedTotal = Number((data && data.count) || 0) || 0;
     var beforeCount = found.length;
     firms.forEach(function(firm){
-      // Afrika qit'asidagi firmalarni chiqarmaymiz
-      if(meta.mode === 'exporters'){
+      // Afrika qit'asidagi firmalarni faqat FIRMS mode'da chiqaramiz (kreditlar uchun)
+      // Shipments mode'da BARCHA firmalarni qoldiramiz — kredit allaqachon shipment soniga asoslangan
+      if(meta.mode === 'exporters' && (window._taApiMode || 'firms') === 'firms'){
         var firmCode = tradeAtlasFirmCountryCode(firm);
         if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
       }
@@ -1343,11 +1344,13 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
       if(!item || !String(item.kompaniya || '').trim()) return;
       apolloUpsertFinderItem(found, item, meta);
     });
+    console.log('[ShipmentsSearch] Page', payload.page, 'firms returned:', firms.length, 'found total:', found.length, 'expected:', expectedTotal);
     if(!firms.length) break;
     if(found.length === beforeCount) break;
     if(expectedTotal > 0 && found.length >= expectedTotal) break;
     if(firms.length < pageSize) break;
   }
+  console.log('[ShipmentsSearch] FINAL firms after filter:', found.length);
   return found.filter(finderResultIsRenderable).sort(function(a,b){
     return (Number(b._tradeAtlasTradeValue || 0) - Number(a._tradeAtlasTradeValue || 0)) || ((b.score || 0) - (a.score || 0));
   });
@@ -3496,6 +3499,7 @@ async function runCompanyFinder(source){
     var taPreRes = await showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope, _taCacheFlags);
     var taConfirmed = !!(taPreRes && taPreRes.confirmed);
     _taApiMode = (taPreRes && taPreRes.apiMode) || 'firms';
+    window._taApiMode = _taApiMode;  // Africa filter shu global'ga qaraydi
     var _taForceRefresh = !!(taPreRes && taPreRes.forceRefresh);
     if(!taConfirmed){
       document.getElementById('finderProgress').style.display = 'none';
