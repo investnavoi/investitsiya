@@ -1351,7 +1351,34 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
     if(firms.length < pageSize) break;
   }
   console.log('[ShipmentsSearch] FINAL firms after filter:', found.length);
-  return found.filter(finderResultIsRenderable).sort(function(a,b){
+  // ═══ Shipment-level explode: har firma counterpart_firms array bo'yicha alohida rowlarga ajraladi ═══
+  // Maqsad: TradeAtlas saytidagi kabi har juftlik (eksportyor + importyor) alohida ko'rinadi
+  var exploded = [];
+  found.forEach(function(item){
+    var counterparts = Array.isArray(item._tradeAtlasCounterpartFirms) ? item._tradeAtlasCounterpartFirms : [];
+    if(!counterparts.length){
+      // Counterpart yo'q bo'lsa, asl row qoladi
+      exploded.push(item);
+      return;
+    }
+    // Har counterpart uchun yangi row yaratamiz, asl item ma'lumotlarini saqlaymiz
+    counterparts.forEach(function(cp, cpIdx){
+      var clone = Object.assign({}, item);
+      // Counterpart ma'lumotlarini bu row uchun aniq aggregate qilamiz
+      clone.id = String(item.id || '') + '_cp' + cpIdx;
+      clone._tradeAtlasQuantity = Number((cp && cp.totalQty) || 0) || item._tradeAtlasQuantity;
+      clone._tradeAtlasTradeValue = Number((cp && cp.totalValue) || 0) || item._tradeAtlasTradeValue;
+      clone._tradeAtlasDocCount = Number((cp && cp.docCount) || 0) || item._tradeAtlasDocCount;
+      clone._tradeAtlasLastArrivalDate = String((cp && cp.lastDate) || '') || item._tradeAtlasLastArrivalDate;
+      // Faqat ushbu counterpart'ni ko'rsatamiz
+      clone._tradeAtlasCounterpartFirms = [cp];
+      // Counterpart davlatini saqlash
+      clone._tradeAtlasCounterpartCountries = cp && cp.country ? [cp.country] : (item._tradeAtlasCounterpartCountries || []);
+      exploded.push(clone);
+    });
+  });
+  console.log('[ShipmentsSearch] After explode by counterpart:', exploded.length);
+  return exploded.filter(finderResultIsRenderable).sort(function(a,b){
     return (Number(b._tradeAtlasTradeValue || 0) - Number(a._tradeAtlasTradeValue || 0)) || ((b.score || 0) - (a.score || 0));
   });
 }
@@ -3540,15 +3567,7 @@ async function runCompanyFinder(source){
       tradeAtlasResults.filter(finderResultIsRenderable).forEach(function(item){
         _finderResults.push(item);
       });
-      // ═══ Import-analysis snapshot'dan BARCHA eksportyor partnerlarni qo'shish (kreditsiz) ═══
-      // Exclusion va target country filter olib tashlandi — dedupeFinderResults dublikatlarni boshqaradi
-      try {
-        var snapshotEnrichment = _enrichFinderFromImportSnapshots(prod, targetCountries, null);
-        if(snapshotEnrichment && snapshotEnrichment.length){
-          snapshotEnrichment.forEach(function(item){ _finderResults.push(item); });
-          if(typeof toast === 'function') toast('💾 '+snapshotEnrichment.length+' ta eksportyor import-analysis cache\'idan qo\'shildi (kreditsiz)','success');
-        }
-      } catch(_e){ console.error('Snapshot enrichment failed:', _e); }
+      // Enrichment olib tashlandi — faqat tanlangan filter (shipment) natijalari ko'rsatiladi
       dedupeFinderResults();
       _finderResults = _finderResults.filter(finderResultIsRenderable);
       if(!_finderResults.length){
