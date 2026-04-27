@@ -2539,10 +2539,11 @@ _renderInvestorCompaniesMain = function(){
       contactHtml += '</div>';
 
       var groupBorderStyle = recIdx === 0 ? 'border-top:10px solid transparent;box-shadow:inset 0 2px 0 rgba(70,95,255,.18);' : '';
-      // Parent (eksportyor) qator hover qilganda — ostiga ulangan importyor xaridorlar BADGE ko'rinadi (qator emas)
+      // Parent (eksportyor) qator hover qilganda — ostiga ulangan importyor xaridorlar BADGE ko'rinadi
+      // Agar biror importyor ochilgan bo'lsa (pinned), mouseleave'da yashirinmaydi
       var _hoverHandlers = '';
       if(_isParent && _childrenData.length){
-        _hoverHandlers = ' onmouseenter="var b=this.querySelectorAll(\'.ic-importer-hover\');for(var i=0;i<b.length;i++)b[i].style.display=\'block\'" onmouseleave="var b=this.querySelectorAll(\'.ic-importer-hover\');for(var i=0;i<b.length;i++)b[i].style.display=\'none\'"';
+        _hoverHandlers = ' onmouseenter="var b=this.querySelectorAll(\'.ic-importer-hover\');for(var i=0;i<b.length;i++)b[i].style.display=\'block\'" onmouseleave="var b=this.querySelectorAll(\'.ic-importer-hover\');for(var i=0;i<b.length;i++){if(b[i].dataset.pinned!==\'1\')b[i].style.display=\'none\'}"';
       }
       // Yashirin child (importyor) qator — boshlang'ich display:none, bosilgancha
       var _hiddenChildAttrs = '';
@@ -2878,22 +2879,35 @@ window.selectThisPage = selectThisPage;
 window.selectAll = selectAll;
 window.clearSelection = clearSelection;
 
-// Hover badge'da importyor nomi bosilganda — uning to'liq qatorini (kontakt, soha, buttonlar) ko'rsatadi
+// Hover badge'da importyor nomi bosilganda — uning to'liq qatorini ko'rsatadi/yashiradi
 window.toggleHiddenChildRow = function(childKey, badgeEl){
   if(!childKey) return;
   var rows = document.querySelectorAll('tr[data-child-key="'+childKey+'"]');
   if(!rows || !rows.length) return;
   var firstRow = rows[0];
-  var willShow = firstRow.style.display === 'none' || !firstRow.style.display;
+  // To'g'ri tekshirish: faqat 'none' bo'lsa hidden, aks holda visible
+  var isCurrentlyHidden = firstRow.style.display === 'none';
+  var willShow = isCurrentlyHidden;
   for(var i=0;i<rows.length;i++){
     rows[i].style.display = willShow ? '' : 'none';
   }
-  // Badge ichidagi strelkani aylantirish ▶ ↔ ▼
   if(badgeEl){
     var arrow = badgeEl.querySelector('.ic-toggle-arrow');
     if(arrow) arrow.textContent = willShow ? '▼' : '▶';
+    // Hover badge'ni pin qilish — biror bola ochilganda yashinmasin (mouseleave bo'lsa ham)
+    var hoverContainer = badgeEl.closest('.ic-importer-hover');
+    if(hoverContainer){
+      // Hozir ochilgan bolalar bormi tekshiramiz
+      var arrows = hoverContainer.querySelectorAll('.ic-toggle-arrow');
+      var anyExpanded = false;
+      for(var j=0;j<arrows.length;j++){
+        if(arrows[j].textContent === '▼'){ anyExpanded = true; break; }
+      }
+      hoverContainer.dataset.pinned = anyExpanded ? '1' : '';
+      hoverContainer.style.display = anyExpanded ? 'block' : '';
+    }
     if(willShow){
-      // Ochilgan importyorga scroll
+      // Ochilgan importyorga scroll va animatsiya
       setTimeout(function(){
         firstRow.scrollIntoView({behavior:'smooth', block:'nearest'});
         firstRow.style.outline = '2px solid #7C3AED';
