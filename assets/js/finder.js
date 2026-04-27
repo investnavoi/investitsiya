@@ -822,7 +822,7 @@ function _extractCountNumber(countData){
   return found;
 }
 
-async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope){
+async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope, cacheFlags){
   var hsCode = (typeof getExactImportHsCode === 'function') ? getExactImportHsCode(prod) : (prod && prod.hs_code) || '';
   var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
   var sourceCodes = filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
@@ -924,6 +924,12 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
 
   return await new Promise(function(resolve){
     var selectedApiMode = 'firms'; // default — arzon yo'l
+    var forceRefresh = false; // user "Yangilash (kreditli)" bossa true bo'ladi
+    var _cacheFlags = cacheFlags || { firms: false, shipments: false };
+    function _isCachedForCurrentMode(){
+      if(forceRefresh) return false;
+      return selectedApiMode === 'shipments' ? !!_cacheFlags.shipments : !!_cacheFlags.firms;
+    }
     var firmsTxtValue = firmsCount;
     var firmsEstimated = false;
     if((firmsCount == null || firmsCount === 0) && shipmentsCount){
@@ -1092,31 +1098,42 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
       var sourceSummary = sourceCodes.length ?
         (sourceCodes.slice(0, 5).join(', ') + (sourceCodes.length > 5 ? ' (+' + (sourceCodes.length-5) + ')' : ''))
         : '<span style="color:#9A3412;font-weight:700">Butun dunyo (Afrikasiz)</span>';
+      var cached = _isCachedForCurrentMode();
+      var cacheBanner = cached
+        ? '<div style="padding:.75rem .85rem;border-radius:10px;background:linear-gradient(135deg,rgba(5,150,105,.12),rgba(6,214,160,.06));border:1.5px solid rgba(5,150,105,.35);color:#065F46;font-size:.78rem;margin-bottom:.9rem;line-height:1.5">💾 <b>Saqlangan natija topildi</b> — bu filtr bo\'yicha avval qidirilgan, Firebase keshida saqlangan. <b>Yuklab olish bosilganda 0 kredit sarflanadi.</b><br><span style="font-size:.7rem;color:#475569">Yangi natija kerak bo\'lsa "Yangilash (kreditli)" tugmasini bosing.</span></div>'
+        : '';
+      var confirmLabel = cached ? '💾 Cached\'dan ishlatish (0 kredit)' : 'Yuklab olish';
+      var refreshBtn = cached ? '<button id="taPreRefresh" style="padding:.6rem 1rem;border-radius:10px;border:1.5px solid #D97706;background:#fff;color:#D97706;font-weight:600;cursor:pointer;font-size:.78rem">🔄 Yangilash (kreditli)</button>' : '';
       box.innerHTML =
         '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem"><div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0F766E,#059669);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M2 12h20M12 2c2.5 2.8 4 6.2 4 10s-1.5 7.2-4 10c-2.5-2.8-4-6.2-4-10s1.5-7.2 4-10z" stroke="currentColor" stroke-width="1.8"/></svg></div><div><h3 style="margin:0;font-size:1.05rem;color:#1a1a2e">TradeAtlas so\'rov xulosasi</h3><div style="font-size:.7rem;color:#64748B">Count endpointlari (0 kredit)</div></div></div>'+
+        cacheBanner +
         '<div style="background:#F8FAFC;border-radius:10px;padding:.85rem;margin-bottom:1rem;font-size:.78rem;color:#475569;line-height:1.55">'+
           '<div style="margin-bottom:.35rem"><strong>📦 Mahsulot:</strong> '+escHtml(prod.name_en||prod.name_uz||'—')+' <span style="color:#64748B">(HS '+escHtml(hsCode||'—')+')</span></div>'+
           '<div style="margin-bottom:.35rem"><strong style="color:#0F766E">🎯 Maqsad davlatlar:</strong> '+escHtml(targetSummary || '—')+' <span style="color:#64748B;font-size:.7rem">(import qiluvchi)</span></div>'+
           '<div><strong style="color:#7C3AED">🌐 Manba davlatlar:</strong> '+sourceSummary+' <span style="color:#64748B;font-size:.7rem">(eksport qiluvchi)</span></div>'+
         '</div>'+
         worldBlock + _modeToggleHtml() + _bodyCardsHtml() + _breakdownHtml() + errBlock +
-        '<div style="display:flex;gap:.7rem;justify-content:flex-end">'+
+        '<div style="display:flex;gap:.7rem;justify-content:flex-end;flex-wrap:wrap">'+
           '<button id="taPreCancel" style="padding:.6rem 1.3rem;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;font-size:.82rem">Bekor qilish</button>'+
-          '<button id="taPreConfirm" style="padding:.6rem 1.3rem;border-radius:10px;border:none;background:linear-gradient(135deg,#0F766E,#059669);color:#fff;font-weight:600;cursor:pointer;font-size:.82rem">Yuklab olish</button>'+
+          refreshBtn +
+          '<button id="taPreConfirm" style="padding:.6rem 1.3rem;border-radius:10px;border:none;background:linear-gradient(135deg,'+(cached?'#059669,#06D6A0':'#0F766E,#059669')+');color:#fff;font-weight:600;cursor:pointer;font-size:.82rem">'+confirmLabel+'</button>'+
         '</div>';
       var btns = box.querySelectorAll('.taModeBtn');
       for(var bi=0; bi<btns.length; bi++){
         (function(btn){
           btn.onclick = function(){
             selectedApiMode = btn.getAttribute('data-mode') || 'firms';
+            forceRefresh = false; // mode o'zgarishi bilan refresh holati reset
             _renderBox();
           };
         })(btns[bi]);
       }
       var bdBtn = document.getElementById('taBreakdownBtn');
       if(bdBtn) bdBtn.onclick = function(){ _loadBreakdown(); };
-      document.getElementById('taPreCancel').onclick = function(){ close({confirmed:false, apiMode:selectedApiMode}); };
-      document.getElementById('taPreConfirm').onclick = function(){ close({confirmed:true, apiMode:selectedApiMode}); };
+      var rfBtn = document.getElementById('taPreRefresh');
+      if(rfBtn) rfBtn.onclick = function(){ forceRefresh = true; _renderBox(); };
+      document.getElementById('taPreCancel').onclick = function(){ close({confirmed:false, apiMode:selectedApiMode, forceRefresh:forceRefresh}); };
+      document.getElementById('taPreConfirm').onclick = function(){ close({confirmed:true, apiMode:selectedApiMode, forceRefresh:forceRefresh}); };
     }
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -1332,6 +1349,36 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   return found.filter(finderResultIsRenderable).sort(function(a,b){
     return (Number(b._tradeAtlasTradeValue || 0) - Number(a._tradeAtlasTradeValue || 0)) || ((b.score || 0) - (a.score || 0));
   });
+}
+
+// ═══ TradeAtlas firm-search snapshot cache (kreditni tejash uchun Firebase'da saqlanadi) ═══
+function _buildTaSnapshotId(prod, hsCode, targetCodes, sourceCodes, dateRange, apiMode){
+  var targets = (targetCodes || []).slice().sort().join(',');
+  var sources = (sourceCodes || []).slice().sort().join(',');
+  var startD = (dateRange && dateRange.startDate) ? dateRange.startDate : '';
+  var endD = (dateRange && dateRange.endDate) ? dateRange.endDate : '';
+  var raw = ['tafirm_v1', String((prod && prod.id) || 'na'), String(hsCode || 'na'), apiMode || 'firms', 't=' + targets, 's=' + (sources || 'world'), 'd=' + startD + '_' + endD].join('|');
+  return raw.replace(/[^a-zA-Z0-9_=,|\-]/g, '_');
+}
+
+function _getTaSnapshot(id){
+  return (DB.taFirmSnapshots || []).find(function(s){ return String(s.id) === String(id); }) || null;
+}
+
+async function _saveTaSnapshot(snapshot){
+  if(!snapshot || !snapshot.id || !Array.isArray(snapshot.results) || !snapshot.results.length) return;
+  if(typeof upsertDbRecord === 'function') upsertDbRecord('taFirmSnapshots', snapshot);
+  else {
+    if(!Array.isArray(DB.taFirmSnapshots)) DB.taFirmSnapshots = [];
+    var idx = DB.taFirmSnapshots.findIndex(function(s){ return String(s.id) === String(snapshot.id); });
+    if(idx >= 0) DB.taFirmSnapshots[idx] = snapshot; else DB.taFirmSnapshots.push(snapshot);
+  }
+  if(typeof fbSave === 'function'){
+    try { await fbSave('taFirmSnapshots', snapshot); } catch(_e){ console.warn('TA snapshot save fail:', _e && _e.message); }
+  }
+  if(typeof setLocalCollectionBackup === 'function'){
+    try { setLocalCollectionBackup('taFirmSnapshots', DB.taFirmSnapshots); } catch(_e){}
+  }
 }
 
 // Faqat /firms/search orqali kompaniyalarni olish (arzon yol — 1 kredit har firma)
@@ -3317,15 +3364,36 @@ async function runCompanyFinder(source){
   _finderResults = [];
 
   var _taApiMode = 'firms';
+  var _taSnapshotId = '';
+  var _taCachedSnapshot = null;
   if(source === 'tradeatlas'){
-    var taPreRes = await showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope);
+    // ═══ Cache check: shu filtr uchun avval Firebase'da saqlangan natija bormi? ═══
+    try {
+      if(typeof ensureCollectionLoaded === 'function') await ensureCollectionLoaded('taFirmSnapshots');
+    } catch(_e){}
+    // Kesh kaliti — kerak bolsa modal'gacha tekshiriladi (default firms mode bilan; user shipments tanlasa qayta tekshiriladi)
+    var _taHsPre = getExactImportHsCode(prod);
+    var _taTargetCodesPre = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
+    var _taSourceCodesPre = filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
+    var _taDateRangePre = (typeof getImportAnalysisDateRange === 'function') ? getImportAnalysisDateRange() : { startDate:'', endDate:'' };
+    var _taSnapIdFirms = _buildTaSnapshotId(prod, _taHsPre, _taTargetCodesPre, _taSourceCodesPre, _taDateRangePre, 'firms');
+    var _taSnapIdShipments = _buildTaSnapshotId(prod, _taHsPre, _taTargetCodesPre, _taSourceCodesPre, _taDateRangePre, 'shipments');
+    var _taCacheFirms = _getTaSnapshot(_taSnapIdFirms);
+    var _taCacheShipments = _getTaSnapshot(_taSnapIdShipments);
+    var _taCacheFlags = { firms: !!_taCacheFirms, shipments: !!_taCacheShipments };
+
+    var taPreRes = await showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope, _taCacheFlags);
     var taConfirmed = !!(taPreRes && taPreRes.confirmed);
     _taApiMode = (taPreRes && taPreRes.apiMode) || 'firms';
+    var _taForceRefresh = !!(taPreRes && taPreRes.forceRefresh);
     if(!taConfirmed){
       document.getElementById('finderProgress').style.display = 'none';
       toast('ℹ️ TradeAtlas qidiruvi bekor qilindi','info');
       return;
     }
+    // Tanlangan apiMode bo'yicha snapshot id va cache
+    _taSnapshotId = _taApiMode === 'shipments' ? _taSnapIdShipments : _taSnapIdFirms;
+    _taCachedSnapshot = _taForceRefresh ? null : _getTaSnapshot(_taSnapshotId);
   }
 
   try {
@@ -3342,7 +3410,12 @@ async function runCompanyFinder(source){
           ? sourceScope.effectiveCountries.slice(0,4).map(getFinderCountryLabel).join(', ') + (sourceScope.effectiveCountries.length > 4 ? '...' : '')
           : 'Butun dunyo');
       var tradeAtlasResults;
-      if(_taApiMode === 'shipments'){
+      if(_taCachedSnapshot && Array.isArray(_taCachedSnapshot.results) && _taCachedSnapshot.results.length){
+        // ═══ Firebase'dan saqlangan natija — kredit sarflanmaydi ═══
+        document.getElementById('finderProgressText').textContent = '💾 Firebase keshidan tiklanmoqda — kredit sarflanmaydi (saqlangan: ' + (_taCachedSnapshot.cachedAt || '').slice(0, 10) + ')';
+        tradeAtlasResults = _taCachedSnapshot.results.slice();
+        toast('💾 Saqlangan natija topildi: ' + tradeAtlasResults.length + ' kompaniya (kreditsiz)', 'success');
+      } else if(_taApiMode === 'shipments'){
         // Aniq yo'l: /shipments/search → per-firm aggregation (hajm + FOB qiymat + counterpart)
         tradeAtlasResults = await tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope);
       } else {
@@ -3356,6 +3429,23 @@ async function runCompanyFinder(source){
       _finderResults = _finderResults.filter(finderResultIsRenderable);
       if(!_finderResults.length){
         throw new Error('TradeAtlas qidiruvi natija qaytarmadi');
+      }
+      // ═══ Kreditli yangi search bo'lsa, natijani Firebase keshiga saqlaymiz ═══
+      if(!_taCachedSnapshot && _taSnapshotId){
+        var _taSnap = {
+          id: _taSnapshotId,
+          productId: String((prod && prod.id) || ''),
+          productName: (typeof formatBilingualProductName === 'function') ? formatBilingualProductName(prod) : (prod && (prod.name_en || prod.name_uz) || ''),
+          hsCode: getExactImportHsCode(prod) || '',
+          targetCodes: (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean).slice().sort(),
+          sourceCodes: filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean)).slice().sort(),
+          startDate: (typeof getImportAnalysisDateRange === 'function' && getImportAnalysisDateRange().startDate) || '',
+          endDate: (typeof getImportAnalysisDateRange === 'function' && getImportAnalysisDateRange().endDate) || '',
+          apiMode: _taApiMode,
+          results: _finderResults.slice(),
+          cachedAt: new Date().toISOString()
+        };
+        _saveTaSnapshot(_taSnap).catch(function(e){ console.warn('TA snapshot saqlash xatosi:', e && e.message); });
       }
       document.getElementById('finderBar').style.width = '70%';
 
