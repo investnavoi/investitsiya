@@ -491,9 +491,19 @@ input[type="checkbox"]:checked::after,
 #ic-tbody tr.ic-company-separator,
 #ic-tbody tr.ic-company-separator td,
 .ic-company-separator,
-.ic-company-separator td{border:none !important;border-bottom:none !important;background:transparent !important}
+.ic-company-separator td{border:0 !important;border-top:0 !important;border-bottom:0 !important;background:transparent !important;box-shadow:none !important}
+/* Separator atrofidagi tr'lar — top va bottom border'larini olib tashlash */
+#ic-tbody tr.ic-company-separator + tr,
+#ic-tbody tr.ic-company-separator + tr td{border-top:0 !important}
+/* Separator'dan oldingi har qanday tbody tr ham bottom border'siz */
+#ic-tbody tr.ic-group-row,
+#ic-tbody tr.ic-group-row td{border-bottom:0 !important}
 /* Partner panel row ham faqat gradient ko'rinishi uchun border'siz */
-#ic-tbody tr.ic-partner-panel-row{border-bottom:none !important}
+#ic-tbody tr.ic-partner-panel-row,
+#ic-tbody tr.ic-partner-panel-row td{border-bottom:0 !important;border-top:0 !important}
+/* Hamma ic-tbody tr'lardan default border'ni olib tashlash — faqat gradient separator ko'rinadi */
+#ic-tbody tr{border-bottom:0 !important;border-top:0 !important}
+#ic-tbody tr td{border-bottom:0 !important;border-top:0 !important}
 
 /* ═══ Investor base — qatorlar orasini qisqartirish + ustun kengliklarini optimallash ═══ */
 /* Qator padding'ini kamaytirib row'lar orasini ixchamlash */
