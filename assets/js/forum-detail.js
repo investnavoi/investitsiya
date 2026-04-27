@@ -2483,6 +2483,38 @@ _renderInvestorCompaniesMain = function(){
     if(_isParent && _parentChildrenCount){
       _parentSubLine = '<div style="font-size:.62rem;color:#059669;margin-top:2px;font-weight:600;cursor:help" title="Hover qilib ko\'ring">👁️ '+_parentChildrenCount+' ta importyor xaridor (hover qiling)</div>';
     }
+    // Eksport hajmi + sanasi — jami children'lardan aggregate, fallback record field'laridan
+    var _exportInfoLine = '';
+    if(_isParent){
+      var _totalExpQty = 0;
+      var _totalExpVal = 0;
+      var _maxDate = '';
+      _childrenData.forEach(function(ci){
+        _totalExpQty += Number(ci.totalQty || 0);
+        _totalExpVal += Number(ci.totalValue || 0);
+        var d = String(ci.lastDate || '').slice(0,10);
+        if(d && (!_maxDate || d > _maxDate)) _maxDate = d;
+      });
+      // Agar children'lardan ma'lumot yo'q bo'lsa, recordning o'zidan
+      if(!_totalExpQty) _totalExpQty = Number(companyRec._tradeAtlasQuantity || 0);
+      if(!_totalExpVal) _totalExpVal = Number(companyRec._tradeAtlasTradeValue || 0);
+      if(!_maxDate) _maxDate = String(companyRec._tradeAtlasLastArrivalDate || '').slice(0,10);
+      if(_totalExpQty || _totalExpVal || _maxDate){
+        var _qtyTxt = '';
+        if(_totalExpQty >= 1e6) _qtyTxt = (_totalExpQty/1e6).toFixed(1)+'M';
+        else if(_totalExpQty >= 1e3) _qtyTxt = (_totalExpQty/1e3).toFixed(1)+'K';
+        else if(_totalExpQty) _qtyTxt = String(Math.round(_totalExpQty));
+        var _valTxt = '';
+        if(_totalExpVal >= 1e6) _valTxt = '$'+(_totalExpVal/1e6).toFixed(1)+'M';
+        else if(_totalExpVal >= 1e3) _valTxt = '$'+(_totalExpVal/1e3).toFixed(0)+'K';
+        else if(_totalExpVal) _valTxt = '$'+Math.round(_totalExpVal);
+        _exportInfoLine = '<div style="font-size:.65rem;margin-top:5px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+          (_qtyTxt ? '<span style="background:rgba(5,150,105,.1);color:#059669;padding:2px 8px;border-radius:6px;font-weight:700;display:inline-flex;align-items:center;gap:3px" title="Eksport hajmi (jami)">📦 '+_qtyTxt+' kg</span>' : '')+
+          (_valTxt ? '<span style="background:rgba(34,197,94,.1);color:#16A34A;padding:2px 8px;border-radius:6px;font-weight:700;display:inline-flex;align-items:center;gap:3px" title="Eksport qiymati (jami FOB/CIF)">💰 '+_valTxt+'</span>' : '')+
+          (_maxDate ? '<span style="background:rgba(99,102,241,.08);color:#4338CA;padding:2px 8px;border-radius:6px;font-weight:600;font-size:.62rem;display:inline-flex;align-items:center;gap:3px" title="So\'nggi eksport sanasi">📅 '+escHtml(_maxDate)+'</span>' : '')+
+        '</div>';
+      }
+    }
     // Avatar oldida child bo'lsa indentation (orphan importerlar uchun ham qo'llanmaydi endi)
     var _avatarPrefixHtml = '';
 
@@ -2495,6 +2527,7 @@ _renderInvestorCompaniesMain = function(){
         '<div style="font-size:.85rem;font-weight:700;color:#111827">'+escHtml(compName)+'</div>' +
         (companyRec.website ? '<div style="font-size:.66rem;color:#6366F1;margin-top:1px">'+escHtml(companyRec.website)+'</div>' : '') +
         locationLine +
+        _exportInfoLine +
         _parentSubLine +
         _hoverImporterBadge +
       '</div></div>';
