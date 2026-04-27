@@ -2101,22 +2101,15 @@ window.findContactsForInvestorRecord = async function(recordId, btnEl){
   var meta = { mode: String(rec.finderMode || 'exporters').toLowerCase() };
   var foundSource = '';
   try {
-    // 1-qadam: Apollo
-    var apolloKey = (typeof getApolloApiKey === 'function') ? getApolloApiKey() : '';
-    if(apolloKey && typeof apolloEnrichTradeAtlasItem === 'function'){
-      if(btnEl) btnEl.textContent = '🅰️ Apollo qidirmoqda...';
-      await apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta);
-      if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
-        foundSource = 'Apollo';
-      }
-    }
-    // 2-qadam: Gemini fallback
-    if(!foundSource && typeof geminiEnrichTradeAtlasItem === 'function'){
+    // Faqat Gemini orqali qidirish (Apollo subscription tugagan)
+    if(typeof geminiEnrichTradeAtlasItem === 'function'){
       if(btnEl) btnEl.textContent = '✨ Gemini qidirmoqda...';
       await geminiEnrichTradeAtlasItem(item, prod, meta);
       if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
         foundSource = 'Gemini';
       }
+    } else {
+      throw new Error('Gemini funksiyasi mavjud emas');
     }
   } catch(e){
     console.error('[findContactsForInvestorRecord] error:', e && e.message);
@@ -2134,8 +2127,7 @@ window.findContactsForInvestorRecord = async function(recordId, btnEl){
     if(item.soha && !rec.soha) rec.soha = item.soha;
     if(typeof fbSave === 'function') fbSave('investorCompanies', rec);
     if(typeof toast === 'function'){
-      var label = foundSource === 'Apollo' ? '🅰️ Apollo' : '✨ Gemini';
-      toast('✅ Lead topildi: ' + label + ' — ' + rec.kompaniya, 'success');
+      toast('✅ Lead topildi: ✨ Gemini — ' + rec.kompaniya, 'success');
     }
     if(typeof renderInvestorCompanies === 'function') renderInvestorCompanies();
   } else {

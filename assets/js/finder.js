@@ -1557,18 +1557,7 @@ window.findContactsForFinderItem = async function(sourceIdx){
         foundSource = 'DB';
       }
     }
-    // 1-qadam: Apollo
-    if(!foundSource){
-      var apolloKey = (typeof getApolloApiKey === 'function') ? getApolloApiKey() : '';
-      if(apolloKey){
-        if(btn){ btn.textContent = '🅰️ Apollo qidirmoqda...'; }
-        await apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta);
-        if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
-          foundSource = 'Apollo';
-        }
-      }
-    }
-    // 2-qadam: Gemini fallback
+    // 1-qadam: Gemini (Apollo subscription tugagan)
     if(!foundSource && typeof callGemini === 'function'){
       if(btn){ btn.textContent = '✨ Gemini qidirmoqda...'; }
       await geminiEnrichTradeAtlasItem(item, prod, meta);
