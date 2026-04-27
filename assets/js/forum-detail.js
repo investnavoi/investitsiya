@@ -2877,9 +2877,18 @@ _renderInvestorCompaniesMain = function(){
       if(contact.email) contactHtml += '<div style="font-size:.68rem;color:#3B82F6;margin-top:2px;word-break:break-all;font-weight:500">'+escHtml(contact.email)+'</div>';
       if(contact.telefon && contact.telefon !== '—') contactHtml += '<div style="font-size:.65rem;color:#6B7280;margin-top:2px">'+escHtml(contact.telefon)+'</div>';
       if(!contact.name && !contact.email) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
-      // "Lead topish" tugmasi — TradeAtlas firma email yo'q bo'lsa
+      // "Lead topish" tugmasi — TradeAtlas firma haqiqiy lead yo'q bo'lsa
       var _isTaRec = String(rec.manba || '').toLowerCase().indexOf('tradeatlas') !== -1;
-      if(_isTaRec && !contact.email && !contact.name){
+      var _kompLower = String(rec.kompaniya || '').toLowerCase().trim();
+      var _nameLower = String(contact.name || '').toLowerCase().trim();
+      // Haqiqiy odam ismimi yoki firma nomi placeholdermi tekshirish
+      var _hasRealName = contact.name &&
+                         _nameLower !== _kompLower &&
+                         _nameLower !== 'tradeatlas kontakt' &&
+                         _nameLower !== 'tradeatlas eksport kontakti' &&
+                         _nameLower !== 'tradeatlas import kontakti';
+      var _hasRealEmail = !!String(contact.email || '').trim();
+      if(_isTaRec && !_hasRealEmail && !_hasRealName){
         contactHtml += '<div style="margin-top:6px"><button type="button" onclick="event.stopPropagation();findContactsForInvestorRecord(\''+rec.id+'\',this)" style="background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:.65rem;font-weight:700;cursor:pointer;display:inline-block;box-shadow:0 2px 6px rgba(124,58,237,.3);white-space:nowrap" title="Apollo + Gemini orqali lead va email topish">🔍 Lead topish</button></div>';
       }
       contactHtml += '</div>';
