@@ -1008,8 +1008,12 @@ function getFinderRenderableContacts(item){
   var qualified = displayContacts.filter(finderContactIsQualified);
   if(finderHasMinimumContactSet(qualified)) return qualified;
   if(qualified.length >= 1) return qualified;
-  if(source.indexOf('tradeatlas') !== -1 && displayContacts.length){
-    return [displayContacts[0]];
+  if(source.indexOf('tradeatlas') !== -1){
+    // TradeAtlas firma — kontakt yo'q bo'lsa ham placeholder bilan ko'rsatamiz
+    if(displayContacts.length) return [displayContacts[0]];
+    if(item && item.kompaniya){
+      return [{ name:'', ism:'', email:item.email||'', telefon:item.telefon||'', website:item.website||'', _placeholder:true }];
+    }
   }
   if(source.indexOf('apollo top') !== -1 && item && item.kompaniya){
     return [{ name:'', ism:'', email:'', telefon:'', website:item.website||'', _placeholder:true }];
@@ -1023,6 +1027,9 @@ function getFinderVisibleContacts(item){
 
 function finderResultIsRenderable(item){
   if(item && item.manba === 'Apollo Top 100') return !!(item.kompaniya);
+  // TradeAtlas firmlarini kontakti bo'lmasa ham ko'rsatamiz (faqat kompaniya nomi yetarli)
+  var source = String((item && (item.manba || item.source)) || '').toLowerCase();
+  if(source.indexOf('tradeatlas') !== -1) return !!(item && String(item.kompaniya || '').trim());
   return getFinderVisibleContacts(item).length > 0;
 }
 
