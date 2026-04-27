@@ -2869,10 +2869,10 @@ _renderInvestorCompaniesMain = function(){
       if(contact.email) contactHtml += '<div style="font-size:.68rem;color:#3B82F6;margin-top:2px;word-break:break-all;font-weight:500">'+escHtml(contact.email)+'</div>';
       if(contact.telefon && contact.telefon !== '—') contactHtml += '<div style="font-size:.65rem;color:#6B7280;margin-top:2px">'+escHtml(contact.telefon)+'</div>';
       if(!contact.name && !contact.email) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
-      // "Lead topish" tugmasi — TradeAtlas manbasidan olingan barcha kompaniyalarga
+      // "Lead topish" tugmasi — faqat birinchi qator (parent)ga, har 1 kompaniyaga 1 ta tugma
       var _isTaRec = String(rec.manba || '').toLowerCase().indexOf('tradeatlas') !== -1;
-      if(_isTaRec){
-        contactHtml += '<div style="margin-top:8px;display:block"><button type="button" onclick="event.stopPropagation();findContactsForInvestorRecord(\''+rec.id+'\',this)" style="background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:.72rem;font-weight:700;cursor:pointer;display:inline-block;box-shadow:0 3px 8px rgba(124,58,237,.4);white-space:nowrap" title="Apollo + Gemini orqali lead va email topish">🔍 Lead topish</button></div>';
+      if(_isTaRec && recIdx === 0){
+        contactHtml += '<div style="margin-top:8px;display:block"><button type="button" onclick="event.stopPropagation();findContactsForInvestorRecord(\''+rec.id+'\',this)" style="background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:.72rem;font-weight:700;cursor:pointer;display:inline-block;box-shadow:0 3px 8px rgba(124,58,237,.4);white-space:nowrap" title="Gemini orqali lead va email topish">🔍 Lead topish</button></div>';
       }
       contactHtml += '</div>';
 
