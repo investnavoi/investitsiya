@@ -2337,30 +2337,48 @@ _renderInvestorCompaniesMain = function(){
     var pk = String(g._parentName).trim().toLowerCase();
     var childNames = _parentToChildren[pk] || [];
     g._childrenData = []; // hover'da ko'rsatish uchun yig'amiz
+    var parentRec = g.records[0];
     childNames.forEach(function(childName){
       var child = _groupByName[childName];
       if(!child || _visited[child.key]) return;
       if(child._role !== 'importer' && child._role !== '') return;
       var childRec = child.records[0];
       if(childRec){
+        // Trade ma'lumotlarini IKKI manbadan qidiramiz:
+        // 1) parentRec._partners[childName] — eksportyor parent uchun importer xaridor info
+        // 2) childRec._partnerOf[parentName] — importer uchun manba eksportyor info
+        var parentPartnersMatch = null;
+        if(parentRec && Array.isArray(parentRec._partners)){
+          parentPartnersMatch = parentRec._partners.find(function(p){
+            return String(p.kompaniya || '').trim().toLowerCase() === childName;
+          });
+        }
+        var childPartnerOfMatch = null;
+        if(Array.isArray(childRec._partnerOf)){
+          childPartnerOfMatch = childRec._partnerOf.find(function(p){
+            return String(p.kompaniya || '').trim().toLowerCase() === pk;
+          });
+        }
+        // Eng yaxshi manba — parent _partners (chunki importer xaridor uchun aniq), keyin childPartnerOf, oxirida child rec field
+        var matched = parentPartnersMatch || childPartnerOfMatch || {};
         g._childrenData.push({
           kompaniya: childRec.kompaniya || '',
           davlat: childRec.davlat || '',
           shahar: childRec.shahar || '',
-          totalQty: Number(childRec._tradeAtlasQuantity || 0),
-          totalValue: Number(childRec._tradeAtlasTradeValue || 0),
-          lastDate: childRec._tradeAtlasLastArrivalDate || '',
-          docCount: Number(childRec._tradeAtlasDocCount || 0),
-          childGroupKey: child.key  // hover badge'da bosib toggle qilish uchun
+          totalQty: Number(matched.totalQty || childRec._tradeAtlasQuantity || 0),
+          totalValue: Number(matched.totalValue || childRec._tradeAtlasTradeValue || 0),
+          lastDate: matched.lastDate || childRec._tradeAtlasLastArrivalDate || '',
+          docCount: Number(matched.docCount || childRec._tradeAtlasDocCount || 0),
+          childGroupKey: child.key
         });
       }
       child._isChild = true;
-      child._isHiddenChild = true;  // boshlang'ich holatda yashirin, bosilganda chiqadi
+      child._isHiddenChild = true;
       child._parentKey = g.key;
       child._parentName = g._parentName;
       child._displayNumber = g._displayNumber;
       _visited[child.key] = true;
-      _orderedGroups.push(child);  // QO'SHAMIZ, lekin display:none bilan render qilamiz
+      _orderedGroups.push(child);
     });
   });
   // Eksportyor bo'lmagan orphan recordlarni ko'rsatmaslik — faqat eksportyorlar
@@ -2505,7 +2523,7 @@ _renderInvestorCompaniesMain = function(){
     if(_isParent && _parentChildrenCount){
       _parentSubLine = '<div style="font-size:.62rem;color:#059669;margin-top:2px;font-weight:600;cursor:help" title="Hover qilib ko\'ring">👁️ '+_parentChildrenCount+' ta importyor xaridor (hover qiling)</div>';
     }
-    // Eksport hajmi + sanasi — jami children'lardan aggregate, fallback record field'laridan
+    // Eksport hajmi + sanasi — jami children'lardan aggregate, fallback companyRec._partners'dan
     var _exportInfoLine = '';
     if(_isParent){
       var _totalExpQty = 0;
@@ -2517,7 +2535,27 @@ _renderInvestorCompaniesMain = function(){
         var d = String(ci.lastDate || '').slice(0,10);
         if(d && (!_maxDate || d > _maxDate)) _maxDate = d;
       });
-      // Agar children'lardan ma'lumot yo'q bo'lsa, recordning o'zidan
+      // Fallback 1: companyRec._partners array'idan aggregate (har importer xaridor info)
+      if(!_totalExpQty || !_totalExpVal || !_maxDate){
+        if(Array.isArray(companyRec._partners)){
+          companyRec._partners.forEach(function(p){
+            if(!_totalExpQty) _totalExpQty += Number(p.totalQty || 0);
+            if(!_totalExpVal) _totalExpVal += Number(p.totalValue || 0);
+            var d = String(p.lastDate || '').slice(0,10);
+            if(d && (!_maxDate || d > _maxDate)) _maxDate = d;
+          });
+        }
+        // _partners aggregate ham bo'lmasa, _partnerOf'dan ham urinib ko'ramiz
+        if((!_totalExpQty || !_totalExpVal || !_maxDate) && Array.isArray(companyRec._partnerOf)){
+          companyRec._partnerOf.forEach(function(p){
+            if(!_totalExpQty) _totalExpQty += Number(p.totalQty || 0);
+            if(!_totalExpVal) _totalExpVal += Number(p.totalValue || 0);
+            var d = String(p.lastDate || '').slice(0,10);
+            if(d && (!_maxDate || d > _maxDate)) _maxDate = d;
+          });
+        }
+      }
+      // Fallback 2: recordning o'z _tradeAtlas* field'laridan
       if(!_totalExpQty) _totalExpQty = Number(companyRec._tradeAtlasQuantity || 0);
       if(!_totalExpVal) _totalExpVal = Number(companyRec._tradeAtlasTradeValue || 0);
       if(!_maxDate) _maxDate = String(companyRec._tradeAtlasLastArrivalDate || '').slice(0,10);
