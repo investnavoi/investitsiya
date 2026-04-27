@@ -1666,37 +1666,56 @@ function buildTradeAtlasAnalysisRow(firm, reporterLabel, year){
 }
 
 // Import-analysis snapshot'dan eksportyor partnerlarni finder result'iga sintetik item sifatida qo'shish (kreditsiz)
+// Lenient matching: productId YOKI hsCode mos kelsa, target country bo'lsa filtrlanadi (lekin code/name normalization bilan)
 function _enrichFinderFromImportSnapshots(prod, targetCountries){
   var out = [];
   var snapshots = (DB.importSnapshots || []);
-  if(!snapshots.length || !prod) return out;
+  if(!snapshots.length || !prod) {
+    console.log('[Enrichment] importSnapshots bo\'sh yoki prod yo\'q', {snapLen: snapshots.length, prod: !!prod});
+    return out;
+  }
   var prodId = String(prod.id || '');
   var hsCode = getExactImportHsCode(prod);
-  // Target country nomlarini to'plash
-  var targetSet = Object.create(null);
+  // Target country nomlari va kodlarini to'plash (normalization)
+  var targetNameSet = Object.create(null);
+  var targetCodeSet = Object.create(null);
   (targetCountries || []).forEach(function(t){
-    var n = (typeof t === 'string') ? t : String((t && (t.name || t.label || t.code)) || '');
-    if(n) targetSet[n.toLowerCase()] = true;
+    var n = (typeof t === 'string') ? t : String((t && (t.name || t.label)) || '');
+    var c = (typeof t === 'string') ? '' : String((t && t.code) || '');
+    if(n) targetNameSet[n.toLowerCase().trim()] = true;
+    if(c) targetCodeSet[c.toUpperCase().trim()] = true;
   });
+  var hasTargetFilter = Object.keys(targetNameSet).length > 0 || Object.keys(targetCodeSet).length > 0;
+  console.log('[Enrichment] Filter:', {prodId, hsCode, targetNames: Object.keys(targetNameSet), targetCodes: Object.keys(targetCodeSet), snapshots: snapshots.length});
+  var matchedSnapshots = 0, matchedCountries = 0;
   snapshots.forEach(function(snap){
     if(!snap || !Array.isArray(snap.countries)) return;
-    // Mahsulot va target match
     var snapProdId = String(snap.productId || '');
     var snapHs = String(snap.hsCode || '');
-    if(prodId && snapProdId && snapProdId !== prodId) return;
-    if(!prodId && hsCode && snapHs && snapHs !== hsCode) return;
+    // Mahsulot mos kelishi shart — productId yoki hsCode bo'yicha
+    var prodMatch = false;
+    if(prodId && snapProdId && snapProdId === prodId) prodMatch = true;
+    else if(hsCode && snapHs && (snapHs === hsCode || snapHs.indexOf(hsCode) === 0 || hsCode.indexOf(snapHs) === 0)) prodMatch = true;
+    if(!prodMatch) return;
+    matchedSnapshots++;
     snap.countries.forEach(function(country){
-      var cName = String(country.n || country.name || '');
-      if(!cName) return;
-      // Target country filterini check qilamiz (agar berilgan bo'lsa)
-      if(Object.keys(targetSet).length && !targetSet[cName.toLowerCase()]) return;
+      var cName = String(country.n || country.name || '').trim();
+      var cCode = String(country.c || country.code || '').trim().toUpperCase();
+      if(!cName && !cCode) return;
+      // Target country filterini lenient check qilamiz
+      if(hasTargetFilter){
+        var nameMatch = cName && targetNameSet[cName.toLowerCase()];
+        var codeMatch = cCode && targetCodeSet[cCode];
+        if(!nameMatch && !codeMatch) return;
+      }
+      matchedCountries++;
       var products = country.pr || country.products || [];
       products.forEach(function(p){
-        var partnerName = p.partner || p.partnerDesc || '';
+        var partnerName = String(p.partner || p.partnerDesc || '').trim();
         if(!partnerName) return;
         var lastDate = p.period ? (String(p.period) + '-12-31') : '';
         out.push({
-          id: 'is_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          id: 'is_' + Date.now() + '_' + Math.random().toString(36).slice(2,7) + '_' + out.length,
           kompaniya: partnerName,
           davlat: '', shahar: '',
           email: '', telefon: '', linkedin: '', website: '',
@@ -1721,6 +1740,7 @@ function _enrichFinderFromImportSnapshots(prod, targetCountries){
       });
     });
   });
+  console.log('[Enrichment] Result:', {matchedSnapshots, matchedCountries, partnerCount: out.length});
   // Dedupe by company name (eng yirik qiymatni saqlaymiz)
   var seen = Object.create(null);
   out.sort(function(a,b){ return Number(b._tradeAtlasTradeValue||0) - Number(a._tradeAtlasTradeValue||0); });
@@ -3439,6 +3459,10 @@ async function runCompanyFinder(source){
     // ═══ Cache check: shu filtr uchun avval Firebase'da saqlangan natija bormi? ═══
     try {
       if(typeof ensureCollectionLoaded === 'function') await ensureCollectionLoaded('taFirmSnapshots');
+    } catch(_e){}
+    // ═══ Import-analysis snapshots'ni ham yuklab qo'yamiz — enrichment uchun kerak ═══
+    try {
+      if(typeof ensureCollectionLoaded === 'function') await ensureCollectionLoaded('importSnapshots');
     } catch(_e){}
     // Kesh kaliti — kerak bolsa modal'gacha tekshiriladi (default firms mode bilan; user shipments tanlasa qayta tekshiriladi)
     var _taHsPre = getExactImportHsCode(prod);
