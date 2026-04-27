@@ -4343,13 +4343,11 @@ function renderFinderTable(results){
   if(!tb) return;
   var rows = [];
   var allResults = Array.isArray(_finderResults) ? _finderResults : [];
-  // Avval eksportyor/importyor bo'yicha ajratamiz, har guruh ichida score'ga qarab tartiblanadi
+  // Section split olib tashlandi — barcha natijalarni qiymat (TradeAtlas trade value) yoki score bo'yicha tartiblaymiz
   var _sortedResults = (results || []).slice().sort(function(a, b){
-    var roleA = String(a.finderMode || '').toLowerCase();
-    var roleB = String(b.finderMode || '').toLowerCase();
-    var pA = roleA === 'importers' ? 0 : (roleA === 'exporters' ? 1 : 2);
-    var pB = roleB === 'importers' ? 0 : (roleB === 'exporters' ? 1 : 2);
-    if(pA !== pB) return pA - pB;
+    var aVal = Number(a._tradeAtlasTradeValue || 0);
+    var bVal = Number(b._tradeAtlasTradeValue || 0);
+    if(aVal !== bVal) return bVal - aVal;
     return (b.score || 0) - (a.score || 0);
   });
   var _visibleResults = _sortedResults.filter(function(_r){
@@ -4358,35 +4356,10 @@ function renderFinderTable(results){
   });
   var _lastVisibleIdx = _visibleResults.length - 1;
   var _renderedIdx = -1;
-  // Har rol uchun nechta visible item borligini sanaymiz — section header'larda ko'rsatamiz
-  var _roleCounts = { importers: 0, exporters: 0, other: 0 };
-  _visibleResults.forEach(function(_r){
-    var _role = String(_r.finderMode || '').toLowerCase();
-    if(_role === 'importers') _roleCounts.importers++;
-    else if(_role === 'exporters') _roleCounts.exporters++;
-    else _roleCounts.other++;
-  });
-  // Bo'sh rol uchun ham header chiqaramiz — foydalanuvchi qaysi tomon yo'qligini bilsin
-  var _hasAnyTaResult = (_roleCounts.importers + _roleCounts.exporters) > 0;
-  var _showEmptyRoleHeaders = _hasAnyTaResult;
-  var _lastSectionRole = null; // section change'ni aniqlash uchun
-  // Importyor section bo'sh bo'lsa empty header
-  if(_showEmptyRoleHeaders && _roleCounts.importers === 0){
-    rows.push(_fmtTaSectionHeader('importers', 0));
-    rows.push('<tr><td colspan="11" style="padding:.7rem .9rem;font-size:.72rem;color:var(--text3);background:rgba(124,58,237,.02);text-align:center">Bu so\'rov bo\'yicha importyor kompaniyalar topilmadi</td></tr>');
-  }
   _sortedResults.forEach(function(r, i){
     var contacts = getFinderVisibleContacts(r);
     if(!contacts.length) return;
     _renderedIdx++;
-    // Section header — rol o'zgarganda kiritiladi
-    var _curRole = String(r.finderMode || '').toLowerCase();
-    if(_curRole === 'importers' || _curRole === 'exporters'){
-      if(_curRole !== _lastSectionRole){
-        rows.push(_fmtTaSectionHeader(_curRole, _roleCounts[_curRole] || 0));
-        _lastSectionRole = _curRole;
-      }
-    }
     var sourceIdx = allResults.indexOf(r);
     if(sourceIdx < 0) sourceIdx = i;
     var scoreColor = r.score>=80 ? '#059669' : r.score>=60 ? '#FFB703' : '#EF233C';
@@ -4457,11 +4430,7 @@ function renderFinderTable(results){
       );
     }
   });
-  // Eksportyor section bo'sh bo'lsa loop tugagandan keyin empty header
-  if(_showEmptyRoleHeaders && _roleCounts.exporters === 0){
-    rows.push(_fmtTaSectionHeader('exporters', 0));
-    rows.push('<tr><td colspan="11" style="padding:.7rem .9rem;font-size:.72rem;color:var(--text3);background:rgba(5,150,105,.02);text-align:center">Bu so\'rov bo\'yicha eksportyor kompaniyalar topilmadi (kunlik limit yetilgan yoki manba davlatda firmalar yo\'q)</td></tr>');
-  }
+  // Section split olib tashlangan — empty headers ham ko'rinmaydi
   tb.innerHTML = rows.join('');
   mountInvestorAiWorkspace();
 }
