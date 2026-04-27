@@ -2046,15 +2046,25 @@ function apolloCompanyKey(name){
   var key = apolloNormalizeText(name || '');
   // Korporativ suffix'lar (har xil tillarda)
   key = key.replace(/\b(co|company|corp|corporation|ltd|llc|inc|incorporated|group|holding|holdings|limited|plc|sa|ag|gmbh|pte|pty|as|bv|nv|srl|sas|sasu|spa|oao|ooo|zao|pao|kft|sro|jsc|joint|stock)\b/g, '');
-  // Turkish/multi-lingual ish-fao'liyat so'zlari (ANONIM SIRKETI, SANAYI VE TICARET, TRADE, INDUSTRY)
-  key = key.replace(/\b(sanayi|ticaret|anonim|sirketi|sti|kimyevi|maddeleri|imp|exp|trade|trading|industry|industries|industrial|manufacturing|manufacture|international|intl|export|exports|exporting|exporter|importer|importers|materials|chemical|chemicals|technology|technologies|enterprise|enterprises|business)\b/g, '');
-  // Article/conjunctions (va, ve, and, the, de, la)
-  key = key.replace(/\b(va|ve|and|the|de|la|el|los|las|du|des|di|el)\b/g, '');
-  // Qisqa so'zlar (1-2 harfli — A.S., a.s., va h.k. dan keyin qoladigan parchalar)
+  // Turkish/multi-lingual ish-fao'liyat so'zlari
+  key = key.replace(/\b(sanayi|ticaret|anonim|sirketi|sti|kimyevi|maddeleri|imp|exp|trade|trading|industry|industries|industrial|manufacturing|manufacture|international|intl|export|exports|exporting|exporter|importer|importers|materials|chemical|chemicals|technology|technologies|enterprise|enterprises|business|societe|society|mines|mining|tebessa|algeria|morocco|china|turkey|usa|america)\b/g, '');
+  // Article/conjunctions
+  key = key.replace(/\b(va|ve|and|the|de|la|el|los|las|du|des|di)\b/g, '');
+  // Qisqa so'zlar (1-2 harfli — A.S., a.s., II, BP, va h.k.)
   key = key.replace(/\b\w{1,2}\b/g, '');
+  // Numerik kodlar (4+ raqamli — manzil, postal code)
+  key = key.replace(/\b\d{4,}\b/g, '');
   // Bo'shliqlarni to'g'rilash
   key = key.replace(/\s+/g, ' ').trim();
-  return key;
+  // BIRINCHI muhim so'z (≥ 4 harfli) — bu primary key
+  // SOMIPHOS S.p.A. SOCIETE DES MINES → "somiphos"
+  // SOMIPHOS/SPA → "somiphos"
+  var words = key.split(' ').filter(function(w){ return w.length >= 4; });
+  if(words.length){
+    return words[0];
+  }
+  // Fallback: birinchi qisqa so'z (OCP, OSP, JSC kabi)
+  return key.split(' ')[0] || '';
 }
 
 function apolloNormalizePhone(value){
