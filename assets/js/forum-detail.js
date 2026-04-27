@@ -3006,7 +3006,7 @@ _renderInvestorCompaniesMain = function(){
     if(_isCurrentTopLevel && _nextIsTopLevel){
       html += '<tr class="ic-company-separator" aria-hidden="true">'+
         '<td colspan="7" style="padding:0;border:none;background:transparent">'+
-          '<div style="height:3px;margin:6px 0;border-radius:999px;background:linear-gradient(90deg,transparent 0%,rgba(67,97,238,.18) 12%,rgba(67,97,238,.55) 35%,rgba(245,124,0,.7) 50%,rgba(67,97,238,.55) 65%,rgba(67,97,238,.18) 88%,transparent 100%);box-shadow:0 0 6px rgba(245,124,0,.15)"></div>'+
+          '<div style="height:3px;margin:5px 0;border-radius:999px;background:linear-gradient(90deg,transparent 0%,rgba(67,97,238,.4) 12%,rgba(67,97,238,.85) 35%,rgba(245,124,0,.95) 50%,rgba(67,97,238,.85) 65%,rgba(67,97,238,.4) 88%,transparent 100%);box-shadow:0 0 8px rgba(245,124,0,.3)"></div>'+
         '</td>'+
       '</tr>';
     }

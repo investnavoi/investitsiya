@@ -525,7 +525,8 @@ input[type="checkbox"]:checked::after,
 #ic-tbody tr.ic-group-row td{padding-top:3px !important;padding-bottom:3px !important;padding-left:8px !important;padding-right:8px !important}
 #ic-tbody tr.ic-partner-panel-row td{padding-top:2px !important;padding-bottom:2px !important}
 #ic-tbody tr.ic-company-separator td{padding:0 !important}
-#ic-tbody tr.ic-company-separator td > div{margin:1px 0 !important;height:2px !important}
+/* Gradient ajratuvchi chiziq — kompaniyalarni aniq ajratib turadi */
+#ic-tbody tr.ic-company-separator td > div{margin:5px 0 !important;height:3px !important;display:block !important;border-radius:999px !important}
 /* Kompaniya nomini max 2 qatorgacha o'rashga yo'l qo'yish (1 qatorga sig'masa 2-ga oshadi, undan ortiq emas) */
 #ic-tbody .ic-company-name-2line{
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
