@@ -1135,29 +1135,55 @@ async function fetchTradeAtlasUsage(){
 }
 
 function _parseTradeAtlasUsage(data){
-  // Try common shapes — proxy may forward raw /statistics/usage response
+  // /statistics/usage javobi: { account: { endpoint: { ActivitySummary: { current, limit, notes } } } }
   if(!data) return null;
-  var out = { limit: null, used: null, remaining: null, raw: data };
+  var out = { limit: null, used: null, remaining: null, notes: '', endpointPath: '', allEndpoints: [], raw: data };
   var root = data.usage || data.data || data;
-  if(typeof root === 'object'){
-    // Look for numeric fields in any nested structure
-    var searchKeys = ['remaining','limit','used','quota','total','count','downloadLimit','downloadUsed','downloadRemaining'];
-    function walk(obj){
-      if(!obj || typeof obj !== 'object') return;
-      Object.keys(obj).forEach(function(k){
-        var v = obj[k];
-        var kl = k.toLowerCase();
-        if(typeof v === 'number'){
-          if(kl.indexOf('remain') !== -1 && out.remaining == null) out.remaining = v;
-          else if(kl === 'limit' || kl.indexOf('limit') !== -1) { if(out.limit == null) out.limit = v; }
-          else if(kl.indexOf('used') !== -1 && out.used == null) out.used = v;
-        } else if(typeof v === 'object'){ walk(v); }
-      });
+  if(typeof root !== 'object') return out;
+
+  // Har joyda (current, limit) juftliklarini yig'ib olamiz
+  var tuples = [];
+  function walkPair(obj, path){
+    if(!obj || typeof obj !== 'object') return;
+    if(typeof obj.limit === 'number' && typeof obj.current === 'number'){
+      tuples.push({ limit: obj.limit, current: obj.current, notes: String(obj.notes || ''), path: path });
     }
-    walk(root);
+    Object.keys(obj).forEach(function(k){
+      if(obj[k] && typeof obj[k] === 'object') walkPair(obj[k], path ? (path + ' / ' + k) : k);
+    });
   }
+  walkPair(root, '');
+
+  if(tuples.length){
+    // Asosiy paid quota = limit eng kattasi
+    tuples.sort(function(a, b){ return b.limit - a.limit; });
+    var best = tuples[0];
+    out.limit = best.limit;
+    out.used = best.current;
+    out.remaining = Math.max(0, best.limit - best.current);
+    out.notes = best.notes;
+    out.endpointPath = best.path;
+    out.allEndpoints = tuples;
+    return out;
+  }
+
+  // Fallback — eski mantiq + 'current' ham tanish
+  function walkAny(obj){
+    if(!obj || typeof obj !== 'object') return;
+    Object.keys(obj).forEach(function(k){
+      var v = obj[k];
+      var kl = k.toLowerCase();
+      if(typeof v === 'number'){
+        if(kl.indexOf('remain') !== -1 && out.remaining == null) out.remaining = v;
+        else if(kl === 'limit' || kl.indexOf('limit') !== -1) { if(out.limit == null) out.limit = v; }
+        else if(kl.indexOf('used') !== -1 && out.used == null) out.used = v;
+        else if(kl === 'current' && out.used == null) out.used = v;
+      } else if(typeof v === 'object'){ walkAny(v); }
+    });
+  }
+  walkAny(root);
   if(out.remaining == null && typeof out.limit === 'number' && typeof out.used === 'number'){
-    out.remaining = out.limit - out.used;
+    out.remaining = Math.max(0, out.limit - out.used);
   }
   return out;
 }
