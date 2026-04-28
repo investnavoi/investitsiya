@@ -520,12 +520,12 @@ input[type="checkbox"]:checked::after,
 #ic-tbody tr.ic-row-parent{border-left:4px solid #059669 !important}
 #ic-tbody tr.ic-row-child{border-left:4px solid #7C3AED !important}
 
-/* ═══ Investor base — qatorlar orasini qisqartirish + ustun kengliklarini optimallash ═══ */
-/* Qator padding'ini eng kichik qilamiz — maksimum ixcham */
-#ic-tbody tr.ic-group-row td{padding-top:1px !important;padding-bottom:1px !important;padding-left:8px !important;padding-right:8px !important}
-#ic-tbody tr.ic-partner-panel-row td{padding-top:1px !important;padding-bottom:1px !important}
-/* Gradient ajratuvchi chiziq — qisqaroq, ixcham */
-#ic-tbody tr.ic-company-separator td{padding:2px 12px !important;background:transparent !important;border:none !important}
+/* ═══ Investor base — qatorlar orasi + ustun kengliklarini optimallash ═══ */
+/* Qator padding — birozgina ko'proq joy (oqlash uchun) */
+#ic-tbody tr.ic-group-row td{padding-top:6px !important;padding-bottom:6px !important;padding-left:8px !important;padding-right:8px !important}
+#ic-tbody tr.ic-partner-panel-row td{padding-top:3px !important;padding-bottom:3px !important}
+/* Gradient ajratuvchi chiziq — biroz balandroq */
+#ic-tbody tr.ic-company-separator td{padding:5px 12px !important;background:transparent !important;border:none !important}
 #ic-tbody tr.ic-company-separator td > div{display:block !important;width:100% !important;min-height:1px !important;height:1px !important;border-radius:99px !important}
 /* Kompaniya nomini max 2 qatorgacha o'rashga yo'l qo'yish (1 qatorga sig'masa 2-ga oshadi, undan ortiq emas) */
 #ic-tbody .ic-company-name-2line{
