@@ -2839,7 +2839,7 @@ _renderInvestorCompaniesMain = function(){
       '<div style="flex:1;min-width:0">' +
         _roleBadgeHtml +
         _childLinkHtml +
-        '<div style="font-size:.85rem;font-weight:700;color:#111827">'+escHtml(compName)+'</div>' +
+        '<div class="ic-company-name-2line" style="font-size:.85rem;font-weight:700;color:#111827" title="'+tgEscapeAttr(compName)+'">'+escHtml(compName)+'</div>' +
         (companyRec.website ? '<div style="font-size:.66rem;color:#6366F1;margin-top:1px">'+escHtml(companyRec.website)+'</div>' : '') +
         locationLine +
         _importerCountLine +
