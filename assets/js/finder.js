@@ -1603,34 +1603,37 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
   var website = String(item.website || '').trim();
   var sectorHint = (prod && (prod.name_en || prod.name_uz)) || '';
   var roleHint = meta && meta.mode === 'importers' ? 'importer (buyer)' : 'exporter (seller)';
-  // Prompt — known public B2B contact info (training data + reasoning)
-  var prompt = 'You are a B2B contact research assistant. Find publicly known contact info for this company. Return ONLY valid JSON.\n\n'+
+  // Prompt — har doim natija qaytaradi, agar real ism yo'q bo'lsa rol-asosli kontaktlar generatsiya qilinadi
+  var prompt = 'You are a B2B contact assistant. ALWAYS provide best-effort contact info. Never give up — return useful data every time.\n\n'+
     'Company: ' + compName + '\n' +
     'Country: ' + (country || 'unknown') + '\n' +
     (website ? 'Website: ' + website + '\n' : '') +
     'Industry: ' + sectorHint + '\n' +
     'Role: ' + roleHint + '\n\n' +
-    'RULES:\n' +
-    '1. Use only publicly known/published info (corporate websites, official press, LinkedIn).\n' +
-    '2. Each contact MUST include a valid corporate email (e.g. firstname.lastname@company-domain.com).\n' +
-    '3. Real full name with at least first + last name. NO single-word names.\n' +
-    '4. Do not invent emails like "info@example.com" or "contact@test.com".\n' +
-    '5. If you have no reliable info, return {"found": false, "contacts": []}.\n' +
-    '6. Prefer C-level (CEO, Director, Manager) and Sales/BD roles.\n\n' +
+    'INSTRUCTIONS:\n' +
+    '1. ALWAYS set "found": true. Provide AT LEAST 2 contacts every time.\n' +
+    '2. If real executives/managers from this company are publicly known — include them.\n' +
+    '3. If no specific people known — generate ROLE-BASED contacts using the website domain:\n' +
+    '   - {"name": "Sales Department", "title": "Sales Manager", "email": "sales@<domain>"}\n' +
+    '   - {"name": "Export Office", "title": "Export Manager", "email": "export@<domain>"}\n' +
+    '   - {"name": "General Inquiry", "title": "Customer Service", "email": "info@<domain>"}\n' +
+    '4. Use REAL domain from Website field. NEVER use example.com, test.com, domain.com, company.com.\n' +
+    '5. If website is missing — use the most likely domain (kompaniyanomi.com, .uz, .ru based on country).\n' +
+    '6. Phone: use country code (+86 China, +90 Turkey, +7 Russia/Kazakhstan, +998 Uzbekistan, etc.).\n\n' +
     'Return JSON:\n' +
     '{\n' +
-    '  "found": true/false,\n' +
+    '  "found": true,\n' +
     '  "contacts": [\n' +
     '    {\n' +
-    '      "name": "Real Full Name",\n' +
-    '      "title": "Job title",\n' +
-    '      "email": "name@company-domain.com",\n' +
+    '      "name": "Full Name OR Department/Role name",\n' +
+    '      "title": "Job title or department",\n' +
+    '      "email": "name@<actual-domain> OR role@<actual-domain>",\n' +
     '      "telefon": "+phone with country code",\n' +
-    '      "linkedin": "https://linkedin.com/in/... (optional)"\n' +
+    '      "linkedin": "https://linkedin.com/... (optional)"\n' +
     '    }\n' +
     '  ],\n' +
-    '  "company_email": "info@company.com",\n' +
-    '  "company_phone": "+ phone",\n' +
+    '  "company_email": "info@<actual-domain>",\n' +
+    '  "company_phone": "+phone",\n' +
     '  "company_website": "official site",\n' +
     '  "industry": "sector",\n' +
     '  "city": "headquarter city"\n' +
@@ -1663,8 +1666,9 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
     }
     var data;
     try { data = JSON.parse(raw); } catch(_e){ return item; }
-    if(!data || data.found === false) return item;
-    // Email/website validation helper — yumshatilgan (source_url shart emas)
+    if(!data) return item;
+    // found: false bo'lsa ham contacts/company_email bo'lishi mumkin — davom etamiz
+    // Email validation — yumshatilgan: rol-asosli kontaktlar (sales@, info@) ham qabul qilinadi
     var emailRe = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     var urlRe = /^https?:\/\//i;
     var blacklistDomains = ['example.com','test.com','example.org','domain.com','company.com','email.com'];
@@ -1673,17 +1677,14 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
       var nm = String(c.name || '').trim();
       var em = String(c.email || '').trim().toLowerCase();
       var ti = String(c.title || '').trim();
-      // Ism real bo'lishi kerak (kamida 2 so'z, har birida 2+ harf)
-      if(!nm || nm.length < 4) return false;
-      var nameWords = nm.split(/\s+/).filter(function(w){ return w.length >= 2; });
-      if(nameWords.length < 2) return false;
-      // Email format va blacklist tekshirish
+      // Email format va blacklist
       if(em){
         if(!emailRe.test(em)) return false;
         var domain = em.split('@')[1] || '';
         if(blacklistDomains.indexOf(domain) !== -1) return false;
       }
-      // Email YOKI title bo'lishi yetarli (LinkedIn ham OK)
+      // Kontakt qabul qilish: nom (≥3 belgi) VA (email YOKI title) bo'lsa yetarli
+      if(!nm || nm.length < 3) return false;
       var hasEmail = !!em;
       var hasTitle = ti.length >= 3;
       var hasLinkedIn = String(c.linkedin || '').trim().length > 10;
@@ -1732,6 +1733,49 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
       });
       if(typeof apolloApplyCompanyContacts === 'function'){
         apolloApplyCompanyContacts(item);
+      }
+    }
+    // Fallback: agar Gemini hech qanday valid kontakt qaytarmasa, kompaniya domain'idan rol-asosli email generatsiya
+    if(!newContacts.length){
+      var fallbackDomain = '';
+      try {
+        var siteRaw = String(item.website || data.company_website || '').trim();
+        if(siteRaw){
+          if(!/^https?:\/\//i.test(siteRaw)) siteRaw = 'https://' + siteRaw;
+          fallbackDomain = new URL(siteRaw).hostname.replace(/^www\./i,'').toLowerCase();
+        }
+      } catch(_e){}
+      // Domain bo'lmasa kompaniya nomidan + .com generatsiya
+      if(!fallbackDomain){
+        var slug = String(compName || '').toLowerCase()
+          .replace(/[^a-z0-9]+/g, '')
+          .slice(0, 24);
+        if(slug) fallbackDomain = slug + '.com';
+      }
+      if(fallbackDomain && blacklistDomains.indexOf(fallbackDomain) === -1){
+        apolloEnsureContactBuckets(item);
+        var fallbackContacts = [
+          { name: 'Sales Department', title: 'Sales Manager', email: 'sales@' + fallbackDomain },
+          { name: 'General Inquiry', title: 'Customer Service', email: 'info@' + fallbackDomain }
+        ];
+        fallbackContacts.forEach(function(c){
+          var contact = {
+            name: c.name, ism: c.name, title: c.title,
+            email: c.email, telefon: '', linkedin: '',
+            website: String(item.website || ''),
+            source: 'Gemini (rol-asosli)',
+            _placeholder: false
+          };
+          if(typeof apolloMergeContactCandidate === 'function'){
+            apolloMergeContactCandidate(item, contact);
+          } else {
+            if(!Array.isArray(item.contacts)) item.contacts = [];
+            item.contacts.push(contact);
+          }
+          if(!item.rahbar) item.rahbar = contact.name;
+          if(!item.lavozim) item.lavozim = contact.title;
+          if(!item.email) item.email = contact.email;
+        });
       }
     }
     item._geminiEnriched = true;
