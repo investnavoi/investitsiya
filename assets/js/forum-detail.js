@@ -2876,20 +2876,33 @@ _renderInvestorCompaniesMain = function(){
         photoUrl: String(rec.photoUrl || rec.photo_url || '').trim(),
         linkedin: String(rec.linkedin || '').trim()
       };
-      /* Contact cell TailAdmin style — TradeAtlas placeholder yozuvlar yashiriladi */
+      /* Contact cell TailAdmin style — TradeAtlas placeholder va empty marker yozuvlar yashiriladi */
       var _placeholderTitles = ['tradeatlas eksport kontakti','tradeatlas import kontakti','tradeatlas kontakt'];
+      // Empty/placeholder marker check — '.', '-', '—', whitespace, etc.
+      function _isEmptyMarker(v){
+        var s = String(v || '').trim();
+        if(!s) return true;
+        // Faqat tinish belgilari yoki boshqa placeholder belgilarni filter qilish
+        return /^[.\-–—_\s]+$/.test(s);
+      }
       var _titleLower = String(contact.title || '').toLowerCase().trim();
-      var _isPlaceholderTitle = _placeholderTitles.indexOf(_titleLower) !== -1;
+      var _isPlaceholderTitle = _placeholderTitles.indexOf(_titleLower) !== -1 || _isEmptyMarker(contact.title);
       var _nameLower = String(contact.name || '').toLowerCase().trim();
       var _kompLower = String(rec.kompaniya || '').toLowerCase().trim();
       var _isPlaceholderName = _nameLower === _kompLower
-        || _placeholderTitles.indexOf(_nameLower) !== -1;
+        || _placeholderTitles.indexOf(_nameLower) !== -1
+        || _isEmptyMarker(contact.name);
+      var _isPlaceholderEmail = _isEmptyMarker(contact.email);
+      var _isPlaceholderPhone = _isEmptyMarker(contact.telefon);
       var contactHtml = '<div style="min-width:0;word-break:break-word">';
       if(contact.name && !_isPlaceholderName) contactHtml += '<div style="font-size:.82rem;font-weight:700;color:#111827;word-break:break-word">'+escHtml(contact.name)+'</div>';
       if(contact.title && !_isPlaceholderTitle) contactHtml += '<div style="font-size:.68rem;color:#4B5563;margin-top:2px;word-break:break-word">'+escHtml(contact.title)+'</div>';
-      if(contact.email) contactHtml += '<div style="font-size:.68rem;color:#3B82F6;margin-top:2px;word-break:break-all;font-weight:500">'+escHtml(contact.email)+'</div>';
-      if(contact.telefon && contact.telefon !== '—') contactHtml += '<div style="font-size:.65rem;color:#6B7280;margin-top:2px">'+escHtml(contact.telefon)+'</div>';
-      var _hasVisibleContact = (contact.name && !_isPlaceholderName) || contact.email || (contact.title && !_isPlaceholderTitle);
+      if(contact.email && !_isPlaceholderEmail) contactHtml += '<div style="font-size:.68rem;color:#3B82F6;margin-top:2px;word-break:break-all;font-weight:500">'+escHtml(contact.email)+'</div>';
+      if(contact.telefon && !_isPlaceholderPhone) contactHtml += '<div style="font-size:.65rem;color:#6B7280;margin-top:2px">'+escHtml(contact.telefon)+'</div>';
+      var _hasVisibleContact = (contact.name && !_isPlaceholderName)
+        || (contact.email && !_isPlaceholderEmail)
+        || (contact.title && !_isPlaceholderTitle)
+        || (contact.telefon && !_isPlaceholderPhone);
       if(!_hasVisibleContact) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
       // "Lead topish" tugmasi — faqat birinchi qator (parent)ga, har 1 kompaniyaga 1 ta tugma
       var _isTaRec = String(rec.manba || '').toLowerCase().indexOf('tradeatlas') !== -1;
