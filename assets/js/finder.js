@@ -1603,41 +1603,40 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
   var website = String(item.website || '').trim();
   var sectorHint = (prod && (prod.name_en || prod.name_uz)) || '';
   var roleHint = meta && meta.mode === 'importers' ? 'importer (buyer)' : 'exporter (seller)';
-  // Prompt — har doim natija qaytaradi, agar real ism yo'q bo'lsa rol-asosli kontaktlar generatsiya qilinadi
-  var prompt = 'You are a B2B contact assistant. ALWAYS provide best-effort contact info. Never give up — return useful data every time.\n\n'+
+  // Prompt — FAQAT real, publicly verifiable kontaktlar. Yolg'on/generatsiya qilingan ma'lumot YO'Q.
+  var prompt = 'You are a B2B contact research assistant. Find ONLY real, publicly verifiable contact info. Return ONLY valid JSON.\n\n'+
     'Company: ' + compName + '\n' +
     'Country: ' + (country || 'unknown') + '\n' +
     (website ? 'Website: ' + website + '\n' : '') +
     'Industry: ' + sectorHint + '\n' +
     'Role: ' + roleHint + '\n\n' +
-    'INSTRUCTIONS:\n' +
-    '1. ALWAYS set "found": true. Provide AT LEAST 2 contacts every time.\n' +
-    '2. If real executives/managers from this company are publicly known — include them.\n' +
-    '3. If no specific people known — generate ROLE-BASED contacts using the website domain:\n' +
-    '   - {"name": "Sales Department", "title": "Sales Manager", "email": "sales@<domain>"}\n' +
-    '   - {"name": "Export Office", "title": "Export Manager", "email": "export@<domain>"}\n' +
-    '   - {"name": "General Inquiry", "title": "Customer Service", "email": "info@<domain>"}\n' +
-    '4. Use REAL domain from Website field. NEVER use example.com, test.com, domain.com, company.com.\n' +
-    '5. If website is missing — use the most likely domain (kompaniyanomi.com, .uz, .ru based on country).\n' +
-    '6. Phone: use country code (+86 China, +90 Turkey, +7 Russia/Kazakhstan, +998 Uzbekistan, etc.).\n\n' +
+    'STRICT RULES:\n' +
+    '1. ONLY include contacts of REAL PEOPLE you actually know about (verifiable from corporate website, official press, LinkedIn, news articles).\n' +
+    '2. Every contact MUST have a real full name (first name + last name) of an actual person.\n' +
+    '3. NEVER generate role-based fake contacts like "Sales Department", "Sales Manager", "info@", "sales@", "contact@".\n' +
+    '4. NEVER invent emails, phone numbers, or names. NO guessing.\n' +
+    '5. If you don\'t actually know a real person who works there — return {"found": false, "contacts": []}.\n' +
+    '6. Quality over quantity — better to return ZERO contacts than fake ones.\n' +
+    '7. company_email/company_phone — only if PUBLICLY known (from official website), otherwise leave empty.\n\n' +
     'Return JSON:\n' +
     '{\n' +
-    '  "found": true,\n' +
+    '  "found": true/false,\n' +
     '  "contacts": [\n' +
     '    {\n' +
-    '      "name": "Full Name OR Department/Role name",\n' +
-    '      "title": "Job title or department",\n' +
-    '      "email": "name@<actual-domain> OR role@<actual-domain>",\n' +
-    '      "telefon": "+phone with country code",\n' +
-    '      "linkedin": "https://linkedin.com/... (optional)"\n' +
+    '      "name": "Real Full Name (first + last)",\n' +
+    '      "title": "Real job title",\n' +
+    '      "email": "real-email@company-domain.com",\n' +
+    '      "telefon": "+real phone",\n' +
+    '      "linkedin": "https://linkedin.com/in/..."\n' +
     '    }\n' +
     '  ],\n' +
-    '  "company_email": "info@<actual-domain>",\n' +
-    '  "company_phone": "+phone",\n' +
-    '  "company_website": "official site",\n' +
+    '  "company_email": "real info email if publicly known",\n' +
+    '  "company_phone": "real phone if publicly known",\n' +
+    '  "company_website": "real official site",\n' +
     '  "industry": "sector",\n' +
     '  "city": "headquarter city"\n' +
-    '}';
+    '}\n\n' +
+    'If you cannot find verified real people — return {"found": false, "contacts": []}.';
   try {
     var resp = await callGemini({
       contents: [{role:'user', parts:[{text: prompt}]}],
@@ -1666,29 +1665,32 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
     }
     var data;
     try { data = JSON.parse(raw); } catch(_e){ return item; }
-    if(!data) return item;
-    // found: false bo'lsa ham contacts/company_email bo'lishi mumkin — davom etamiz
-    // Email validation — yumshatilgan: rol-asosli kontaktlar (sales@, info@) ham qabul qilinadi
+    if(!data || data.found === false) return item;
+    // STRICT validation — faqat real odam, rol-asosli yolg'on kontaktlar rad qilinadi
     var emailRe = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     var urlRe = /^https?:\/\//i;
     var blacklistDomains = ['example.com','test.com','example.org','domain.com','company.com','email.com'];
+    // Rol-asosli ismlar (real odam emas) — rad qilinadi
+    var fakeNamePatterns = /^(sales|export|import|info|contact|customer|general|main|office|admin|hr|support|service|inquiry|department|team)\b/i;
+    // Rol-asosli email prefikslari (haqiqiy odam emas)
+    var fakeEmailPrefixes = ['sales','info','contact','admin','support','office','hr','service','inquiry','help','customer','general','main','export','import','team','marketing','press','media','noreply','no-reply'];
     function isValidContact(c){
       if(!c) return false;
       var nm = String(c.name || '').trim();
       var em = String(c.email || '').trim().toLowerCase();
-      var ti = String(c.title || '').trim();
-      // Email format va blacklist
-      if(em){
-        if(!emailRe.test(em)) return false;
-        var domain = em.split('@')[1] || '';
-        if(blacklistDomains.indexOf(domain) !== -1) return false;
-      }
-      // Kontakt qabul qilish: nom (≥3 belgi) VA (email YOKI title) bo'lsa yetarli
-      if(!nm || nm.length < 3) return false;
-      var hasEmail = !!em;
-      var hasTitle = ti.length >= 3;
-      var hasLinkedIn = String(c.linkedin || '').trim().length > 10;
-      if(!hasEmail && !hasTitle && !hasLinkedIn) return false;
+      // 1. Ism — real odam (kamida 2 so'z, har biri ≥2 harf)
+      if(!nm || nm.length < 4) return false;
+      var nameWords = nm.split(/\s+/).filter(function(w){ return w.length >= 2; });
+      if(nameWords.length < 2) return false;
+      // Rol-asosli ism rad qilinadi
+      if(fakeNamePatterns.test(nm)) return false;
+      // 2. Email MAJBURIY va real bo'lishi kerak (rol-asosli email rad qilinadi)
+      if(!em || !emailRe.test(em)) return false;
+      var emParts = em.split('@');
+      var emPrefix = emParts[0] || '';
+      var emDomain = emParts[1] || '';
+      if(blacklistDomains.indexOf(emDomain) !== -1) return false;
+      if(fakeEmailPrefixes.indexOf(emPrefix) !== -1) return false;
       return true;
     }
     // Item'ni boyitish (faqat valid email va kontakt)
@@ -1735,49 +1737,8 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
         apolloApplyCompanyContacts(item);
       }
     }
-    // Fallback: agar Gemini hech qanday valid kontakt qaytarmasa, kompaniya domain'idan rol-asosli email generatsiya
-    if(!newContacts.length){
-      var fallbackDomain = '';
-      try {
-        var siteRaw = String(item.website || data.company_website || '').trim();
-        if(siteRaw){
-          if(!/^https?:\/\//i.test(siteRaw)) siteRaw = 'https://' + siteRaw;
-          fallbackDomain = new URL(siteRaw).hostname.replace(/^www\./i,'').toLowerCase();
-        }
-      } catch(_e){}
-      // Domain bo'lmasa kompaniya nomidan + .com generatsiya
-      if(!fallbackDomain){
-        var slug = String(compName || '').toLowerCase()
-          .replace(/[^a-z0-9]+/g, '')
-          .slice(0, 24);
-        if(slug) fallbackDomain = slug + '.com';
-      }
-      if(fallbackDomain && blacklistDomains.indexOf(fallbackDomain) === -1){
-        apolloEnsureContactBuckets(item);
-        var fallbackContacts = [
-          { name: 'Sales Department', title: 'Sales Manager', email: 'sales@' + fallbackDomain },
-          { name: 'General Inquiry', title: 'Customer Service', email: 'info@' + fallbackDomain }
-        ];
-        fallbackContacts.forEach(function(c){
-          var contact = {
-            name: c.name, ism: c.name, title: c.title,
-            email: c.email, telefon: '', linkedin: '',
-            website: String(item.website || ''),
-            source: 'Gemini (rol-asosli)',
-            _placeholder: false
-          };
-          if(typeof apolloMergeContactCandidate === 'function'){
-            apolloMergeContactCandidate(item, contact);
-          } else {
-            if(!Array.isArray(item.contacts)) item.contacts = [];
-            item.contacts.push(contact);
-          }
-          if(!item.rahbar) item.rahbar = contact.name;
-          if(!item.lavozim) item.lavozim = contact.title;
-          if(!item.email) item.email = contact.email;
-        });
-      }
-    }
+    // Fallback YO'Q — agar Gemini real kontakt qaytarmasa, hech narsa qo'shmaymiz.
+    // Yolg'on rol-asosli ma'lumot (sales@, info@) ishlatilmaydi.
     item._geminiEnriched = true;
     return item;
   } catch(e){
