@@ -2903,7 +2903,8 @@ _renderInvestorCompaniesMain = function(){
         || (contact.email && !_isPlaceholderEmail)
         || (contact.title && !_isPlaceholderTitle)
         || (contact.telefon && !_isPlaceholderPhone);
-      if(!_hasVisibleContact) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
+      // Faqat birinchi qator (parent)ga "—" qo'yiladi — har kompaniyada 1 ta dash
+      if(!_hasVisibleContact && recIdx === 0) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
       // "Lead topish" tugmasi — faqat birinchi qator (parent)ga, har 1 kompaniyaga 1 ta tugma
       var _isTaRec = String(rec.manba || '').toLowerCase().indexOf('tradeatlas') !== -1;
       if(_isTaRec && recIdx === 0){
