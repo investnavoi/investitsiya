@@ -2876,13 +2876,21 @@ _renderInvestorCompaniesMain = function(){
         photoUrl: String(rec.photoUrl || rec.photo_url || '').trim(),
         linkedin: String(rec.linkedin || '').trim()
       };
-      /* Contact cell TailAdmin style */
+      /* Contact cell TailAdmin style — TradeAtlas placeholder yozuvlar yashiriladi */
+      var _placeholderTitles = ['tradeatlas eksport kontakti','tradeatlas import kontakti','tradeatlas kontakt'];
+      var _titleLower = String(contact.title || '').toLowerCase().trim();
+      var _isPlaceholderTitle = _placeholderTitles.indexOf(_titleLower) !== -1;
+      var _nameLower = String(contact.name || '').toLowerCase().trim();
+      var _kompLower = String(rec.kompaniya || '').toLowerCase().trim();
+      var _isPlaceholderName = _nameLower === _kompLower
+        || _placeholderTitles.indexOf(_nameLower) !== -1;
       var contactHtml = '<div style="min-width:0;word-break:break-word">';
-      if(contact.name) contactHtml += '<div style="font-size:.82rem;font-weight:700;color:#111827;word-break:break-word">'+escHtml(contact.name)+'</div>';
-      if(contact.title) contactHtml += '<div style="font-size:.68rem;color:#4B5563;margin-top:2px;word-break:break-word">'+escHtml(contact.title)+'</div>';
+      if(contact.name && !_isPlaceholderName) contactHtml += '<div style="font-size:.82rem;font-weight:700;color:#111827;word-break:break-word">'+escHtml(contact.name)+'</div>';
+      if(contact.title && !_isPlaceholderTitle) contactHtml += '<div style="font-size:.68rem;color:#4B5563;margin-top:2px;word-break:break-word">'+escHtml(contact.title)+'</div>';
       if(contact.email) contactHtml += '<div style="font-size:.68rem;color:#3B82F6;margin-top:2px;word-break:break-all;font-weight:500">'+escHtml(contact.email)+'</div>';
       if(contact.telefon && contact.telefon !== '—') contactHtml += '<div style="font-size:.65rem;color:#6B7280;margin-top:2px">'+escHtml(contact.telefon)+'</div>';
-      if(!contact.name && !contact.email) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
+      var _hasVisibleContact = (contact.name && !_isPlaceholderName) || contact.email || (contact.title && !_isPlaceholderTitle);
+      if(!_hasVisibleContact) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
       // "Lead topish" tugmasi — faqat birinchi qator (parent)ga, har 1 kompaniyaga 1 ta tugma
       var _isTaRec = String(rec.manba || '').toLowerCase().indexOf('tradeatlas') !== -1;
       if(_isTaRec && recIdx === 0){
@@ -2891,12 +2899,8 @@ _renderInvestorCompaniesMain = function(){
       contactHtml += '</div>';
 
       var groupBorderStyle = recIdx === 0 ? 'border-top:2px solid transparent;' : '';
-      // Parent (eksportyor) qator hover qilganda — ostiga ulangan importyor xaridorlar BADGE ko'rinadi
-      // Agar biror importyor ochilgan bo'lsa (pinned), mouseleave'da yashirinmaydi
+      // Hover handler olib tashlandi — importyor faqat "N ta importyor" tugmasini bosganda ochiladi
       var _hoverHandlers = '';
-      if(_isParent && _childrenData.length){
-        _hoverHandlers = ' onmouseenter="var b=this.querySelectorAll(\'.ic-importer-hover\');for(var i=0;i<b.length;i++)b[i].style.display=\'block\'" onmouseleave="var b=this.querySelectorAll(\'.ic-importer-hover\');for(var i=0;i<b.length;i++){if(b[i].dataset.pinned!==\'1\')b[i].style.display=\'none\'}"';
-      }
       // Yashirin child (importyor) qator — boshlang'ich display:none, bosilgancha
       var _hiddenChildAttrs = '';
       var _hiddenChildStyle = '';
