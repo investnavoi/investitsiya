@@ -2932,28 +2932,30 @@ _renderInvestorCompaniesMain = function(){
       if(recIdx === 0){
         html += '<td rowspan="'+recs.length+'" style="vertical-align:middle">'+sohaCell+'</td>';
       }
-      /* Status badge */
-      html += '<td style="vertical-align:middle">'+getEmailStatusBadge(rec)+'</td>';
-      /* Action buttons - TailAdmin style SVG icons */
-      var _abtn = 'width:30px;height:30px;border-radius:7px;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s ease;flex-shrink:0;';
-      var _srcBadge = '';
-      var _srcRaw = String(rec.manba || rec.source || companyRec.manba || companyRec.source || '').toLowerCase();
-      var _isApolloSource = _srcRaw.indexOf('apollo') !== -1 || _srcRaw === 'csv-import' || _srcRaw === 'csv import' || _srcRaw === 'finder';
-      if(_isApolloSource){
-        _srcBadge = '<span title="Apollo" style="width:26px;height:26px;border-radius:7px;background:#FFE600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px"><img src="assets/apollo.ico" alt="Apollo" style="width:18px;height:18px;display:block"></span>';
-      } else if(_srcRaw.indexOf('tradeatlas') !== -1 || _srcRaw === 'trade'){
-        _srcBadge = '<span title="TradeAtlas" style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#1E3A8A,#1E40AF);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;flex-shrink:0;margin-right:4px;letter-spacing:-.02em">TA</span>';
+      /* Status badge va Action buttons — faqat birinchi qator (recIdx === 0)ga rowspan bilan */
+      if(recIdx === 0){
+        var _parentRec = recs[0];
+        html += '<td rowspan="'+recs.length+'" style="vertical-align:middle">'+getEmailStatusBadge(_parentRec)+'</td>';
+        var _abtn = 'width:30px;height:30px;border-radius:7px;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s ease;flex-shrink:0;';
+        var _srcBadge = '';
+        var _srcRaw = String(_parentRec.manba || _parentRec.source || companyRec.manba || companyRec.source || '').toLowerCase();
+        var _isApolloSource = _srcRaw.indexOf('apollo') !== -1 || _srcRaw === 'csv-import' || _srcRaw === 'csv import' || _srcRaw === 'finder';
+        if(_isApolloSource){
+          _srcBadge = '<span title="Apollo" style="width:26px;height:26px;border-radius:7px;background:#FFE600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px"><img src="assets/apollo.ico" alt="Apollo" style="width:18px;height:18px;display:block"></span>';
+        } else if(_srcRaw.indexOf('tradeatlas') !== -1 || _srcRaw === 'trade'){
+          _srcBadge = '<span title="TradeAtlas" style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#1E3A8A,#1E40AF);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;flex-shrink:0;margin-right:4px;letter-spacing:-.02em">TA</span>';
+        }
+        html += '<td rowspan="'+recs.length+'" style="vertical-align:middle">' +
+          '<div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap">' +
+          _srcBadge +
+          (isAdmin
+            ? '<button style="'+_abtn+'background:transparent;padding:0" onclick="openInvestorAiWorkspace(\''+_parentRec.id+'\')" title="AI xat va tahlil"><svg width="26" height="26" viewBox="0 0 24 24"><defs><radialGradient id="aiGrad'+_parentRec.id+'" cx="50%" cy="40%" r="65%"><stop offset="0%" stop-color="#FFB554"/><stop offset="100%" stop-color="#F57C00"/></radialGradient></defs><circle cx="12" cy="12" r="11" fill="url(#aiGrad'+_parentRec.id+')"/><text x="12" y="16" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="11" fill="#fff">Ai</text></svg></button>' +
+              (_parentRec.email ? '<button style="'+_abtn+'background:#EFF4FF;color:#3B82F6" onclick="openEmailModal(\''+_parentRec.id+'\')" title="Xabar yuborish" onmouseover="this.style.background=\'#3B82F6\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#EFF4FF\';this.style.color=\'#3B82F6\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 20.5H7c-3 0-5-1.5-5-5v-7c0-3.5 2-5 5-5h10c3 0 5 1.5 5 5v7c0 3.5-2 5-5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 9l-3.13 2.5c-1.03.82-2.72.82-3.75 0L7 9" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
+              (_parentRec.email ? '<button style="'+_abtn+'background:'+(_parentRec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+';color:'+(_parentRec.emailSchedule?.active?'#059669':'#6B7280')+'" onclick="openScheduleModal(\''+_parentRec.id+'\')" title="Email rejalashtirish" onmouseover="this.style.background=\''+(_parentRec.emailSchedule?.active?'#059669':'#6B7280')+'\';this.style.color=\'#fff\'" onmouseout="this.style.background=\''+(_parentRec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+'\';this.style.color=\''+(_parentRec.emailSchedule?.active?'#059669':'#6B7280')+'\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.69 13.7h.01M15.69 16.7h.01M11.99 13.7h.02M11.99 16.7h.02M8.29 13.7h.02M8.29 16.7h.02" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
+              '<button style="'+_abtn+'background:#FEF3F2;color:#EF4444" onclick="deleteRecord(\'investorCompanies\',\''+_parentRec.id+'\')" title="O\'chirish" onmouseover="this.style.background=\'#EF4444\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#FEF3F2\';this.style.color=\'#EF4444\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 5.98c-3.33-.33-6.68-.5-10.02-.5-1.98 0-3.96.1-5.94.3L3 5.98M8.5 4.97l.22-1.31C8.88 2.71 9 2 10.69 2h2.62c1.69 0 1.82.75 1.97 1.67l.22 1.3M18.85 9.14l-.65 10.07C18.09 20.78 18 22 15.21 22H8.79C6 22 5.91 20.78 5.8 19.21L5.15 9.14M10.33 16.5h3.33M9.5 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
+            : '') +
+          '</div></td>';
       }
-      html += '<td style="vertical-align:middle">' +
-        '<div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap">' +
-        _srcBadge +
-        (isAdmin
-          ? '<button style="'+_abtn+'background:transparent;padding:0" onclick="openInvestorAiWorkspace(\''+rec.id+'\')" title="AI xat va tahlil"><svg width="26" height="26" viewBox="0 0 24 24"><defs><radialGradient id="aiGrad'+rec.id+'" cx="50%" cy="40%" r="65%"><stop offset="0%" stop-color="#FFB554"/><stop offset="100%" stop-color="#F57C00"/></radialGradient></defs><circle cx="12" cy="12" r="11" fill="url(#aiGrad'+rec.id+')"/><text x="12" y="16" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="11" fill="#fff">Ai</text></svg></button>' +
-            (rec.email ? '<button style="'+_abtn+'background:#EFF4FF;color:#3B82F6" onclick="openEmailModal(\''+rec.id+'\')" title="Xabar yuborish" onmouseover="this.style.background=\'#3B82F6\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#EFF4FF\';this.style.color=\'#3B82F6\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 20.5H7c-3 0-5-1.5-5-5v-7c0-3.5 2-5 5-5h10c3 0 5 1.5 5 5v7c0 3.5-2 5-5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 9l-3.13 2.5c-1.03.82-2.72.82-3.75 0L7 9" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
-            (rec.email ? '<button style="'+_abtn+'background:'+(rec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+';color:'+(rec.emailSchedule?.active?'#059669':'#6B7280')+'" onclick="openScheduleModal(\''+rec.id+'\')" title="Email rejalashtirish" onmouseover="this.style.background=\''+(rec.emailSchedule?.active?'#059669':'#6B7280')+'\';this.style.color=\'#fff\'" onmouseout="this.style.background=\''+(rec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+'\';this.style.color=\''+(rec.emailSchedule?.active?'#059669':'#6B7280')+'\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.69 13.7h.01M15.69 16.7h.01M11.99 13.7h.02M11.99 16.7h.02M8.29 13.7h.02M8.29 16.7h.02" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
-            '<button style="'+_abtn+'background:#FEF3F2;color:#EF4444" onclick="deleteRecord(\'investorCompanies\',\''+rec.id+'\')" title="O\'chirish" onmouseover="this.style.background=\'#EF4444\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#FEF3F2\';this.style.color=\'#EF4444\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 5.98c-3.33-.33-6.68-.5-10.02-.5-1.98 0-3.96.1-5.94.3L3 5.98M8.5 4.97l.22-1.31C8.88 2.71 9 2 10.69 2h2.62c1.69 0 1.82.75 1.97 1.67l.22 1.3M18.85 9.14l-.65 10.07C18.09 20.78 18 22 15.21 22H8.79C6 22 5.91 20.78 5.8 19.21L5.15 9.14M10.33 16.5h3.33M9.5 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
-          : '') +
-        '</div></td>';
       html += '</tr>';
     });
 
