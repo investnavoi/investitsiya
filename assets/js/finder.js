@@ -1303,7 +1303,12 @@ async function tradeAtlasRequestJson(payload){
   var data = {};
   try { data = await resp.json(); } catch(_e){}
   var errMsg = String((data && data.error) || '').trim();
-  if(!resp.ok || (errMsg && errMsg.toLowerCase() !== 'null' && errMsg.toLowerCase() !== 'undefined')){
+  var errLower = errMsg.toLowerCase();
+  // "No data found" — bu xato emas, oddiy bo'sh natija. Bo'sh massiv qaytaramiz.
+  if(/no data found|no results|empty/i.test(errMsg)){
+    return { data: [], items: [], firms: [], count: 0, total: 0 };
+  }
+  if(!resp.ok || (errMsg && errLower !== 'null' && errLower !== 'undefined')){
     if(/credit limit is exceeded/i.test(errMsg)){
       throw new Error('TradeAtlas trial limiti tugagan. TradeAtlas hisobidan limitni yangilash kerak.');
     }
