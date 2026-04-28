@@ -1598,46 +1598,42 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
   var website = String(item.website || '').trim();
   var sectorHint = (prod && (prod.name_en || prod.name_uz)) || '';
   var roleHint = meta && meta.mode === 'importers' ? 'importer (buyer)' : 'exporter (seller)';
-  // STRICT prompt — only real, verifiable contacts with source URLs
-  var prompt = 'You are a B2B contact research assistant. Use Google Search to find ONLY publicly verifiable contact info for this company. Return ONLY valid JSON.\n\n'+
+  // Prompt — known public B2B contact info (training data + reasoning)
+  var prompt = 'You are a B2B contact research assistant. Find publicly known contact info for this company. Return ONLY valid JSON.\n\n'+
     'Company: ' + compName + '\n' +
     'Country: ' + (country || 'unknown') + '\n' +
     (website ? 'Website: ' + website + '\n' : '') +
     'Industry: ' + sectorHint + '\n' +
     'Role: ' + roleHint + '\n\n' +
-    'STRICT RULES — DO NOT VIOLATE:\n' +
-    '1. EVERY contact (name, email, phone) MUST come from a real, citable web page (company website, LinkedIn, official directory).\n' +
-    '2. Each contact MUST have either:\n' +
-    '   - A corporate email (firstname@company-domain.com), OR\n' +
-    '   - A LinkedIn URL containing /in/ or /company/\n' +
-    '3. NEVER guess, infer, or generate names. NEVER make up emails like "info@", "contact@" without seeing them on a page.\n' +
-    '4. If you cannot verify a real person\'s name from a real source — leave the contacts array EMPTY.\n' +
-    '5. Each contact MUST include the source_url field (the page URL where you found it).\n\n' +
+    'RULES:\n' +
+    '1. Use only publicly known/published info (corporate websites, official press, LinkedIn).\n' +
+    '2. Each contact MUST include a valid corporate email (e.g. firstname.lastname@company-domain.com).\n' +
+    '3. Real full name with at least first + last name. NO single-word names.\n' +
+    '4. Do not invent emails like "info@example.com" or "contact@test.com".\n' +
+    '5. If you have no reliable info, return {"found": false, "contacts": []}.\n' +
+    '6. Prefer C-level (CEO, Director, Manager) and Sales/BD roles.\n\n' +
     'Return JSON:\n' +
     '{\n' +
     '  "found": true/false,\n' +
     '  "contacts": [\n' +
     '    {\n' +
-    '      "name": "Real full name from a real page",\n' +
-    '      "title": "Real title",\n' +
-    '      "email": "real@email.com",\n' +
+    '      "name": "Real Full Name",\n' +
+    '      "title": "Job title",\n' +
+    '      "email": "name@company-domain.com",\n' +
     '      "telefon": "+phone with country code",\n' +
-    '      "linkedin": "https://linkedin.com/in/...",\n' +
-    '      "source_url": "https://exact-page-where-found.com/..."\n' +
+    '      "linkedin": "https://linkedin.com/in/... (optional)"\n' +
     '    }\n' +
     '  ],\n' +
-    '  "company_email": "info@company.com (from website only)",\n' +
-    '  "company_phone": "+ phone (from website only)",\n' +
+    '  "company_email": "info@company.com",\n' +
+    '  "company_phone": "+ phone",\n' +
     '  "company_website": "official site",\n' +
     '  "industry": "sector",\n' +
     '  "city": "headquarter city"\n' +
-    '}\n\n' +
-    'If you cannot find verified info — return {"found": false, "contacts": []}.';
+    '}';
   try {
     var resp = await callGemini({
       contents: [{role:'user', parts:[{text: prompt}]}],
-      tools: [{ google_search: {} }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 2048, responseMimeType: 'application/json' }
     });
     var raw = '';
     if(resp && resp.candidates && resp.candidates[0]){
@@ -1663,26 +1659,30 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
     var data;
     try { data = JSON.parse(raw); } catch(_e){ return item; }
     if(!data || data.found === false) return item;
-    // Email/website domain validation helper
+    // Email/website validation helper — yumshatilgan (source_url shart emas)
     var emailRe = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-    var linkedinRe = /linkedin\.com\/(in|company)\//i;
     var urlRe = /^https?:\/\//i;
+    var blacklistDomains = ['example.com','test.com','example.org','domain.com','company.com','email.com'];
     function isValidContact(c){
       if(!c) return false;
       var nm = String(c.name || '').trim();
-      var em = String(c.email || '').trim();
-      var li = String(c.linkedin || '').trim();
-      var src = String(c.source_url || '').trim();
-      // Ism real bo'lishi kerak (kamida 2 so'z, faqat harflar)
+      var em = String(c.email || '').trim().toLowerCase();
+      var ti = String(c.title || '').trim();
+      // Ism real bo'lishi kerak (kamida 2 so'z, har birida 2+ harf)
       if(!nm || nm.length < 4) return false;
       var nameWords = nm.split(/\s+/).filter(function(w){ return w.length >= 2; });
       if(nameWords.length < 2) return false;
-      // Email YOKI LinkedIn bo'lishi shart
-      var hasValidEmail = em && emailRe.test(em) && em.toLowerCase().indexOf('example.com') === -1;
-      var hasValidLinkedIn = li && linkedinRe.test(li);
-      if(!hasValidEmail && !hasValidLinkedIn) return false;
-      // Source URL bo'lishi kerak
-      if(!src || !urlRe.test(src)) return false;
+      // Email format va blacklist tekshirish
+      if(em){
+        if(!emailRe.test(em)) return false;
+        var domain = em.split('@')[1] || '';
+        if(blacklistDomains.indexOf(domain) !== -1) return false;
+      }
+      // Email YOKI title bo'lishi yetarli (LinkedIn ham OK)
+      var hasEmail = !!em;
+      var hasTitle = ti.length >= 3;
+      var hasLinkedIn = String(c.linkedin || '').trim().length > 10;
+      if(!hasEmail && !hasTitle && !hasLinkedIn) return false;
       return true;
     }
     // Item'ni boyitish (faqat valid email va kontakt)
