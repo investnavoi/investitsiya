@@ -2751,6 +2751,25 @@ _renderInvestorCompaniesMain = function(){
 
   // Pagination — faqat visible (non-hidden-child) kompaniyalar bo'yicha
   var visibleGroups = grouped.filter(function(g){ return !g._isHiddenChild; });
+  // KPI ni jadvaldagi soniga moslashtirish — visibleGroups.length = jadvaldagi 279 ta
+  var visibleApolloGroups = Object.create(null);
+  var visibleTaGroups = Object.create(null);
+  visibleGroups.forEach(function(g){
+    var groupRec = (g.records && g.records[0]) || null;
+    if(!groupRec) return;
+    var src = String(groupRec.manba || groupRec.source || '').toLowerCase();
+    var geoCode = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(groupRec, {}) : '';
+    if(!geoCode) return;
+    if(src.indexOf('apollo') !== -1) visibleApolloGroups[g.key] = true;
+    if(src.indexOf('tradeatlas') !== -1 || src === 'trade') visibleTaGroups[g.key] = true;
+  });
+  var ic1El = document.getElementById('ic-k1');
+  if(ic1El) ic1El.innerHTML = visibleGroups.length + ' <span class="kpi-unit">ta</span>';
+  var apolloEl2 = document.getElementById('ic-k-apollo');
+  if(apolloEl2) apolloEl2.textContent = Object.keys(visibleApolloGroups).length;
+  var taEl2 = document.getElementById('ic-k-tradeatlas');
+  if(taEl2) taEl2.textContent = Object.keys(visibleTaGroups).length;
+  console.log('[KPI override] Jami:', visibleGroups.length, '| Apollo:', Object.keys(visibleApolloGroups).length, '| TA:', Object.keys(visibleTaGroups).length);
   var icTotalPages = Math.max(1, Math.ceil(visibleGroups.length / IC_PAGE_SIZE));
   if(_icPage > icTotalPages) _icPage = icTotalPages;
   if(_icPage < 1) _icPage = 1;
