@@ -226,25 +226,42 @@ async function openEmbassyModal(type){
       + 'Navoiy viloyati hokimligi';
   }
 
-  // Use cached letter if exists VA yangi format markerini o'z ichiga olsa
+  // Use cached letter if exists VA yangi format markerini o'z ichiga olsa VA til mos kelsa
   // Eski format AI-generatsiya qilingan xatlar (NIEZ, EIZ, NFEZ, Buyuk Ipak yo'li va h.k.) — tashlanadi
   var _cached = (typeof getEmbassyCache==='function') ? getEmbassyCache(code, type) : null;
+  // Cache xat tilini aniqlash
+  var _detectCacheLang = function(body){
+    if(!body) return '';
+    var b = String(body);
+    if(b.indexOf('NAVOI REGION') !== -1) return 'en';
+    if(b.indexOf('НАВОИЙСКОЙ ОБЛАСТИ') !== -1) return 'ru';
+    if(b.indexOf('纳沃伊州') !== -1) return 'zh';
+    if(b.indexOf('NAVOIY VILOYATI') !== -1) return 'uz';
+    return '';
+  };
   var _isNewFormat = function(body){
     if(!body) return false;
     var b = String(body);
-    // Barcha 4 til shabloni — Barnoqulov Shahzod kontaktini tekshiramiz (yagona umumiy marker)
     var hasContact = b.indexOf('Barnoqulov') !== -1 || b.indexOf('Барноқулов') !== -1;
     if(!hasContact) return false;
-    // Navoi/Navoiy/Навоий/纳沃伊 — sarlavha markerlaridan biri
-    var hasHeader = b.indexOf('NAVOIY VILOYATI') !== -1
-      || b.indexOf('NAVOI REGION') !== -1
-      || b.indexOf('НАВОИЙСКОЙ ОБЛАСТИ') !== -1
-      || b.indexOf('纳沃伊州') !== -1;
-    return hasHeader;
+    return !!_detectCacheLang(b);
   };
   if(_cached && _cached.body && _isNewFormat(_cached.body)){
-    if(_cached.subject) letterSubject = _cached.subject;
-    letterBody = _cached.body;
+    var cachedLang = _detectCacheLang(_cached.body);
+    if(cachedLang === _lang){
+      // Til mos kelyapti — cache'dan yuklash
+      if(_cached.subject) letterSubject = _cached.subject;
+      letterBody = _cached.body;
+    } else {
+      // Til mos emas — cache'ni tashlaymiz, yangi shablon ishlatiladi
+      console.log('[Embassy] Cache til mos emas (' + cachedLang + ' → ' + _lang + ') — qayta yaratiladi:', code, type);
+      if(DB.settings && DB.settings.embassyAiCache){
+        try { delete DB.settings.embassyAiCache[embassyMarkKey(code,type)]; } catch(_e){}
+      }
+      if(Array.isArray(DB.embassyLetters)){
+        DB.embassyLetters = DB.embassyLetters.filter(function(l){ return String(l.id) !== embassyMarkKey(code,type); });
+      }
+    }
   } else if(_cached){
     // Eski format cache — o'chiramiz va yangi shablonni ishlatamiz
     if(DB.settings && DB.settings.embassyAiCache){
@@ -465,10 +482,24 @@ async function generateEmbassyAiLetter(countryCode, type){
     window._currentEmbassyCompanies = all;
     var cnt = all.length;
 
-    // Try cache: if cached letter exists for same company set → use cache, no AI call
+    // Try cache: if cached letter exists for same company set + til mos → use cache, no AI call
     var cache = getEmbassyCache(countryCode, type);
     var currentIds = all.map(function(c){return String(c.id);}).sort().join(',');
-    if(cache && cache.companyIds === currentIds && cache.subject && cache.body){
+    // Joriy expected til
+    var _isCisAi0 = ['RU','KZ','KG','TJ','BY','AM','AZ','GE','MD','UA','TM'].indexOf(countryCode) !== -1;
+    var _isCnAi0 = ['CN','TW','HK','MO'].indexOf(countryCode) !== -1;
+    var _expectedLang = (type === 'uzb') ? 'uz' : (_isCnAi0 ? 'zh' : (_isCisAi0 ? 'ru' : 'en'));
+    var _detectLang0 = function(body){
+      if(!body) return '';
+      var b = String(body);
+      if(b.indexOf('NAVOI REGION') !== -1) return 'en';
+      if(b.indexOf('НАВОИЙСКОЙ ОБЛАСТИ') !== -1) return 'ru';
+      if(b.indexOf('纳沃伊州') !== -1) return 'zh';
+      if(b.indexOf('NAVOIY VILOYATI') !== -1) return 'uz';
+      return '';
+    };
+    var cacheLang = cache && cache.body ? _detectLang0(cache.body) : '';
+    if(cache && cache.companyIds === currentIds && cache.subject && cache.body && cacheLang === _expectedLang){
       var subjEl = document.getElementById('emb-subject');
       var bodyEl = document.getElementById('emb-body');
       if(subjEl) subjEl.value = cache.subject;
