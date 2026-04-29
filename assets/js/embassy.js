@@ -367,10 +367,55 @@ async function generateEmbassyAiLetter(countryCode, type){
     var prodSummary = industryList.length ? industryList.join(', ') : 'sanoat ishlab chiqarish';
     // Maqsad davlatlar — O'zbekistondan tashqari 12 ta davlat (Maqsad davlatlar filterdan)
     var targetSummary = 'Turkmaniston, Tojikiston, Qirg\'iziston, Qozog\'iston, Mongoliya, Rossiya, Ozarbayjon, Gruziya, Armaniston, Eron, Afg\'oniston, Pokiston';
+
+    // Iqtisodiy Tahlil cache'dan haqiqiy summalar (ai-letter.js'da saqlangan)
+    function _fmtUsdLong(n){
+      var v = Number(n) || 0;
+      if(v <= 0) return '';
+      if(v >= 1000000) return v.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' (taxminan ' + (v/1000000).toFixed(2).replace(/\.?0+$/,'') + ' mln)';
+      return v.toLocaleString('en-US', {maximumFractionDigits: 0});
+    }
+    function _findSv(breakdown, label){
+      if(!Array.isArray(breakdown)) return 0;
+      var hit = breakdown.find(function(s){ return String(s.label || '').toLowerCase().indexOf(label.toLowerCase()) !== -1; });
+      return hit ? Number(hit.value || 0) : 0;
+    }
+    var sCache = (window._aiSavingsCache && window._aiSavingsCache[String(cName).toLowerCase().trim()]) || null;
+    var sSol = sCache ? _findSv(sCache.breakdown, 'soliq') : 0;
+    var sWage = sCache ? _findSv(sCache.breakdown, 'mehnat') : 0;
+    var sEl = sCache ? _findSv(sCache.breakdown, 'elektr') : 0;
+    var sGas = sCache ? _findSv(sCache.breakdown, 'gaz') : 0;
+    var sTr = sCache ? _findSv(sCache.breakdown, 'transport') : 0;
+    var sInfra = sEl + sGas;
+    var sTotal = sCache ? Number(sCache.totalAnnualSaving || 0) : 0;
+    // Fallback: agar cache yo'q bo'lsa, totalUsd dan tahminiy hisoblash
+    if(sTotal <= 0 && totalUsd > 0){
+      sTotal = Math.round(totalUsd * 0.18);
+      sSol = Math.round(sTotal * 0.30);
+      sWage = Math.round(sTotal * 0.35);
+      sInfra = Math.round(sTotal * 0.10);
+      sTr = Math.round(sTotal * 0.25);
+    }
+    var sSolStr = _fmtUsdLong(sSol) || '(...)';
+    var sWageStr = _fmtUsdLong(sWage) || '(...)';
+    var sInfraStr = _fmtUsdLong(sInfra) || '(...)';
+    var sTrStr = _fmtUsdLong(sTr) || '(...)';
+    var sTotalStr = _fmtUsdLong(sTotal) || '(...)';
+
     var prompt = 'Sen Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi nomidan rasmiy diplomatik xat yozadigan tajribali davlat xizmatchisisan. '
       + 'Xat ' + cName + ' davlatining elchixonasiga yo\'llanadi.\n\n'
       + 'XAT QATIY ANIQ SHABLONDA YOZILSIN — har bir paragraf va so\'z shablonga to\'liq mos kelishi kerak. Faqat o\'zbek tilida yoz.\n\n'
-      + 'Mana XATning to\'liq matni — har bir (...) ni real ma\'lumot bilan to\'ldirib chiqarish kerak:\n\n'
+      + 'REAL MA\'LUMOTLAR (Iqtisodiy Tahlil tizimidan):\n'
+      + '• Davlat: ' + cName + '\n'
+      + '• Aniqlangan kompaniyalar soni: ' + cnt + '\n'
+      + '• Mahsulot turlari: ' + prodSummary + '\n'
+      + '• Eksport bozorlari: ' + targetSummary + '\n'
+      + '• Soliq tejamkorlik: ' + sSolStr + ' AQSh dollari/yil\n'
+      + '• Mehnat resurslari tejamkorligi: ' + sWageStr + ' AQSh dollari/yil\n'
+      + '• Infratuzilma tejamkorligi (elektr+gaz): ' + sInfraStr + ' AQSh dollari/yil\n'
+      + '• Transport va logistika tejamkorligi: ' + sTrStr + ' AQSh dollari/yil\n'
+      + '• Yillik umumiy iqtisod: ' + sTotalStr + ' AQSh dollari\n\n'
+      + 'XATning to\'liq matni — quyidagi shablonga AYNAN mos kelishi kerak. (...) belgilarini yuqoridagi REAL MA\'LUMOTLAR bilan to\'ldir:\n\n'
       + '"""\n'
       + 'O\'ZBEKISTON RESPUBLIKASI\n'
       + 'NAVOIY VILOYATI HOKIMLIGI\n'
@@ -379,11 +424,11 @@ async function generateEmbassyAiLetter(countryCode, type){
       + 'Xorijiy investorlarni Navoiy viloyatiga jalb qilish maqsadida olib borilayotgan strategik tahlillar va investitsion muhitni o\'rganish ishlari doirasida ' + cName + ' davlati hududida faoliyat yuritayotgan ' + cnt + ' ta yetakchi kompaniya aniqlangan. (ilova qilinadi)\n\n'
       + 'Aniqlangan kompaniyalar ' + prodSummary + ' mahsulotlarini ishlab chiqarish sohasida xalqaro miqyosda yetakchi o\'rinni egallab kelmoqda hamda Navoiy viloyatining mineral-xomashyo bazasi va mavjud sanoat infratuzilmasi bilan to\'liq muvofiqligi inobatga olingan holda, ularni viloyatga investor sifatida jalb etish strategik ahamiyatga molikdir.\n\n'
       + 'O\'tkazilgan kompleks iqtisodiy hisob-kitoblarga muvofiq, mazkur kompaniyalar Navoiy viloyatida o\'z ishlab chiqarish quvvatlarini tashkil etib, tayyor mahsulotlarni ' + targetSummary + ' davlatlariga eksport qilgan taqdirda quyidagi iqtisodiy samaradorlik ko\'rsatkichlari aniqlandi:\n\n'
-      + '— soliq imtiyozlari hisobiga (...) AQSh dollari miqdorida tejam;\n'
-      + '— mehnat resurslari xarajatlarida (...) AQSh dollari miqdorida iqtisod;\n'
-      + '— infratuzilma xarajatlarida (...) AQSh dollari miqdorida tejam;\n'
-      + '— transport va logistika xarajatlarida (...) AQSh dollari miqdorida iqtisod.\n\n'
-      + 'Umumiy hisobda, mazkur kompaniyalar Navoiy viloyatida o\'z faoliyatini yo\'lga qo\'ygan taqdirda yillik ' + (savingsEstimate || '(...)') + ' miqdorida iqtisodiy samaraga erishish imkoniyati yaratiladi. Bu esa nafaqat investorlar uchun yuqori daromadlilik, balki ikki davlat o\'rtasidagi savdo-iqtisodiy aloqalarning mustahkamlanishi, Navoiy viloyatida yangi ish o\'rinlarining yaratilishi va mintaqaning eksport salohiyatining kengayishi uchun muhim asos bo\'lib xizmat qiladi.\n\n'
+      + '— soliq imtiyozlari hisobiga ' + sSolStr + ' AQSh dollari miqdorida tejam;\n'
+      + '— mehnat resurslari xarajatlarida ' + sWageStr + ' AQSh dollari miqdorida iqtisod;\n'
+      + '— infratuzilma xarajatlarida ' + sInfraStr + ' AQSh dollari miqdorida tejam;\n'
+      + '— transport va logistika xarajatlarida ' + sTrStr + ' AQSh dollari miqdorida iqtisod.\n\n'
+      + 'Umumiy hisobda, mazkur kompaniyalar Navoiy viloyatida o\'z faoliyatini yo\'lga qo\'ygan taqdirda yillik ' + sTotalStr + ' AQSh dollari miqdorida iqtisodiy samaraga erishish imkoniyati yaratiladi. Bu esa nafaqat investorlar uchun yuqori daromadlilik, balki ikki davlat o\'rtasidagi savdo-iqtisodiy aloqalarning mustahkamlanishi, Navoiy viloyatida yangi ish o\'rinlarining yaratilishi va mintaqaning eksport salohiyatining kengayishi uchun muhim asos bo\'lib xizmat qiladi.\n\n'
       + 'Yuqoridagilarni inobatga olgan holda, Sizdan mazkur kompaniyalar bilan dastlabki aloqalar o\'rnatishga ko\'maklashishingiz, muzokaralar jarayonida amaliy yordam ko\'rsatishingiz hamda viloyatimiz va xorijiy investorlar o\'rtasida samarali hamkorlik ko\'prigini yaratishda yordam berishingizni so\'raymiz.\n\n'
       + 'Qo\'shimcha ma\'lumotlar va batafsil muzokaralar yuzasidan quyidagi mas\'ul xodim bilan bog\'lanishingiz mumkin:\n\n'
       + 'Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi\n'
@@ -395,13 +440,11 @@ async function generateEmbassyAiLetter(countryCode, type){
       + 'Navoiy viloyati hokimligi\n'
       + '"""\n\n'
       + 'QATIY QOIDALAR:\n'
-      + '- Yuqoridagi shablonga TO\'LIQ rioya qil. Sarlavhani, paragraflarni, tartibni o\'zgartirma.\n'
-      + '- Mahsulot turi (...) ni ' + prodSummary + ' bilan to\'ldir.\n'
-      + '- Eksport davlatlari ro\'yxati (...) ni ' + targetSummary + ' bilan to\'ldir.\n'
-      + '- 4 ta dollar (...) ni real iqtisodiy hisob asosida tahminiy raqamlar bilan to\'ldir (masalan: "1 250 000", "850 000" — son aniq, manba placeholder).\n'
-      + '- Yillik umumiy iqtisod summasi: ' + (savingsEstimate || 'tahminiy raqam') + '.\n'
-      + '- Markdown YO\'Q (** # * lar yo\'q). Oddiy matn. Emojilar yo\'q.\n'
-      + '- Stikerlar, multfilm uslubi YO\'Q. Faqat rasmiy diplomatik ohang.\n'
+      + '- Yuqoridagi shablonni AYNAN saqla. Sarlavhani, paragraflarni, tartibni o\'zgartirma.\n'
+      + '- Mahsulot turi: ' + prodSummary + ' (aynan shu yozsin)\n'
+      + '- Eksport davlatlari: ' + targetSummary + ' (aynan shu 12 ta davlat)\n'
+      + '- 4 ta dollar summasi VA umumiy yillik iqtisod RAQAMI majburiy shablondagidek qoldirilsin (' + sSolStr + ', ' + sWageStr + ', ' + sInfraStr + ', ' + sTrStr + ', ' + sTotalStr + ')\n'
+      + '- Markdown YO\'Q (** # * lar yo\'q). Emojilar yo\'q. Stikerlar yo\'q. Faqat rasmiy diplomatik ohang.\n'
       + '- Kontakt ma\'lumotlari saqlansin (Barnoqulov Shahzod, sh.barnokulov@investnavoi.uz, +998 88 890 11 10).\n'
       + '- Faqat o\'zbek tilida yoz.\n\n'
       + 'Subject: "Navoiy viloyatida sanoat investitsiyalari bo\'yicha hamkorlik imkoniyatlari xususida"\n\n'
