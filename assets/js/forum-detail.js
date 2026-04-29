@@ -2271,10 +2271,17 @@ function renderInvestorCompanies(){
   if(_icRenderTimer) clearTimeout(_icRenderTimer);
   _icRenderTimer = setTimeout(_renderInvestorCompaniesNow, 60);
 }
-/* Apollo / TradeAtlas KPI kartochkasi bosilganda manbasiga qarab filter qo'llash (toggle) */
+/* Apollo / TradeAtlas KPI kartochkasi bosilganda manbasiga qarab filter qo'llash (toggle).
+   source = null bo'lsa filter butunlay olib tashlanadi (Jami bosilganda chaqiriladi) */
 window.filterInvestorsBySource = function(source){
   var current = window._investorSourceFilter || null;
-  if(current === source){
+  if(source === null){
+    // Filter butunlay olib tashlash (Jami bosilganda)
+    if(current){
+      window._investorSourceFilter = null;
+      if(typeof toast === 'function') toast('Barcha kompaniyalar — filter olib tashlandi', 'info');
+    }
+  } else if(current === source){
     // Bir xil source ikki marta bosilsa — filter olib tashlanadi
     window._investorSourceFilter = null;
     if(typeof toast === 'function') toast('Filter olib tashlandi — barcha kompaniyalar', 'info');
@@ -2283,9 +2290,11 @@ window.filterInvestorsBySource = function(source){
     var label = source === 'apollo' ? 'Apollo' : (source === 'tradeatlas' ? 'TradeAtlas' : source);
     if(typeof toast === 'function') toast('Filter: faqat ' + label + ' manbasidagi kompaniyalar', 'info');
   }
-  // Jadvalga scroll qilib o'tamiz
-  var card = document.getElementById('icTableCard');
-  if(card){ card.style.display = ''; card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  // Jadvalga scroll qilib o'tamiz (faqat aniq filter qo'llaganda — Jami bosilganda toggleIcTableCard o'zi qiladi)
+  if(source !== null){
+    var card = document.getElementById('icTableCard');
+    if(card){ card.style.display = ''; card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }
   if(typeof renderInvestorCompanies === 'function') renderInvestorCompanies();
 };
 function _renderInvestorCompaniesNow(){
@@ -2370,12 +2379,15 @@ _renderInvestorCompaniesMain = function(){
   var tayyor = 0, emailSent = 0, hasEmail = 0;
   var emailSentGroups = Object.create(null);
   var hasEmailGroups = Object.create(null);
+  // Apollo va TradeAtlas count xarita bilan mos: faqat geo code valid bo'lgan kompaniyalar
   allCo.forEach(function(rec){
     var key = getInvestorCompanyGroupKey(rec);
     allGroupMap[key] = true;
     var src = String(rec.manba || rec.source || '').toLowerCase();
-    if(src.indexOf('apollo') !== -1) apolloGroups[key] = true;
-    if(src.indexOf('tradeatlas') !== -1 || src === 'trade') tradeAtlasGroups[key] = true;
+    var geoCode = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec, {}) : '';
+    var hasGeo = !!geoCode;
+    if(src.indexOf('apollo') !== -1 && hasGeo) apolloGroups[key] = true;
+    if((src.indexOf('tradeatlas') !== -1 || src === 'trade') && hasGeo) tradeAtlasGroups[key] = true;
     if(rec.holat === 'Tayyor') tayyor++;
     if(rec.emailSent) emailSentGroups[key] = true;
     if(rec.email) hasEmailGroups[key] = true;
