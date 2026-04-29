@@ -1141,6 +1141,7 @@ function showTradeCountries(){
   filterTradeCountries();
 }
 
+var _tradeCountryOpenGroups = {};
 function filterTradeCountries(){
   var q = (document.getElementById('trade-country-search').value||'').toLowerCase().trim();
   var el = document.getElementById('trade-country-list');
@@ -1154,18 +1155,57 @@ function filterTradeCountries(){
     return;
   }
 
-  var lastGroup = '';
-  var html = '';
+  // Continent guruhlash: {groupName: [countries...]}
+  var groups = {};
+  var groupOrder = [];
   filtered.forEach(function(c){
-    if(c.g !== lastGroup){
-      lastGroup = c.g;
-      html += '<div style="padding:4px 12px;font-size:.6rem;font-weight:700;color:var(--text3);background:var(--bg2);position:sticky;top:0">'+c.g+'</div>';
+    if(!groups[c.g]){ groups[c.g] = []; groupOrder.push(c.g); }
+    groups[c.g].push(c);
+  });
+
+  // Total country count har guruhda (qidiruv bo'lmaganda full)
+  var totalGroups = {};
+  TRADE_COUNTRIES.forEach(function(c){
+    totalGroups[c.g] = (totalGroups[c.g]||0) + 1;
+  });
+
+  var selectedCode = (document.getElementById('trade-country')||{}).value || '';
+
+  var html = '';
+  groupOrder.forEach(function(gName){
+    var arr = groups[gName];
+    var totalInGroup = totalGroups[gName] || arr.length;
+    var isOpen = !!_tradeCountryOpenGroups[gName] || q.length > 0;
+    // Header
+    html += '<div data-group="'+gName.replace(/"/g,'&quot;')+'" style="border-top:1px solid #F3F4F6">'+
+      '<div onclick="toggleTradeCountryGroup(\''+gName.replace(/'/g,"\\'")+'\')" '+
+        'style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;background:#F9FAFB;transition:background .15s" '+
+        'onmouseenter="this.style.background=\'#F3F4F6\'" onmouseleave="this.style.background=\'#F9FAFB\'">'+
+        '<span style="font-size:.74rem;font-weight:600;color:#344054">'+gName+'</span>'+
+        '<span style="display:flex;align-items:center;gap:6px">'+
+          '<span style="font-size:.62rem;font-weight:600;background:#EFF4FF;color:#465fff;padding:2px 7px;border-radius:5px;min-width:36px;text-align:center">'+arr.length+'/'+totalInGroup+'</span>'+
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;transform:rotate('+(isOpen?'90':'0')+'deg)"><path d="M9 18l6-6-6-6"/></svg>'+
+        '</span>'+
+      '</div>';
+    if(isOpen){
+      html += '<div>';
+      arr.forEach(function(c){
+        var cleanName = c.n.slice(c.n.indexOf(' ')+1);
+        var sel = (selectedCode === c.c);
+        html += '<div onclick="selectTradeCountry(\''+c.c+'\',\''+cleanName.replace(/'/g,"\\'")+'\')" '+
+          'style="padding:8px 14px 8px 30px;cursor:pointer;font-size:.78rem;color:#14233F;background:'+(sel?'rgba(70,95,255,.08)':'transparent')+';border-bottom:1px solid #F3F4F6;transition:background .15s" '+
+          'onmouseenter="this.style.background=\'rgba(67,97,238,.06)\'" onmouseleave="this.style.background=\''+(sel?'rgba(70,95,255,.08)':'transparent')+'\'">'+cleanName+'</div>';
+      });
+      html += '</div>';
     }
-    // Faqat nom ko'rsatish (bayroqsiz)
-    var cleanName = c.n.slice(c.n.indexOf(' ')+1);
-    html += '<div onclick="selectTradeCountry(\''+c.c+'\',\''+cleanName.replace(/'/g,"\'")+'\')" style="padding:8px 12px;cursor:pointer;font-size:.8rem;transition:background .15s;border-bottom:1px solid var(--border)" onmouseenter="this.style.background=\'rgba(67,97,238,.08)\'" onmouseleave="this.style.background=\'transparent\'">'+cleanName+'</div>';
+    html += '</div>';
   });
   el.innerHTML = html;
+}
+
+function toggleTradeCountryGroup(name){
+  _tradeCountryOpenGroups[name] = !_tradeCountryOpenGroups[name];
+  filterTradeCountries();
 }
 
 function selectTradeCountry(code, name){
