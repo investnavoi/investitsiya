@@ -2376,14 +2376,25 @@ _renderInvestorCompaniesMain = function(){
   var allGroupMap = Object.create(null);
   var apolloGroups = Object.create(null);
   var tradeAtlasGroups = Object.create(null);
+  var groupRoles = Object.create(null); // key -> { hasExporter, hasImporter }
   var tayyor = 0, emailSent = 0, hasEmail = 0;
   var emailSentGroups = Object.create(null);
   var hasEmailGroups = Object.create(null);
-  // Unique kompaniyalar bo'yicha sanaymiz (dedup by group key) — jadvaldagi 279 ta bilan mos
+  // Har group uchun exporter/importer aniqlash — jadvaldagi 279 ta bilan to'liq mos
   // Apollo va TradeAtlas count xarita bilan mos: faqat geo code valid bo'lgan kompaniyalar
   allCo.forEach(function(rec){
     var key = getInvestorCompanyGroupKey(rec);
-    allGroupMap[key] = true;
+    if(!groupRoles[key]) groupRoles[key] = { hasExporter: false, hasImporter: false };
+    var fm = String(rec.finderMode || rec.role || '').toLowerCase();
+    if(fm === 'exporters' || fm === 'exporter') groupRoles[key].hasExporter = true;
+    if(fm === 'importers' || fm === 'importer') groupRoles[key].hasImporter = true;
+    // Partners orqali rolni aniqlash
+    if(Array.isArray(rec._partners) && rec._partners.some(function(p){
+      return String(p.role||'').toLowerCase() === 'importer';
+    })) groupRoles[key].hasExporter = true;
+    if(Array.isArray(rec._partnerOf) && rec._partnerOf.some(function(p){
+      return String(p.role||'').toLowerCase() === 'exporter';
+    })) groupRoles[key].hasImporter = true;
     var src = String(rec.manba || rec.source || '').toLowerCase();
     var geoCode = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec, {}) : '';
     var hasGeo = !!geoCode;
@@ -2392,6 +2403,19 @@ _renderInvestorCompaniesMain = function(){
     if(rec.holat === 'Tayyor') tayyor++;
     if(rec.emailSent) emailSentGroups[key] = true;
     if(rec.email) hasEmailGroups[key] = true;
+  });
+  // Group eksportyor hisoblanadi: hasExporter true YOKI (hech qanday role aniqlanmagan)
+  // Faqat aniq importyor (hasImporter && !hasExporter) tashlanadi
+  Object.keys(groupRoles).forEach(function(key){
+    var role = groupRoles[key];
+    var isImporterOnly = role.hasImporter && !role.hasExporter;
+    if(!isImporterOnly){
+      allGroupMap[key] = true;
+    } else {
+      // Importyor — apollo/TA count'lardan ham olib tashlash
+      delete apolloGroups[key];
+      delete tradeAtlasGroups[key];
+    }
   });
   emailSent = Object.keys(emailSentGroups).length;
   hasEmail = Object.keys(hasEmailGroups).length;
