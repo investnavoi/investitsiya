@@ -2379,21 +2379,9 @@ _renderInvestorCompaniesMain = function(){
   var tayyor = 0, emailSent = 0, hasEmail = 0;
   var emailSentGroups = Object.create(null);
   var hasEmailGroups = Object.create(null);
-  // FAQAT EKSPORTYORLAR statistikaga olinadi (importyorlar hisoblanmaydi)
-  // Importyor aniqlash:
-  //  1) finderMode === 'importers' / 'importer'
-  //  2) _partnerOf bor va _partners yo'q (sintetik importyor child)
+  // Unique kompaniyalar bo'yicha sanaymiz (dedup by group key) — jadvaldagi 279 ta bilan mos
   // Apollo va TradeAtlas count xarita bilan mos: faqat geo code valid bo'lgan kompaniyalar
   allCo.forEach(function(rec){
-    var fm = String(rec.finderMode || rec.role || '').toLowerCase();
-    var isImporter = fm === 'importers' || fm === 'importer';
-    if(!isImporter){
-      var hasPartnerOf = Array.isArray(rec._partnerOf) && rec._partnerOf.length > 0;
-      var hasPartners = Array.isArray(rec._partners) && rec._partners.length > 0;
-      // Faqat _partnerOf bo'lib, _partners bo'lmasa — bu importyor child
-      if(hasPartnerOf && !hasPartners) isImporter = true;
-    }
-    if(isImporter) return;
     var key = getInvestorCompanyGroupKey(rec);
     allGroupMap[key] = true;
     var src = String(rec.manba || rec.source || '').toLowerCase();
