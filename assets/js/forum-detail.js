@@ -2391,9 +2391,9 @@ _renderInvestorCompaniesMain = function(){
   document.getElementById('ic-k3').innerHTML = emailSent + '/' + hasEmail + ' <span class="kpi-unit">ta</span>';
   const ic4 = document.getElementById('ic-k4'); if(ic4) ic4.textContent = '$' + Math.round(total / 1e6) + 'M';
   var apolloEl = document.getElementById('ic-k-apollo');
-  if(apolloEl) apolloEl.innerHTML = apolloCount + ' <span style="font-size:.6rem;font-weight:600">ta</span>';
+  if(apolloEl) apolloEl.textContent = apolloCount;
   var taEl = document.getElementById('ic-k-tradeatlas');
-  if(taEl) taEl.innerHTML = tradeAtlasCount + ' <span style="font-size:.6rem;font-weight:600">ta</span>';
+  if(taEl) taEl.textContent = tradeAtlasCount;
   document.getElementById('badge-investorco').textContent = groupCount;
 
   /* Skip expensive map re-render if company geo data hasn't changed */
