@@ -879,8 +879,23 @@ function renderInvestorProductFilterPicker(){
   var clearBtn = document.getElementById('investor-soha-filter-clear');
   if(!hidden || !display || !dd) return;
   var pid = String(hidden.value || '');
-  var investorCompanies = DB.investorCompanies || [];
-  var signature = String(investorCompanies.length) + '|' + investorCompanies.map(function(rec){
+  var allInvestorCompanies = DB.investorCompanies || [];
+  // Geo filter — agar davlat tanlangan bo'lsa, faqat shu davlat kompaniyalari
+  var geoCode = (typeof _investorGeoFilterStateCode === 'string') ? _investorGeoFilterStateCode : '';
+  // Source filter (Apollo/TradeAtlas)
+  var srcFilter = window._investorSourceFilter || null;
+  var investorCompanies = allInvestorCompanies.filter(function(rec){
+    if(geoCode && typeof getInvestorGeoStateCode === 'function'){
+      if(getInvestorGeoStateCode(rec, {}) !== geoCode) return false;
+    }
+    if(srcFilter){
+      var src = String(rec.manba || rec.source || '').toLowerCase().trim();
+      if(srcFilter === 'apollo' && src.indexOf('apollo') === -1) return false;
+      if(srcFilter === 'tradeatlas' && src.indexOf('tradeatlas') === -1 && src !== 'trade') return false;
+    }
+    return true;
+  });
+  var signature = (geoCode||'')+'|'+(srcFilter||'')+'|'+String(investorCompanies.length) + '|' + investorCompanies.map(function(rec){
     return [rec.id, getInvestorSohaValue(rec), rec.mahsulotNomi, rec.mahsulotHs, rec.productId].join(':');
   }).join('|');
   if(dd.dataset.signature !== signature){
@@ -959,7 +974,8 @@ function toggleInvestorProductDropdown(){
   var dd = document.getElementById('investor-soha-filter-dropdown');
   var wrap = document.getElementById('investor-soha-filter-wrap');
   if(dd) dd.classList.toggle('open');
-  if(wrap) wrap.classList.toggle('open-inline', !!(dd && dd.classList.contains('open')));
+  // open-inline o'rniga absolute popup ko'rinishida qoladi (kontentni pastga tushirmaydi)
+  if(wrap) wrap.classList.remove('open-inline');
 }
 
 function selectInvestorProductFilter(el, pid){

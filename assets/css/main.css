@@ -3904,24 +3904,23 @@ input[type="time"]{-webkit-appearance:none;}
 .custom-select-wrap{position:relative;width:100%;}
 .custom-select-display{cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:38px;user-select:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:28px!important;background:var(--card)!important;color:var(--text);}
 .custom-select-display::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3);pointer-events:none;}
-.custom-select-dropdown{display:none;position:absolute;top:100%;left:0;right:0;max-height:350px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:0 0 10px 10px;box-shadow:0 12px 32px rgba(0,0,0,.15);z-index:5000;margin-top:-1px;}
+.custom-select-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:380px;overflow-y:auto;background:#fff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:5000;}
 .custom-select-dropdown.open{display:block;}
-#investor-soha-filter-wrap.open-inline .custom-select-dropdown{position:static;left:auto;right:auto;top:auto;margin-top:6px;border-radius:12px;max-height:320px;box-shadow:0 10px 24px rgba(15,23,42,.12);}
-#investor-soha-filter-wrap.open-inline .custom-select-display{border-bottom-left-radius:10px;border-bottom-right-radius:10px;}
-.csd-group-head{display:flex;align-items:center;gap:8px;padding:9px 14px;font-weight:700;font-size:.82rem;color:var(--text);cursor:pointer;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;user-select:none;transition:background .15s;}
-.csd-group-head:hover{background:var(--border);}
-.csd-group-head .csd-caret{font-size:10px;color:var(--text3);transition:transform .2s;margin-left:auto;}
+.csd-group-head{display:flex;align-items:center;gap:8px;padding:8px 12px;font-weight:600;font-size:.78rem;color:#344054;cursor:pointer;background:transparent;border-radius:8px;user-select:none;transition:background .15s;}
+.csd-group-head:hover{background:#F9FAFB;}
+.csd-group-head .csd-caret{font-size:10px;color:#9CA3AF;transition:transform .2s;margin-left:auto;}
 .csd-group-head.open .csd-caret{transform:rotate(180deg);}
-.csd-group-head .csd-count{font-size:10px;color:var(--text3);background:var(--bg);padding:1px 6px;border-radius:8px;margin-left:4px;}
-.csd-group-items{display:none;border-bottom:1px solid var(--border);}
+.csd-group-head .csd-count{font-size:.65rem;font-weight:600;color:#465fff;background:#EFF4FF;padding:2px 7px;border-radius:5px;min-width:28px;text-align:center;}
+.csd-group-items{display:none;}
 .csd-group-items.open{display:block;}
-.csd-section-items{background:var(--card);}
-.csd-raw-head{padding-left:22px;font-size:.78rem;font-weight:700;background:rgba(67,97,238,.03);position:static;}
-.csd-raw-items .csd-item{padding-left:42px;}
-.csd-item{padding:8px 14px 8px 28px;font-size:.78rem;color:var(--text2);cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(0,0,0,.03);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.csd-item:hover{background:rgba(67,97,238,.06);color:var(--text);}
-.csd-item:last-child{border-bottom:none;}
-.csd-item.selected{background:rgba(67,97,238,.1);color:var(--blue);font-weight:600;}
+.csd-section-items{background:transparent;padding:0 4px;}
+.csd-raw-head{padding-left:22px;font-size:.74rem;font-weight:500;background:transparent;color:#6B7280;}
+.csd-raw-head:hover{background:#F3F4F6;}
+.csd-raw-items{padding:2px 0 4px 8px;}
+.csd-raw-items .csd-item{padding-left:32px;}
+.csd-item{padding:6px 12px 6px 24px;font-size:.74rem;color:#475467;cursor:pointer;transition:background .12s;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:1px 4px;}
+.csd-item:hover{background:rgba(70,95,255,.06);color:#14233F;}
+.csd-item.selected{background:rgba(70,95,255,.1);color:#465fff;font-weight:600;}
 .tg-reply-badge{display:inline-flex;align-items:center;border-radius:6px;padding:3px 8px;font-size:.68rem;font-weight:700;cursor:pointer;white-space:nowrap}
 .tg-reply-badge.new{background:#059669;color:#fff}
 .tg-reply-badge.seen{background:#E0F2FE;color:#0369A1;font-weight:600}
