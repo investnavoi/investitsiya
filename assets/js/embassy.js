@@ -758,10 +758,11 @@ async function generateEmbassyAiLetter(countryCode, type){
     var bodyEl = document.getElementById('emb-body');
     if(subjEl && parsed.subject) subjEl.value = parsed.subject;
     if(bodyEl && parsed.body) bodyEl.value = parsed.body;
+    var _currentIds = all.map(function(c){return String(c.id);}).sort().join(',');
     setEmbassyCache(countryCode, type, {
       subject: parsed.subject || '',
       body: parsed.body || '',
-      companyIds: currentIds,
+      companyIds: _currentIds,
       generatedAt: new Date().toISOString()
     });
     _attachEmbassyAutoSave(countryCode, type);
