@@ -355,7 +355,7 @@ function renderIcCharts(companies){
   var thisPeriod = (range && typeof inRange==='function') ? companies.filter(function(c){return inRange(c, range);}) : companies;
 
   var tallyCountries = function(arr){
-    // Unique kompaniyalar bo'yicha sanaymiz (har kompaniyani 1 marta) — KPI 261 ta bilan mos
+    // Unique kompaniyalar bo'yicha sanaymiz (har kompaniyani 1 marta) — KPI bilan mos
     var seenGroups = {};
     var map = {};
     arr.forEach(function(r){
@@ -367,8 +367,25 @@ function renderIcCharts(companies){
       var k = extractCountry(r);
       map[k] = (map[k]||0)+1;
     });
-    var labels = Object.keys(map).sort(function(a,b){return map[b]-map[a];}).slice(0,8);
-    return { labels: labels, vals: labels.map(function(k){return map[k];}) };
+    // Barcha davlatlar — top 7 + 1 "Boshqalar" slice (qolgan davlatlar yig'indisi)
+    // KPI bilan mos: total = barcha unique kompaniyalar (303 = 303)
+    var sorted = Object.keys(map).sort(function(a,b){return map[b]-map[a];});
+    var TOP_N = 7;
+    if(sorted.length <= TOP_N + 1){
+      // Hammasi sig'adi — slice qilmaymiz
+      return { labels: sorted, vals: sorted.map(function(k){return map[k];}) };
+    }
+    var topLabels = sorted.slice(0, TOP_N);
+    var topVals = topLabels.map(function(k){return map[k];});
+    var othersTotal = 0;
+    for(var i = TOP_N; i < sorted.length; i++){
+      othersTotal += map[sorted[i]];
+    }
+    if(othersTotal > 0){
+      topLabels.push('Boshqalar');
+      topVals.push(othersTotal);
+    }
+    return { labels: topLabels, vals: topVals };
   };
 
   var monthTally = tallyCountries(thisPeriod);
