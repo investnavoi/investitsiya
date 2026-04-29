@@ -2438,13 +2438,7 @@ _renderInvestorCompaniesMain = function(){
   if(taEl) taEl.textContent = tradeAtlasCount;
   document.getElementById('badge-investorco').textContent = groupCount;
 
-  /* Skip expensive map re-render if company geo data hasn't changed — filter ham hisobga olinadi */
-  var geoHash = co.map(function(r){ return (r.id||'')+'|'+(r.davlat||r.country||''); }).join(',') + '|src:' + (_sourceFilter || '');
-  if(geoHash !== _icGeoHash){
-    _icGeoHash = geoHash;
-    renderInvestorGeoCard(co);
-  }
-  renderIcCharts(co);
+  /* Geo karta va pie chart visibleGroups asosida pastda chiqariladi (visibleRecords) */
   if(typeof renderInvestorProductFilterPicker === 'function'){
     renderInvestorProductFilterPicker();
   }
@@ -2752,24 +2746,46 @@ _renderInvestorCompaniesMain = function(){
   // Pagination — faqat visible (non-hidden-child) kompaniyalar bo'yicha
   var visibleGroups = grouped.filter(function(g){ return !g._isHiddenChild; });
   // KPI ni jadvaldagi soniga moslashtirish — visibleGroups.length = jadvaldagi 279 ta
+  // Hamma statistika visibleGroups dan hisoblanadi
   var visibleApolloGroups = Object.create(null);
   var visibleTaGroups = Object.create(null);
+  var vTayyor = 0, vEmailSent = 0, vHasEmail = 0;
+  var vEmailSentGroups = Object.create(null);
+  var vHasEmailGroups = Object.create(null);
+  var visibleRecords = []; // pie chart va geo karta uchun
   visibleGroups.forEach(function(g){
-    var groupRec = (g.records && g.records[0]) || null;
-    if(!groupRec) return;
-    var src = String(groupRec.manba || groupRec.source || '').toLowerCase();
-    var geoCode = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(groupRec, {}) : '';
-    if(!geoCode) return;
-    if(src.indexOf('apollo') !== -1) visibleApolloGroups[g.key] = true;
-    if(src.indexOf('tradeatlas') !== -1 || src === 'trade') visibleTaGroups[g.key] = true;
+    if(!Array.isArray(g.records)) return;
+    g.records.forEach(function(rec){
+      visibleRecords.push(rec);
+      var src = String(rec.manba || rec.source || '').toLowerCase().trim();
+      if(src.indexOf('apollo') !== -1) visibleApolloGroups[g.key] = true;
+      if(src.indexOf('tradeatlas') !== -1 || src.indexOf('trade atlas') !== -1 || src === 'trade' || src === 'ta') visibleTaGroups[g.key] = true;
+      if(rec.holat === 'Tayyor') vTayyor++;
+      if(rec.emailSent) vEmailSentGroups[g.key] = true;
+      if(rec.email) vHasEmailGroups[g.key] = true;
+    });
   });
+  vEmailSent = Object.keys(vEmailSentGroups).length;
+  vHasEmail = Object.keys(vHasEmailGroups).length;
   var ic1El = document.getElementById('ic-k1');
   if(ic1El) ic1El.innerHTML = visibleGroups.length + ' <span class="kpi-unit">ta</span>';
+  var ic2El = document.getElementById('ic-k2');
+  if(ic2El) ic2El.innerHTML = vTayyor + ' <span class="kpi-unit">ta</span>';
+  var ic3El = document.getElementById('ic-k3');
+  if(ic3El) ic3El.innerHTML = vEmailSent + '/' + vHasEmail + ' <span class="kpi-unit">ta</span>';
   var apolloEl2 = document.getElementById('ic-k-apollo');
   if(apolloEl2) apolloEl2.textContent = Object.keys(visibleApolloGroups).length;
   var taEl2 = document.getElementById('ic-k-tradeatlas');
   if(taEl2) taEl2.textContent = Object.keys(visibleTaGroups).length;
-  console.log('[KPI override] Jami:', visibleGroups.length, '| Apollo:', Object.keys(visibleApolloGroups).length, '| TA:', Object.keys(visibleTaGroups).length);
+  // Pie chart va geo karta — visibleRecords dan
+  if(typeof renderIcCharts === 'function') renderIcCharts(visibleRecords);
+  // Geo karta hash yangilash
+  var visGeoHash = visibleRecords.map(function(r){ return (r.id||'')+'|'+(r.davlat||r.country||''); }).join(',') + '|src:' + (_sourceFilter || '') + '|v:visible';
+  if(visGeoHash !== _icGeoHash){
+    _icGeoHash = visGeoHash;
+    if(typeof renderInvestorGeoCard === 'function') renderInvestorGeoCard(visibleRecords);
+  }
+  console.log('[KPI override] Jami:', visibleGroups.length, '| Tayyor:', vTayyor, '| Email:', vEmailSent+'/'+vHasEmail, '| Apollo:', Object.keys(visibleApolloGroups).length, '| TA:', Object.keys(visibleTaGroups).length);
   var icTotalPages = Math.max(1, Math.ceil(visibleGroups.length / IC_PAGE_SIZE));
   if(_icPage > icTotalPages) _icPage = icTotalPages;
   if(_icPage < 1) _icPage = 1;
