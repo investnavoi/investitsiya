@@ -23,14 +23,42 @@ var _embassyCountryNames = {
   'KZ':'Qozog\'iston','PK':'Pokiston','BD':'Bangladesh','VN':'Vyetnam','PH':'Filippin'
 };
 
+// AI Tahlil cache'dan key variant orqali kompaniya mosligini topish
+// (Iqtisodiy Tahlil panel "canada" deb yozadi, embassy "kanada" deb qidiradi)
+function _findExistingSavingsCacheEntry(cName, code){
+  if(!window._aiSavingsCache) return null;
+  var keyUz = String(cName || '').toLowerCase().trim();
+  if(window._aiSavingsCache[keyUz] && Array.isArray(window._aiSavingsCache[keyUz].breakdown) && window._aiSavingsCache[keyUz].breakdown.length){
+    return window._aiSavingsCache[keyUz];
+  }
+  // Code va Uzbek nom asosida boshqa varianlar
+  var aliases = (window._embassyCountryAliases && code && window._embassyCountryAliases[code]) || [];
+  var allKeys = Object.keys(window._aiSavingsCache);
+  for(var i = 0; i < allKeys.length; i++){
+    var k = allKeys[i];
+    var entry = window._aiSavingsCache[k];
+    if(!entry || !Array.isArray(entry.breakdown) || !entry.breakdown.length) continue;
+    // Alias mosligi
+    if(aliases.some(function(a){ return k.indexOf(String(a).toLowerCase()) !== -1; })){
+      return entry;
+    }
+    // Bevosita ism mosligi (qisqartirilgan)
+    var entryName = String(entry.countryName || '').toLowerCase().trim();
+    if(entryName && (entryName.indexOf(keyUz) !== -1 || keyUz.indexOf(entryName) !== -1)){
+      return entry;
+    }
+  }
+  return null;
+}
+
 // AI Tahlil API'dan country foizlarini avtomatik olish (cache bo'sh bo'lsa)
 // Iqtisodiy Tahlil panelini ochmasdan ham embassy xatda real foizlar ko'rinishi uchun
-async function _ensureSavingsCacheForCountry(cName){
+async function _ensureSavingsCacheForCountry(cName, code){
   var key = String(cName || '').toLowerCase().trim();
   if(!key) return null;
-  if(window._aiSavingsCache && window._aiSavingsCache[key] && Array.isArray(window._aiSavingsCache[key].breakdown) && window._aiSavingsCache[key].breakdown.length){
-    return window._aiSavingsCache[key];
-  }
+  // Birinchi navbatda mavjud cache (Iqtisodiy Tahlil panelidan, transport bilan)
+  var existing = _findExistingSavingsCacheEntry(cName, code);
+  if(existing) return existing;
   try {
     var apiBase = (typeof AI_COUNTRY_API_BASE !== 'undefined' && AI_COUNTRY_API_BASE) ? AI_COUNTRY_API_BASE : 'https://navoiy-api-proxy.vercel.app/api';
     var resp = await fetch(apiBase + '/ai-country-analysis?country=' + encodeURIComponent(cName));
@@ -68,6 +96,12 @@ async function _ensureSavingsCacheForCountry(cName){
       timestamp: Date.now()
     };
     window._aiSavingsCache[key] = entry;
+    // Inglizcha API nomi bilan ham yozish (ai-letter.js bilan mos)
+    var apiCountryName = data.country && (data.country.display || data.country.name);
+    if(apiCountryName){
+      var apiKey = String(apiCountryName).toLowerCase().trim();
+      if(apiKey && apiKey !== key) window._aiSavingsCache[apiKey] = entry;
+    }
     return entry;
   } catch(_e){ return null; }
 }
@@ -155,8 +189,8 @@ async function openEmbassyModal(type){
     return p;
   }
   // Cache yo'q bo'lsa AI tahlil API'dan avtomatik olish
-  try { await _ensureSavingsCacheForCountry(cName); } catch(_e){}
-  var savingsCache = (window._aiSavingsCache && window._aiSavingsCache[String(cName).toLowerCase().trim()]) || null;
+  try { await _ensureSavingsCacheForCountry(cName, code); } catch(_e){}
+  var savingsCache = _findExistingSavingsCacheEntry(cName, code);
   var _solPctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'soliq') : '';
   var _wagePctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'mehnat') : '';
   var _elPctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'elektr') : '';
@@ -490,6 +524,8 @@ var _embassyCountryAliases = {
   'VN':['vyetnam','vietnam'],
   'PH':['filippin','philippines']
 };
+// Lookup uchun window'ga export
+try { window._embassyCountryAliases = _embassyCountryAliases; } catch(_e){}
 function matchesCountry(text, code){
   var t = String(text||'').toLowerCase();
   if(!t) return false;
@@ -605,8 +641,8 @@ async function generateEmbassyAiLetter(countryCode, type){
       return hit ? Number(hit.value || 0) : 0;
     }
     // Cache yo'q bo'lsa AI tahlil API'dan avtomatik olish
-    try { await _ensureSavingsCacheForCountry(cName); } catch(_e){}
-    var sCache = (window._aiSavingsCache && window._aiSavingsCache[String(cName).toLowerCase().trim()]) || null;
+    try { await _ensureSavingsCacheForCountry(cName, countryCode); } catch(_e){}
+    var sCache = _findExistingSavingsCacheEntry(cName, countryCode);
     var sSolPct = sCache ? _findPct(sCache.breakdown, 'soliq') : '';
     var sWagePct = sCache ? _findPct(sCache.breakdown, 'mehnat') : '';
     var sElPct = sCache ? _findPct(sCache.breakdown, 'elektr') : '';
