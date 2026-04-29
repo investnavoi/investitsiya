@@ -2406,17 +2406,22 @@ _renderInvestorCompaniesMain = function(){
   });
   // Group eksportyor hisoblanadi: hasExporter true YOKI (hech qanday role aniqlanmagan)
   // Faqat aniq importyor (hasImporter && !hasExporter) tashlanadi
+  var _importerCount = 0, _exporterCount = 0, _unknownCount = 0;
   Object.keys(groupRoles).forEach(function(key){
     var role = groupRoles[key];
     var isImporterOnly = role.hasImporter && !role.hasExporter;
-    if(!isImporterOnly){
-      allGroupMap[key] = true;
-    } else {
+    if(isImporterOnly){
+      _importerCount++;
       // Importyor — apollo/TA count'lardan ham olib tashlash
       delete apolloGroups[key];
       delete tradeAtlasGroups[key];
+    } else {
+      allGroupMap[key] = true;
+      if(role.hasExporter) _exporterCount++;
+      else _unknownCount++;
     }
   });
+  console.log('[KPI] Total records:', allCo.length, '| Unique groups:', Object.keys(groupRoles).length, '| Exporter:', _exporterCount, '| Importer-only:', _importerCount, '| Unknown:', _unknownCount, '| Counted:', Object.keys(allGroupMap).length);
   emailSent = Object.keys(emailSentGroups).length;
   hasEmail = Object.keys(hasEmailGroups).length;
   const total = allCo.reduce(function(s, r){ return s + (parseFloat(r.summa) || 0); }, 0);
