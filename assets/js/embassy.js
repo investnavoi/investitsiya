@@ -56,12 +56,26 @@ function openEmbassyModal(type){
     data = embassy ? embassy.foreignEmbassy : null;
   }
 
-  // Count companies for this country
+  // Count companies for this country — UNIQUE kompaniyalar (KPI bilan mos)
   var co = DB.investorCompanies || [];
   var finder = DB.finderResults || [];
-  var countryCompanies = co.concat(finder).filter(function(c){
+  var rawCountryRecords = co.concat(finder).filter(function(c){
     return typeof matchesCountry === 'function' ? matchesCountry(c.davlat||c.country||'', code) : (String(c.davlat||c.country||'').toLowerCase().indexOf(cName.toLowerCase()) !== -1);
   });
+  // Dedupe by group key — har kompaniya 1 marta hisoblanadi (parent + child + duplikatlar yo'q)
+  var countryCompanies = (function(){
+    var seen = Object.create(null);
+    var out = [];
+    rawCountryRecords.forEach(function(r){
+      var k = (typeof getInvestorCompanyGroupKey === 'function')
+        ? getInvestorCompanyGroupKey(r)
+        : String(r.kompaniya || r.id || '').toLowerCase().trim();
+      if(!k || seen[k]) return;
+      seen[k] = true;
+      out.push(r);
+    });
+    return out;
+  })();
 
   var emailTo = data ? data.email : '';
   var embName = data ? data.name : '';
@@ -314,9 +328,23 @@ async function generateEmbassyAiLetter(countryCode, type){
     var cName = _embassyCountryNames[countryCode] || countryCode;
     var co = DB.investorCompanies || [];
     var finder = DB.finderResults || [];
-    var allByCountry = co.concat(finder).filter(function(c){
+    var rawByCountry = co.concat(finder).filter(function(c){
       return matchesCountry(c.davlat||c.country||'', countryCode);
     });
+    // Dedupe — har kompaniya 1 marta (KPI bilan mos)
+    var allByCountry = (function(){
+      var seen = Object.create(null);
+      var out = [];
+      rawByCountry.forEach(function(r){
+        var k = (typeof getInvestorCompanyGroupKey === 'function')
+          ? getInvestorCompanyGroupKey(r)
+          : String(r.kompaniya || r.id || '').toLowerCase().trim();
+        if(!k || seen[k]) return;
+        seen[k] = true;
+        out.push(r);
+      });
+      return out;
+    })();
     if(!allByCountry.length){ throw new Error(cName+' davlatidan bazada kompaniya topilmadi'); }
     var alreadySent = allByCountry.filter(function(c){ return isCompanyInEmbassyLetter(c, countryCode, type); });
     var all = allByCountry.filter(function(c){ return !isCompanyInEmbassyLetter(c, countryCode, type); });
