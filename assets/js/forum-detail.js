@@ -2271,6 +2271,23 @@ function renderInvestorCompanies(){
   if(_icRenderTimer) clearTimeout(_icRenderTimer);
   _icRenderTimer = setTimeout(_renderInvestorCompaniesNow, 60);
 }
+/* Apollo / TradeAtlas KPI kartochkasi bosilganda manbasiga qarab filter qo'llash (toggle) */
+window.filterInvestorsBySource = function(source){
+  var current = window._investorSourceFilter || null;
+  if(current === source){
+    // Bir xil source ikki marta bosilsa — filter olib tashlanadi
+    window._investorSourceFilter = null;
+    if(typeof toast === 'function') toast('Filter olib tashlandi — barcha kompaniyalar', 'info');
+  } else {
+    window._investorSourceFilter = source;
+    var label = source === 'apollo' ? 'Apollo' : (source === 'tradeatlas' ? 'TradeAtlas' : source);
+    if(typeof toast === 'function') toast('Filter: faqat ' + label + ' manbasidagi kompaniyalar', 'info');
+  }
+  // Jadvalga scroll qilib o'tamiz
+  var card = document.getElementById('icTableCard');
+  if(card){ card.style.display = ''; card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  if(typeof renderInvestorCompanies === 'function') renderInvestorCompanies();
+};
 function _renderInvestorCompaniesNow(){
   _icRenderTimer = null;
   /* delegated to the main (second) definition below */
@@ -2331,19 +2348,34 @@ _renderInvestorCompaniesMain = function(){
     ? (DB.products || []).find(function(item){ return String(item.id || '') === String(_investorProductFilterId || ''); }) || null
     : null;
 
+  // Source filter — Apollo yoki TradeAtlas KPI kartochkasi bosilganda
+  var _sourceFilter = window._investorSourceFilter || null;
+  function _matchesSourceFilter(rec){
+    if(!_sourceFilter) return true;
+    var src = String(rec.manba || rec.source || '').toLowerCase();
+    if(_sourceFilter === 'apollo') return src.indexOf('apollo') !== -1;
+    if(_sourceFilter === 'tradeatlas') return src.indexOf('tradeatlas') !== -1 || src === 'trade';
+    return true;
+  }
   const co = allCo.filter(function(r){
     if(_investorGeoFilterStateCode && getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
     if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
+    if(!_matchesSourceFilter(r)) return false;
     return true;
   });
 
   var allGroupMap = Object.create(null);
+  var apolloGroups = Object.create(null);
+  var tradeAtlasGroups = Object.create(null);
   var tayyor = 0, emailSent = 0, hasEmail = 0;
   var emailSentGroups = Object.create(null);
   var hasEmailGroups = Object.create(null);
   allCo.forEach(function(rec){
     var key = getInvestorCompanyGroupKey(rec);
     allGroupMap[key] = true;
+    var src = String(rec.manba || rec.source || '').toLowerCase();
+    if(src.indexOf('apollo') !== -1) apolloGroups[key] = true;
+    if(src.indexOf('tradeatlas') !== -1 || src === 'trade') tradeAtlasGroups[key] = true;
     if(rec.holat === 'Tayyor') tayyor++;
     if(rec.emailSent) emailSentGroups[key] = true;
     if(rec.email) hasEmailGroups[key] = true;
@@ -2352,10 +2384,16 @@ _renderInvestorCompaniesMain = function(){
   hasEmail = Object.keys(hasEmailGroups).length;
   const total = allCo.reduce(function(s, r){ return s + (parseFloat(r.summa) || 0); }, 0);
   var groupCount = Object.keys(allGroupMap).length;
+  var apolloCount = Object.keys(apolloGroups).length;
+  var tradeAtlasCount = Object.keys(tradeAtlasGroups).length;
   document.getElementById('ic-k1').innerHTML = groupCount + ' <span class="kpi-unit">ta</span>';
   document.getElementById('ic-k2').innerHTML = tayyor + ' <span class="kpi-unit">ta</span>';
   document.getElementById('ic-k3').innerHTML = emailSent + '/' + hasEmail + ' <span class="kpi-unit">ta</span>';
   const ic4 = document.getElementById('ic-k4'); if(ic4) ic4.textContent = '$' + Math.round(total / 1e6) + 'M';
+  var apolloEl = document.getElementById('ic-k-apollo');
+  if(apolloEl) apolloEl.innerHTML = apolloCount + ' <span style="font-size:.6rem;font-weight:600">ta</span>';
+  var taEl = document.getElementById('ic-k-tradeatlas');
+  if(taEl) taEl.innerHTML = tradeAtlasCount + ' <span style="font-size:.6rem;font-weight:600">ta</span>';
   document.getElementById('badge-investorco').textContent = groupCount;
 
   /* Skip expensive map re-render if company geo data hasn't changed */

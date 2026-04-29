@@ -70,7 +70,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/email-modal.js" defer></script>
 <script src="assets/js/investor-companies.js"></script>
 <script src="assets/js/excel-media.js" defer></script>
-<script src="assets/js/forum-detail.js?v=google-search-fallback-v1"></script>
+<script src="assets/js/forum-detail.js?v=source-kpi-cards-v1"></script>
 <script src="assets/js/intl-forums.js"></script>
 <script src="assets/js/csv-import.js" defer></script>
 <script src="assets/js/admin-lists.js"></script>
@@ -799,6 +799,24 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
         <div class="kpi-icon" style="width:32px;height:32px;font-size:.7rem"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" fill="currentColor"/></svg></div>
         <div class="kpi-card-body"><div class="kpi-label" style="font-size:.6rem" data-i18n="lbl_replies">Javoblar</div><div class="kpi-val" id="ic-k5" style="font-size:1.3rem">0</div><div class="kpi-trend" style="font-size:.6rem" data-i18n="lbl_email_replies">Email javoblari</div></div>
         <div id="ic-k5-new" style="display:none;position:absolute;top:.5rem;right:.5rem;background:#EF233C;color:#fff;font-size:.5rem;font-weight:800;padding:2px 6px;border-radius:20px" data-i18n="lbl_new_badge">YANGI</div>
+      </div>
+      <div class="kpi-card" data-aos="fade-up" data-aos-delay="80" style="cursor:pointer;padding:.6rem .8rem;background:#FFE600;display:flex;align-items:center;gap:10px" onclick="filterInvestorsBySource('apollo')" title="Apollo manbasidagi kompaniyalarni ko'rsatish">
+        <div style="width:42px;height:42px;border-radius:10px;background:#FFE600;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="36" height="36" viewBox="0 0 100 100" fill="none"><g fill="#0a0a0a"><polygon points="50,15 53,45 47,45"/><polygon points="74,25 60,48 56,42"/><polygon points="85,50 60,53 60,47"/><polygon points="74,75 56,58 60,52"/><polygon points="50,85 47,55 53,55"/><polygon points="26,75 40,52 44,58"/><polygon points="15,50 40,47 40,53"/><polygon points="26,25 44,42 40,48"/></g></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.65rem;font-weight:700;color:#0a0a0a;letter-spacing:-.01em">Apollo</div>
+          <div class="kpi-val" id="ic-k-apollo" style="font-size:1.3rem;color:#0a0a0a;font-weight:800">0</div>
+          <div style="font-size:.55rem;color:#0a0a0a;opacity:.7;font-weight:600">Apollodan topilgan</div>
+        </div>
+      </div>
+      <div class="kpi-card" data-aos="fade-up" data-aos-delay="100" style="cursor:pointer;padding:.6rem .8rem;background:linear-gradient(135deg,#1E3A8A,#1E40AF);display:flex;align-items:center;gap:10px" onclick="filterInvestorsBySource('tradeatlas')" title="TradeAtlas manbasidagi kompaniyalarni ko'rsatish">
+        <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#1E3A8A,#1E40AF);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:.55rem;font-weight:800;letter-spacing:-.02em">TA</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.65rem;font-weight:700;color:#fff;letter-spacing:-.01em">TradeAtlas</div>
+          <div class="kpi-val" id="ic-k-tradeatlas" style="font-size:1.3rem;color:#fff;font-weight:800">0</div>
+          <div style="font-size:.55rem;color:#fff;opacity:.85;font-weight:600">TradeAtlas manbasidan</div>
+        </div>
       </div>
     </div>
 
