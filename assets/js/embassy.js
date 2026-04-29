@@ -534,7 +534,24 @@ async function generateEmbassyAiLetter(countryCode, type){
     var lang = isUzbEmbassy ? 'uz' : (countryCode==='CN' ? 'zh' : (['RU','KZ','KG','TJ','BY','AM','AZ','GE','MD','UA','TM'].indexOf(countryCode)!==-1 ? 'ru' : 'en'));
     var langLabel = {uz:"O'zbek tilida",ru:"Rus tilida (русский язык)",zh:"Xitoy tilida (中文)",en:"Ingliz tilida (English)"}[lang];
 
-    var prodSummary = industryList.length ? industryList.join(', ') : 'sanoat ishlab chiqarish';
+    // Mahsulot nomlarini qisqartirish — "Granite, Crude/Roughly Trimmed - Granit, xom..." → "granit"
+    function _shortProductName(s){
+      var raw = String(s || '').trim();
+      if(!raw) return '';
+      // " - " bilan ajraltsa ikkinchi qismni olish (uzbekcha tarjima odatda " - " dan keyin)
+      var parts = raw.split(/\s-\s|\s—\s/);
+      var uzPart = parts.length > 1 ? parts[1] : parts[0];
+      // Qo'shimcha ta'rifni olib tashlash (vergul yoki "xom yoki..." dan oldingi qismni olish)
+      uzPart = String(uzPart).split(/[,(]/)[0].trim();
+      // Birinchi so'zni kichik harfda qaytarish (granit, dolomit, ...)
+      var firstWord = uzPart.split(/\s+/)[0];
+      return firstWord ? firstWord.toLowerCase() : '';
+    }
+    var prodNames = industryList.map(_shortProductName).filter(function(n){ return n && n.length >= 3; });
+    // Dedup
+    var prodSeen = {};
+    prodNames = prodNames.filter(function(n){ if(prodSeen[n]) return false; prodSeen[n] = true; return true; });
+    var prodSummary = prodNames.length ? prodNames.join(', ') : 'sanoat ishlab chiqarish';
     // Maqsad davlatlar — O'zbekistondan tashqari 12 ta davlat (Maqsad davlatlar filterdan)
     var targetSummary = 'Turkmaniston, Tojikiston, Qirg\'iziston, Qozog\'iston, Mongoliya, Rossiya, Ozarbayjon, Gruziya, Armaniston, Eron, Afg\'oniston, Pokiston';
 
