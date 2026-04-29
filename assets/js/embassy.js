@@ -128,10 +128,27 @@ function openEmbassyModal(type){
     + 'Hurmat bilan,\n'
     + 'Navoiy viloyati hokimligi';
 
-  // Use cached letter if exists (avoid Gemini cost)
+  // Use cached letter if exists VA yangi format markerini o'z ichiga olsa
+  // Eski format AI-generatsiya qilingan xatlar (NIEZ, EIZ, NFEZ, Buyuk Ipak yo'li va h.k.) — tashlanadi
   var _cached = (typeof getEmbassyCache==='function') ? getEmbassyCache(code, type) : null;
-  if(_cached && _cached.subject) letterSubject = _cached.subject;
-  if(_cached && _cached.body) letterBody = _cached.body;
+  var _isNewFormat = function(body){
+    if(!body) return false;
+    var b = String(body);
+    return b.indexOf('NAVOIY VILOYATI HOKIMLIGI') !== -1
+      && b.indexOf('Xorijiy investorlarni Navoiy viloyatiga jalb qilish') !== -1
+      && b.indexOf('Barnoqulov Shahzod') !== -1;
+  };
+  if(_cached && _cached.body && _isNewFormat(_cached.body)){
+    if(_cached.subject) letterSubject = _cached.subject;
+    letterBody = _cached.body;
+  } else if(_cached){
+    // Eski format cache — o'chiramiz va yangi shablonni ishlatamiz
+    if(DB.settings && DB.settings.embassyAiCache){
+      try { delete DB.settings.embassyAiCache[embassyMarkKey(code,type)]; } catch(_e){}
+      if(typeof fbSaveSettings==='function') fbSaveSettings(DB.settings);
+    }
+    console.log('[Embassy] Eski format cache tashlandi:', code, type);
+  }
 
   // Build modal
   var modalHtml = '<div id="embassyModal" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);animation:fadeIn .2s">'
