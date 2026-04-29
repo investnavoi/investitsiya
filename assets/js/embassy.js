@@ -75,63 +75,56 @@ function openEmbassyModal(type){
   var letterSubject, letterBody;
   var cnt = countryCompanies.length;
 
-  if(isUzbEmbassy){
-    // O'zbekiston elchixonalariga — DOIMO O'ZBEKCHA
-    var recip = embName || 'Hurmatli Elchi janoblari';
-    letterSubject = 'Navoiy erkin iqtisodiy zona — investitsiya jalb qilish bo\'yicha murojaat';
-    letterBody = recip + ',\n\n'
-      + 'O\'zbekiston Respublikasi Navoiy erkin iqtisodiy zonasi (NIEZ) nomidan Sizga murojaat qilmoqdamiz.\n\n'
-      + cName + 'dan jami ' + cnt + ' ta kompaniya bilan aloqa o\'rnatilgan bo\'lib, ularni Navoiy viloyatiga investitsiya kiritish maqsadida taklif etmoqdamiz.\n\n'
-      + 'Navoiy EIZ quyidagi imkoniyatlarni taqdim etadi:\n'
-      + '• Soliq imtiyozlari va bojxona to\'lovlaridan ozod etish\n'
-      + '• Tayyor infratuzilma va sanoat maydonchalari\n'
-      + '• Soddалаshtirilgan ma\'muriy tartiblar\n'
-      + '• Buyuk Ipak yo\'lidagi strategik joylashuv\n\n'
-      + 'Sizdan iltimos — ushbu kompaniyalar bilan uchrashuvlar va muzokaralar tashkil etishda ko\'maklashishingizni so\'raymiz.\n\n'
-      + 'Hurmat bilan,\nNavoiy EIZ jamoasi';
-  } else if(isCIS){
-    // Xorij elchixona — MDH davlatlariga RUSCHA
-    var recip = embName || 'Уважаемый представитель Посольства';
-    letterSubject = 'Навоийская свободная экономическая зона — инвестиционные возможности';
-    letterBody = recip + ',\n\n'
-      + 'От имени Навоийской свободной экономической зоны (НСЭЗ) обращаемся к вам.\n\n'
-      + 'Мы установили контакт с ' + cnt + ' компаниями из ' + cName + ' и приглашаем их инвестировать в Навоийскую область Республики Узбекистан.\n\n'
-      + 'Навоийская СЭЗ предлагает:\n'
-      + '• Налоговые льготы и освобождение от таможенных пошлин\n'
-      + '• Готовую инфраструктуру и промышленные площадки\n'
-      + '• Упрощённые административные процедуры\n'
-      + '• Стратегическое расположение на Великом Шёлковом пути\n\n'
-      + 'Просим содействовать в организации встреч и переговоров с заинтересованными компаниями.\n\n'
-      + 'С уважением,\nКоманда НСЭЗ';
-  } else if(isCN){
-    // Xorij elchixona — Xitoyga XITOYCHA
-    var recip = embName || '尊敬的大使馆代表';
-    letterSubject = '纳沃伊自由经济区 — 投资机会';
-    letterBody = recip + '，\n\n'
-      + '我们代表纳沃伊自由经济区（NFEZ）向您致函。\n\n'
-      + '我们已与来自' + cName + '的 ' + cnt + ' 家企业建立了联系，诚邀其到乌兹别克斯坦纳沃伊州投资。\n\n'
-      + '纳沃伊自由经济区提供：\n'
-      + '• 税收优惠和关税豁免\n'
-      + '• 完善的基础设施和工业园区\n'
-      + '• 简化的行政手续\n'
-      + '• 位于丝绸之路的战略位置\n\n'
-      + '恳请贵馆协助安排与相关企业的会谈和洽谈。\n\n'
-      + '此致敬礼，\n纳沃伊自由经济区团队';
-  } else {
-    // Xorij elchixona — boshqa davlatlarga INGLIZCHA
-    var recip = embName || 'Dear Embassy Representative';
-    letterSubject = 'Navoi Free Economic Zone — Investment Opportunities';
-    letterBody = recip + ',\n\n'
-      + 'On behalf of the Navoi Free Economic Zone (NFEZ), we are reaching out to your esteemed Embassy.\n\n'
-      + 'We have established contact with ' + cnt + ' companies from ' + cName + ' and would like to invite them to invest in the Navoi region of the Republic of Uzbekistan.\n\n'
-      + 'The Navoi FEZ offers:\n'
-      + '• Tax incentives and customs duty exemptions\n'
-      + '• Ready-made infrastructure and industrial sites\n'
-      + '• Simplified administrative procedures\n'
-      + '• Strategic location on the Great Silk Road\n\n'
-      + 'We kindly request your assistance in facilitating meetings and negotiations with interested companies.\n\n'
-      + 'Best regards,\nNavoi FEZ Team';
+  // Iqtisodiy Tahlil cache'dan real raqamlarni o'qiymiz (ai-letter.js'da saqlangan)
+  function _fmtUsd(v){
+    var n = Number(v) || 0;
+    if(n >= 1000000) return (n/1000000).toFixed(2).replace(/\.?0+$/,'') + ' mln';
+    if(n >= 1000) return Math.round(n/1000) + ' ming';
+    return Math.round(n).toString();
   }
+  function _findSavings(breakdown, label){
+    if(!Array.isArray(breakdown)) return 0;
+    var hit = breakdown.find(function(s){ return String(s.label || '').toLowerCase().indexOf(label.toLowerCase()) !== -1; });
+    return hit ? Number(hit.value || 0) : 0;
+  }
+  var savingsCache = (window._aiSavingsCache && window._aiSavingsCache[String(cName).toLowerCase().trim()]) || null;
+  var _solSv = savingsCache ? _findSavings(savingsCache.breakdown, 'soliq') : 0;
+  var _wageSv = savingsCache ? _findSavings(savingsCache.breakdown, 'mehnat') : 0;
+  var _elSv = savingsCache ? _findSavings(savingsCache.breakdown, 'elektr') : 0;
+  var _gasSv = savingsCache ? _findSavings(savingsCache.breakdown, 'gaz') : 0;
+  var _trSv = savingsCache ? _findSavings(savingsCache.breakdown, 'transport') : 0;
+  var _infraSv = _elSv + _gasSv; // infratuzilma = elektr + gaz
+  var _totalSv = savingsCache ? Number(savingsCache.totalAnnualSaving || 0) : 0;
+  // Agar cache bo'sh bo'lsa "(...)" placeholder, aks holda real raqam
+  var _solStr = _solSv > 0 ? _fmtUsd(_solSv) : '(...)';
+  var _wageStr = _wageSv > 0 ? _fmtUsd(_wageSv) : '(...)';
+  var _infraStr = _infraSv > 0 ? _fmtUsd(_infraSv) : '(...)';
+  var _trStr = _trSv > 0 ? _fmtUsd(_trSv) : '(...)';
+  var _totalStr = _totalSv > 0 ? _fmtUsd(_totalSv) : '(...)';
+
+  // BARCHA elchixonalar uchun — yagona rasmiy o'zbekcha shablon
+  letterSubject = 'Navoiy viloyatida sanoat investitsiyalari bo\'yicha hamkorlik imkoniyatlari xususida';
+  letterBody = 'O\'ZBEKISTON RESPUBLIKASI\n'
+    + 'NAVOIY VILOYATI HOKIMLIGI\n'
+    + 'INVESTITSIYALAR, SANOAT VA SAVDO BOSHQARMASI\n\n'
+    + 'Hurmatli Elchi Janoblari,\n\n'
+    + 'Xorijiy investorlarni Navoiy viloyatiga jalb qilish maqsadida olib borilayotgan strategik tahlillar va investitsion muhitni o\'rganish ishlari doirasida ' + cName + ' davlati hududida faoliyat yuritayotgan ' + cnt + ' ta yetakchi kompaniya aniqlangan. (ilova qilinadi)\n\n'
+    + 'Aniqlangan kompaniyalar (...) mahsulotlarini ishlab chiqarish sohasida xalqaro miqyosda yetakchi o\'rinni egallab kelmoqda hamda Navoiy viloyatining mineral-xomashyo bazasi va mavjud sanoat infratuzilmasi bilan to\'liq muvofiqligi inobatga olingan holda, ularni viloyatga investor sifatida jalb etish strategik ahamiyatga molikdir.\n\n'
+    + 'O\'tkazilgan kompleks iqtisodiy hisob-kitoblarga muvofiq, mazkur kompaniyalar Navoiy viloyatida o\'z ishlab chiqarish quvvatlarini tashkil etib, tayyor mahsulotlarni (...) davlatlariga eksport qilgan taqdirda quyidagi iqtisodiy samaradorlik ko\'rsatkichlari aniqlandi:\n\n'
+    + '— soliq imtiyozlari hisobiga ' + _solStr + ' AQSh dollari miqdorida tejam;\n'
+    + '— mehnat resurslari xarajatlarida ' + _wageStr + ' AQSh dollari miqdorida iqtisod;\n'
+    + '— infratuzilma xarajatlarida ' + _infraStr + ' AQSh dollari miqdorida tejam;\n'
+    + '— transport va logistika xarajatlarida ' + _trStr + ' AQSh dollari miqdorida iqtisod.\n\n'
+    + 'Umumiy hisobda, mazkur kompaniyalar Navoiy viloyatida o\'z faoliyatini yo\'lga qo\'ygan taqdirda yillik ' + _totalStr + ' AQSh dollari miqdorida iqtisodiy samaraga erishish imkoniyati yaratiladi. Bu esa nafaqat investorlar uchun yuqori daromadlilik, balki ikki davlat o\'rtasidagi savdo-iqtisodiy aloqalarning mustahkamlanishi, Navoiy viloyatida yangi ish o\'rinlarining yaratilishi va mintaqaning eksport salohiyatining kengayishi uchun muhim asos bo\'lib xizmat qiladi.\n\n'
+    + 'Yuqoridagilarni inobatga olgan holda, Sizdan mazkur kompaniyalar bilan dastlabki aloqalar o\'rnatishga ko\'maklashishingiz, muzokaralar jarayonida amaliy yordam ko\'rsatishingiz hamda viloyatimiz va xorijiy investorlar o\'rtasida samarali hamkorlik ko\'prigini yaratishda yordam berishingizni so\'raymiz.\n\n'
+    + 'Qo\'shimcha ma\'lumotlar va batafsil muzokaralar yuzasidan quyidagi mas\'ul xodim bilan bog\'lanishingiz mumkin:\n\n'
+    + 'Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi\n'
+    + 'mas\'ul xodimi — Barnoqulov Shahzod\n'
+    + 'Elektron pochta: sh.barnokulov@investnavoi.uz\n'
+    + 'Telefon: +998 88 890 11 10\n\n'
+    + 'Hamkorligimizga ishonch bildirib, Sizga mustahkam sog\'lik va olib borayotgan diplomatik faoliyatingizda muvaffaqiyatlar tilab qolaman.\n\n'
+    + 'Hurmat bilan,\n'
+    + 'Navoiy viloyati hokimligi';
 
   // Use cached letter if exists (avoid Gemini cost)
   var _cached = (typeof getEmbassyCache==='function') ? getEmbassyCache(code, type) : null;
@@ -352,39 +345,46 @@ async function generateEmbassyAiLetter(countryCode, type){
     var lang = isUzbEmbassy ? 'uz' : (countryCode==='CN' ? 'zh' : (['RU','KZ','KG','TJ','BY','AM','AZ','GE','MD','UA','TM'].indexOf(countryCode)!==-1 ? 'ru' : 'en'));
     var langLabel = {uz:"O'zbek tilida",ru:"Rus tilida (русский язык)",zh:"Xitoy tilida (中文)",en:"Ingliz tilida (English)"}[lang];
 
-    var followUpNote = alreadySent.length
-      ? ('Bu takroriy xat — oldin '+alreadySent.length+' ta kompaniya haqida xabar berilgan edi. Bu yangi xatda faqat YANGI '+cnt+' ta kompaniya haqida so\'z boradi.')
-      : ('Bu birinchi marta yuborilayotgan xat.');
-    var senderOrg = "Navoiy viloyati investitsiyalar, sanoat va savdo boshqarmasi";
-    var senderShort = "Boshqarma";
-    var prompt = 'Sen tajribali davlat xizmatchisisan — '+senderOrg+' nomidan ish olib boruvchi mas\'ul xodim. '
-      + 'Sen rasmiy, lekin INSONIY, samimiy, tabiiy ohangda xat yozasan — kanselyar quruq tilda emas, balki tajribali diplomat yozadiganidek, AI yozgani sezilmasligi uchun. '
-      + (isUzbEmbassy ? 'Xat O\'zbekistonning '+cName+'dagi elchixonasiga' : 'Xat '+cName+'ning O\'zbekistondagi elchixonasiga')
-      + ' yo\'llanadi.\n\n'
-      + followUpNote + '\n\n'
-      + 'JO\'NATUVCHI: '+senderOrg+' (NFEZ ham emas, vazirlik ham emas — aynan shu boshqarma)\n\n'
-      + 'XAT MAZMUNI uchun real raqamlar:\n'
-      + '• '+cName+' davlatida '+cnt+' ta yangi sanoat kompaniyasi aniqlandi (oldindan '+alreadySent.length+' ta haqida xabar berilgan edi)\n'
-      + '• Bu kompaniyalar ' + (targetList.length || 'bir nechta') + ' ta maqsadli davlatga eksport qiladi'
-      + (targetList.length ? ': ' + targetList.join(', ') : '') + '\n'
-      + '• Ularning yillik umumiy eksport hajmi: ' + totalStr + '\n'
-      + '• Asosiy sohalar: ' + (industryList.join(', ') || 'sanoat ishlab chiqarish') + '\n'
-      + '• Agar ushbu kompaniyalar ishlab chiqarishni Navoiy viloyatiga ko\'chirsa va shu eksport bozorlariga xizmat ko\'rsatsa, taxminan ' + savingsEstimate + ' miqdorida yillik logistika va ishlab chiqarish xarajatlari tejaladi (Navoiy EIZ soliq imtiyozlari, bojxona ozodligi, raqobatbardosh ishchi kuchi va Buyuk Ipak yo\'li logistikasi hisobiga)\n\n'
-      + 'XAT TUZILISHI (tabiiy oqim, sun\'iy "bir-ikki-uch-paragraf" hissi yo\'q):\n'
-      + '1) Hurmatli murojaat (elchi yoki vakil ismini bilmasak — umumiy odob bilan)\n'
-      + '2) Qisqa kontekst: nima sababli yozayotganimiz, kim ekanimiz\n'
-      + '3) Aniq raqamlar va dalillar bilan vaziyatni tushuntirish (kompaniyalar soni, eksport hajmi, sohalar)\n'
-      + '4) Navoiy viloyatining real iqtisodiy va logistik afzalliklari (umumiy maqtov emas, aniq raqam va misollar)\n'
-      + '5) Aniq, kichkina va bajarilishi mumkin bo\'lgan so\'rov: shu '+cnt+' ta kompaniya bilan onlayn videokonferensiya tashkil etishga ko\'maklashish; agar elchixona vositachi bo\'lsa, biz buni qadrlaymiz\n'
-      + '6) Hamkorlik uchun minnatdorchilik va imzo bloki: '+senderOrg+', mas\'ul xodim ismi (faraz: F.I.SH., Bo\'lim boshlig\'i o\'rinbosari), kontakt ma\'lumotlari placeholder ([telefon], [email])\n\n'
-      + 'QAT\'IY QOIDALAR:\n'
-      + '- Markdown ishlatma (** , * , # YO\'Q). Faqat oddiy matn.\n'
-      + '- "Aloha", "Bismillah", "Hurmatli o\'qiyotgan inson" kabi noo\'rin murojaatlar YO\'Q\n'
-      + '- "Raqamli dalillar:", "So\'rov:", "Yopilish:" kabi sub-bosh sarlavhalar YO\'Q\n'
-      + '- AI tomonidan yozilgani sezilmaydigan tabiiy gaplar, biroz hissiyot, real diplomatik ohang\n'
-      + '- Kamida 350-450 so\'z, 5-7 paragraf — hech qaysisi qisqa kesilmagan\n'
-      + '- Faqat aniq raqamlar va realchillik ('+totalStr+', '+cnt+' ta kompaniya, '+savingsEstimate+')\n'
-      + '- '+langLabel+' yoz\n\n'
+    var prodSummary = industryList.length ? industryList.join(', ') : 'sanoat ishlab chiqarish';
+    var targetSummary = targetList.length ? targetList.join(', ') : '(...)';
+    var prompt = 'Sen Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi nomidan rasmiy diplomatik xat yozadigan tajribali davlat xizmatchisisan. '
+      + 'Xat ' + cName + ' davlatining elchixonasiga yo\'llanadi.\n\n'
+      + 'XAT QATIY ANIQ SHABLONDA YOZILSIN — har bir paragraf va so\'z shablonga to\'liq mos kelishi kerak. Faqat o\'zbek tilida yoz.\n\n'
+      + 'Mana XATning to\'liq matni — har bir (...) ni real ma\'lumot bilan to\'ldirib chiqarish kerak:\n\n'
+      + '"""\n'
+      + 'O\'ZBEKISTON RESPUBLIKASI\n'
+      + 'NAVOIY VILOYATI HOKIMLIGI\n'
+      + 'INVESTITSIYALAR, SANOAT VA SAVDO BOSHQARMASI\n\n'
+      + 'Hurmatli Elchi Janoblari,\n\n'
+      + 'Xorijiy investorlarni Navoiy viloyatiga jalb qilish maqsadida olib borilayotgan strategik tahlillar va investitsion muhitni o\'rganish ishlari doirasida ' + cName + ' davlati hududida faoliyat yuritayotgan ' + cnt + ' ta yetakchi kompaniya aniqlangan. (ilova qilinadi)\n\n'
+      + 'Aniqlangan kompaniyalar ' + prodSummary + ' mahsulotlarini ishlab chiqarish sohasida xalqaro miqyosda yetakchi o\'rinni egallab kelmoqda hamda Navoiy viloyatining mineral-xomashyo bazasi va mavjud sanoat infratuzilmasi bilan to\'liq muvofiqligi inobatga olingan holda, ularni viloyatga investor sifatida jalb etish strategik ahamiyatga molikdir.\n\n'
+      + 'O\'tkazilgan kompleks iqtisodiy hisob-kitoblarga muvofiq, mazkur kompaniyalar Navoiy viloyatida o\'z ishlab chiqarish quvvatlarini tashkil etib, tayyor mahsulotlarni ' + targetSummary + ' davlatlariga eksport qilgan taqdirda quyidagi iqtisodiy samaradorlik ko\'rsatkichlari aniqlandi:\n\n'
+      + '— soliq imtiyozlari hisobiga (...) AQSh dollari miqdorida tejam;\n'
+      + '— mehnat resurslari xarajatlarida (...) AQSh dollari miqdorida iqtisod;\n'
+      + '— infratuzilma xarajatlarida (...) AQSh dollari miqdorida tejam;\n'
+      + '— transport va logistika xarajatlarida (...) AQSh dollari miqdorida iqtisod.\n\n'
+      + 'Umumiy hisobda, mazkur kompaniyalar Navoiy viloyatida o\'z faoliyatini yo\'lga qo\'ygan taqdirda yillik ' + (savingsEstimate || '(...)') + ' miqdorida iqtisodiy samaraga erishish imkoniyati yaratiladi. Bu esa nafaqat investorlar uchun yuqori daromadlilik, balki ikki davlat o\'rtasidagi savdo-iqtisodiy aloqalarning mustahkamlanishi, Navoiy viloyatida yangi ish o\'rinlarining yaratilishi va mintaqaning eksport salohiyatining kengayishi uchun muhim asos bo\'lib xizmat qiladi.\n\n'
+      + 'Yuqoridagilarni inobatga olgan holda, Sizdan mazkur kompaniyalar bilan dastlabki aloqalar o\'rnatishga ko\'maklashishingiz, muzokaralar jarayonida amaliy yordam ko\'rsatishingiz hamda viloyatimiz va xorijiy investorlar o\'rtasida samarali hamkorlik ko\'prigini yaratishda yordam berishingizni so\'raymiz.\n\n'
+      + 'Qo\'shimcha ma\'lumotlar va batafsil muzokaralar yuzasidan quyidagi mas\'ul xodim bilan bog\'lanishingiz mumkin:\n\n'
+      + 'Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi\n'
+      + 'mas\'ul xodimi — Barnoqulov Shahzod\n'
+      + 'Elektron pochta: sh.barnokulov@investnavoi.uz\n'
+      + 'Telefon: +998 88 890 11 10\n\n'
+      + 'Hamkorligimizga ishonch bildirib, Sizga mustahkam sog\'lik va olib borayotgan diplomatik faoliyatingizda muvaffaqiyatlar tilab qolaman.\n\n'
+      + 'Hurmat bilan,\n'
+      + 'Navoiy viloyati hokimligi\n'
+      + '"""\n\n'
+      + 'QATIY QOIDALAR:\n'
+      + '- Yuqoridagi shablonga TO\'LIQ rioya qil. Sarlavhani, paragraflarni, tartibni o\'zgartirma.\n'
+      + '- Mahsulot turi (...) ni ' + prodSummary + ' bilan to\'ldir.\n'
+      + '- Eksport davlatlari ro\'yxati (...) ni ' + targetSummary + ' bilan to\'ldir.\n'
+      + '- 4 ta dollar (...) ni real iqtisodiy hisob asosida tahminiy raqamlar bilan to\'ldir (masalan: "1 250 000", "850 000" — son aniq, manba placeholder).\n'
+      + '- Yillik umumiy iqtisod summasi: ' + (savingsEstimate || 'tahminiy raqam') + '.\n'
+      + '- Markdown YO\'Q (** # * lar yo\'q). Oddiy matn. Emojilar yo\'q.\n'
+      + '- Stikerlar, multfilm uslubi YO\'Q. Faqat rasmiy diplomatik ohang.\n'
+      + '- Kontakt ma\'lumotlari saqlansin (Barnoqulov Shahzod, sh.barnokulov@investnavoi.uz, +998 88 890 11 10).\n'
+      + '- Faqat o\'zbek tilida yoz.\n\n'
+      + 'Subject: "Navoiy viloyatida sanoat investitsiyalari bo\'yicha hamkorlik imkoniyatlari xususida"\n\n'
       + 'JAVOB FORMATI: Faqat JSON, boshqa narsa yo\'q: {"subject":"...","body":"..."}';
 
     var data = await callGemini({

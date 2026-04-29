@@ -955,6 +955,22 @@ function renderAiAnalysis(analysis, scope){
       savingsBreakdown.push({label:'Transport logistika tejamkorlik', value:trSaving, pct:transportSummary.avgSavingPct+'%', color:'#D97706', desc:shipments+' jo\'natma × $'+Math.round(Number(transportSummary.avgSaving))+' farq'});
     }
 
+    // Embassy letter uchun cache — har country bo'yicha savingsBreakdown saqlanadi
+    try {
+      if(!window._aiSavingsCache) window._aiSavingsCache = {};
+      var _cacheKey = String(countryName || '').toLowerCase().trim();
+      if(_cacheKey){
+        window._aiSavingsCache[_cacheKey] = {
+          countryName: countryName,
+          breakdown: savingsBreakdown.slice(),
+          totalAnnualSaving: totalAnnualSaving,
+          fiveYearSaving: totalAnnualSaving * 5,
+          investSum: investSum,
+          timestamp: Date.now()
+        };
+      }
+    } catch(_e){}
+
     if(totalAnnualSaving > 0){
       profitEl.style.display = 'block';
       var mln = totalAnnualSaving / 1000000;
