@@ -100,7 +100,7 @@ service cloud.firestore {
     /* Embassy AI Letters — saqlangan AI xatlar (cross-device sync) */
     match /embassyLetters/{id} {
       allow read: if publicRead();
-      allow write: if isAdmin();
+      allow write: if isAuthed();
     }
 
     /* AI Invest Analyzer history — public read (jamoaviy tahlil),

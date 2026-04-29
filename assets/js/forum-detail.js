@@ -2785,6 +2785,18 @@ _renderInvestorCompaniesMain = function(){
     _icGeoHash = visGeoHash;
     if(typeof renderInvestorGeoCard === 'function') renderInvestorGeoCard(visibleRecords);
   }
+  // Pipeline CRM va sidebar uchun visibleGroups soni global
+  window._icCounts = {
+    jami: visibleGroups.length,
+    apollo: Object.keys(visibleApolloGroups).length,
+    tradeatlas: Object.keys(visibleTaGroups).length,
+    tayyor: vTayyor,
+    emailSent: vEmailSent,
+    hasEmail: vHasEmail,
+    timestamp: Date.now()
+  };
+  // Pipeline CRM mavjud bo'lsa qayta render
+  try { if(typeof renderCrmDashboard === 'function' && document.getElementById('crm-kpi-tree')) renderCrmDashboard(); } catch(_e){}
   console.log('[KPI override] Jami:', visibleGroups.length, '| Tayyor:', vTayyor, '| Email:', vEmailSent+'/'+vHasEmail, '| Apollo:', Object.keys(visibleApolloGroups).length, '| TA:', Object.keys(visibleTaGroups).length);
   var icTotalPages = Math.max(1, Math.ceil(visibleGroups.length / IC_PAGE_SIZE));
   if(_icPage > icTotalPages) _icPage = icTotalPages;
