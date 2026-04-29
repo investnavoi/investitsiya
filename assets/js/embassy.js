@@ -101,6 +101,8 @@ function openEmbassyModal(type){
   var _infraStr = _infraSv > 0 ? _fmtUsd(_infraSv) : '(...)';
   var _trStr = _trSv > 0 ? _fmtUsd(_trSv) : '(...)';
   var _totalStr = _totalSv > 0 ? _fmtUsd(_totalSv) : '(...)';
+  // Maqsad davlatlar — O'zbekistondan tashqari 12 ta davlat (Maqsad davlatlar filterdan)
+  var _targetCountriesUz = 'Turkmaniston, Tojikiston, Qirg\'iziston, Qozog\'iston, Mongoliya, Rossiya, Ozarbayjon, Gruziya, Armaniston, Eron, Afg\'oniston, Pokiston';
 
   // BARCHA elchixonalar uchun — yagona rasmiy o'zbekcha shablon
   letterSubject = 'Navoiy viloyatida sanoat investitsiyalari bo\'yicha hamkorlik imkoniyatlari xususida';
@@ -110,7 +112,7 @@ function openEmbassyModal(type){
     + 'Hurmatli Elchi Janoblari,\n\n'
     + 'Xorijiy investorlarni Navoiy viloyatiga jalb qilish maqsadida olib borilayotgan strategik tahlillar va investitsion muhitni o\'rganish ishlari doirasida ' + cName + ' davlati hududida faoliyat yuritayotgan ' + cnt + ' ta yetakchi kompaniya aniqlangan. (ilova qilinadi)\n\n'
     + 'Aniqlangan kompaniyalar (...) mahsulotlarini ishlab chiqarish sohasida xalqaro miqyosda yetakchi o\'rinni egallab kelmoqda hamda Navoiy viloyatining mineral-xomashyo bazasi va mavjud sanoat infratuzilmasi bilan to\'liq muvofiqligi inobatga olingan holda, ularni viloyatga investor sifatida jalb etish strategik ahamiyatga molikdir.\n\n'
-    + 'O\'tkazilgan kompleks iqtisodiy hisob-kitoblarga muvofiq, mazkur kompaniyalar Navoiy viloyatida o\'z ishlab chiqarish quvvatlarini tashkil etib, tayyor mahsulotlarni (...) davlatlariga eksport qilgan taqdirda quyidagi iqtisodiy samaradorlik ko\'rsatkichlari aniqlandi:\n\n'
+    + 'O\'tkazilgan kompleks iqtisodiy hisob-kitoblarga muvofiq, mazkur kompaniyalar Navoiy viloyatida o\'z ishlab chiqarish quvvatlarini tashkil etib, tayyor mahsulotlarni ' + _targetCountriesUz + ' davlatlariga eksport qilgan taqdirda quyidagi iqtisodiy samaradorlik ko\'rsatkichlari aniqlandi:\n\n'
     + '— soliq imtiyozlari hisobiga ' + _solStr + ' AQSh dollari miqdorida tejam;\n'
     + '— mehnat resurslari xarajatlarida ' + _wageStr + ' AQSh dollari miqdorida iqtisod;\n'
     + '— infratuzilma xarajatlarida ' + _infraStr + ' AQSh dollari miqdorida tejam;\n'
@@ -346,7 +348,8 @@ async function generateEmbassyAiLetter(countryCode, type){
     var langLabel = {uz:"O'zbek tilida",ru:"Rus tilida (русский язык)",zh:"Xitoy tilida (中文)",en:"Ingliz tilida (English)"}[lang];
 
     var prodSummary = industryList.length ? industryList.join(', ') : 'sanoat ishlab chiqarish';
-    var targetSummary = targetList.length ? targetList.join(', ') : '(...)';
+    // Maqsad davlatlar — O'zbekistondan tashqari 12 ta davlat (Maqsad davlatlar filterdan)
+    var targetSummary = 'Turkmaniston, Tojikiston, Qirg\'iziston, Qozog\'iston, Mongoliya, Rossiya, Ozarbayjon, Gruziya, Armaniston, Eron, Afg\'oniston, Pokiston';
     var prompt = 'Sen Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi nomidan rasmiy diplomatik xat yozadigan tajribali davlat xizmatchisisan. '
       + 'Xat ' + cName + ' davlatining elchixonasiga yo\'llanadi.\n\n'
       + 'XAT QATIY ANIQ SHABLONDA YOZILSIN — har bir paragraf va so\'z shablonga to\'liq mos kelishi kerak. Faqat o\'zbek tilida yoz.\n\n'
