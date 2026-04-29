@@ -2436,7 +2436,10 @@ _renderInvestorCompaniesMain = function(){
   if(apolloEl) apolloEl.textContent = apolloCount;
   var taEl = document.getElementById('ic-k-tradeatlas');
   if(taEl) taEl.textContent = tradeAtlasCount;
-  document.getElementById('badge-investorco').textContent = groupCount;
+  // Sidebar badge — agar avvalgi visible count mavjud bo'lsa, undan foydalanish
+  // Aks holda groupCount (override pastda visibleGroups bilan ishlaydi)
+  var _badgeInitVal = (window._icCounts && typeof window._icCounts.jami === 'number') ? window._icCounts.jami : groupCount;
+  document.getElementById('badge-investorco').textContent = _badgeInitVal;
 
   /* Geo karta va pie chart visibleGroups asosida pastda chiqariladi (visibleRecords) */
   if(typeof renderInvestorProductFilterPicker === 'function'){
