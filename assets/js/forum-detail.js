@@ -2795,6 +2795,11 @@ _renderInvestorCompaniesMain = function(){
     hasEmail: vHasEmail,
     timestamp: Date.now()
   };
+  // Sidebar badge'ni visibleGroups asosida yangilash (jadvaldagi soniga moslashtirish)
+  try {
+    var sidebarBadge = document.getElementById('badge-investorco');
+    if(sidebarBadge) sidebarBadge.textContent = visibleGroups.length;
+  } catch(_e){}
   // Pipeline CRM mavjud bo'lsa qayta render
   try { if(typeof renderCrmDashboard === 'function' && document.getElementById('crm-kpi-tree')) renderCrmDashboard(); } catch(_e){}
   console.log('[KPI override] Jami:', visibleGroups.length, '| Tayyor:', vTayyor, '| Email:', vEmailSent+'/'+vHasEmail, '| Apollo:', Object.keys(visibleApolloGroups).length, '| TA:', Object.keys(visibleTaGroups).length);

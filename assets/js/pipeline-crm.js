@@ -738,6 +738,10 @@ function renderCrmDashboard(){
     _coGroupSet[k] = true;
   });
   var totalCompanies = Object.keys(_coGroupSet).length;
+  // Investorlar Bazasi jadvaliga moslashtirish — visibleGroups (eksportyorlar)
+  if(window._icCounts && typeof window._icCounts.jami === 'number'){
+    totalCompanies = window._icCounts.jami;
+  }
   var totalSent = co.filter(function(c){return c.emailSent;}).length;
   var totalOpened = co.filter(function(c){return c.emailOpened;}).length;
   var totalReplied = co.filter(function(c){return c.emailReplied || c.pipelineStage==='replied' || c.pipelineStage==='meeting';}).length;
@@ -803,6 +807,11 @@ function renderCrmDashboard(){
   });
   var apolloTotal = _uniqueCompanyCount(apolloRecs);
   var tradeTotal = _uniqueCompanyCount(tradeRecs);
+  // Investorlar Bazasi jadvaliga moslashtirish (eksportyorlar)
+  if(window._icCounts){
+    if(typeof window._icCounts.apollo === 'number') apolloTotal = window._icCounts.apollo;
+    if(typeof window._icCounts.tradeatlas === 'number') tradeTotal = window._icCounts.tradeatlas;
+  }
   var pApolloTotal = totalCompanies ? Math.round(apolloTotal/totalCompanies*100) : 0;
   var pTradeTotal = totalCompanies ? Math.round(tradeTotal/totalCompanies*100) : 0;
 
