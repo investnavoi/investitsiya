@@ -648,6 +648,52 @@ async function generateEmbassyAiLetter(countryCode, type){
     var sElPct = sCache ? _findPct(sCache.breakdown, 'elektr') : '';
     var sGasPct = sCache ? _findPct(sCache.breakdown, 'gaz') : '';
     var sTrPct = sCache ? _findPct(sCache.breakdown, 'transport') : '';
+
+    // Yo'q bo'lgan ma'lumotlarni Gemini AI orqali to'ldirish + mahsulot nomi generatsiya
+    // (Foydalanuvchi: AI xat yaratish bosilsa real malumotlar kelishi kerak)
+    if(typeof callGemini === 'function' && (typeof getGeminiKey === 'function' && getGeminiKey())){
+      try {
+        var aiPrompt = 'Sen O\'zbekiston ekspertisan. ' + cName + ' davlatining O\'zbekiston (Navoiy viloyati) bilan iqtisodiy taqqoslashini hisobla.\n\n'
+          + 'Kompaniyalar mahsulot sohalari: ' + industryList.slice(0,5).join('; ') + '\n\n'
+          + 'JSON qaytar (hech qanday markdown):\n'
+          + '{\n'
+          + '  "products": "qisqa o\'zbekcha mahsulot nomlari, vergul bilan (max 5 ta — masalan: granit, dolomit, ohaktosh)",\n'
+          + '  "tax_pct": "X%" (' + cName + ' soliq yuklamasi - O\'zbekiston soliq yuklamasi farqi, faqat raqam %),\n'
+          + '  "wage_pct": "X%" (' + cName + ' mehnat haqi O\'zbekistondan necha foiz qimmat, faqat raqam %),\n'
+          + '  "infra_pct": "X%" (elektr+gaz O\'zbekistondan necha foiz qimmat, faqat raqam %),\n'
+          + '  "transport_pct": "X%" (transport+logistika O\'zbekistondan necha foiz qimmat, faqat raqam %)\n'
+          + '}\n\n'
+          + 'Faqat raqamlar va %, hech qanday qo\'shimcha matn. World Bank, ILOSTAT, IEA ma\'lumotlari asosida hisobla.';
+        var aiResp = await callGemini({
+          contents: [{ parts: [{ text: aiPrompt }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 400 }
+        });
+        var aiText = (((aiResp || {}).candidates || [])[0] || {}).content;
+        aiText = (((aiText || {}).parts || [])[0] || {}).text || '';
+        // Markdown json blok tozalash
+        aiText = String(aiText).replace(/```json\s*/gi,'').replace(/```\s*$/gi,'').trim();
+        var aiJson = null;
+        try { aiJson = JSON.parse(aiText); } catch(_e){
+          // Match first JSON object
+          var m = aiText.match(/\{[\s\S]*\}/);
+          if(m){ try { aiJson = JSON.parse(m[0]); } catch(_e2){} }
+        }
+        if(aiJson){
+          if(aiJson.products && (!prodNames.length || prodNames.length < 2)){
+            prodSummary = String(aiJson.products).trim();
+          }
+          if(aiJson.tax_pct && !sSolPct) sSolPct = String(aiJson.tax_pct).trim();
+          if(aiJson.wage_pct && !sWagePct) sWagePct = String(aiJson.wage_pct).trim();
+          if(aiJson.infra_pct && !sElPct && !sGasPct){
+            // Direct AI infra pct ishlatamiz
+            sElPct = String(aiJson.infra_pct).trim();
+          }
+          if(aiJson.transport_pct && !sTrPct) sTrPct = String(aiJson.transport_pct).trim();
+        }
+      } catch(_aiErr){
+        console.warn('Gemini AI fallback xato:', _aiErr);
+      }
+    }
     // Infratuzilma = elektr + gaz foizlarining o'rtachasi (yoki faqat mavjudi)
     var infraVals = [];
     if(sElPct) infraVals.push(parseFloat(sElPct));
