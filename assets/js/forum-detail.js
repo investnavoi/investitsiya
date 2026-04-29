@@ -2727,10 +2727,15 @@ _renderInvestorCompaniesMain = function(){
   });
   // Eksportyor bo'lmagan orphan recordlarni ko'rsatmaslik — faqat eksportyorlar
   // (Importer'lar yagona bo'lmasa ham parent'siz turishi noto'g'ri bo'lardi)
-  // Lekin orphan importerlarda hech qanday parent yo'q — ularni ham yashirmaymiz
   grouped.forEach(function(g){
     if(_visited[g.key]) return;
-    // Orphan importer — ko'rsatamiz lekin _isOrphan flag bilan
+    // ORPHAN IMPORTERLAR — jadvalga kiritilmasin (foydalanuvchi talabiga ko'ra)
+    if(g._role === 'importer'){
+      _visited[g.key] = true;
+      g._isHiddenChild = true; // jadvaldan yashirib qo'yamiz
+      return;
+    }
+    // Orphan eksportyor yoki noma'lum — ko'rsatamiz
     _visited[g.key] = true;
     _displayCounter++;
     g._displayNumber = _displayCounter;
