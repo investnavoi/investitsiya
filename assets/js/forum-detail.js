@@ -2396,13 +2396,13 @@ _renderInvestorCompaniesMain = function(){
   if(taEl) taEl.textContent = tradeAtlasCount;
   document.getElementById('badge-investorco').textContent = groupCount;
 
-  /* Skip expensive map re-render if company geo data hasn't changed */
-  var geoHash = allCo.map(function(r){ return (r.id||'')+'|'+(r.davlat||r.country||''); }).join(',');
+  /* Skip expensive map re-render if company geo data hasn't changed — filter ham hisobga olinadi */
+  var geoHash = co.map(function(r){ return (r.id||'')+'|'+(r.davlat||r.country||''); }).join(',') + '|src:' + (_sourceFilter || '');
   if(geoHash !== _icGeoHash){
     _icGeoHash = geoHash;
-    renderInvestorGeoCard(allCo);
+    renderInvestorGeoCard(co);
   }
-  renderIcCharts(allCo);
+  renderIcCharts(co);
   if(typeof renderInvestorProductFilterPicker === 'function'){
     renderInvestorProductFilterPicker();
   }
