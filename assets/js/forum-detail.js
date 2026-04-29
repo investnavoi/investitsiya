@@ -2380,12 +2380,20 @@ _renderInvestorCompaniesMain = function(){
   var emailSentGroups = Object.create(null);
   var hasEmailGroups = Object.create(null);
   // FAQAT EKSPORTYORLAR statistikaga olinadi (importyorlar hisoblanmaydi)
-  // Eski recordlarda finderMode bo'sh bo'lishi mumkin — faqat aniq importer marker bo'lganlar tashlanadi
+  // Importyor aniqlash:
+  //  1) finderMode === 'importers' / 'importer'
+  //  2) _partnerOf bor va _partners yo'q (sintetik importyor child)
   // Apollo va TradeAtlas count xarita bilan mos: faqat geo code valid bo'lgan kompaniyalar
   allCo.forEach(function(rec){
     var fm = String(rec.finderMode || rec.role || '').toLowerCase();
     var isImporter = fm === 'importers' || fm === 'importer';
-    if(isImporter) return; // faqat aniq importyor markerli yozuvlarni o'tkazib yuboramiz
+    if(!isImporter){
+      var hasPartnerOf = Array.isArray(rec._partnerOf) && rec._partnerOf.length > 0;
+      var hasPartners = Array.isArray(rec._partners) && rec._partners.length > 0;
+      // Faqat _partnerOf bo'lib, _partners bo'lmasa — bu importyor child
+      if(hasPartnerOf && !hasPartners) isImporter = true;
+    }
+    if(isImporter) return;
     var key = getInvestorCompanyGroupKey(rec);
     allGroupMap[key] = true;
     var src = String(rec.manba || rec.source || '').toLowerCase();
