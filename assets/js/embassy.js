@@ -23,6 +23,55 @@ var _embassyCountryNames = {
   'KZ':'Qozog\'iston','PK':'Pokiston','BD':'Bangladesh','VN':'Vyetnam','PH':'Filippin'
 };
 
+// AI Tahlil API'dan country foizlarini avtomatik olish (cache bo'sh bo'lsa)
+// Iqtisodiy Tahlil panelini ochmasdan ham embassy xatda real foizlar ko'rinishi uchun
+async function _ensureSavingsCacheForCountry(cName){
+  var key = String(cName || '').toLowerCase().trim();
+  if(!key) return null;
+  if(window._aiSavingsCache && window._aiSavingsCache[key] && Array.isArray(window._aiSavingsCache[key].breakdown) && window._aiSavingsCache[key].breakdown.length){
+    return window._aiSavingsCache[key];
+  }
+  try {
+    var apiBase = (typeof AI_COUNTRY_API_BASE !== 'undefined' && AI_COUNTRY_API_BASE) ? AI_COUNTRY_API_BASE : 'https://navoiy-api-proxy.vercel.app/api';
+    var resp = await fetch(apiBase + '/ai-country-analysis?country=' + encodeURIComponent(cName));
+    if(!resp.ok) return null;
+    var data = await resp.json().catch(function(){ return {}; });
+    if(!data || !data.metrics) return null;
+    var m = data.metrics;
+    var tax = m.totalTaxRate || {};
+    var wage = m.monthlyWage || {};
+    var electricity = m.electricityPrice || {};
+    var gas = m.naturalGasPrice || {};
+    var breakdown = [];
+    var taxC = Number(tax.country), taxU = Number(tax.uzbekistan);
+    if(Number.isFinite(taxC) && Number.isFinite(taxU) && taxC > taxU){
+      breakdown.push({label:'Soliq tejamkorlik', pct: ((taxC-taxU).toFixed(1))+'%'});
+    }
+    var wageC = Number(wage.country), wageU = Number(wage.uzbekistan);
+    if(Number.isFinite(wageC) && Number.isFinite(wageU) && wageC > wageU){
+      breakdown.push({label:'Mehnat narxi tejamkorlik', pct: ((1-wageU/wageC)*100).toFixed(0)+'%'});
+    }
+    var elC = Number(electricity.country), elU = Number(electricity.uzbekistan);
+    if(Number.isFinite(elC) && Number.isFinite(elU) && elC > elU){
+      breakdown.push({label:'Elektr energiya tejamkorlik', pct: ((1-elU/elC)*100).toFixed(0)+'%'});
+    }
+    var gasC = Number(gas.country), gasU = Number(gas.uzbekistan);
+    if(Number.isFinite(gasC) && Number.isFinite(gasU) && gasC > gasU){
+      breakdown.push({label:'Tabiiy gaz tejamkorlik', pct: ((1-gasU/gasC)*100).toFixed(0)+'%'});
+    }
+    if(!breakdown.length) return null;
+    if(!window._aiSavingsCache) window._aiSavingsCache = {};
+    var entry = {
+      countryName: cName,
+      breakdown: breakdown,
+      totalAnnualSaving: 0,
+      timestamp: Date.now()
+    };
+    window._aiSavingsCache[key] = entry;
+    return entry;
+  } catch(_e){ return null; }
+}
+
 function updateEmbassyButtons(countryCode){
   _selectedEmbassyCountry = countryCode;
   var cName = _embassyCountryNames[countryCode] || countryCode;
@@ -105,6 +154,8 @@ async function openEmbassyModal(type){
     if(p && !/%/.test(p)) p = p + '%';
     return p;
   }
+  // Cache yo'q bo'lsa AI tahlil API'dan avtomatik olish
+  try { await _ensureSavingsCacheForCountry(cName); } catch(_e){}
   var savingsCache = (window._aiSavingsCache && window._aiSavingsCache[String(cName).toLowerCase().trim()]) || null;
   var _solPctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'soliq') : '';
   var _wagePctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'mehnat') : '';
@@ -493,34 +544,8 @@ async function generateEmbassyAiLetter(countryCode, type){
     window._currentEmbassyCompanies = all;
     var cnt = all.length;
 
-    // Try cache: if cached letter exists for same company set + til mos → use cache, no AI call
-    var cache = getEmbassyCache(countryCode, type);
-    var currentIds = all.map(function(c){return String(c.id);}).sort().join(',');
-    // Joriy expected til
-    var _isCisAi0 = ['RU','KZ','KG','TJ','BY','AM','AZ','GE','MD','UA','TM'].indexOf(countryCode) !== -1;
-    var _isCnAi0 = ['CN','TW','HK','MO'].indexOf(countryCode) !== -1;
-    var _expectedLang = (type === 'uzb') ? 'uz' : (_isCnAi0 ? 'zh' : (_isCisAi0 ? 'ru' : 'en'));
-    var _detectLang0 = function(body){
-      if(!body) return '';
-      var b = String(body);
-      if(b.indexOf('NAVOI REGION') !== -1) return 'en';
-      if(b.indexOf('НАВОИЙСКОЙ ОБЛАСТИ') !== -1) return 'ru';
-      if(b.indexOf('纳沃伊州') !== -1) return 'zh';
-      if(b.indexOf('NAVOIY VILOYATI') !== -1) return 'uz';
-      return '';
-    };
-    var cacheLang = cache && cache.body ? _detectLang0(cache.body) : '';
-    if(cache && cache.companyIds === currentIds && cache.subject && cache.body && cacheLang === _expectedLang){
-      var subjEl = document.getElementById('emb-subject');
-      var bodyEl = document.getElementById('emb-body');
-      if(subjEl) subjEl.value = cache.subject;
-      if(bodyEl) bodyEl.value = cache.body;
-      _attachEmbassyAutoSave(countryCode, type);
-      toast('💾 Saqlangan AI xat yuklandi (credit ishlatilmadi)','success');
-      if(btn){ btn.disabled = false; btn.textContent = '🤖 AI xat yaratish'; }
-      return;
-    }
-    loadingToast = typeof toastLoading === 'function' ? toastLoading('🤖 AI xat yaratilmoqda...') : toast('🤖 AI xat yaratilmoqda...','info');
+    // AI xat yaratish tugmasi bosilganda DOIM qayta yoziladi (cache ishlatilmaydi)
+    loadingToast = typeof toastLoading === 'function' ? toastLoading('🤖 AI xat qayta yaratilmoqda...') : toast('🤖 AI xat qayta yaratilmoqda...','info');
     var totalUsd = 0;
     var targetCountries = {};
     var industries = {};
@@ -579,6 +604,8 @@ async function generateEmbassyAiLetter(countryCode, type){
       var hit = breakdown.find(function(s){ return String(s.label || '').toLowerCase().indexOf(label.toLowerCase()) !== -1; });
       return hit ? Number(hit.value || 0) : 0;
     }
+    // Cache yo'q bo'lsa AI tahlil API'dan avtomatik olish
+    try { await _ensureSavingsCacheForCountry(cName); } catch(_e){}
     var sCache = (window._aiSavingsCache && window._aiSavingsCache[String(cName).toLowerCase().trim()]) || null;
     var sSolPct = sCache ? _findPct(sCache.breakdown, 'soliq') : '';
     var sWagePct = sCache ? _findPct(sCache.breakdown, 'mehnat') : '';
