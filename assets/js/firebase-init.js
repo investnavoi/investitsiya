@@ -317,7 +317,13 @@ window.ensureCollectionLoaded = async function(col){
     console.log(`📦 Lazy load: ${col} — ${DB[col].length} ta (${Date.now()-t0}ms)`);
     return DB[col];
   } catch(e){
-    console.error(`Lazy load error (${col}):`, e);
+    // embassyLetters uchun permission xatosi bo'lsa jim — Firestore qoidalari hali deploy qilinmagan
+    var msg = String((e && e.message) || e || '');
+    if(col === 'embassyLetters' && msg.indexOf('insufficient permissions') !== -1){
+      console.warn('embassyLetters Firestore qoidalari deploy qilinmagan — local-only ishlaydi');
+    } else {
+      console.error('Lazy load error ('+col+'):', e);
+    }
     window._lazyLoaded[col] = false; // allow retry
     return DB[col] || [];
   }
@@ -421,7 +427,13 @@ window.fbSave = async function(colName, record){
       setLocalCollectionBackup('investorCompanies', icList);
     }
   } catch(e){
-    console.error('fbSave error:', e);
+    // embassyLetters uchun permission xatosi bo'lsa jim (qoidalar deploy qilinmagan)
+    var _msg = String((e && e.message) || e || '');
+    if(colName === 'embassyLetters' && _msg.indexOf('insufficient permissions') !== -1){
+      console.warn('embassyLetters cross-device sync ishlamayapti — Firestore qoidalarini deploy qiling');
+    } else {
+      console.error('fbSave error:', e);
+    }
     // Firebase fail bo'lsa ham localStorage'da saqlaymiz, foydalanuvchi yo'qotmasin
     if(colName==='investorCompanies'){
       try {
