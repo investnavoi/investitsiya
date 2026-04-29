@@ -307,13 +307,15 @@ async function openEmbassyModal(type){
   var old = document.getElementById('embassyModal');
   if(old) old.remove();
   document.body.insertAdjacentHTML('beforeend', modalHtml);
-  // Auto-generate AI letter on open (or use cache to avoid credits)
+  // Static shablon (aynan foydalanuvchi yuborgan format) ishlatiladi.
+  // AI avtomatik ishga tushmaydi — foydalanuvchi xohlasa "🤖 AI xat yaratish" tugmasini bosadi.
   setTimeout(function(){
     if(_cached && _cached.subject && _cached.body){
       if(typeof _attachEmbassyAutoSave === 'function') _attachEmbassyAutoSave(code, type);
       if(typeof toast === 'function') toast('💾 Saqlangan AI xat yuklandi','info');
-    } else if(typeof generateEmbassyAiLetter === 'function'){
-      generateEmbassyAiLetter(code, type);
+    } else {
+      // Static shablon allaqachon textareada — AI chaqirmaymiz
+      if(typeof _attachEmbassyAutoSave === 'function') _attachEmbassyAutoSave(code, type);
     }
   }, 200);
 }
@@ -594,54 +596,100 @@ async function generateEmbassyAiLetter(countryCode, type){
     };
     var _aiTargetSummary = _targetByLang[_aiLang];
 
-    var prompt = 'You are an experienced state official writing a formal diplomatic letter on behalf of the Department of Investments, Industry and Trade of Navoi Region. '
-      + 'The letter is sent to the Embassy of ' + cName + '.\n\n'
-      + 'CRITICAL: ' + _langInstr[_aiLang] + '\n\n'
-      + 'REAL DATA (from Economic Analysis system):\n'
-      + '• Country: ' + cName + '\n'
-      + '• Number of identified companies: ' + cnt + '\n'
-      + '• Product types: ' + prodSummary + '\n'
-      + '• Export markets: ' + _aiTargetSummary + '\n'
-      + '• Tax savings: ' + sSolStr + ' USD/year\n'
-      + '• Labor cost savings: ' + sWageStr + ' USD/year\n'
-      + '• Infrastructure savings (electricity+gas): ' + sInfraStr + ' USD/year\n'
-      + '• Transport and logistics savings: ' + sTrStr + ' USD/year\n'
-      + '• Total annual savings: ' + sTotalStr + ' USD\n\n'
-      + 'WRITE THE LETTER WITH THIS STRUCTURE (translate to ' + _aiLang.toUpperCase() + '):\n\n'
-      + '1. Header: "REPUBLIC OF UZBEKISTAN / KHOKIMIYAT OF NAVOI REGION / DEPARTMENT OF INVESTMENTS, INDUSTRY AND TRADE" (translated)\n'
-      + '2. Greeting: "Dear Mr./Ms. Ambassador," (translated)\n'
-      + '3. First paragraph: As part of strategic analyses to attract foreign investors to Navoi Region, ' + cnt + ' leading companies operating in ' + cName + ' have been identified. (list attached)\n'
-      + '4. Second paragraph: The companies are international leaders in producing ' + prodSummary + ' products. Considering full alignment with Navoi Region\'s mineral-raw material base and industrial infrastructure, attracting them as investors is strategic.\n'
-      + '5. Third paragraph: According to economic calculations, if these companies establish production in Navoi Region and export to ' + _aiTargetSummary + ', the following efficiency indicators were identified:\n'
-      + '6. Bullet list (4 items):\n'
-      + '   — Tax incentive savings: ' + sSolStr + ' USD\n'
-      + '   — Labor cost savings: ' + sWageStr + ' USD\n'
-      + '   — Infrastructure cost savings: ' + sInfraStr + ' USD\n'
-      + '   — Transport and logistics savings: ' + sTrStr + ' USD\n'
-      + '7. Conclusion paragraph: Total annual economic effect: ' + sTotalStr + ' USD. This will strengthen trade ties, create jobs, expand export potential.\n'
-      + '8. Request paragraph: Please assist in establishing initial contacts with these companies, support negotiations, and help build a cooperation bridge.\n'
-      + '9. Contact block: Department of Investments, Industry and Trade of Navoi Region / Responsible Officer — Shahzod Barnoqulov / Email: sh.barnokulov@investnavoi.uz / Phone: +998 88 890 11 10\n'
-      + '10. Closing: "Sincerely, / Khokimiyat of Navoi Region" (translated)\n\n'
-      + 'STRICT RULES:\n'
-      + '- ' + _langInstr[_aiLang] + '\n'
-      + '- All numbers stay EXACTLY as provided (' + sSolStr + ', ' + sWageStr + ', ' + sInfraStr + ', ' + sTrStr + ', ' + sTotalStr + ')\n'
-      + '- Country list stays EXACTLY: ' + _aiTargetSummary + '\n'
-      + '- NO markdown (** # * NO). NO emojis. NO stickers. Formal diplomatic tone only.\n'
-      + '- Keep contact info: Shahzod Barnoqulov, sh.barnokulov@investnavoi.uz, +998 88 890 11 10\n\n'
-      + 'Subject: "' + _subjects[_aiLang] + '"\n\n'
-      + 'RESPONSE FORMAT: ONLY JSON, no other text: {"subject":"...","body":"..."}';
-
-    var data = await callGemini({
-      contents:[{role:'user',parts:[{text: prompt}]}],
-      generationConfig:{temperature:0.7}
-    });
-    var raw = geminiText(data);
-    var parsed = null;
-    try { parsed = JSON.parse(raw); } catch(e){
-      var m = raw.match(/\{[\s\S]*\}/);
-      if(m) { try { parsed = JSON.parse(m[0]); } catch(e2){} }
+    // AI ishlatmaymiz — AYNAN foydalanuvchi yuborgan static shablon ishlatiladi (paraphrase qilmasdan)
+    // Til bo'yicha shablon va kontakt ma'lumotlari to'liq saqlanadi
+    var staticBody = '';
+    if(_aiLang === 'en'){
+      staticBody = 'REPUBLIC OF UZBEKISTAN\n'
+        + 'KHOKIMIYAT OF NAVOI REGION\n'
+        + 'DEPARTMENT OF INVESTMENTS, INDUSTRY AND TRADE\n\n'
+        + 'Dear Mr./Ms. Ambassador,\n\n'
+        + 'As part of strategic analyses and studies of the investment climate aimed at attracting foreign investors to Navoi Region, ' + cnt + ' leading companies operating in ' + cName + ' have been identified. (the list is attached)\n\n'
+        + 'The identified companies are international leaders in the production of ' + prodSummary + ' products. Considering the full alignment with Navoi Region\'s mineral-raw material base and existing industrial infrastructure, attracting them as investors to the region is of strategic importance.\n\n'
+        + 'According to comprehensive economic calculations, if these companies establish their production capacities in Navoi Region and export the finished products to ' + _aiTargetSummary + ', the following economic efficiency indicators have been identified:\n\n'
+        + '— Tax incentive savings: ' + sSolStr + ' USD;\n'
+        + '— Labor resource cost savings: ' + sWageStr + ' USD;\n'
+        + '— Infrastructure cost savings: ' + sInfraStr + ' USD;\n'
+        + '— Transport and logistics cost savings: ' + sTrStr + ' USD.\n\n'
+        + 'In total, if these companies establish operations in Navoi Region, an annual economic effect of ' + sTotalStr + ' USD can be achieved. This will not only provide investors with high profitability, but will also serve as an important basis for strengthening trade and economic ties between our countries, creating new jobs in Navoi Region, and expanding the region\'s export potential.\n\n'
+        + 'Taking the above into consideration, we kindly request your assistance in establishing initial contacts with these companies, providing practical support during negotiations, and helping to build an effective cooperation bridge between our region and foreign investors.\n\n'
+        + 'For additional information and detailed negotiations, please contact the responsible officer:\n\n'
+        + 'Department of Investments, Industry and Trade of Navoi Region\n'
+        + 'Responsible Officer — Shahzod Barnoqulov\n'
+        + 'Email: sh.barnokulov@investnavoi.uz\n'
+        + 'Phone: +998 88 890 11 10\n\n'
+        + 'Expressing confidence in our cooperation, we wish you robust health and success in your diplomatic activities.\n\n'
+        + 'Sincerely,\n'
+        + 'Khokimiyat of Navoi Region';
+    } else if(_aiLang === 'ru'){
+      staticBody = 'РЕСПУБЛИКА УЗБЕКИСТАН\n'
+        + 'ХОКИМИЯТ НАВОИЙСКОЙ ОБЛАСТИ\n'
+        + 'УПРАВЛЕНИЕ ИНВЕСТИЦИЙ, ПРОМЫШЛЕННОСТИ И ТОРГОВЛИ\n\n'
+        + 'Уважаемый господин/госпожа Посол,\n\n'
+        + 'В рамках стратегических аналитических работ и исследования инвестиционной среды, направленных на привлечение иностранных инвесторов в Навоийскую область, выявлено ' + cnt + ' ведущих компаний, осуществляющих деятельность на территории ' + cName + '. (список прилагается)\n\n'
+        + 'Выявленные компании являются мировыми лидерами в производстве продукции ' + prodSummary + '. С учётом полного соответствия минерально-сырьевой базе и существующей промышленной инфраструктуре Навоийской области, их привлечение в качестве инвесторов имеет стратегическое значение.\n\n'
+        + 'Согласно проведённым комплексным экономическим расчётам, при размещении производственных мощностей данных компаний в Навоийской области и экспорте готовой продукции в ' + _aiTargetSummary + ', были выявлены следующие показатели экономической эффективности:\n\n'
+        + '— экономия за счёт налоговых льгот: ' + sSolStr + ' долларов США;\n'
+        + '— экономия на трудовых ресурсах: ' + sWageStr + ' долларов США;\n'
+        + '— экономия на инфраструктурных расходах: ' + sInfraStr + ' долларов США;\n'
+        + '— экономия на транспортных и логистических расходах: ' + sTrStr + ' долларов США.\n\n'
+        + 'В общей сложности, при налаживании деятельности этих компаний в Навоийской области, появляется возможность достижения ежегодного экономического эффекта в размере ' + sTotalStr + ' долларов США. Это станет не только источником высокой доходности для инвесторов, но и важной основой для укрепления торгово-экономических связей между странами, создания новых рабочих мест в Навоийской области и расширения экспортного потенциала региона.\n\n'
+        + 'Учитывая вышеизложенное, просим Вас оказать содействие в установлении первоначальных контактов с указанными компаниями, оказать практическую помощь в переговорах и помочь в создании эффективного моста сотрудничества между нашим регионом и иностранными инвесторами.\n\n'
+        + 'Для получения дополнительной информации и подробных переговоров можно связаться с ответственным сотрудником:\n\n'
+        + 'Управление инвестиций, промышленности и торговли Навоийской области\n'
+        + 'Ответственный сотрудник — Шахзод Барноқулов\n'
+        + 'Электронная почта: sh.barnokulov@investnavoi.uz\n'
+        + 'Телефон: +998 88 890 11 10\n\n'
+        + 'Выражая уверенность в нашем сотрудничестве, желаю Вам крепкого здоровья и успехов в дипломатической деятельности.\n\n'
+        + 'С уважением,\n'
+        + 'Хокимият Навоийской области';
+    } else if(_aiLang === 'zh'){
+      staticBody = '乌兹别克斯坦共和国\n'
+        + '纳沃伊州霍基米亚特\n'
+        + '投资、工业和贸易管理局\n\n'
+        + '尊敬的大使阁下：\n\n'
+        + '为吸引外国投资者到纳沃伊州，在开展战略分析和投资环境研究工作中，已确认在' + cName + '境内运营的 ' + cnt + ' 家领先企业。（名单附后）\n\n'
+        + '已确认的企业在' + prodSummary + '产品制造领域具有国际领先地位。考虑到与纳沃伊州矿产原材料基础和现有工业基础设施的完全匹配，吸引这些企业作为投资者具有重要的战略意义。\n\n'
+        + '根据综合经济测算，如果这些企业在纳沃伊州建立生产能力，并将成品出口到' + _aiTargetSummary + '，已确定以下经济效益指标：\n\n'
+        + '— 税收优惠节约：' + sSolStr + ' 美元；\n'
+        + '— 劳动力成本节约：' + sWageStr + ' 美元；\n'
+        + '— 基础设施成本节约：' + sInfraStr + ' 美元；\n'
+        + '— 运输和物流成本节约：' + sTrStr + ' 美元。\n\n'
+        + '总体而言，如果这些企业在纳沃伊州开展业务，每年可实现 ' + sTotalStr + ' 美元的经济效益。这不仅为投资者带来高收益，也将成为加强两国贸易经济联系、在纳沃伊州创造新就业岗位以及扩大地区出口潜力的重要基础。\n\n'
+        + '鉴于上述情况，恳请贵馆协助与上述企业建立初步联系，在谈判过程中提供实际帮助，并协助在我州与外国投资者之间架起有效的合作桥梁。\n\n'
+        + '关于详细信息和具体谈判事宜，请联系负责人员：\n\n'
+        + '纳沃伊州投资、工业和贸易管理局\n'
+        + '负责人 — Shahzod Barnoqulov\n'
+        + '电子邮件：sh.barnokulov@investnavoi.uz\n'
+        + '电话：+998 88 890 11 10\n\n'
+        + '相信我们的合作，祝您身体健康，外交工作顺利。\n\n'
+        + '此致敬礼，\n'
+        + '纳沃伊州霍基米亚特';
+    } else {
+      // Uzbek (default)
+      staticBody = 'O\'ZBEKISTON RESPUBLIKASI\n'
+        + 'NAVOIY VILOYATI HOKIMLIGI\n'
+        + 'INVESTITSIYALAR, SANOAT VA SAVDO BOSHQARMASI\n\n'
+        + 'Hurmatli Elchi Janoblari,\n\n'
+        + 'Xorijiy investorlarni Navoiy viloyatiga jalb qilish maqsadida olib borilayotgan strategik tahlillar va investitsion muhitni o\'rganish ishlari doirasida ' + cName + ' davlati hududida faoliyat yuritayotgan ' + cnt + ' ta yetakchi kompaniya aniqlangan. (ilova qilinadi)\n\n'
+        + 'Aniqlangan kompaniyalar ' + prodSummary + ' mahsulotlarini ishlab chiqarish sohasida xalqaro miqyosda yetakchi o\'rinni egallab kelmoqda hamda Navoiy viloyatining mineral-xomashyo bazasi va mavjud sanoat infratuzilmasi bilan to\'liq muvofiqligi inobatga olingan holda, ularni viloyatga investor sifatida jalb etish strategik ahamiyatga molikdir.\n\n'
+        + 'O\'tkazilgan kompleks iqtisodiy hisob-kitoblarga muvofiq, mazkur kompaniyalar Navoiy viloyatida o\'z ishlab chiqarish quvvatlarini tashkil etib, tayyor mahsulotlarni ' + _aiTargetSummary + ' davlatlariga eksport qilgan taqdirda quyidagi iqtisodiy samaradorlik ko\'rsatkichlari aniqlandi:\n\n'
+        + '— soliq imtiyozlari hisobiga ' + sSolStr + ' AQSh dollari miqdorida tejam;\n'
+        + '— mehnat resurslari xarajatlarida ' + sWageStr + ' AQSh dollari miqdorida iqtisod;\n'
+        + '— infratuzilma xarajatlarida ' + sInfraStr + ' AQSh dollari miqdorida tejam;\n'
+        + '— transport va logistika xarajatlarida ' + sTrStr + ' AQSh dollari miqdorida iqtisod.\n\n'
+        + 'Umumiy hisobda, mazkur kompaniyalar Navoiy viloyatida o\'z faoliyatini yo\'lga qo\'ygan taqdirda yillik ' + sTotalStr + ' AQSh dollari miqdorida iqtisodiy samaraga erishish imkoniyati yaratiladi. Bu esa nafaqat investorlar uchun yuqori daromadlilik, balki ikki davlat o\'rtasidagi savdo-iqtisodiy aloqalarning mustahkamlanishi, Navoiy viloyatida yangi ish o\'rinlarining yaratilishi va mintaqaning eksport salohiyatining kengayishi uchun muhim asos bo\'lib xizmat qiladi.\n\n'
+        + 'Yuqoridagilarni inobatga olgan holda, Sizdan mazkur kompaniyalar bilan dastlabki aloqalar o\'rnatishga ko\'maklashishingiz, muzokaralar jarayonida amaliy yordam ko\'rsatishingiz hamda viloyatimiz va xorijiy investorlar o\'rtasida samarali hamkorlik ko\'prigini yaratishda yordam berishingizni so\'raymiz.\n\n'
+        + 'Qo\'shimcha ma\'lumotlar va batafsil muzokaralar yuzasidan quyidagi mas\'ul xodim bilan bog\'lanishingiz mumkin:\n\n'
+        + 'Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi\n'
+        + 'mas\'ul xodimi — Barnoqulov Shahzod\n'
+        + 'Elektron pochta: sh.barnokulov@investnavoi.uz\n'
+        + 'Telefon: +998 88 890 11 10\n\n'
+        + 'Hamkorligimizga ishonch bildirib, Sizga mustahkam sog\'lik va olib borayotgan diplomatik faoliyatingizda muvaffaqiyatlar tilab qolaman.\n\n'
+        + 'Hurmat bilan,\n'
+        + 'Navoiy viloyati hokimligi';
     }
-    if(!parsed || !parsed.body){ throw new Error('AI javobidan JSON ajratib olib bo\'lmadi'); }
+    var parsed = { subject: _subjects[_aiLang], body: staticBody };
     var subjEl = document.getElementById('emb-subject');
     var bodyEl = document.getElementById('emb-body');
     if(subjEl && parsed.subject) subjEl.value = parsed.subject;
