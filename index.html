@@ -2678,7 +2678,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
               style="font-size:.75rem;color:transparent;caret-color:var(--text)" oninput="filterTradeCountries()" onfocus="this.style.color='transparent';this.value='';showTradeCountries()" onclick="this.value='';showTradeCountries()">
             <div id="trade-country-label" style="position:absolute;top:50%;left:12px;transform:translateY(-50%);font-size:.75rem;color:var(--text3);pointer-events:none">🔍 Davlat tanlang...</div>
             <input type="hidden" id="trade-country" value="">
-            <div id="trade-country-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:999;margin-top:2px"></div>
+            <div id="trade-country-list" onclick="event.stopPropagation()" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:380px;overflow-y:auto;background:#fff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:999;margin-top:2px"></div>
           </div>
         </div>
         <div class="form-group" style="flex:0 0 110px">

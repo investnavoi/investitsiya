@@ -1143,7 +1143,6 @@ function showTradeCountries(){
 
 var _tradeCountryOpenGroups = {};
 function filterTradeCountries(){
-  // Internal search input ustun (dropdown ichidagi)
   var inSearch = document.getElementById('trade-country-inner-search');
   var extSearch = document.getElementById('trade-country-search');
   var q = inSearch ? (inSearch.value||'').toLowerCase().trim() : (extSearch ? (extSearch.value||'').toLowerCase().trim() : '');
@@ -1153,7 +1152,6 @@ function filterTradeCountries(){
     return name.indexOf(q) !== -1 || c.g.toLowerCase().indexOf(q) !== -1 || c.c.indexOf(q) !== -1;
   }) : TRADE_COUNTRIES;
 
-  // Continent guruhlash: {groupName: [countries...]}
   var groups = {};
   var groupOrder = [];
   filtered.forEach(function(c){
@@ -1161,7 +1159,6 @@ function filterTradeCountries(){
     groups[c.g].push(c);
   });
 
-  // Total country count har guruhda (qidiruv bo'lmaganda full)
   var totalGroups = {};
   TRADE_COUNTRIES.forEach(function(c){
     totalGroups[c.g] = (totalGroups[c.g]||0) + 1;
@@ -1169,15 +1166,14 @@ function filterTradeCountries(){
 
   var selectedCode = (document.getElementById('trade-country')||{}).value || '';
 
-  // Search input (dropdown ichida — Finder filtridek)
   var searchHtml =
-    '<div style="padding:8px 14px 4px">'+
+    '<div style="padding:10px 14px 6px">'+
       '<div style="position:relative">'+
         '<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;display:flex;align-items:center">'+
           '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>'+
         '</span>'+
         '<input id="trade-country-inner-search" type="text" placeholder="Davlat qidirish..." value="'+(q ? q.replace(/"/g,'&quot;') : '')+'" oninput="filterTradeCountries()" autocomplete="off" '+
-          'style="border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;padding:6px 10px 6px 30px;font-size:.75rem;width:100%;outline:none;color:#14233F">'+
+          'style="border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;padding:8px 10px 8px 30px;font-size:.78rem;width:100%;outline:none;color:#14233F;font-family:Inter,sans-serif">'+
       '</div>'+
     '</div>';
 
@@ -1188,21 +1184,26 @@ function filterTradeCountries(){
     return;
   }
 
-  var listHtml = '<div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:1px">';
+  var listHtml = '<div style="padding:4px 14px 10px;display:flex;flex-direction:column;gap:1px">';
   groupOrder.forEach(function(gName){
     var arr = groups[gName];
     var totalInGroup = totalGroups[gName] || arr.length;
     var isOpen = !!_tradeCountryOpenGroups[gName] || q.length > 0;
+    // Tanlangan davlat bu guruhda?
+    var hasSelected = arr.some(function(c){ return c.c === selectedCode; });
     listHtml +=
-      '<div data-group="'+gName.replace(/"/g,'&quot;')+'" style="border-top:1px solid #F3F4F6">'+
-        '<div onclick="toggleTradeCountryGroup(\''+gName.replace(/'/g,"\\'")+'\')" '+
-          'style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;cursor:pointer;border-radius:8px;transition:background .15s" '+
+      '<div style="border-top:1px solid #F3F4F6">'+
+        '<div onclick="event.stopPropagation();toggleTradeCountryGroup(\''+gName.replace(/'/g,"\\'")+'\')" '+
+          'style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;cursor:pointer;border-radius:8px;transition:background .15s" '+
           'onmouseenter="this.style.background=\'#F9FAFB\'" onmouseleave="this.style.background=\'transparent\'">'+
           '<span style="display:flex;align-items:center;gap:10px">'+
+            '<span style="width:15px;height:15px;border-radius:4px;border:1.5px solid '+(hasSelected?'#465fff':'#D1D5DB')+';background:'+(hasSelected?'#465fff':'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
+              (hasSelected ? '<span style="color:#fff;font-size:9px;font-weight:700">✓</span>' : '')+
+            '</span>'+
             '<span style="font-size:.78rem;font-weight:500;color:#344054">'+gName+'</span>'+
           '</span>'+
           '<span style="display:flex;align-items:center;gap:6px">'+
-            '<span style="font-size:.65rem;font-weight:600;background:#EFF4FF;color:#465fff;padding:2px 7px;border-radius:5px;min-width:36px;text-align:center">'+arr.length+'/'+totalInGroup+'</span>'+
+            '<span style="font-size:.65rem;font-weight:600;background:#EFF4FF;color:#465fff;padding:2px 7px;border-radius:5px;min-width:36px;text-align:center">'+(hasSelected?1:0)+'/'+totalInGroup+'</span>'+
             '<span style="color:#9CA3AF;transition:transform .2s;transform:rotate('+(isOpen?'90':'0')+'deg);display:flex;align-items:center">'+
               '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>'+
             '</span>'+
@@ -1213,7 +1214,7 @@ function filterTradeCountries(){
       arr.forEach(function(c){
         var cleanName = c.n.slice(c.n.indexOf(' ')+1);
         var sel = (selectedCode === c.c);
-        listHtml += '<div onclick="selectTradeCountry(\''+c.c+'\',\''+cleanName.replace(/'/g,"\\'")+'\')" '+
+        listHtml += '<div onclick="event.stopPropagation();selectTradeCountry(\''+c.c+'\',\''+cleanName.replace(/'/g,"\\'")+'\')" '+
           'style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;cursor:pointer;font-size:.68rem;color:#344054;background:'+(sel?'rgba(70,95,255,.1)':'#F9FAFB')+';border-radius:6px;border:1px solid '+(sel?'rgba(70,95,255,.3)':'#E5E7EB')+';font-weight:500;transition:all .15s" '+
           'onmouseenter="this.style.background=\'rgba(70,95,255,.08)\'" onmouseleave="this.style.background=\''+(sel?'rgba(70,95,255,.1)':'#F9FAFB')+'\'">'+cleanName+'</div>';
       });
@@ -1223,7 +1224,6 @@ function filterTradeCountries(){
   });
   listHtml += '</div>';
   el.innerHTML = searchHtml + listHtml;
-  // Auto-focus internal search keep cursor at end
   var inp = document.getElementById('trade-country-inner-search');
   if(inp){
     inp.focus();
