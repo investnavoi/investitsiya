@@ -2705,8 +2705,8 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
         </div>
       </div>
       <div style="margin-top:.6rem;display:flex;gap:.5rem;align-items:center">
-        <input class="form-input" id="trade-hs-filter" placeholder="HS kod filtr (masalan: 25, 6802, 851713) - bo'sh qoldirsangiz barchasi" style="max-width:360px;font-size:.75rem">
-        <input class="form-input" id="trade-name-filter" placeholder="Mahsulot nomi bo'yicha qidirish (HS darajasiz ham ishlaydi)..." style="flex:1;font-size:.75rem" oninput="filterTradeTable()">
+        <input class="form-input" id="trade-hs-filter" placeholder="HS kod filtr (masalan: 25, 6802, 851713) - bo'sh qoldirsangiz barchasi" style="max-width:360px;font-size:.75rem" autocomplete="off" name="trade-hs-filter-no-autofill">
+        <input class="form-input" id="trade-name-filter" placeholder="Mahsulot nomi bo'yicha qidirish (HS darajasiz ham ishlaydi)..." style="flex:1;font-size:.75rem" oninput="filterTradeTable()" autocomplete="off" name="trade-name-filter-no-autofill">
       </div>
     </div>
 

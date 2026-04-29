@@ -1142,6 +1142,17 @@ function showTradeCountries(){
 }
 
 var _tradeCountryOpenGroups = {};
+// Subregion → 6 ta qit'a (Finder filtridek)
+function _tradeRegionToContinent(g){
+  var s = String(g || '');
+  if(s.indexOf('Yevropa') !== -1 || s === 'MDH') return 'Yevropa';
+  if(s === 'Markaziy Osiyo' || s === 'Sharqiy Osiyo' || s === 'J-Sh Osiyo' || s === 'Janubiy Osiyo' || s === 'Yaqin Sharq' || s.indexOf('Osiyo') !== -1) return 'Osiyo';
+  if(s === 'Shimoliy Amerika') return 'Shimoliy Amerika';
+  if(s === 'Janubiy Amerika') return 'Janubiy Amerika';
+  if(s === 'Okeaniya') return 'Okeaniya';
+  if(s.indexOf('Afrika') !== -1) return 'Afrika';
+  return s;
+}
 function filterTradeCountries(){
   var inSearch = document.getElementById('trade-country-inner-search');
   var extSearch = document.getElementById('trade-country-search');
@@ -1155,13 +1166,22 @@ function filterTradeCountries(){
   var groups = {};
   var groupOrder = [];
   filtered.forEach(function(c){
-    if(!groups[c.g]){ groups[c.g] = []; groupOrder.push(c.g); }
-    groups[c.g].push(c);
+    var cont = _tradeRegionToContinent(c.g);
+    if(!groups[cont]){ groups[cont] = []; groupOrder.push(cont); }
+    groups[cont].push(c);
+  });
+  // Qit'alar tartibi (Finder filtridek)
+  var preferredOrder = ['Osiyo','Yevropa','Shimoliy Amerika','Janubiy Amerika','Afrika','Okeaniya'];
+  groupOrder.sort(function(a,b){
+    var ai = preferredOrder.indexOf(a), bi = preferredOrder.indexOf(b);
+    if(ai === -1) ai = 99; if(bi === -1) bi = 99;
+    return ai - bi;
   });
 
   var totalGroups = {};
   TRADE_COUNTRIES.forEach(function(c){
-    totalGroups[c.g] = (totalGroups[c.g]||0) + 1;
+    var cont = _tradeRegionToContinent(c.g);
+    totalGroups[cont] = (totalGroups[cont]||0) + 1;
   });
 
   var selectedCode = (document.getElementById('trade-country')||{}).value || '';
