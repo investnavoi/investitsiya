@@ -58,11 +58,16 @@ async function openEmbassyModal(type){
     data = embassy ? embassy.foreignEmbassy : null;
   }
 
-  // Count companies for this country — UNIQUE kompaniyalar (KPI va xarita bilan mos)
-  // FAQAT DB.investorCompanies (xarita bilan bir xil manba) — finderResults qo'shilmaydi
+  // Count companies for this country — UNIQUE kompaniyalar (xarita bilan AYNAN mos)
+  // FAQAT DB.investorCompanies + xarita bilan bir xil filter logic (getInvestorGeoStateCode)
   var co = DB.investorCompanies || [];
   var rawCountryRecords = co.filter(function(c){
-    return typeof matchesCountry === 'function' ? matchesCountry(c.davlat||c.country||'', code) : (String(c.davlat||c.country||'').toLowerCase().indexOf(cName.toLowerCase()) !== -1);
+    if(typeof getInvestorGeoStateCode === 'function'){
+      return getInvestorGeoStateCode(c, {}) === code;
+    }
+    return typeof matchesCountry === 'function'
+      ? matchesCountry(c.davlat||c.country||'', code)
+      : (String(c.davlat||c.country||'').toLowerCase().indexOf(cName.toLowerCase()) !== -1);
   });
   // Dedupe by group key — har kompaniya 1 marta hisoblanadi (parent + child + duplikatlar yo'q)
   var countryCompanies = (function(){
@@ -344,9 +349,12 @@ async function generateEmbassyAiLetter(countryCode, type){
     if(typeof callGemini !== 'function'){ throw new Error('Gemini funksiyasi topilmadi'); }
     if(typeof getGeminiKey === 'function' && !getGeminiKey()){ throw new Error('Gemini API kalit yo\'q. Sozlamalardan qo\'shing.'); }
     var cName = _embassyCountryNames[countryCode] || countryCode;
-    // FAQAT DB.investorCompanies (xarita va KPI bilan bir xil manba)
+    // FAQAT DB.investorCompanies + xarita bilan AYNAN bir xil filter (getInvestorGeoStateCode)
     var co = DB.investorCompanies || [];
     var rawByCountry = co.filter(function(c){
+      if(typeof getInvestorGeoStateCode === 'function'){
+        return getInvestorGeoStateCode(c, {}) === countryCode;
+      }
       return matchesCountry(c.davlat||c.country||'', countryCode);
     });
     // Dedupe — har kompaniya 1 marta (KPI bilan mos)
