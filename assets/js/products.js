@@ -1209,12 +1209,12 @@ function filterTradeCountries(){
           '</span>'+
         '</div>';
     if(isOpen){
-      listHtml += '<div style="padding:4px 0 8px;display:flex;flex-direction:column;gap:2px">';
+      listHtml += '<div style="padding:4px 10px 8px;display:flex;flex-wrap:wrap;gap:.25rem">';
       arr.forEach(function(c){
         var cleanName = c.n.slice(c.n.indexOf(' ')+1);
         var sel = (selectedCode === c.c);
         listHtml += '<div onclick="selectTradeCountry(\''+c.c+'\',\''+cleanName.replace(/'/g,"\\'")+'\')" '+
-          'style="padding:5px 12px 5px 24px;cursor:pointer;font-size:.7rem;color:#344054;background:'+(sel?'rgba(70,95,255,.1)':'#F9FAFB')+';border-radius:6px;border:1px solid '+(sel?'rgba(70,95,255,.3)':'#E5E7EB')+';font-weight:500;transition:all .15s" '+
+          'style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;cursor:pointer;font-size:.68rem;color:#344054;background:'+(sel?'rgba(70,95,255,.1)':'#F9FAFB')+';border-radius:6px;border:1px solid '+(sel?'rgba(70,95,255,.3)':'#E5E7EB')+';font-weight:500;transition:all .15s" '+
           'onmouseenter="this.style.background=\'rgba(70,95,255,.08)\'" onmouseleave="this.style.background=\''+(sel?'rgba(70,95,255,.1)':'#F9FAFB')+'\'">'+cleanName+'</div>';
       });
       listHtml += '</div>';
