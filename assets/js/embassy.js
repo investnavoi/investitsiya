@@ -40,9 +40,11 @@ function updateEmbassyButtons(countryCode){
   }
 }
 
-function openEmbassyModal(type){
+async function openEmbassyModal(type){
   var code = _selectedEmbassyCountry;
   if(!code){ toast('⚠️ Avval xaritadan davlat tanlang','error'); return; }
+  // Firebase'dan saqlangan AI xatlarni boshqa kompyuterda ham yuklash uchun
+  try { if(typeof ensureCollectionLoaded === 'function') await ensureCollectionLoaded('embassyLetters'); } catch(_e){}
   var cName = _embassyCountryNames[code] || code;
   var embassy = getEmbassyForCountry(code);
   var data = null;
@@ -56,10 +58,10 @@ function openEmbassyModal(type){
     data = embassy ? embassy.foreignEmbassy : null;
   }
 
-  // Count companies for this country — UNIQUE kompaniyalar (KPI bilan mos)
+  // Count companies for this country — UNIQUE kompaniyalar (KPI va xarita bilan mos)
+  // FAQAT DB.investorCompanies (xarita bilan bir xil manba) — finderResults qo'shilmaydi
   var co = DB.investorCompanies || [];
-  var finder = DB.finderResults || [];
-  var rawCountryRecords = co.concat(finder).filter(function(c){
+  var rawCountryRecords = co.filter(function(c){
     return typeof matchesCountry === 'function' ? matchesCountry(c.davlat||c.country||'', code) : (String(c.davlat||c.country||'').toLowerCase().indexOf(cName.toLowerCase()) !== -1);
   });
   // Dedupe by group key — har kompaniya 1 marta hisoblanadi (parent + child + duplikatlar yo'q)
@@ -258,13 +260,29 @@ function isCompanyInEmbassyLetter(c, countryCode, type){
   return !!(c.embassyLetters && c.embassyLetters[key]);
 }
 function getEmbassyCache(code, type){
+  var key = embassyMarkKey(code, type);
+  // 1. Avval Firebase'dagi embassyLetters collection'idan qidirish (cross-device sync)
+  if(Array.isArray(DB.embassyLetters)){
+    var hit = DB.embassyLetters.find(function(l){ return String(l.id) === key; });
+    if(hit) return hit;
+  }
+  // 2. Fallback — eski legacy DB.settings.embassyAiCache
   var m = (DB.settings && DB.settings.embassyAiCache) || {};
-  return m[embassyMarkKey(code,type)] || null;
+  return m[key] || null;
 }
 function setEmbassyCache(code, type, payload){
+  var key = embassyMarkKey(code, type);
+  // 1. Firebase embassyLetters collection — cross-device sync uchun asosiy manba
+  var docPayload = Object.assign({}, payload, { id: key });
+  if(!Array.isArray(DB.embassyLetters)) DB.embassyLetters = [];
+  var existingIdx = DB.embassyLetters.findIndex(function(l){ return String(l.id) === key; });
+  if(existingIdx !== -1) DB.embassyLetters[existingIdx] = docPayload;
+  else DB.embassyLetters.push(docPayload);
+  if(typeof fbSave === 'function') fbSave('embassyLetters', docPayload);
+  // 2. Legacy fallback — DB.settings.embassyAiCache (eski clientlar uchun)
   if(!DB.settings) DB.settings = {};
   if(!DB.settings.embassyAiCache) DB.settings.embassyAiCache = {};
-  DB.settings.embassyAiCache[embassyMarkKey(code,type)] = payload;
+  DB.settings.embassyAiCache[key] = payload;
   if(typeof fbSaveSettings==='function') fbSaveSettings(DB.settings);
 }
 
@@ -326,9 +344,9 @@ async function generateEmbassyAiLetter(countryCode, type){
     if(typeof callGemini !== 'function'){ throw new Error('Gemini funksiyasi topilmadi'); }
     if(typeof getGeminiKey === 'function' && !getGeminiKey()){ throw new Error('Gemini API kalit yo\'q. Sozlamalardan qo\'shing.'); }
     var cName = _embassyCountryNames[countryCode] || countryCode;
+    // FAQAT DB.investorCompanies (xarita va KPI bilan bir xil manba)
     var co = DB.investorCompanies || [];
-    var finder = DB.finderResults || [];
-    var rawByCountry = co.concat(finder).filter(function(c){
+    var rawByCountry = co.filter(function(c){
       return matchesCountry(c.davlat||c.country||'', countryCode);
     });
     // Dedupe — har kompaniya 1 marta (KPI bilan mos)
