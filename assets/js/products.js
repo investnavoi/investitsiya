@@ -2199,22 +2199,33 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
   // Chart — top 20
   var top20 = data.slice(0,20);
   document.getElementById('tradeChartCard').style.display = 'block';
-  document.getElementById('tradeChartTitle').textContent = '📊 '+countryName+' — TOP 20 '+flowName+' mahsulotlari ('+year+')' + (_tradeSource?' | '+_tradeSource:'');
+  document.getElementById('tradeChartTitle').textContent = countryName+' — TOP 20 '+flowName+' mahsulotlari ('+year+')' + (_tradeSource?' · '+_tradeSource:'');
 
-  // Build bar chart with HTML
+  // Modern bar chart — clean rows, brand color gradient, separate text
   var maxVal = top20[0]?top20[0].value:1;
   document.getElementById('tradeChartArea').innerHTML = top20.map(function(r,i){
     var pct = Math.max(r.value/maxVal*100, 2);
     var valStr = formatTradeMoney(r.value);
-    var colors = ['#4361EE','#059669','#F59E0B','#EF233C','#8B5CF6','#14B8A6','#F97316','#EC4899','#6366F1','#10B981'];
-    var color = colors[i%colors.length];
-    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'+
-      '<div style="width:60px;font-size:.55rem;text-align:right;color:var(--text3);flex-shrink:0">'+r.hsCode+'</div>'+
-      '<div style="flex:1;height:22px;background:var(--border);border-radius:3px;overflow:hidden;position:relative">'+
-        '<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:3px"></div>'+
-        '<div style="position:absolute;left:4px;top:2px;font-size:.55rem;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.5)">'+translateHS(r.hsCode,r.description).slice(0,40)+'</div>'+
+    var prodName = translateHS(r.hsCode, r.description);
+    // Rank-based subtle color shift (brand blue → softer)
+    var alpha = 1 - (i * 0.025); // 1.0 → 0.5
+    if(alpha < 0.55) alpha = 0.55;
+    var barColor = 'rgba(67, 97, 238, '+alpha.toFixed(2)+')';
+    var bgColor = 'rgba(67, 97, 238, .06)';
+    return '<div style="display:flex;align-items:center;gap:12px;padding:8px 4px;border-bottom:1px solid #F3F4F6">'+
+      // Rank
+      '<div style="width:22px;font-size:.7rem;font-weight:600;color:#9CA3AF;text-align:right;flex-shrink:0">'+(i+1)+'</div>'+
+      // HS code badge
+      '<div style="font-family:Menlo,Consolas,monospace;font-size:.65rem;font-weight:600;color:#6B7280;background:#F3F4F6;padding:3px 8px;border-radius:5px;flex-shrink:0;letter-spacing:.3px">'+r.hsCode+'</div>'+
+      // Product name + bar
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:.78rem;font-weight:500;color:#14233F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">'+prodName+'</div>'+
+        '<div style="height:6px;background:'+bgColor+';border-radius:3px;overflow:hidden">'+
+          '<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px;transition:width .4s ease"></div>'+
+        '</div>'+
       '</div>'+
-      '<div style="width:70px;font-size:.6rem;font-weight:700;color:var(--text);text-align:right">'+valStr+'</div>'+
+      // Value
+      '<div style="width:90px;font-size:.85rem;font-weight:700;color:#14233F;text-align:right;flex-shrink:0">'+valStr+'</div>'+
     '</div>';
   }).join('');
   var chartMeta = document.getElementById('tradeChartMeta');
