@@ -1574,10 +1574,13 @@ function renderTradeSubTabs(countryName){
     return sum + (Number(row.value)||0);
   }, 0);
   var exportCount = (_tradeUzExportData||[]).length;
+  var iconNavoi = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><path d="M2 20h20M5 20V8l5 4V8l5 4V4h4v16"/></svg>';
+  var iconExport = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
+  var iconList = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
   tabs.innerHTML =
-    '<button class="trade-subtab '+(_tradeViewMode==='navoi'?'active':'')+'" onclick="setTradeViewMode(\'navoi\')">🏭 Navoiy viloyatida ishlab chiqariladigan mahsulotlar ('+navoiCount+' | '+formatTradeMoney(navoiTotalValue)+')</button>'+
-    '<button class="trade-subtab '+(_tradeViewMode==='uzexport'?'active':'')+'" onclick="setTradeViewMode(\'uzexport\')">🇺🇿 O\'zbekistondan '+(countryName||'shu davlatga')+' eksport bo\'lgan ('+exportCount+')</button>'+
-    '<button class="trade-subtab '+(_tradeViewMode==='market'?'active':'')+'" onclick="setTradeViewMode(\'market\')">📋 Mahsulotlar ro\'yxati ('+marketCount+')</button>';
+    '<button class="trade-subtab '+(_tradeViewMode==='navoi'?'active':'')+'" onclick="setTradeViewMode(\'navoi\')">'+iconNavoi+'Navoiy viloyatida ishlab chiqariladigan mahsulotlar ('+navoiCount+' | '+formatTradeMoney(navoiTotalValue)+')</button>'+
+    '<button class="trade-subtab '+(_tradeViewMode==='uzexport'?'active':'')+'" onclick="setTradeViewMode(\'uzexport\')">'+iconExport+'O\'zbekistondan '+(countryName||'shu davlatga')+' eksport bo\'lgan ('+exportCount+')</button>'+
+    '<button class="trade-subtab '+(_tradeViewMode==='market'?'active':'')+'" onclick="setTradeViewMode(\'market\')">'+iconList+'Mahsulotlar ro\'yxati ('+marketCount+')</button>';
 }
 
 function renderTradeListView(countryName, flowName, year){
@@ -1597,7 +1600,7 @@ function renderTradeListView(countryName, flowName, year){
     var navoiTotalValue = data.reduce(function(sum, row){
       return sum + (Number(row.value)||0);
     }, 0);
-    if(titleEl) titleEl.textContent = '🏭 Navoiy viloyatida ishlab chiqariladigan mahsulotlar ro\'yxati';
+    if(titleEl) titleEl.textContent = 'Navoiy viloyatida ishlab chiqariladigan mahsulotlar ro\'yxati';
     if(tariffCol) tariffCol.textContent = 'Tarif (%)';
     if(lastCol) lastCol.textContent = 'Navoiy mahsuloti';
     if(noteEl) noteEl.textContent = 'Tanlangan davlatning '+year+'-yildagi importi ichidan Navoiy viloyatida ishlab chiqariladigan mahsulotlar qoldirildi. Jami: '+data.length+' ta mahsulot, umumiy qiymat: '+formatTradeMoney(navoiTotalValue)+'. Tarif ustuni WITS - UNCTAD TRAINS rasmiy ma\'lumotidan olinadi.'+((_tradeTariffMeta&&_tradeTariffMeta.isFallback)?(' Tarif ma\'lumoti '+_tradeTariffMeta.usedYear+' yildan olindi.'):'');
@@ -1629,7 +1632,7 @@ function renderTradeListView(countryName, flowName, year){
 
   if(_tradeViewMode === 'uzexport'){
     if(tariffCol) tariffCol.textContent = 'Tarif (%)';
-    if(titleEl) titleEl.textContent = '🇺🇿 O\'zbekistondan '+(countryName||'shu davlatga')+' eksport bo\'lgan';
+    if(titleEl) titleEl.textContent = 'O\'zbekistondan '+(countryName||'shu davlatga')+' eksport bo\'lgan';
     if(lastCol) lastCol.textContent = 'Navoiy mos';
     if(noteEl){
       if(_tradeUzExportMeta && _tradeUzExportMeta.emptyReason === 'same_country') noteEl.textContent = 'Tanlangan davlat O\'zbekiston bo\'lgani uchun bu bo\'lim bo\'sh.';
@@ -1638,7 +1641,7 @@ function renderTradeListView(countryName, flowName, year){
     if(matchBtn) matchBtn.style.display = '';
   } else {
     if(tariffCol) tariffCol.textContent = 'Tarif (%)';
-    if(titleEl) titleEl.textContent = '📋 Mahsulotlar ro\'yxati';
+    if(titleEl) titleEl.textContent = 'Mahsulotlar ro\'yxati';
     if(lastCol) lastCol.textContent = 'Navoiy mos';
     if(noteEl) noteEl.textContent = (countryName||'Tanlangan davlat')+' uchun '+flowName+' mahsulotlar ro\'yxati ('+year+'). Tarif ustuni WITS - UNCTAD TRAINS rasmiy ma\'lumotidan olinadi.'+((_tradeTariffMeta&&_tradeTariffMeta.isFallback)?(' Tarif ma\'lumoti '+_tradeTariffMeta.usedYear+' yildan olindi.'):'');
     if(matchBtn) matchBtn.style.display = '';

@@ -2661,7 +2661,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
         <div class="form-group" style="flex:0 0 110px">
           <label class="form-label">📅 Yil</label>
           <select class="form-input" id="trade-year">
-            <option value="2024">2024</option><option value="2023" selected>2023</option>
+            <option value="2024" selected>2024</option><option value="2023">2023</option>
             <option value="2022">2022</option><option value="2021">2021</option><option value="2020">2020</option>
           </select>
         </div>
@@ -2674,7 +2674,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
         <div class="form-group" style="flex:0 0 120px">
           <label class="form-label">HS daraja</label>
           <select class="form-input" id="trade-hs-level">
-            <option value="all">Darajasiz / avto</option><option value="2">2-raqamli (guruh)</option><option value="4" selected>4-raqamli (kichik guruh)</option><option value="6">6-raqamli (mahsulot)</option>
+            <option value="all" selected>Darajasiz / avto</option><option value="2">2-raqamli (guruh)</option><option value="4">4-raqamli (kichik guruh)</option><option value="6">6-raqamli (mahsulot)</option>
           </select>
         </div>
         <div class="form-group" style="flex:0 0 auto">
@@ -2708,10 +2708,19 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 
     <div id="tradeTableCard" class="tcard" style="display:none">
       <div class="tc-head">
-        <div class="tc-title"><span id="trade-title-text">📋 Mahsulotlar ro'yxati</span> (<span id="trade-count">0</span>)</div>
+        <div class="tc-title" style="display:flex;align-items:center;gap:8px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#4361EE;flex-shrink:0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          <span id="trade-title-text">Mahsulotlar ro'yxati</span> (<span id="trade-count">0</span>)
+        </div>
         <div style="display:flex;gap:.5rem">
-          <button class="btn btn-sm" id="trade-export-btn" onclick="exportTradeCSV()" style="background:#059669;color:#fff;border:none">📥 CSV yuklash</button>
-          <button class="btn btn-sm" id="trade-match-btn" onclick="matchTradeWithProducts()" style="background:#4361EE;color:#fff;border:none">🔗 Navoiy mahsulotlarga moslashtirish</button>
+          <button class="btn btn-sm" id="trade-export-btn" onclick="exportTradeCSV()" style="background:#059669;color:#fff;border:none;display:inline-flex;align-items:center;gap:6px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV yuklash
+          </button>
+          <button class="btn btn-sm" id="trade-match-btn" onclick="matchTradeWithProducts()" style="background:#4361EE;color:#fff;border:none;display:inline-flex;align-items:center;gap:6px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71"/></svg>
+            Navoiy mahsulotlarga moslashtirish
+          </button>
         </div>
       </div>
       <div class="trade-subtabs" id="tradeSubTabs"></div>
