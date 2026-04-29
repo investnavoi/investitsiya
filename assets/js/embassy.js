@@ -653,11 +653,10 @@ async function generateEmbassyAiLetter(countryCode, type){
     // (Foydalanuvchi: AI xat yaratish bosilsa real malumotlar kelishi kerak)
     if(typeof callGemini === 'function' && (typeof getGeminiKey === 'function' && getGeminiKey())){
       try {
+        // Faqat foiz ma'lumotlar uchun Gemini ishlatiladi — products YO'Q (kompaniyalardagi haqiqiy mahsulotlar ishlatiladi)
         var aiPrompt = 'Sen O\'zbekiston ekspertisan. ' + cName + ' davlatining O\'zbekiston (Navoiy viloyati) bilan iqtisodiy taqqoslashini hisobla.\n\n'
-          + 'Kompaniyalar mahsulot sohalari: ' + industryList.slice(0,5).join('; ') + '\n\n'
           + 'JSON qaytar (hech qanday markdown):\n'
           + '{\n'
-          + '  "products": "qisqa o\'zbekcha mahsulot nomlari, vergul bilan (max 5 ta — masalan: granit, dolomit, ohaktosh)",\n'
           + '  "tax_pct": "X%" (' + cName + ' soliq yuklamasi - O\'zbekiston soliq yuklamasi farqi, faqat raqam %),\n'
           + '  "wage_pct": "X%" (' + cName + ' mehnat haqi O\'zbekistondan necha foiz qimmat, faqat raqam %),\n'
           + '  "infra_pct": "X%" (elektr+gaz O\'zbekistondan necha foiz qimmat, faqat raqam %),\n'
@@ -679,7 +678,9 @@ async function generateEmbassyAiLetter(countryCode, type){
           if(m){ try { aiJson = JSON.parse(m[0]); } catch(_e2){} }
         }
         if(aiJson){
-          if(aiJson.products && (!prodNames.length || prodNames.length < 2)){
+          // products — FAQAT kompaniyalarda hech qanday soha topilmaganda AI dan olinadi
+          // Aks holda kompaniyalardagi haqiqiy mahsulotlar (prodNames) ishlatiladi
+          if(aiJson.products && !prodNames.length){
             prodSummary = String(aiJson.products).trim();
           }
           if(aiJson.tax_pct && !sSolPct) sSolPct = String(aiJson.tax_pct).trim();
