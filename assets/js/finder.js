@@ -1638,10 +1638,23 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
     '}\n\n' +
     'If you cannot find verified real people — return {"found": false, "contacts": []}.';
   try {
-    var resp = await callGemini({
-      contents: [{role:'user', parts:[{text: prompt}]}],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 2048, responseMimeType: 'application/json' }
-    });
+    // Google Search grounding orqali real web qidiruv (LinkedIn, sayt sahifalari)
+    // Tools bilan responseMimeType birga ishlamaydi — JSON parse manually qilamiz
+    var resp;
+    try {
+      resp = await callGemini({
+        contents: [{role:'user', parts:[{text: prompt}]}],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 }
+      });
+    } catch(searchErr){
+      // Google search failed — tools'siz fallback (faqat training data)
+      console.warn('[Gemini lead] Google search failed, fallback:', searchErr.message);
+      resp = await callGemini({
+        contents: [{role:'user', parts:[{text: prompt}]}],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 2048, responseMimeType: 'application/json' }
+      });
+    }
     var raw = '';
     if(resp && resp.candidates && resp.candidates[0]){
       var cand = resp.candidates[0];
