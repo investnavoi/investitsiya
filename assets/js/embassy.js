@@ -96,32 +96,41 @@ async function openEmbassyModal(type){
   var letterSubject, letterBody;
   var cnt = countryCompanies.length;
 
-  // Iqtisodiy Tahlil cache'dan real raqamlarni o'qiymiz (ai-letter.js'da saqlangan)
-  function _fmtUsd(v){
-    var n = Number(v) || 0;
-    if(n >= 1000000) return (n/1000000).toFixed(2).replace(/\.?0+$/,'') + ' mln';
-    if(n >= 1000) return Math.round(n/1000) + ' ming';
-    return Math.round(n).toString();
-  }
-  function _findSavings(breakdown, label){
-    if(!Array.isArray(breakdown)) return 0;
+  // Iqtisodiy Tahlil cache'dan FOIZ qiymatlari (Iqtisodiy Tahlil panelida ko'rinadigan)
+  function _findPctTop(breakdown, label){
+    if(!Array.isArray(breakdown)) return '';
     var hit = breakdown.find(function(s){ return String(s.label || '').toLowerCase().indexOf(label.toLowerCase()) !== -1; });
-    return hit ? Number(hit.value || 0) : 0;
+    if(!hit) return '';
+    var p = String(hit.pct || '').trim();
+    if(p && !/%/.test(p)) p = p + '%';
+    return p;
   }
   var savingsCache = (window._aiSavingsCache && window._aiSavingsCache[String(cName).toLowerCase().trim()]) || null;
-  var _solSv = savingsCache ? _findSavings(savingsCache.breakdown, 'soliq') : 0;
-  var _wageSv = savingsCache ? _findSavings(savingsCache.breakdown, 'mehnat') : 0;
-  var _elSv = savingsCache ? _findSavings(savingsCache.breakdown, 'elektr') : 0;
-  var _gasSv = savingsCache ? _findSavings(savingsCache.breakdown, 'gaz') : 0;
-  var _trSv = savingsCache ? _findSavings(savingsCache.breakdown, 'transport') : 0;
-  var _infraSv = _elSv + _gasSv; // infratuzilma = elektr + gaz
-  var _totalSv = savingsCache ? Number(savingsCache.totalAnnualSaving || 0) : 0;
-  // Agar cache bo'sh bo'lsa "(...)" placeholder, aks holda real raqam
-  var _solStr = _solSv > 0 ? _fmtUsd(_solSv) : '(...)';
-  var _wageStr = _wageSv > 0 ? _fmtUsd(_wageSv) : '(...)';
-  var _infraStr = _infraSv > 0 ? _fmtUsd(_infraSv) : '(...)';
-  var _trStr = _trSv > 0 ? _fmtUsd(_trSv) : '(...)';
-  var _totalStr = _totalSv > 0 ? _fmtUsd(_totalSv) : '(...)';
+  var _solPctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'soliq') : '';
+  var _wagePctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'mehnat') : '';
+  var _elPctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'elektr') : '';
+  var _gasPctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'gaz') : '';
+  var _trPctTop = savingsCache ? _findPctTop(savingsCache.breakdown, 'transport') : '';
+  var _infraVals = [];
+  if(_elPctTop) _infraVals.push(parseFloat(_elPctTop));
+  if(_gasPctTop) _infraVals.push(parseFloat(_gasPctTop));
+  var _infraPctTop = _infraVals.length
+    ? (_infraVals.reduce(function(a,b){return a+b;},0) / _infraVals.length).toFixed(0) + '%'
+    : '';
+  var _totalUsdTop = savingsCache ? Number(savingsCache.totalAnnualSaving || 0) : 0;
+  function _fmtTotalUsdTop(v){
+    var n = Number(v) || 0;
+    if(n <= 0) return '(...)';
+    if(n >= 1000000) return (n/1000000).toFixed(2).replace(/\.?0+$/,'') + ' mln AQSh dollari';
+    if(n >= 1000) return Math.round(n/1000) + ' ming AQSh dollari';
+    return Math.round(n) + ' AQSh dollari';
+  }
+  // Foiz qiymatlari — yo'q bo'lsa "ma'lumot yo'q"
+  var _solStr = _solPctTop || 'ma\'lumot yo\'q';
+  var _wageStr = _wagePctTop || 'ma\'lumot yo\'q';
+  var _infraStr = _infraPctTop || 'ma\'lumot yo\'q';
+  var _trStr = _trPctTop || 'ma\'lumot yo\'q';
+  var _totalStr = _fmtTotalUsdTop(_totalUsdTop);
   // Maqsad davlatlar — O'zbekistondan tashqari 12 ta davlat (Maqsad davlatlar filterdan)
   var _targetCountriesUz = 'Turkmaniston, Tojikiston, Qirg\'iziston, Qozog\'iston, Mongoliya, Rossiya, Ozarbayjon, Gruziya, Armaniston, Eron, Afg\'oniston, Pokiston';
   var _targetCountriesEn = 'Turkmenistan, Tajikistan, Kyrgyzstan, Kazakhstan, Mongolia, Russia, Azerbaijan, Georgia, Armenia, Iran, Afghanistan, Pakistan';
@@ -140,11 +149,11 @@ async function openEmbassyModal(type){
       + 'As part of strategic analyses and studies of the investment climate aimed at attracting foreign investors to Navoi Region, ' + cnt + ' leading companies operating in ' + cName + ' have been identified. (the list is attached)\n\n'
       + 'The identified companies are international leaders in the production of (...) products. Considering the full alignment with Navoi Region\'s mineral-raw material base and existing industrial infrastructure, attracting them as investors to the region is of strategic importance.\n\n'
       + 'According to comprehensive economic calculations, if these companies establish their production capacities in Navoi Region and export the finished products to ' + _targetCountriesEn + ', the following economic efficiency indicators have been identified:\n\n'
-      + '— Tax incentive savings: ' + _solStr + ' USD;\n'
-      + '— Labor resource cost savings: ' + _wageStr + ' USD;\n'
-      + '— Infrastructure cost savings: ' + _infraStr + ' USD;\n'
-      + '— Transport and logistics cost savings: ' + _trStr + ' USD.\n\n'
-      + 'In total, if these companies establish operations in Navoi Region, an annual economic effect of ' + _totalStr + ' USD can be achieved. This will not only provide investors with high profitability, but will also serve as an important basis for strengthening trade and economic ties between our countries, creating new jobs in Navoi Region, and expanding the region\'s export potential.\n\n'
+      + '— Tax burden reduction: ' + _solStr + ';\n'
+      + '— Labor cost savings: ' + _wageStr + ';\n'
+      + '— Infrastructure (electricity + gas) cost savings: ' + _infraStr + ';\n'
+      + '— Transport and logistics cost savings: ' + _trStr + '.\n\n'
+      + 'In total, if these companies establish operations in Navoi Region, an annual economic effect of approximately ' + _totalStr + ' can be achieved. This will not only provide investors with high profitability, but will also serve as an important basis for strengthening trade and economic ties between our countries, creating new jobs in Navoi Region, and expanding the region\'s export potential.\n\n'
       + 'Taking the above into consideration, we kindly request your assistance in establishing initial contacts with these companies, providing practical support during negotiations, and helping to build an effective cooperation bridge between our region and foreign investors.\n\n'
       + 'For additional information and detailed negotiations, please contact the responsible officer:\n\n'
       + 'Department of Investments, Industry and Trade of Navoi Region\n'
@@ -163,11 +172,11 @@ async function openEmbassyModal(type){
       + 'В рамках стратегических аналитических работ и исследования инвестиционной среды, направленных на привлечение иностранных инвесторов в Навоийскую область, выявлено ' + cnt + ' ведущих компаний, осуществляющих деятельность на территории ' + cName + '. (список прилагается)\n\n'
       + 'Выявленные компании являются мировыми лидерами в производстве продукции (...). С учётом полного соответствия минерально-сырьевой базе и существующей промышленной инфраструктуре Навоийской области, их привлечение в качестве инвесторов имеет стратегическое значение.\n\n'
       + 'Согласно проведённым комплексным экономическим расчётам, при размещении производственных мощностей данных компаний в Навоийской области и экспорте готовой продукции в ' + _targetCountriesRu + ', были выявлены следующие показатели экономической эффективности:\n\n'
-      + '— экономия за счёт налоговых льгот: ' + _solStr + ' долларов США;\n'
-      + '— экономия на трудовых ресурсах: ' + _wageStr + ' долларов США;\n'
-      + '— экономия на инфраструктурных расходах: ' + _infraStr + ' долларов США;\n'
-      + '— экономия на транспортных и логистических расходах: ' + _trStr + ' долларов США.\n\n'
-      + 'В общей сложности, при налаживании деятельности этих компаний в Навоийской области, появляется возможность достижения ежегодного экономического эффекта в размере ' + _totalStr + ' долларов США. Это станет не только источником высокой доходности для инвесторов, но и важной основой для укрепления торгово-экономических связей между странами, создания новых рабочих мест в Навоийской области и расширения экспортного потенциала региона.\n\n'
+      + '— снижение налоговой нагрузки: ' + _solStr + ';\n'
+      + '— экономия на трудовых ресурсах: ' + _wageStr + ';\n'
+      + '— экономия на инфраструктуре (электричество + газ): ' + _infraStr + ';\n'
+      + '— экономия на транспортных и логистических расходах: ' + _trStr + '.\n\n'
+      + 'В общей сложности, при налаживании деятельности этих компаний в Навоийской области, появляется возможность достижения ежегодного экономического эффекта в размере приблизительно ' + _totalStr + '. Это станет не только источником высокой доходности для инвесторов, но и важной основой для укрепления торгово-экономических связей между странами, создания новых рабочих мест в Навоийской области и расширения экспортного потенциала региона.\n\n'
       + 'Учитывая вышеизложенное, просим Вас оказать содействие в установлении первоначальных контактов с указанными компаниями, оказать практическую помощь в переговорах и помочь в создании эффективного моста сотрудничества между нашим регионом и иностранными инвесторами.\n\n'
       + 'Для получения дополнительной информации и подробных переговоров можно связаться с ответственным сотрудником:\n\n'
       + 'Управление инвестиций, промышленности и торговли Навоийской области\n'
@@ -186,11 +195,11 @@ async function openEmbassyModal(type){
       + '为吸引外国投资者到纳沃伊州，在开展战略分析和投资环境研究工作中，已确认在' + cName + '境内运营的 ' + cnt + ' 家领先企业。（名单附后）\n\n'
       + '已确认的企业在(...)产品制造领域具有国际领先地位。考虑到与纳沃伊州矿产原材料基础和现有工业基础设施的完全匹配，吸引这些企业作为投资者具有重要的战略意义。\n\n'
       + '根据综合经济测算，如果这些企业在纳沃伊州建立生产能力，并将成品出口到' + _targetCountriesZh + '，已确定以下经济效益指标：\n\n'
-      + '— 税收优惠节约：' + _solStr + ' 美元；\n'
-      + '— 劳动力成本节约：' + _wageStr + ' 美元；\n'
-      + '— 基础设施成本节约：' + _infraStr + ' 美元；\n'
-      + '— 运输和物流成本节约：' + _trStr + ' 美元。\n\n'
-      + '总体而言，如果这些企业在纳沃伊州开展业务，每年可实现 ' + _totalStr + ' 美元的经济效益。这不仅为投资者带来高收益，也将成为加强两国贸易经济联系、在纳沃伊州创造新就业岗位以及扩大地区出口潜力的重要基础。\n\n'
+      + '— 税收负担降低：' + _solStr + '；\n'
+      + '— 劳动力成本节约：' + _wageStr + '；\n'
+      + '— 基础设施（电力+燃气）成本节约：' + _infraStr + '；\n'
+      + '— 运输和物流成本节约：' + _trStr + '。\n\n'
+      + '总体而言，如果这些企业在纳沃伊州开展业务，每年可实现约 ' + _totalStr + ' 的经济效益。这不仅为投资者带来高收益，也将成为加强两国贸易经济联系、在纳沃伊州创造新就业岗位以及扩大地区出口潜力的重要基础。\n\n'
       + '鉴于上述情况，恳请贵馆协助与上述企业建立初步联系，在谈判过程中提供实际帮助，并协助在我州与外国投资者之间架起有效的合作桥梁。\n\n'
       + '关于详细信息和具体谈判事宜，请联系负责人员：\n\n'
       + '纳沃伊州投资、工业和贸易管理局\n'
@@ -210,11 +219,11 @@ async function openEmbassyModal(type){
       + 'Xorijiy investorlarni Navoiy viloyatiga jalb qilish maqsadida olib borilayotgan strategik tahlillar va investitsion muhitni o\'rganish ishlari doirasida ' + cName + ' davlati hududida faoliyat yuritayotgan ' + cnt + ' ta yetakchi kompaniya aniqlangan. (ilova qilinadi)\n\n'
       + 'Aniqlangan kompaniyalar (...) mahsulotlarini ishlab chiqarish sohasida xalqaro miqyosda yetakchi o\'rinni egallab kelmoqda hamda Navoiy viloyatining mineral-xomashyo bazasi va mavjud sanoat infratuzilmasi bilan to\'liq muvofiqligi inobatga olingan holda, ularni viloyatga investor sifatida jalb etish strategik ahamiyatga molikdir.\n\n'
       + 'O\'tkazilgan kompleks iqtisodiy hisob-kitoblarga muvofiq, mazkur kompaniyalar Navoiy viloyatida o\'z ishlab chiqarish quvvatlarini tashkil etib, tayyor mahsulotlarni ' + _targetCountriesUz + ' davlatlariga eksport qilgan taqdirda quyidagi iqtisodiy samaradorlik ko\'rsatkichlari aniqlandi:\n\n'
-      + '— soliq imtiyozlari hisobiga ' + _solStr + ' AQSh dollari miqdorida tejam;\n'
-      + '— mehnat resurslari xarajatlarida ' + _wageStr + ' AQSh dollari miqdorida iqtisod;\n'
-      + '— infratuzilma xarajatlarida ' + _infraStr + ' AQSh dollari miqdorida tejam;\n'
-      + '— transport va logistika xarajatlarida ' + _trStr + ' AQSh dollari miqdorida iqtisod.\n\n'
-      + 'Umumiy hisobda, mazkur kompaniyalar Navoiy viloyatida o\'z faoliyatini yo\'lga qo\'ygan taqdirda yillik ' + _totalStr + ' AQSh dollari miqdorida iqtisodiy samaraga erishish imkoniyati yaratiladi. Bu esa nafaqat investorlar uchun yuqori daromadlilik, balki ikki davlat o\'rtasidagi savdo-iqtisodiy aloqalarning mustahkamlanishi, Navoiy viloyatida yangi ish o\'rinlarining yaratilishi va mintaqaning eksport salohiyatining kengayishi uchun muhim asos bo\'lib xizmat qiladi.\n\n'
+      + '— soliq yuklamasi ' + _solStr + ' kamayadi;\n'
+      + '— mehnat resurslari xarajatlarida ' + _wageStr + ' iqtisod qilinadi;\n'
+      + '— infratuzilma (elektr energiyasi + tabiiy gaz) xarajatlarida ' + _infraStr + ' tejam;\n'
+      + '— transport va logistika xarajatlarida ' + _trStr + ' iqtisod qilinadi.\n\n'
+      + 'Umumiy hisobda, mazkur kompaniyalar Navoiy viloyatida o\'z faoliyatini yo\'lga qo\'ygan taqdirda yillik taxminan ' + _totalStr + ' miqdorida iqtisodiy samaraga erishish imkoniyati yaratiladi. Bu esa nafaqat investorlar uchun yuqori daromadlilik, balki ikki davlat o\'rtasidagi savdo-iqtisodiy aloqalarning mustahkamlanishi, Navoiy viloyatida yangi ish o\'rinlarining yaratilishi va mintaqaning eksport salohiyatining kengayishi uchun muhim asos bo\'lib xizmat qiladi.\n\n'
       + 'Yuqoridagilarni inobatga olgan holda, Sizdan mazkur kompaniyalar bilan dastlabki aloqalar o\'rnatishga ko\'maklashishingiz, muzokaralar jarayonida amaliy yordam ko\'rsatishingiz hamda viloyatimiz va xorijiy investorlar o\'rtasida samarali hamkorlik ko\'prigini yaratishda yordam berishingizni so\'raymiz.\n\n'
       + 'Qo\'shimcha ma\'lumotlar va batafsil muzokaralar yuzasidan quyidagi mas\'ul xodim bilan bog\'lanishingiz mumkin:\n\n'
       + 'Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi\n'
@@ -555,12 +564,15 @@ async function generateEmbassyAiLetter(countryCode, type){
     // Maqsad davlatlar — O'zbekistondan tashqari 12 ta davlat (Maqsad davlatlar filterdan)
     var targetSummary = 'Turkmaniston, Tojikiston, Qirg\'iziston, Qozog\'iston, Mongoliya, Rossiya, Ozarbayjon, Gruziya, Armaniston, Eron, Afg\'oniston, Pokiston';
 
-    // Iqtisodiy Tahlil cache'dan haqiqiy summalar (ai-letter.js'da saqlangan)
-    function _fmtUsdLong(n){
-      var v = Number(n) || 0;
-      if(v <= 0) return '';
-      if(v >= 1000000) return v.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' (taxminan ' + (v/1000000).toFixed(2).replace(/\.?0+$/,'') + ' mln)';
-      return v.toLocaleString('en-US', {maximumFractionDigits: 0});
+    // Iqtisodiy Tahlil cache'dan haqiqiy FOIZLAR (ai-letter.js'da saqlangan, panelda ko'rinadigan)
+    function _findPct(breakdown, label){
+      if(!Array.isArray(breakdown)) return '';
+      var hit = breakdown.find(function(s){ return String(s.label || '').toLowerCase().indexOf(label.toLowerCase()) !== -1; });
+      if(!hit) return '';
+      var p = String(hit.pct || '').trim();
+      // Foiz belgisini qo'shish (agar yo'q bo'lsa)
+      if(p && !/%/.test(p)) p = p + '%';
+      return p;
     }
     function _findSv(breakdown, label){
       if(!Array.isArray(breakdown)) return 0;
@@ -568,26 +580,34 @@ async function generateEmbassyAiLetter(countryCode, type){
       return hit ? Number(hit.value || 0) : 0;
     }
     var sCache = (window._aiSavingsCache && window._aiSavingsCache[String(cName).toLowerCase().trim()]) || null;
-    var sSol = sCache ? _findSv(sCache.breakdown, 'soliq') : 0;
-    var sWage = sCache ? _findSv(sCache.breakdown, 'mehnat') : 0;
-    var sEl = sCache ? _findSv(sCache.breakdown, 'elektr') : 0;
-    var sGas = sCache ? _findSv(sCache.breakdown, 'gaz') : 0;
-    var sTr = sCache ? _findSv(sCache.breakdown, 'transport') : 0;
-    var sInfra = sEl + sGas;
-    var sTotal = sCache ? Number(sCache.totalAnnualSaving || 0) : 0;
-    // Fallback: agar cache yo'q bo'lsa, totalUsd dan tahminiy hisoblash
-    if(sTotal <= 0 && totalUsd > 0){
-      sTotal = Math.round(totalUsd * 0.18);
-      sSol = Math.round(sTotal * 0.30);
-      sWage = Math.round(sTotal * 0.35);
-      sInfra = Math.round(sTotal * 0.10);
-      sTr = Math.round(sTotal * 0.25);
+    var sSolPct = sCache ? _findPct(sCache.breakdown, 'soliq') : '';
+    var sWagePct = sCache ? _findPct(sCache.breakdown, 'mehnat') : '';
+    var sElPct = sCache ? _findPct(sCache.breakdown, 'elektr') : '';
+    var sGasPct = sCache ? _findPct(sCache.breakdown, 'gaz') : '';
+    var sTrPct = sCache ? _findPct(sCache.breakdown, 'transport') : '';
+    // Infratuzilma = elektr + gaz foizlarining o'rtachasi (yoki faqat mavjudi)
+    var infraVals = [];
+    if(sElPct) infraVals.push(parseFloat(sElPct));
+    if(sGasPct) infraVals.push(parseFloat(sGasPct));
+    var sInfraPct = infraVals.length
+      ? (infraVals.reduce(function(a,b){return a+b;},0) / infraVals.length).toFixed(0) + '%'
+      : '';
+    // Jami iqtisod foiz — hisoblanmaydi (qulay umumlashtirish yo'q)
+    // Buning o'rniga jami USD ko'rsatamiz
+    var sTotalUsd = sCache ? Number(sCache.totalAnnualSaving || 0) : 0;
+    function _fmtTotalUsd(v){
+      var n = Number(v) || 0;
+      if(n <= 0) return '(...)';
+      if(n >= 1000000) return (n/1000000).toFixed(2).replace(/\.?0+$/,'') + ' mln AQSh dollari';
+      if(n >= 1000) return Math.round(n/1000) + ' ming AQSh dollari';
+      return Math.round(n) + ' AQSh dollari';
     }
-    var sSolStr = _fmtUsdLong(sSol) || '(...)';
-    var sWageStr = _fmtUsdLong(sWage) || '(...)';
-    var sInfraStr = _fmtUsdLong(sInfra) || '(...)';
-    var sTrStr = _fmtUsdLong(sTr) || '(...)';
-    var sTotalStr = _fmtUsdLong(sTotal) || '(...)';
+    // Foiz qiymatlari - ko'rsatish uchun (mavjud bo'lmasa "ma'lumot yo'q")
+    var sSolStr = sSolPct || 'ma\'lumot yo\'q';
+    var sWageStr = sWagePct || 'ma\'lumot yo\'q';
+    var sInfraStr = sInfraPct || 'ma\'lumot yo\'q';
+    var sTrStr = sTrPct || 'ma\'lumot yo\'q';
+    var sTotalStr = _fmtTotalUsd(sTotalUsd);
 
     // Til detection — bir xil mantiq openEmbassyModal bilan
     var _isCisAi = ['RU','KZ','KG','TJ','BY','AM','AZ','GE','MD','UA','TM'].indexOf(countryCode) !== -1;
@@ -624,11 +644,11 @@ async function generateEmbassyAiLetter(countryCode, type){
         + 'As part of strategic analyses and studies of the investment climate aimed at attracting foreign investors to Navoi Region, ' + cnt + ' leading companies operating in ' + cName + ' have been identified. (the list is attached)\n\n'
         + 'The identified companies are international leaders in the production of ' + prodSummary + ' products. Considering the full alignment with Navoi Region\'s mineral-raw material base and existing industrial infrastructure, attracting them as investors to the region is of strategic importance.\n\n'
         + 'According to comprehensive economic calculations, if these companies establish their production capacities in Navoi Region and export the finished products to ' + _aiTargetSummary + ', the following economic efficiency indicators have been identified:\n\n'
-        + '— Tax incentive savings: ' + sSolStr + ' USD;\n'
-        + '— Labor resource cost savings: ' + sWageStr + ' USD;\n'
-        + '— Infrastructure cost savings: ' + sInfraStr + ' USD;\n'
-        + '— Transport and logistics cost savings: ' + sTrStr + ' USD.\n\n'
-        + 'In total, if these companies establish operations in Navoi Region, an annual economic effect of ' + sTotalStr + ' USD can be achieved. This will not only provide investors with high profitability, but will also serve as an important basis for strengthening trade and economic ties between our countries, creating new jobs in Navoi Region, and expanding the region\'s export potential.\n\n'
+        + '— Tax burden reduction: ' + sSolStr + ';\n'
+        + '— Labor cost savings: ' + sWageStr + ';\n'
+        + '— Infrastructure (electricity + gas) cost savings: ' + sInfraStr + ';\n'
+        + '— Transport and logistics cost savings: ' + sTrStr + '.\n\n'
+        + 'In total, if these companies establish operations in Navoi Region, an annual economic effect of approximately ' + sTotalStr + ' can be achieved. This will not only provide investors with high profitability, but will also serve as an important basis for strengthening trade and economic ties between our countries, creating new jobs in Navoi Region, and expanding the region\'s export potential.\n\n'
         + 'Taking the above into consideration, we kindly request your assistance in establishing initial contacts with these companies, providing practical support during negotiations, and helping to build an effective cooperation bridge between our region and foreign investors.\n\n'
         + 'For additional information and detailed negotiations, please contact the responsible officer:\n\n'
         + 'Department of Investments, Industry and Trade of Navoi Region\n'
@@ -646,11 +666,11 @@ async function generateEmbassyAiLetter(countryCode, type){
         + 'В рамках стратегических аналитических работ и исследования инвестиционной среды, направленных на привлечение иностранных инвесторов в Навоийскую область, выявлено ' + cnt + ' ведущих компаний, осуществляющих деятельность на территории ' + cName + '. (список прилагается)\n\n'
         + 'Выявленные компании являются мировыми лидерами в производстве продукции ' + prodSummary + '. С учётом полного соответствия минерально-сырьевой базе и существующей промышленной инфраструктуре Навоийской области, их привлечение в качестве инвесторов имеет стратегическое значение.\n\n'
         + 'Согласно проведённым комплексным экономическим расчётам, при размещении производственных мощностей данных компаний в Навоийской области и экспорте готовой продукции в ' + _aiTargetSummary + ', были выявлены следующие показатели экономической эффективности:\n\n'
-        + '— экономия за счёт налоговых льгот: ' + sSolStr + ' долларов США;\n'
-        + '— экономия на трудовых ресурсах: ' + sWageStr + ' долларов США;\n'
-        + '— экономия на инфраструктурных расходах: ' + sInfraStr + ' долларов США;\n'
-        + '— экономия на транспортных и логистических расходах: ' + sTrStr + ' долларов США.\n\n'
-        + 'В общей сложности, при налаживании деятельности этих компаний в Навоийской области, появляется возможность достижения ежегодного экономического эффекта в размере ' + sTotalStr + ' долларов США. Это станет не только источником высокой доходности для инвесторов, но и важной основой для укрепления торгово-экономических связей между странами, создания новых рабочих мест в Навоийской области и расширения экспортного потенциала региона.\n\n'
+        + '— снижение налоговой нагрузки: ' + sSolStr + ';\n'
+        + '— экономия на трудовых ресурсах: ' + sWageStr + ';\n'
+        + '— экономия на инфраструктуре (электричество + газ): ' + sInfraStr + ';\n'
+        + '— экономия на транспортных и логистических расходах: ' + sTrStr + '.\n\n'
+        + 'В общей сложности, при налаживании деятельности этих компаний в Навоийской области, появляется возможность достижения ежегодного экономического эффекта в размере приблизительно ' + sTotalStr + '. Это станет не только источником высокой доходности для инвесторов, но и важной основой для укрепления торгово-экономических связей между странами, создания новых рабочих мест в Навоийской области и расширения экспортного потенциала региона.\n\n'
         + 'Учитывая вышеизложенное, просим Вас оказать содействие в установлении первоначальных контактов с указанными компаниями, оказать практическую помощь в переговорах и помочь в создании эффективного моста сотрудничества между нашим регионом и иностранными инвесторами.\n\n'
         + 'Для получения дополнительной информации и подробных переговоров можно связаться с ответственным сотрудником:\n\n'
         + 'Управление инвестиций, промышленности и торговли Навоийской области\n'
@@ -668,11 +688,11 @@ async function generateEmbassyAiLetter(countryCode, type){
         + '为吸引外国投资者到纳沃伊州，在开展战略分析和投资环境研究工作中，已确认在' + cName + '境内运营的 ' + cnt + ' 家领先企业。（名单附后）\n\n'
         + '已确认的企业在' + prodSummary + '产品制造领域具有国际领先地位。考虑到与纳沃伊州矿产原材料基础和现有工业基础设施的完全匹配，吸引这些企业作为投资者具有重要的战略意义。\n\n'
         + '根据综合经济测算，如果这些企业在纳沃伊州建立生产能力，并将成品出口到' + _aiTargetSummary + '，已确定以下经济效益指标：\n\n'
-        + '— 税收优惠节约：' + sSolStr + ' 美元；\n'
-        + '— 劳动力成本节约：' + sWageStr + ' 美元；\n'
-        + '— 基础设施成本节约：' + sInfraStr + ' 美元；\n'
-        + '— 运输和物流成本节约：' + sTrStr + ' 美元。\n\n'
-        + '总体而言，如果这些企业在纳沃伊州开展业务，每年可实现 ' + sTotalStr + ' 美元的经济效益。这不仅为投资者带来高收益，也将成为加强两国贸易经济联系、在纳沃伊州创造新就业岗位以及扩大地区出口潜力的重要基础。\n\n'
+        + '— 税收负担降低：' + sSolStr + '；\n'
+        + '— 劳动力成本节约：' + sWageStr + '；\n'
+        + '— 基础设施（电力+燃气）成本节约：' + sInfraStr + '；\n'
+        + '— 运输和物流成本节约：' + sTrStr + '。\n\n'
+        + '总体而言，如果这些企业在纳沃伊州开展业务，每年可实现约 ' + sTotalStr + ' 的经济效益。这不仅为投资者带来高收益，也将成为加强两国贸易经济联系、在纳沃伊州创造新就业岗位以及扩大地区出口潜力的重要基础。\n\n'
         + '鉴于上述情况，恳请贵馆协助与上述企业建立初步联系，在谈判过程中提供实际帮助，并协助在我州与外国投资者之间架起有效的合作桥梁。\n\n'
         + '关于详细信息和具体谈判事宜，请联系负责人员：\n\n'
         + '纳沃伊州投资、工业和贸易管理局\n'
@@ -691,11 +711,11 @@ async function generateEmbassyAiLetter(countryCode, type){
         + 'Xorijiy investorlarni Navoiy viloyatiga jalb qilish maqsadida olib borilayotgan strategik tahlillar va investitsion muhitni o\'rganish ishlari doirasida ' + cName + ' davlati hududida faoliyat yuritayotgan ' + cnt + ' ta yetakchi kompaniya aniqlangan. (ilova qilinadi)\n\n'
         + 'Aniqlangan kompaniyalar ' + prodSummary + ' mahsulotlarini ishlab chiqarish sohasida xalqaro miqyosda yetakchi o\'rinni egallab kelmoqda hamda Navoiy viloyatining mineral-xomashyo bazasi va mavjud sanoat infratuzilmasi bilan to\'liq muvofiqligi inobatga olingan holda, ularni viloyatga investor sifatida jalb etish strategik ahamiyatga molikdir.\n\n'
         + 'O\'tkazilgan kompleks iqtisodiy hisob-kitoblarga muvofiq, mazkur kompaniyalar Navoiy viloyatida o\'z ishlab chiqarish quvvatlarini tashkil etib, tayyor mahsulotlarni ' + _aiTargetSummary + ' davlatlariga eksport qilgan taqdirda quyidagi iqtisodiy samaradorlik ko\'rsatkichlari aniqlandi:\n\n'
-        + '— soliq imtiyozlari hisobiga ' + sSolStr + ' AQSh dollari miqdorida tejam;\n'
-        + '— mehnat resurslari xarajatlarida ' + sWageStr + ' AQSh dollari miqdorida iqtisod;\n'
-        + '— infratuzilma xarajatlarida ' + sInfraStr + ' AQSh dollari miqdorida tejam;\n'
-        + '— transport va logistika xarajatlarida ' + sTrStr + ' AQSh dollari miqdorida iqtisod.\n\n'
-        + 'Umumiy hisobda, mazkur kompaniyalar Navoiy viloyatida o\'z faoliyatini yo\'lga qo\'ygan taqdirda yillik ' + sTotalStr + ' AQSh dollari miqdorida iqtisodiy samaraga erishish imkoniyati yaratiladi. Bu esa nafaqat investorlar uchun yuqori daromadlilik, balki ikki davlat o\'rtasidagi savdo-iqtisodiy aloqalarning mustahkamlanishi, Navoiy viloyatida yangi ish o\'rinlarining yaratilishi va mintaqaning eksport salohiyatining kengayishi uchun muhim asos bo\'lib xizmat qiladi.\n\n'
+        + '— soliq yuklamasi ' + sSolStr + ' kamayadi;\n'
+        + '— mehnat resurslari xarajatlarida ' + sWageStr + ' iqtisod qilinadi;\n'
+        + '— infratuzilma (elektr energiyasi + tabiiy gaz) xarajatlarida ' + sInfraStr + ' tejam;\n'
+        + '— transport va logistika xarajatlarida ' + sTrStr + ' iqtisod qilinadi.\n\n'
+        + 'Umumiy hisobda, mazkur kompaniyalar Navoiy viloyatida o\'z faoliyatini yo\'lga qo\'ygan taqdirda yillik taxminan ' + sTotalStr + ' miqdorida iqtisodiy samaraga erishish imkoniyati yaratiladi. Bu esa nafaqat investorlar uchun yuqori daromadlilik, balki ikki davlat o\'rtasidagi savdo-iqtisodiy aloqalarning mustahkamlanishi, Navoiy viloyatida yangi ish o\'rinlarining yaratilishi va mintaqaning eksport salohiyatining kengayishi uchun muhim asos bo\'lib xizmat qiladi.\n\n'
         + 'Yuqoridagilarni inobatga olgan holda, Sizdan mazkur kompaniyalar bilan dastlabki aloqalar o\'rnatishga ko\'maklashishingiz, muzokaralar jarayonida amaliy yordam ko\'rsatishingiz hamda viloyatimiz va xorijiy investorlar o\'rtasida samarali hamkorlik ko\'prigini yaratishda yordam berishingizni so\'raymiz.\n\n'
         + 'Qo\'shimcha ma\'lumotlar va batafsil muzokaralar yuzasidan quyidagi mas\'ul xodim bilan bog\'lanishingiz mumkin:\n\n'
         + 'Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi\n'
