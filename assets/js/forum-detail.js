@@ -2379,8 +2379,12 @@ _renderInvestorCompaniesMain = function(){
   var tayyor = 0, emailSent = 0, hasEmail = 0;
   var emailSentGroups = Object.create(null);
   var hasEmailGroups = Object.create(null);
+  // FAQAT EKSPORTYORLAR statistikaga olinadi (importyorlar hisoblanmaydi)
   // Apollo va TradeAtlas count xarita bilan mos: faqat geo code valid bo'lgan kompaniyalar
   allCo.forEach(function(rec){
+    var fm = String(rec.finderMode || rec.role || '').toLowerCase();
+    var isExporter = fm === 'exporters' || fm === 'exporter';
+    if(!isExporter) return; // importyorlarni o'tkazib yuboramiz
     var key = getInvestorCompanyGroupKey(rec);
     allGroupMap[key] = true;
     var src = String(rec.manba || rec.source || '').toLowerCase();
