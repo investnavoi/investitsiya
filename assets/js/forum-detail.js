@@ -1688,9 +1688,37 @@ async function enrichFromWebsite(id, force){
       '- Markets: list specific countries';
 
     var body = { contents: [{ role:'user', parts:[{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 4096 } };
+    // Agar sayt matni yuklanmagan bo'lsa — Google Search grounding orqali ma'lumot olish
+    var usingGoogleSearch = false;
+    if(!websiteText){
+      body.tools = [{ google_search: {} }];
+      usingGoogleSearch = true;
+      toast('🔍 Google qidiruvi orqali ma\'lumot olinmoqda...');
+    }
     // Use direct Gemini call via callGemini helper (supports cascade)
-    var data = await callGemini(body);
-    var raw = (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || '';
+    var data;
+    try {
+      data = await callGemini(body);
+    } catch(callErr){
+      // Google Search bilan failed bo'lsa, tools'siz fallback (faqat training data)
+      if(usingGoogleSearch){
+        console.warn('[enrichFromWebsite] Google search failed, fallback to knowledge:', callErr.message);
+        delete body.tools;
+        toast('⚠️ Google qidiruv ishlamadi — Gemini bilim asosida...');
+        data = await callGemini(body);
+      } else {
+        throw callErr;
+      }
+    }
+    // Multiple parts'larni birlashtirish (grounding bo'lganda matn bo'lakli kelishi mumkin)
+    var raw = '';
+    if(data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts){
+      var parts = data.candidates[0].content.parts;
+      for(var pi = 0; pi < parts.length; pi++){
+        if(parts[pi] && parts[pi].text) raw += String(parts[pi].text);
+      }
+      raw = raw.trim();
+    }
     if(!raw){ toastDone(lt, '❌ Bo\'sh javob','error'); return; }
 
     var profile;
@@ -2063,8 +2091,8 @@ function openInvestorDetailModal(id){
   modal.classList.add('open');
   modal.style.display = 'flex';
 
-  // Auto-fetch AI profile from website if not already cached (runs once per company)
-  if(!rec.websiteAiProfile && rec.website && !rec._autoFetchingProfile){
+  // Auto-fetch AI profile — website bo'lsa saytdan, bo'lmasa Gemini knowledge orqali
+  if(!rec.websiteAiProfile && rec.kompaniya && !rec._autoFetchingProfile){
     rec._autoFetchingProfile = true;
     setTimeout(function(){
       if(typeof enrichFromWebsite === 'function'){
