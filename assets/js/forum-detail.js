@@ -3127,8 +3127,9 @@ _renderInvestorCompaniesMain = function(){
   });
   // _icStats — markazlashgan source of truth
   window._icStats = {
-    jami: _exporterTotal,                // ✓ FAQAT eksportyor (xarita yig'indisi bilan mos)
-    visibleTotal: visibleGroups.length,  // visibleGroups (eksp + imp) — backwards compat
+    jami: visibleGroups.length,          // ✓ Jadvaldagi sonega aynan mos (group-level filterdan keyin)
+    exporterTotalRaw: _exporterTotal,    // co dan hisoblangan raw (orphan synthetic'lar bilan)
+    visibleTotal: visibleGroups.length,
     apollo: statsBySource.apollo,
     tradeatlas: statsBySource.tradeatlas,
     other: statsBySource.other,
