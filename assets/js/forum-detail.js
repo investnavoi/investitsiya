@@ -2970,8 +2970,13 @@ _renderInvestorCompaniesMain = function(){
   });
   vEmailSent = Object.keys(vEmailSentGroups).length;
   vHasEmail = Object.keys(vHasEmailGroups).length;
+  // "Jami" KPI — source filter aktiv bo'lsa (Apollo/TradeAtlas), asl total'ni saqlash
+  // (114 TradeAtlas bosilganda Jami 332 bo'lib qolsin)
   var ic1El = document.getElementById('ic-k1');
-  if(ic1El) ic1El.innerHTML = visibleGroups.length + ' <span class="kpi-unit">ta</span>';
+  if(ic1El){
+    var jamiTotal = _sourceFilter ? groupCount : visibleGroups.length;
+    ic1El.innerHTML = jamiTotal + ' <span class="kpi-unit">ta</span>';
+  }
   var ic2El = document.getElementById('ic-k2');
   if(ic2El) ic2El.innerHTML = vTayyor + ' <span class="kpi-unit">ta</span>';
   var ic3El = document.getElementById('ic-k3');
