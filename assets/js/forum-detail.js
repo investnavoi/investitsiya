@@ -2725,17 +2725,24 @@ _renderInvestorCompaniesMain = function(){
       _orderedGroups.push(child);
     });
   });
-  // Eksportyor bo'lmagan orphan recordlarni ko'rsatmaslik — faqat eksportyorlar
-  // (Importer'lar yagona bo'lmasa ham parent'siz turishi noto'g'ri bo'lardi)
+  // Eksportyor bo'lmagan orphan recordlarni ko'rsatmaslik
   grouped.forEach(function(g){
     if(_visited[g.key]) return;
-    // ORPHAN IMPORTERLAR — jadvalga kiritilmasin (foydalanuvchi talabiga ko'ra)
+    // Importer kompaniya — faqat HAQIQIY orphan (hech qanday partner linkage yo'q) yashiriladi
+    // TradeAtlas'dan saqlangan importyorlarda _partnerOf mavjud → ko'rinadi
     if(g._role === 'importer'){
-      _visited[g.key] = true;
-      g._isHiddenChild = true; // jadvaldan yashirib qo'yamiz
-      return;
+      var rec0 = (g.records && g.records[0]) || null;
+      var hasLinkage = !!(rec0 && (
+        (Array.isArray(rec0._partnerOf) && rec0._partnerOf.length) ||
+        (Array.isArray(rec0._partners) && rec0._partners.length)
+      ));
+      if(!hasLinkage){
+        _visited[g.key] = true;
+        g._isHiddenChild = true;
+        return;
+      }
+      // Linkage bor — ko'rsatamiz
     }
-    // Orphan eksportyor yoki noma'lum — ko'rsatamiz
     _visited[g.key] = true;
     _displayCounter++;
     g._displayNumber = _displayCounter;
