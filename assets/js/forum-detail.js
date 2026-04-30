@@ -2467,9 +2467,10 @@ _renderInvestorCompaniesMain = function(){
     return false; // noma'lum — eksportyor deb hisoblanadi
   }
   const co = allCo.filter(function(r){
+    // FAQAT eksportyor — har holatda importyorlar chiqarib tashlanadi (KPI Jami 311 bilan mos)
+    if(_isImporterRec(r)) return false;
     if(_investorGeoFilterStateCode){
       if(getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
-      if(_isImporterRec(r)) return false;
     }
     if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
     if(!_matchesSourceFilter(r)) return false;
