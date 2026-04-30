@@ -4265,14 +4265,59 @@ async function exportSelectedToExcel(){
     }, 0);
     ws.getCell('H6').value = totalExportValue ? _fmtMoneyK(totalExportValue) : 0;
 
+    // ═══ Har eksportyor — har importyor uchun alohida row (counterpart bo'lsa) ═══
+    // BOBUR 2 importerga eksport qilgan bo'lsa → 2 ta row, har biri o'zining qty/value bilan
+    var expandedRows = [];
+    rows.forEach(function(r){
+      // Importyor sheriklarni topish (_partners + _partnerOf'dan, faqat importer rol)
+      var partners = [];
+      if(Array.isArray(r._partners)){
+        r._partners.forEach(function(p){
+          if(!p || !p.kompaniya) return;
+          var role = String(p.role || '').toLowerCase();
+          if(role && role !== 'importer') return;
+          partners.push(p);
+        });
+      }
+      if(Array.isArray(r._partnerOf)){
+        r._partnerOf.forEach(function(p){
+          if(!p || !p.kompaniya) return;
+          var role = String(p.role || '').toLowerCase();
+          if(role && role !== 'importer') return;
+          // Dedupe — bir xil nom 2 marta kirmasligi uchun
+          var dup = partners.find(function(x){ return String(x.kompaniya||'').toLowerCase() === String(p.kompaniya||'').toLowerCase(); });
+          if(!dup) partners.push(p);
+        });
+      }
+      if(partners.length){
+        // Har sherik uchun alohida row
+        partners.forEach(function(p){
+          expandedRows.push({
+            exporter: r,
+            partner: p,
+            qty: Number(p.totalQty || 0),
+            value: Number(p.totalValue || 0)
+          });
+        });
+      } else {
+        // Sherik yo'q — eksportyor o'zi (importyor ma'lumotsiz)
+        expandedRows.push({
+          exporter: r,
+          partner: null,
+          qty: Number(r._tradeAtlasQuantity || r.weight || 0),
+          value: Number(r._tradeAtlasTradeValue || r.import_volume || r.summa || 0)
+        });
+      }
+    });
+
     // Data rows — R7 dan boshlanadi
     var DATA_START_ROW = 7;
     var TEMPLATE_ROWS = 8; // R7..R14 namunadagi qatorlar
 
-    rows.forEach(function(r, i){
-      var importer = _buildImporter(r);
+    expandedRows.forEach(function(er, i){
+      var r = er.exporter;
+      var p = er.partner;
       var product = _parseProduct(r);
-      var trade = _sumTradeData(r);
       var rowNum = DATA_START_ROW + i;
 
       // Agar template'da bunday qator yo'q bo'lsa — yangi qator yaratiladi va styling 1-row'dan ko'chiriladi
@@ -4287,30 +4332,45 @@ async function exportSelectedToExcel(){
         });
       }
 
-      // Eksportyor kontaktlari (rahbar nomi, lavozimi, aloqa ma'lumotlari)
       var exporterContacts = _buildContacts(r);
+      // Importyor ma'lumotlari — partner mavjud bo'lsa, undan; aks holda _buildImporter (eski)
+      var impName = '-', impCountry = '-', impContacts = '-';
+      if(p){
+        impName = String(p.kompaniya || '').trim() || '-';
+        impCountry = _toUzCountry(p.davlat || p.country || '') || '-';
+        var cParts = [p.email, p.tel, p.telefon, p.contact].filter(_isMeaningful);
+        impContacts = cParts.length ? cParts.join(', ') : '-';
+      } else {
+        var imp = _buildImporter(r);
+        impName = imp.name; impCountry = imp.country; impContacts = imp.contacts;
+      }
 
-      // Hujayra qiymatlarini yozish (styling saqlanadi)
+      // Hujayra qiymatlarini yozish
       ws.getCell('A' + rowNum).value = i + 1;
       ws.getCell('B' + rowNum).value = 'Navoiy viloyati';
       ws.getCell('C' + rowNum).value = String(r.kompaniya || '').trim() || '-';
       ws.getCell('D' + rowNum).value = _toUzCountry(r.davlat || r.country || '') || '-';
-      ws.getCell('E' + rowNum).value = product.name || '-';   // faqat mahsulot nomi
-      ws.getCell('F' + rowNum).value = product.hs || '-';      // faqat HS kod (raqam)
-      ws.getCell('G' + rowNum).value = trade.qty ? _fmtWeight(trade.qty) : '-';
-      ws.getCell('H' + rowNum).value = trade.value ? _fmtMoneyK(trade.value) : '-';
+      ws.getCell('E' + rowNum).value = product.name || '-';
+      ws.getCell('F' + rowNum).value = product.hs || '-';
+      ws.getCell('G' + rowNum).value = er.qty ? _fmtWeight(er.qty) : '-';
+      ws.getCell('H' + rowNum).value = er.value ? _fmtMoneyK(er.value) : '-';
       ws.getCell('I' + rowNum).value = exporterContacts;
-      ws.getCell('J' + rowNum).value = importer.name;
-      ws.getCell('K' + rowNum).value = importer.country;
-      ws.getCell('L' + rowNum).value = importer.contacts;
+      ws.getCell('J' + rowNum).value = impName;
+      ws.getCell('K' + rowNum).value = impCountry;
+      ws.getCell('L' + rowNum).value = impContacts;
     });
 
+    // Total row Jami: __ ta yangilanadi (expandedRows soniga)
+    ws.getCell('C6').value = 'Jami: ' + expandedRows.length + ' ta';
+    ws.getCell('J6').value = 'Jami: ' + expandedRows.length + ' ta';
+    // Jami eksport qiymati — expandedRows yig'indisi
+    var totalExpValue = expandedRows.reduce(function(s, e){ return s + (Number(e.value) || 0); }, 0);
+    ws.getCell('H6').value = totalExpValue ? _fmtMoneyK(totalExpValue) : 0;
+
     // Ortiqcha bo'sh template qatorlarini o'chirish
-    // Agar kompaniyalar < 8 bo'lsa, qolgan qatorlarni splice qilamiz
-    if(rows.length < TEMPLATE_ROWS){
-      // Eski (bo'sh) qatorlar: rows.length+DATA_START_ROW dan TEMPLATE_ROWS+DATA_START_ROW gacha
-      var firstEmptyRow = DATA_START_ROW + rows.length;
-      var emptyCount = TEMPLATE_ROWS - rows.length;
+    if(expandedRows.length < TEMPLATE_ROWS){
+      var firstEmptyRow = DATA_START_ROW + expandedRows.length;
+      var emptyCount = TEMPLATE_ROWS - expandedRows.length;
       ws.spliceRows(firstEmptyRow, emptyCount);
     }
 
