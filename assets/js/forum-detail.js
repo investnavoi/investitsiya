@@ -2728,6 +2728,72 @@ _renderInvestorCompaniesMain = function(){
         _addedChildKeys[pKey] = true;
         var existingChild = _groupByName[pKey];
         var childGk = existingChild ? existingChild.key : '';
+
+        // Agar DB'da bu sherik kompaniya YO'Q bo'lsa — synthetic record + group yaratamiz
+        // Shu orqali bosilganda full row (Lead topish + kontakt) chiqadi
+        if(!existingChild){
+          var syntheticRec = {
+            id: 'inmem_partner_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            kompaniya: pName,
+            davlat: p.davlat || p.country || '',
+            shahar: p.cityState || '',
+            soha: parentRec.soha || '',
+            mahsulotNomi: parentRec.mahsulotNomi || '',
+            productId: parentRec.productId || '',
+            mahsulotHs: parentRec.mahsulotHs || '',
+            manba: 'TradeAtlas',
+            finderMode: 'importers',
+            score: 70,
+            rahbar: '', lavozim: '',
+            email: p.email || '', telefon: p.tel || '', website: p.web || '',
+            emailSent: false, holat: 'Yangi',
+            _tradeAtlasTradeValue: Number(p.totalValue || 0),
+            _tradeAtlasQuantity: Number(p.totalQty || 0),
+            _tradeAtlasDocCount: Number(p.docCount || 0),
+            _tradeAtlasLastArrivalDate: p.lastDate || '',
+            _partnerOf: [{
+              kompaniya: parentRec.kompaniya || '',
+              davlat: parentRec.davlat || '',
+              role: 'exporter',
+              totalValue: Number(p.totalValue || 0),
+              totalQty: Number(p.totalQty || 0),
+              docCount: Number(p.docCount || 0),
+              lastDate: p.lastDate || ''
+            }],
+            _isInMemoryOnly: true // Firebase'ga yuborilmaydi
+          };
+          var synthGroup = {
+            key: 'inmem_' + pKey + '_' + Math.random().toString(36).slice(2,5),
+            records: [syntheticRec],
+            _role: 'importer',
+            _isChild: true,
+            _isHiddenChild: true,
+            _isOrphan: false,
+            _parentKey: g.key,
+            _parentName: g._parentName,
+            _displayNumber: g._displayNumber,
+            _isInMemoryGroup: true
+          };
+          // DB'ga ham qo'shamiz (in-memory) — ammo Firebase'ga yuborilmaydi
+          if(!Array.isArray(DB.investorCompanies)) DB.investorCompanies = [];
+          DB.investorCompanies.push(syntheticRec);
+          _existingNamesLower[pKey] = syntheticRec;
+          _groupByName[pKey] = synthGroup;
+          _visited[synthGroup.key] = true;
+          _orderedGroups.push(synthGroup);
+          existingChild = synthGroup;
+          childGk = synthGroup.key;
+        } else if(!_visited[existingChild.key]){
+          // DB'da mavjud bo'lsa — hidden child sifatida belgilash
+          existingChild._isChild = true;
+          existingChild._isHiddenChild = true;
+          existingChild._parentKey = g.key;
+          existingChild._parentName = g._parentName;
+          existingChild._displayNumber = g._displayNumber;
+          _visited[existingChild.key] = true;
+          _orderedGroups.push(existingChild);
+        }
+
         g._childrenData.push({
           kompaniya: pName,
           davlat: p.davlat || p.country || '',
@@ -2738,17 +2804,6 @@ _renderInvestorCompaniesMain = function(){
           docCount: Number(p.docCount || 0),
           childGroupKey: childGk
         });
-        // Agar DB'da bu sherik kompaniya mavjud bo'lsa — uni hidden child sifatida belgilash
-        // Shu orqali bosilganda full row (kontakt, button, soha) chiqadi
-        if(existingChild && !_visited[existingChild.key]){
-          existingChild._isChild = true;
-          existingChild._isHiddenChild = true;
-          existingChild._parentKey = g.key;
-          existingChild._parentName = g._parentName;
-          existingChild._displayNumber = g._displayNumber;
-          _visited[existingChild.key] = true;
-          _orderedGroups.push(existingChild);
-        }
       });
     }
     if(parentRec){
