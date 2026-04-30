@@ -2225,6 +2225,17 @@ function investorCompanyMatchesProductFilter(rec, product){
 
   if(productId && recordProductId && productId === recordProductId) return true;
 
+  // Manual HS kodli virtual product — faqat HS kod bo'yicha solishtirish
+  if(productId.indexOf('manual_hs_') === 0){
+    var virtualHs = productId.replace(/^manual_hs_/, '').replace(/\D/g,'');
+    var recHs = String(rec.mahsulotHs || rec.hsCode || '').replace(/\D/g,'');
+    if(virtualHs && recHs && virtualHs === recHs) return true;
+    // mahsulotNomi ichida HS kod yozilgan bo'lishi mumkin (masalan "HS 731822 - Temir-po'lat")
+    var nameMatch = String(rec.mahsulotNomi || '').match(/HS\s*(\d{2,10})/i);
+    if(nameMatch && nameMatch[1] === virtualHs) return true;
+    return false;
+  }
+
   var companyFields = [
     String(rec.mahsulotNomi || '').trim(),
     String(rec.soha || '').trim()

@@ -904,6 +904,40 @@ function renderInvestorProductFilterPicker(){
         return investorCompanyMatchesProductFilter(rec, product);
       });
     });
+
+    // ═══ Manual HS kodlari — DB.products'da yo'q lekin kompaniyalarda mavjud HS kodlar ═══
+    var virtualHsProducts = [];
+    var seenManualHs = {};
+    investorCompanies.forEach(function(rec){
+      var hs = String(rec.mahsulotHs || rec.hsCode || '').replace(/\D/g,'');
+      if(!hs){
+        var m = String(rec.mahsulotNomi || '').match(/HS\s*(\d{2,10})/i);
+        if(m) hs = m[1];
+      }
+      if(!hs || hs.length < 2) return;
+      if(seenManualHs[hs]) return;
+      var hasDbMatch = matchedProducts.some(function(p){
+        var pHs = String(p.hs_code || '').replace(/\D/g,'');
+        return pHs && pHs === hs;
+      });
+      if(hasDbMatch) return;
+      var prodName = String(rec.mahsulotNomi || rec.soha || '').trim();
+      prodName = prodName
+        .replace(/^HS\s*\d{2,10}\s*(\([^)]+\))?\s*[-—:]?\s*/i, '')
+        .replace(/^\s*[-—:]\s*/, '')
+        .trim();
+      if(!prodName) prodName = 'HS ' + hs;
+      seenManualHs[hs] = true;
+      virtualHsProducts.push({
+        id: 'manual_hs_' + hs,
+        hs_code: hs,
+        name_uz: prodName,
+        name_en: prodName,
+        raw_id: '',
+        _isManualHs: true
+      });
+    });
+
     var html = '';
     ['build','azot','other'].forEach(function(section){
       var sectionProds = getSectionProducts(section).filter(function(product){
@@ -945,6 +979,18 @@ function renderInvestorProductFilterPicker(){
       }
       html += '</div></div>';
     });
+    // ═══ Manual HS kodlari section ═══
+    if(virtualHsProducts.length){
+      html += '<div class="csd-group csd-group-section" data-section="manual_hs">';
+      html += '<div class="csd-group-head csd-section-head" onclick="toggleCsdGroup(this)"><span>📋 Manual HS kodlari</span><span class="csd-count">'+virtualHsProducts.length+'</span><span class="csd-caret">▾</span></div>';
+      html += '<div class="csd-group-items csd-section-items">';
+      virtualHsProducts.forEach(function(p){
+        var label = escapeHtmlText(p.name_uz) + ' (' + escapeHtmlText(p.hs_code) + ')';
+        html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectInvestorProductFilter(this,\''+p.id+'\')">'+label+'</div>';
+      });
+      html += '</div></div>';
+    }
+
     if(!html){
       html = '<div class="csd-item" style="cursor:default;color:var(--text3)">Mos mahsulot topilmadi</div>';
     }
@@ -958,8 +1004,13 @@ function renderInvestorProductFilterPicker(){
     return;
   }
   var product = (DB.products || []).find(function(p){ return String(p.id) === pid; });
+  // Manual HS kod product (DB.products'da yo'q) — tanlovni virtual list'dan topish
+  if(!product && pid.indexOf('manual_hs_') === 0){
+    var manualHs = pid.replace(/^manual_hs_/, '');
+    product = { id: pid, hs_code: manualHs, name_uz: 'HS ' + manualHs, name_en: 'HS ' + manualHs, _isManualHs: true };
+  }
   if(product){
-    display.textContent = formatBilingualProductName(product) + (product.hs_code ? ' (' + product.hs_code + ')' : '');
+    display.textContent = (product.name_uz || product.name_en || ('HS ' + (product.hs_code||''))) + (product.hs_code ? ' (' + product.hs_code + ')' : '');
     dd.querySelectorAll('.csd-item').forEach(function(item){
       item.classList.toggle('selected', String(item.getAttribute('data-pid') || '') === pid);
     });
