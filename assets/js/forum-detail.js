@@ -3754,12 +3754,12 @@ async function executeBulkSend(){
 }
 
 /* ═══════════════════════════════════════
-   EXCEL EXPORT — foydalanuvchi yuborgan namuna shablonni AYNAN ishlatadi
-   Faqat data hujayralarini to'ldiradi, hech qanday styling/struktura o'zgarmaydi
+   EXCEL EXPORT — foydalanuvchi yuborgan namuna shablonni AYNAN saqlaydi
+   ExcelJS bilan — barcha styling, border, color, merge to'liq saqlanadi
 ═══════════════════════════════════════ */
 async function exportSelectedToExcel(){
-  if(typeof XLSX === 'undefined' || !XLSX || !XLSX.utils){
-    toast('❌ Excel kutubxonasi yuklanmagan','error');
+  if(typeof ExcelJS === 'undefined' || !ExcelJS){
+    toast('❌ ExcelJS kutubxonasi yuklanmagan','error');
     return;
   }
   var ids = (typeof getSelectedIds === 'function') ? getSelectedIds() : [];
@@ -3820,7 +3820,6 @@ async function exportSelectedToExcel(){
     return v + ' kg';
   }
 
-  // Title uchun — top eksportyor davlat
   var countries = {};
   rows.forEach(function(r){
     var c = String(r.davlat || r.country || '').trim();
@@ -3829,90 +3828,79 @@ async function exportSelectedToExcel(){
   var topCountry = Object.keys(countries).sort(function(a,b){return countries[b]-countries[a];})[0] || '__';
   var nowD = new Date();
   var year = nowD.getFullYear();
-  var loadingToast = (typeof toastLoading === 'function') ? toastLoading('⏳ Excel namuna yuklanmoqda...') : null;
+  var loadingToast = (typeof toastLoading === 'function') ? toastLoading('⏳ Namuna shablon yuklanmoqda...') : null;
 
   try {
-    // Namuna shablonni yuklab olish
+    // Namuna shablonni ExcelJS bilan yuklab olish — barcha styling saqlanadi
     var resp = await fetch('assets/templates/manzilli-template.xlsx');
     if(!resp.ok) throw new Error('Namuna fayl yuklanmadi (HTTP ' + resp.status + ')');
     var buf = await resp.arrayBuffer();
-    var wb = XLSX.read(buf, { type: 'array', cellStyles: true });
-    var sn = wb.SheetNames[0];
-    var ws = wb.Sheets[sn];
+    var wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    var ws = wb.worksheets[0];
     if(!ws) throw new Error('Namuna sheet topilmadi');
 
-    // Title (R1, A2:L2 merged) — namunadagi formatga mos to'ldirish
-    // Asl: "___ davlatidan ____ davlatiga _____-yilda eksport qilgan kompaniyalarning\nMANZILLI RO'YXATI"
-    if(ws['A2']){
-      var newTitle = topCountry + ' davlatidan O\'zbekiston davlatiga ' + year + '-yilda eksport qilgan kompaniyalarning \r\nMANZILLI RO\'YXATI';
-      ws['A2'].v = newTitle;
-      ws['A2'].w = newTitle;
-      if(ws['A2'].t === undefined) ws['A2'].t = 's';
-    }
+    // Title (R2 — A2:L2 merged) — faqat value o'zgaradi, styling saqlanadi
+    var titleCell = ws.getCell('A2');
+    titleCell.value = topCountry + ' davlatidan O\'zbekiston davlatiga ' + year + '-yilda eksport qilgan kompaniyalarning\r\nMANZILLI RO\'YXATI';
 
-    // Total row R6 — "Jami: ___ ta" hujayralari (C6 va J6)
-    if(ws['C6']){ ws['C6'].v = 'Jami: ' + rows.length + ' ta'; ws['C6'].w = 'Jami: ' + rows.length + ' ta'; ws['C6'].t = 's'; }
-    if(ws['J6']){ ws['J6'].v = 'Jami: ' + rows.length + ' ta'; ws['J6'].w = 'Jami: ' + rows.length + ' ta'; ws['J6'].t = 's'; }
+    // Jami: ___ ta — C6 va J6 (orange row) — value yangilanadi
+    ws.getCell('C6').value = 'Jami: ' + rows.length + ' ta';
+    ws.getCell('J6').value = 'Jami: ' + rows.length + ' ta';
 
-    // Data rows — R7 dan boshlanadi (template'da R7-R14 = 8 ta empty row)
-    // Foydalanuvchi tanlagan har kompaniyani R7+i ga yozamiz
-    // Agar kompaniyalar 8 dan ko'p bo'lsa, qator stilini takrorlab yangi qatorlar qo'shamiz
-    var DATA_START_ROW = 7; // Excel R7 (0-indexed: 6)
-    var TEMPLATE_ROWS = 8;   // R7..R14
-    var COLS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-
-    function _setCell(addr, value, templateAddr){
-      // Template hujayrasidan styling olish
-      var existing = ws[addr];
-      var tmpl = templateAddr ? ws[templateAddr] : null;
-      var s = (existing && existing.s) || (tmpl && tmpl.s) || null;
-      ws[addr] = { v: value, t: 's', w: String(value) };
-      if(s) ws[addr].s = s;
-    }
+    // Data rows — R7 dan boshlanadi
+    var DATA_START_ROW = 7;
+    var TEMPLATE_ROWS = 8; // R7..R14 namunadagi qatorlar
 
     rows.forEach(function(r, i){
       var importer = _buildImporter(r);
-      var data = [
-        i + 1,                                          // A: T/r
-        'Navoiy viloyati',                              // B
-        String(r.kompaniya || '').trim(),               // C: Eksportyor
-        String(r.davlat || r.country || '').trim(),     // D
-        String(r.mahsulotNomi || r.soha || '').trim(),  // E
-        String(r.mahsulotHs || r.hsCode || '').trim(),  // F: HS
-        _fmtWeight(r._tradeAtlasQuantity || r.weight),  // G
-        _fmtMoney(r._tradeAtlasTradeValue || r.import_volume || r.summa), // H
-        _buildContacts(r),                              // I
-        importer.name,                                  // J
-        importer.country,                               // K
-        importer.contacts                               // L
-      ];
-      var rowExcel = DATA_START_ROW + i;
-      // Template hujayra namunasi — 7-qator (1-template row)
-      var refRow = (i < TEMPLATE_ROWS) ? rowExcel : DATA_START_ROW; // ortiqcha qator stilini 1-qator'dan oladi
-      COLS.forEach(function(L, ci){
-        var addr = L + rowExcel;
-        var refAddr = L + refRow;
-        _setCell(addr, data[ci], refAddr);
-      });
+      var rowNum = DATA_START_ROW + i;
+      var refRowNum = (i < TEMPLATE_ROWS) ? rowNum : DATA_START_ROW; // ortiqcha qator uchun 1-template row stilini ishlatamiz
+
+      // Agar template'da bunday qator yo'q bo'lsa — yangi qator yaratiladi va styling 1-row'dan ko'chiriladi
+      if(i >= TEMPLATE_ROWS){
+        var refRow = ws.getRow(DATA_START_ROW);
+        var newRow = ws.getRow(rowNum);
+        // Row height ham 1-row'ning balandligi
+        if(refRow.height) newRow.height = refRow.height;
+        // Har column uchun styling kopyalansin
+        ['A','B','C','D','E','F','G','H','I','J','K','L'].forEach(function(L){
+          var refCell = ws.getCell(L + DATA_START_ROW);
+          var newCell = ws.getCell(L + rowNum);
+          // Style ob'ektini chuqur nusxalash
+          if(refCell.style) newCell.style = JSON.parse(JSON.stringify(refCell.style));
+        });
+      }
+
+      // Hujayra qiymatlarini yozish (styling saqlanadi)
+      ws.getCell('A' + rowNum).value = i + 1;
+      ws.getCell('B' + rowNum).value = 'Navoiy viloyati';
+      ws.getCell('C' + rowNum).value = String(r.kompaniya || '').trim();
+      ws.getCell('D' + rowNum).value = String(r.davlat || r.country || '').trim();
+      ws.getCell('E' + rowNum).value = String(r.mahsulotNomi || r.soha || '').trim();
+      ws.getCell('F' + rowNum).value = String(r.mahsulotHs || r.hsCode || '').trim();
+      ws.getCell('G' + rowNum).value = _fmtWeight(r._tradeAtlasQuantity || r.weight);
+      ws.getCell('H' + rowNum).value = _fmtMoney(r._tradeAtlasTradeValue || r.import_volume || r.summa);
+      ws.getCell('I' + rowNum).value = _buildContacts(r);
+      ws.getCell('J' + rowNum).value = importer.name;
+      ws.getCell('K' + rowNum).value = importer.country;
+      ws.getCell('L' + rowNum).value = importer.contacts;
     });
 
-    // Range yangilash — rows.length > 8 bo'lsa, range kengaytiriladi
-    if(rows.length > 0){
-      var lastRow = DATA_START_ROW + rows.length - 1;
-      var oldRange = XLSX.utils.decode_range(ws['!ref']);
-      if(lastRow > oldRange.e.r){
-        oldRange.e.r = lastRow;
-        ws['!ref'] = XLSX.utils.encode_range(oldRange);
-      }
-    }
-
-    // Saqlash — namuna fayldagi sheet name (манзилли) bilan
+    // Saqlash
     var dd = String(nowD.getDate()).padStart(2,'0');
     var mm = String(nowD.getMonth()+1).padStart(2,'0');
     var yyyy = nowD.getFullYear();
     var fname = 'Kompaniyalar_ro\'yxati_' + dd + '.' + mm + '.' + yyyy + '.xlsx';
 
-    XLSX.writeFile(wb, fname);
+    var outBuf = await wb.xlsx.writeBuffer();
+    var blob = new Blob([outBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 100);
+
     if(loadingToast && typeof toastDone === 'function') toastDone(loadingToast, '✅ ' + rows.length + ' ta kompaniya namuna Excel\'ga to\'ldirildi: ' + fname, 'success');
     else toast('✅ ' + rows.length + ' ta kompaniya namuna Excel\'ga to\'ldirildi: ' + fname,'success');
   } catch(e){
