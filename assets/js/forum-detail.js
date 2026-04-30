@@ -2367,7 +2367,12 @@ _renderInvestorCompaniesMain = function(){
     return true;
   }
   const co = allCo.filter(function(r){
-    if(_investorGeoFilterStateCode && getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
+    if(_investorGeoFilterStateCode){
+      if(getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
+      // Geo filter aktiv bo'lganda — faqat EKSPORTYORLAR (importyorlar yo'q)
+      var fm = String(r.finderMode || r.role || '').toLowerCase();
+      if(fm === 'importers' || fm === 'importer') return false;
+    }
     if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
     if(!_matchesSourceFilter(r)) return false;
     return true;
@@ -2541,33 +2546,43 @@ _renderInvestorCompaniesMain = function(){
       DB.investorCompanies.push(r);
       if(typeof fbSave === 'function') fbSave('investorCompanies', r);
     });
-    // Sintetiklarni co'ga qo'shish — filterdan bypass qilamiz, chunki ular tanlangan recordga bog'liq
+    // Sintetiklarni co'ga qo'shish — geo filter aktiv bo'lsa, mos kelmaydiganlarini ham qo'shmaymiz
     _backfillNeeded.forEach(function(r){
+      if(_investorGeoFilterStateCode){
+        var rCode = getInvestorGeoStateCode(r, window._investorGeoStateStats || {});
+        if(rCode !== _investorGeoFilterStateCode) return;
+        // Geo filter aktiv: faqat eksportyor synthetic'lar qo'shiladi
+        var rfm = String(r.finderMode || '').toLowerCase();
+        if(rfm === 'importers' || rfm === 'importer') return;
+      }
       co.push(r);
     });
   }
 
   // ═══ Filter bypass: xarita davlat filtri tufayli o'tib ketgan PARENT (eksportyor) recordlarini ham qo'shamiz ═══
-  // Misol: xarita filtri "Uzbekistan", co'da UZ importerlar; ularning eksportyor (KZ/CN) parentlari DB'da bor lekin filterdan o'tdi
-  var _coKeysSet = Object.create(null);
-  co.forEach(function(r){
-    var k = String(r.kompaniya || '').trim().toLowerCase();
-    if(k) _coKeysSet[k] = true;
-  });
-  var _coSnapshot = co.slice();
-  _coSnapshot.forEach(function(rec){
-    var linked = [];
-    (rec._partners || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
-    (rec._partnerOf || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
-    linked.forEach(function(nm){
-      if(!nm || _coKeysSet[nm]) return;
-      var existingRec = _existingNamesLower[nm];
-      if(existingRec){
-        co.push(existingRec);
-        _coKeysSet[nm] = true;
-      }
+  // FAQAT geo filter aktiv BO'LMAGANDA bypass ishlaydi.
+  // Geo filter aktiv bo'lsa — boshqa davlat parent'larini olmaymiz (foydalanuvchi tanlovi bo'yicha)
+  if(!_investorGeoFilterStateCode){
+    var _coKeysSet = Object.create(null);
+    co.forEach(function(r){
+      var k = String(r.kompaniya || '').trim().toLowerCase();
+      if(k) _coKeysSet[k] = true;
     });
-  });
+    var _coSnapshot = co.slice();
+    _coSnapshot.forEach(function(rec){
+      var linked = [];
+      (rec._partners || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
+      (rec._partnerOf || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
+      linked.forEach(function(nm){
+        if(!nm || _coKeysSet[nm]) return;
+        var existingRec = _existingNamesLower[nm];
+        if(existingRec){
+          co.push(existingRec);
+          _coKeysSet[nm] = true;
+        }
+      });
+    });
+  }
 
   var groupedMap = Object.create(null);
   var grouped = [];
