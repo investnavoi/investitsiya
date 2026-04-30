@@ -3073,9 +3073,10 @@ _renderInvestorCompaniesMain = function(){
   visibleGroups.forEach(function(g){
     if(!Array.isArray(g.records) || !g.records.length) return;
     var rec0 = g.records[0];
-    // Davlat
+    // Davlat — FAQAT eksportyor guruhlar xaritada hisoblanadi (click bilan mos)
     var code = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec0, {}) : '';
-    if(code){
+    var isImpRec = (typeof _isImporterRec === 'function') ? _isImporterRec(rec0) : false;
+    if(code && !isImpRec){
       if(!statsByCountry[code]){
         statsByCountry[code] = { code: code, count: 0, companies: [], lat: null, lon: null, name: '' };
         var hub = (typeof getInvestorGeoHub === 'function') ? getInvestorGeoHub(rec0) : null;
