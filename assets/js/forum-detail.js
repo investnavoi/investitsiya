@@ -3070,28 +3070,37 @@ _renderInvestorCompaniesMain = function(){
   var statsByCountryName = Object.create(null);
   var statsBySource = { apollo: 0, tradeatlas: 0, other: 0 };
   var statsByRole = { exporters: 0, importers: 0, unknown: 0 };
+  // ═══ byCountry — `co` (filter qo'llangan, parent-child reorderdan oldin) bo'yicha ═══
+  // Click qilganda ham shu logika ishlatiladi → aynan mos
+  var _byCountrySeenGroups = Object.create(null);
+  co.forEach(function(rec){
+    if(_isImporterRec(rec)) return; // faqat eksportyor (click qilganda ham xuddi shu filter)
+    var code = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec, {}) : '';
+    if(!code) return;
+    var groupKey = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
+    if(!_byCountrySeenGroups[code]) _byCountrySeenGroups[code] = Object.create(null);
+    if(_byCountrySeenGroups[code][groupKey]) return; // dedupe per country
+    _byCountrySeenGroups[code][groupKey] = true;
+    if(!statsByCountry[code]){
+      statsByCountry[code] = { code: code, count: 0, companies: [], lat: null, lon: null, name: '' };
+      var hub = (typeof getInvestorGeoHub === 'function') ? getInvestorGeoHub(rec) : null;
+      if(hub){
+        statsByCountry[code].lat = hub.lat;
+        statsByCountry[code].lon = hub.lon;
+        statsByCountry[code].name = hub.display || (typeof getInvestorGeoCountrySource === 'function' ? getInvestorGeoCountrySource(rec) : '') || code;
+      } else {
+        statsByCountry[code].name = (typeof getInvestorGeoCountrySource === 'function' ? getInvestorGeoCountrySource(rec) : '') || code;
+      }
+    }
+    statsByCountry[code].count++;
+    if(rec.kompaniya) statsByCountry[code].companies.push(String(rec.kompaniya));
+    statsByCountryName[statsByCountry[code].name] = (statsByCountryName[statsByCountry[code].name] || 0) + 1;
+  });
+
+  // visibleGroups loop — role va source uchun saqlandi
   visibleGroups.forEach(function(g){
     if(!Array.isArray(g.records) || !g.records.length) return;
     var rec0 = g.records[0];
-    // Davlat — FAQAT eksportyor guruhlar xaritada hisoblanadi (click bilan mos)
-    var code = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec0, {}) : '';
-    var isImpRec = (typeof _isImporterRec === 'function') ? _isImporterRec(rec0) : false;
-    if(code && !isImpRec){
-      if(!statsByCountry[code]){
-        statsByCountry[code] = { code: code, count: 0, companies: [], lat: null, lon: null, name: '' };
-        var hub = (typeof getInvestorGeoHub === 'function') ? getInvestorGeoHub(rec0) : null;
-        if(hub){
-          statsByCountry[code].lat = hub.lat;
-          statsByCountry[code].lon = hub.lon;
-          statsByCountry[code].name = hub.display || (typeof getInvestorGeoCountrySource === 'function' ? getInvestorGeoCountrySource(rec0) : '') || code;
-        } else {
-          statsByCountry[code].name = (typeof getInvestorGeoCountrySource === 'function' ? getInvestorGeoCountrySource(rec0) : '') || code;
-        }
-      }
-      statsByCountry[code].count++;
-      if(rec0.kompaniya) statsByCountry[code].companies.push(String(rec0.kompaniya));
-      statsByCountryName[statsByCountry[code].name] = (statsByCountryName[statsByCountry[code].name] || 0) + 1;
-    }
     // Role — group._role yoki record finderMode'dan
     var role = String(g._role || rec0.finderMode || rec0.role || '').toLowerCase();
     if(role === 'exporter' || role === 'exporters') statsByRole.exporters++;
