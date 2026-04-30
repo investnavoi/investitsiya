@@ -70,7 +70,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/email-modal.js" defer></script>
 <script src="assets/js/investor-companies.js"></script>
 <script src="assets/js/excel-media.js" defer></script>
-<script src="assets/js/forum-detail.js?v=excel-export-v1"></script>
+<script src="assets/js/forum-detail.js?v=select-visible-v1"></script>
 <script src="assets/js/intl-forums.js"></script>
 <script src="assets/js/csv-import.js" defer></script>
 <script src="assets/js/admin-lists.js"></script>
@@ -933,7 +933,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
             <tr>
               <th style="width:30px;padding-left:.75rem;position:relative;overflow:visible">
                 <input type="checkbox" id="checkAll" onclick="toggleSelectMenu(event)" style="width:16px;height:16px;border-radius:4px;accent-color:#465fff;cursor:pointer">
-                <div id="selectAllMenu" style="display:none;position:absolute;top:100%;left:0;margin-top:6px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.15);z-index:50;min-width:200px;padding:6px 0">
+                <div id="selectAllMenu" style="display:none;position:absolute;top:100%;left:0;margin-top:6px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.15);z-index:9999;min-width:220px;padding:6px 0;white-space:nowrap">
                   <div onclick="selectThisPage(event)" style="padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:.78rem;color:#1F2937" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='transparent'">
                     <input type="radio" name="selScope" style="margin:0;accent-color:#465fff">
                     <span>Select this page <span id="selPageCount" style="color:#6B7280;font-weight:600">0</span></span>

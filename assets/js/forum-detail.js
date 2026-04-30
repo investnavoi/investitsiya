@@ -2803,6 +2803,14 @@ _renderInvestorCompaniesMain = function(){
     hasEmail: vHasEmail,
     timestamp: Date.now()
   };
+  // Select all uchun visible record IDs (filter qo'llangan)
+  var _visIdsSet = new Set();
+  visibleGroups.forEach(function(g){
+    if(Array.isArray(g.records)){
+      g.records.forEach(function(rec){ if(rec && rec.id) _visIdsSet.add(String(rec.id)); });
+    }
+  });
+  window._icVisibleIds = _visIdsSet;
   // Sidebar badge'ni visibleGroups asosida yangilash (jadvaldagi soniga moslashtirish)
   try {
     var sidebarBadge = document.getElementById('badge-investorco');
@@ -3373,7 +3381,10 @@ function toggleSelectMenu(event){
   var menu = document.getElementById('selectAllMenu');
   if(!menu) return;
   var pageCount = document.querySelectorAll('.ic-check').length;
-  var totalCount = (DB.investorCompanies||[]).length;
+  // Filter qo'llangan visible kompaniyalar soni (jadvaldagi haqiqiy soni)
+  var totalCount = (window._icCounts && typeof window._icCounts.jami === 'number')
+    ? window._icCounts.jami
+    : (DB.investorCompanies||[]).length;
   var pcEl = document.getElementById('selPageCount'); if(pcEl) pcEl.textContent = pageCount;
   var acEl = document.getElementById('selAllCount'); if(acEl) acEl.textContent = totalCount;
   menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
@@ -3404,9 +3415,14 @@ function selectThisPage(event){
 function selectAll(event){
   if(event){ event.stopPropagation(); }
   if(!window._icSelectedIds) window._icSelectedIds = new Set();
-  (DB.investorCompanies||[]).forEach(function(r){
-    window._icSelectedIds.add(String(r.id));
-  });
+  // Faqat filter ostida ko'rinadigan kompaniyalarni tanlash (visible record IDs)
+  if(window._icVisibleIds && window._icVisibleIds.size > 0){
+    window._icVisibleIds.forEach(function(id){ window._icSelectedIds.add(id); });
+  } else {
+    (DB.investorCompanies||[]).forEach(function(r){
+      window._icSelectedIds.add(String(r.id));
+    });
+  }
   if(typeof restoreIcChecks === 'function') restoreIcChecks();
   updateSelectedCount();
   document.getElementById('selectAllMenu').style.display = 'none';
