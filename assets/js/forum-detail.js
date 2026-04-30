@@ -3778,6 +3778,106 @@ async function exportSelectedToExcel(){
     rows.push(rec);
   });
 
+  // Davlat nomlarini O'zbekchaga tarjima qilish
+  var COUNTRY_UZ = {
+    'south korea':'Janubiy Koreya','korea, south':'Janubiy Koreya','korea':'Janubiy Koreya','republic of korea':'Janubiy Koreya',
+    'north korea':'Shimoliy Koreya','korea, north':'Shimoliy Koreya',
+    'uzbekistan':"O'zbekiston",'uz':"O'zbekiston",
+    'united states':'AQSh','usa':'AQSh','us':'AQSh','united states of america':'AQSh',
+    'china':'Xitoy','cn':'Xitoy','people\'s republic of china':'Xitoy',
+    'japan':'Yaponiya','jp':'Yaponiya',
+    'germany':'Germaniya','de':'Germaniya','deutschland':'Germaniya',
+    'france':'Fransiya','fr':'Fransiya',
+    'united kingdom':'Buyuk Britaniya','uk':'Buyuk Britaniya','great britain':'Buyuk Britaniya','britain':'Buyuk Britaniya','england':'Buyuk Britaniya',
+    'italy':'Italiya','it':'Italiya','italia':'Italiya',
+    'spain':'Ispaniya','es':'Ispaniya',
+    'russia':'Rossiya','russian federation':'Rossiya','ru':'Rossiya',
+    'turkey':'Turkiya','türkiye':'Turkiya','tr':'Turkiya',
+    'india':'Hindiston','in':'Hindiston',
+    'kazakhstan':"Qozog'iston",'kz':"Qozog'iston",
+    'kyrgyzstan':"Qirg'iziston",'kg':"Qirg'iziston",
+    'tajikistan':'Tojikiston','tj':'Tojikiston',
+    'turkmenistan':'Turkmaniston','tm':'Turkmaniston',
+    'azerbaijan':'Ozarbayjon','az':'Ozarbayjon',
+    'armenia':'Armaniston','am':'Armaniston',
+    'georgia':'Gruziya','ge':'Gruziya',
+    'belarus':'Belorussiya','by':'Belorussiya',
+    'ukraine':'Ukraina','ua':'Ukraina',
+    'moldova':'Moldova','md':'Moldova',
+    'iran':'Eron','ir':'Eron',
+    'iraq':'Iroq','iq':'Iroq',
+    'saudi arabia':'Saudiya Arabistoni','sa':'Saudiya Arabistoni',
+    'united arab emirates':'BAA','uae':'BAA','ae':'BAA','emirates':'BAA',
+    'israel':'Isroil','il':'Isroil',
+    'egypt':'Misr','eg':'Misr',
+    'pakistan':'Pokiston','pk':'Pokiston',
+    'bangladesh':'Bangladesh','bd':'Bangladesh',
+    'vietnam':'Vyetnam','vn':'Vyetnam',
+    'thailand':'Tayland','th':'Tayland',
+    'indonesia':'Indoneziya','id':'Indoneziya',
+    'malaysia':'Malayziya','my':'Malayziya',
+    'philippines':'Filippin','ph':'Filippin',
+    'singapore':'Singapur','sg':'Singapur',
+    'taiwan':'Tayvan','tw':'Tayvan',
+    'hong kong':'Gonkong','hk':'Gonkong',
+    'mongolia':'Mongoliya','mn':'Mongoliya',
+    'australia':'Avstraliya','au':'Avstraliya',
+    'new zealand':'Yangi Zelandiya','nz':'Yangi Zelandiya',
+    'canada':'Kanada','ca':'Kanada',
+    'mexico':'Meksika','mx':'Meksika',
+    'brazil':'Braziliya','br':'Braziliya',
+    'argentina':'Argentina','ar':'Argentina',
+    'netherlands':'Niderlandiya','nl':'Niderlandiya',
+    'belgium':'Belgiya','be':'Belgiya',
+    'sweden':'Shvetsiya','se':'Shvetsiya',
+    'norway':'Norvegiya','no':'Norvegiya',
+    'denmark':'Daniya','dk':'Daniya',
+    'finland':'Finlandiya','fi':'Finlandiya',
+    'switzerland':'Shveytsariya','ch':'Shveytsariya',
+    'austria':'Avstriya','at':'Avstriya',
+    'poland':'Polsha','pl':'Polsha',
+    'czech republic':'Chexiya','czechia':'Chexiya','cz':'Chexiya',
+    'hungary':'Vengriya','hu':'Vengriya',
+    'greece':'Yunoniston','gr':'Yunoniston',
+    'portugal':'Portugaliya','pt':'Portugaliya',
+    'ireland':'Irlandiya','ie':'Irlandiya',
+    'qatar':'Qatar','qa':'Qatar',
+    'kuwait':'Kuvayt','kw':'Kuvayt',
+    'oman':'Ummon','om':'Ummon',
+    'bahrain':'Bahrayn','bh':'Bahrayn',
+    'jordan':'Iordaniya','jo':'Iordaniya',
+    'south africa':'Janubiy Afrika','za':'Janubiy Afrika',
+    'nigeria':'Nigeriya','ng':'Nigeriya',
+    'kenya':'Keniya','ke':'Keniya',
+    'morocco':'Marokash','ma':'Marokash',
+    'algeria':'Jazoir','dz':'Jazoir',
+    'tunisia':'Tunis','tn-iso':'Tunis'
+  };
+  function _toUzCountry(name){
+    var raw = String(name||'').trim();
+    if(!raw) return '';
+    var key = raw.toLowerCase();
+    return COUNTRY_UZ[key] || raw;
+  }
+
+  // Mahsulot nomi va HS kodini ajratish
+  function _parseProduct(rec){
+    var raw = String(rec.mahsulotNomi || rec.soha || '').trim();
+    var hs = String(rec.mahsulotHs || rec.hsCode || '').trim().replace(/\D/g,'');
+    // mahsulotNomi'dan HS kod ajratish (agar yozilgan bo'lsa)
+    if(!hs){
+      var m = raw.match(/HS\s*(\d{2,10})/i);
+      if(m) hs = m[1];
+    }
+    // mahsulot nomidan HS prefiksi va manual qavslarini olib tashlash
+    var name = raw
+      .replace(/^HS\s*\d{2,10}\s*(\([^)]+\))?\s*[-—:]?\s*/i, '')
+      .replace(/^\s*[-—:]\s*/, '')
+      .trim();
+    if(!name) name = raw;
+    return { name: name, hs: hs };
+  }
+
   function _buildContacts(rec){
     var parts = [];
     var n = String(rec.contact || rec.kontakt || '').trim();
@@ -3787,7 +3887,7 @@ async function exportSelectedToExcel(){
     if(n) parts.push(n + (pos ? (' (' + pos + ')') : ''));
     if(em) parts.push(em);
     if(tel) parts.push(tel);
-    return parts.join(', ');
+    return parts.length ? parts.join(', ') : '-';
   }
   function _buildImporter(rec){
     var imp = null;
@@ -3797,12 +3897,38 @@ async function exportSelectedToExcel(){
     if(!imp && Array.isArray(rec._partnerOf) && rec._partnerOf.length){
       imp = rec._partnerOf.find(function(p){ return p.role === 'importer' || !p.role; }) || rec._partnerOf[0];
     }
-    if(!imp) return { name: '', country: '', contacts: '' };
+    if(!imp) return { name: '-', country: '-', contacts: '-' };
+    var contacts = [imp.contact, imp.email, imp.telefon].filter(Boolean).join(', ');
     return {
-      name: String(imp.kompaniya || imp.name || '').trim(),
-      country: String(imp.davlat || imp.country || '').trim(),
-      contacts: [imp.contact, imp.email, imp.telefon].filter(Boolean).join(', ')
+      name: String(imp.kompaniya || imp.name || '').trim() || '-',
+      country: _toUzCountry(imp.davlat || imp.country || '') || '-',
+      contacts: contacts || '-'
     };
+  }
+  // Batafsil panel'da ko'rsatiladigan jami hajm/qiymat — _partners/_partnerOf'dan yig'ish
+  function _sumTradeData(rec){
+    var totalQty = Number(rec._tradeAtlasQuantity || rec.weight || 0) || 0;
+    var totalValue = Number(rec._tradeAtlasTradeValue || rec.import_volume || rec.summa || 0) || 0;
+    // Agar _partners array'da ham ma'lumot bo'lsa — yig'amiz (batafsil panel mantig'i)
+    if(Array.isArray(rec._partners) && rec._partners.length){
+      var qtySum = 0, valSum = 0;
+      rec._partners.forEach(function(p){
+        qtySum += Number(p.totalQty || 0) || 0;
+        valSum += Number(p.totalValue || 0) || 0;
+      });
+      if(qtySum > totalQty) totalQty = qtySum;
+      if(valSum > totalValue) totalValue = valSum;
+    }
+    if(Array.isArray(rec._partnerOf) && rec._partnerOf.length){
+      var qS = 0, vS = 0;
+      rec._partnerOf.forEach(function(p){
+        qS += Number(p.totalQty || 0) || 0;
+        vS += Number(p.totalValue || 0) || 0;
+      });
+      if(qS > totalQty) totalQty = qS;
+      if(vS > totalValue) totalValue = vS;
+    }
+    return { qty: totalQty, value: totalValue };
   }
   function _fmtMoney(n){
     var v = Number(n) || 0;
@@ -3854,38 +3980,48 @@ async function exportSelectedToExcel(){
 
     rows.forEach(function(r, i){
       var importer = _buildImporter(r);
+      var product = _parseProduct(r);
+      var trade = _sumTradeData(r);
       var rowNum = DATA_START_ROW + i;
-      var refRowNum = (i < TEMPLATE_ROWS) ? rowNum : DATA_START_ROW; // ortiqcha qator uchun 1-template row stilini ishlatamiz
 
       // Agar template'da bunday qator yo'q bo'lsa — yangi qator yaratiladi va styling 1-row'dan ko'chiriladi
       if(i >= TEMPLATE_ROWS){
         var refRow = ws.getRow(DATA_START_ROW);
         var newRow = ws.getRow(rowNum);
-        // Row height ham 1-row'ning balandligi
         if(refRow.height) newRow.height = refRow.height;
-        // Har column uchun styling kopyalansin
         ['A','B','C','D','E','F','G','H','I','J','K','L'].forEach(function(L){
           var refCell = ws.getCell(L + DATA_START_ROW);
           var newCell = ws.getCell(L + rowNum);
-          // Style ob'ektini chuqur nusxalash
           if(refCell.style) newCell.style = JSON.parse(JSON.stringify(refCell.style));
         });
       }
 
+      // Eksportyor kontaktlari (rahbar nomi, lavozimi, aloqa ma'lumotlari)
+      var exporterContacts = _buildContacts(r);
+
       // Hujayra qiymatlarini yozish (styling saqlanadi)
       ws.getCell('A' + rowNum).value = i + 1;
       ws.getCell('B' + rowNum).value = 'Navoiy viloyati';
-      ws.getCell('C' + rowNum).value = String(r.kompaniya || '').trim();
-      ws.getCell('D' + rowNum).value = String(r.davlat || r.country || '').trim();
-      ws.getCell('E' + rowNum).value = String(r.mahsulotNomi || r.soha || '').trim();
-      ws.getCell('F' + rowNum).value = String(r.mahsulotHs || r.hsCode || '').trim();
-      ws.getCell('G' + rowNum).value = _fmtWeight(r._tradeAtlasQuantity || r.weight);
-      ws.getCell('H' + rowNum).value = _fmtMoney(r._tradeAtlasTradeValue || r.import_volume || r.summa);
-      ws.getCell('I' + rowNum).value = _buildContacts(r);
+      ws.getCell('C' + rowNum).value = String(r.kompaniya || '').trim() || '-';
+      ws.getCell('D' + rowNum).value = _toUzCountry(r.davlat || r.country || '') || '-';
+      ws.getCell('E' + rowNum).value = product.name || '-';   // faqat mahsulot nomi
+      ws.getCell('F' + rowNum).value = product.hs || '-';      // faqat HS kod (raqam)
+      ws.getCell('G' + rowNum).value = trade.qty ? _fmtWeight(trade.qty) : '-';
+      ws.getCell('H' + rowNum).value = trade.value ? _fmtMoney(trade.value) : '-';
+      ws.getCell('I' + rowNum).value = exporterContacts;
       ws.getCell('J' + rowNum).value = importer.name;
       ws.getCell('K' + rowNum).value = importer.country;
       ws.getCell('L' + rowNum).value = importer.contacts;
     });
+
+    // Ortiqcha bo'sh template qatorlarini o'chirish
+    // Agar kompaniyalar < 8 bo'lsa, qolgan qatorlarni splice qilamiz
+    if(rows.length < TEMPLATE_ROWS){
+      // Eski (bo'sh) qatorlar: rows.length+DATA_START_ROW dan TEMPLATE_ROWS+DATA_START_ROW gacha
+      var firstEmptyRow = DATA_START_ROW + rows.length;
+      var emptyCount = TEMPLATE_ROWS - rows.length;
+      ws.spliceRows(firstEmptyRow, emptyCount);
+    }
 
     // Saqlash
     var dd = String(nowD.getDate()).padStart(2,'0');
