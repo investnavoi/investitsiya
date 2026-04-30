@@ -2330,19 +2330,6 @@ function renderInvestorCompanies(){
 }
 /* Apollo / TradeAtlas KPI kartochkasi bosilganda manbasiga qarab filter qo'llash (toggle).
    source = null bo'lsa filter butunlay olib tashlanadi (Jami bosilganda chaqiriladi) */
-// Eksportyor / Importyor bo'yicha filter (toggle)
-window.filterInvestorsByRole = function(role){
-  var current = window._investorRoleFilter || null;
-  if(current === role){
-    window._investorRoleFilter = null;
-    if(typeof toast === 'function') toast('Role filteri olib tashlandi','info');
-  } else {
-    window._investorRoleFilter = role;
-    if(typeof toast === 'function') toast(role === 'exporter' ? '📤 Eksportyorlar' : '📥 Importyorlar','info');
-  }
-  if(typeof renderInvestorCompanies === 'function') renderInvestorCompanies();
-};
-
 window.filterInvestorsBySource = function(source){
   var current = window._investorSourceFilter || null;
   if(source === null){
@@ -2479,8 +2466,6 @@ _renderInvestorCompaniesMain = function(){
     }
     return false; // noma'lum — eksportyor deb hisoblanadi
   }
-  // Role filter (Eksportyor / Importyor)
-  var _roleFilter = window._investorRoleFilter || null;
   const co = allCo.filter(function(r){
     if(_investorGeoFilterStateCode){
       if(getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
@@ -2488,12 +2473,6 @@ _renderInvestorCompaniesMain = function(){
     }
     if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
     if(!_matchesSourceFilter(r)) return false;
-    // Role filter
-    if(_roleFilter){
-      var isImp = _isImporterRec(r);
-      if(_roleFilter === 'exporter' && isImp) return false;
-      if(_roleFilter === 'importer' && !isImp) return false;
-    }
     return true;
   });
 
@@ -2510,15 +2489,27 @@ _renderInvestorCompaniesMain = function(){
     var key = getInvestorCompanyGroupKey(rec);
     if(!groupRoles[key]) groupRoles[key] = { hasExporter: false, hasImporter: false };
     var fm = String(rec.finderMode || rec.role || '').toLowerCase();
-    if(fm === 'exporters' || fm === 'exporter') groupRoles[key].hasExporter = true;
-    if(fm === 'importers' || fm === 'importer') groupRoles[key].hasImporter = true;
+    var detectedExp = false, detectedImp = false;
+    if(fm === 'exporters' || fm === 'exporter') detectedExp = true;
+    if(fm === 'importers' || fm === 'importer') detectedImp = true;
     // Partners orqali rolni aniqlash
     if(Array.isArray(rec._partners) && rec._partners.some(function(p){
       return String(p.role||'').toLowerCase() === 'importer';
-    })) groupRoles[key].hasExporter = true;
+    })) detectedExp = true;
     if(Array.isArray(rec._partnerOf) && rec._partnerOf.some(function(p){
       return String(p.role||'').toLowerCase() === 'exporter';
-    })) groupRoles[key].hasImporter = true;
+    })) detectedImp = true;
+    // _partners.role bo'sh bo'lsa-da, _partnerOf bilan kross-tekshiruv
+    if(!detectedExp && !detectedImp && Array.isArray(rec._partners) && rec._partners.length){
+      // _partners bor lekin role yo'q — bu rec ko'p hollarda eksportyor (sheriklari ham bor)
+      detectedExp = true;
+    }
+    if(!detectedExp && !detectedImp && Array.isArray(rec._partnerOf) && rec._partnerOf.length){
+      // _partnerOf bor — bu rec sherikning bolasi, ya'ni importyor
+      detectedImp = true;
+    }
+    if(detectedExp) groupRoles[key].hasExporter = true;
+    if(detectedImp) groupRoles[key].hasImporter = true;
     var src = String(rec.manba || rec.source || '').toLowerCase();
     var geoCode = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec, {}) : '';
     var hasGeo = !!geoCode;
@@ -3142,11 +3133,6 @@ _renderInvestorCompaniesMain = function(){
     timestamp: Date.now()
   };
   console.log('[STATS] Jami:', window._icStats.jami, '| Eksp:', window._icStats.exporters, '| Imp:', window._icStats.importers, '| Apollo:', window._icStats.apollo, '| TA:', window._icStats.tradeatlas);
-  // Eksportyor / Importyor badge'larini yangilash
-  var expEl = document.getElementById('ic-k-exporter');
-  if(expEl) expEl.textContent = window._icStats.exporters;
-  var impEl = document.getElementById('ic-k-importer');
-  if(impEl) impEl.textContent = window._icStats.importers;
 
   // Pie chart va geo karta — markazlashgan stats'dan oqiydi
   if(typeof renderIcCharts === 'function') renderIcCharts(visibleRecords);
