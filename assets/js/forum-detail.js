@@ -3387,20 +3387,38 @@ function toggleSelectMenu(event){
     : (DB.investorCompanies||[]).length;
   var pcEl = document.getElementById('selPageCount'); if(pcEl) pcEl.textContent = pageCount;
   var acEl = document.getElementById('selAllCount'); if(acEl) acEl.textContent = totalCount;
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-  if(menu.style.display === 'block'){
-    setTimeout(function(){
-      document.addEventListener('click', _closeSelectMenuOnOutside);
-    }, 0);
+  var willOpen = (menu.style.display === 'none' || !menu.style.display);
+  menu.style.display = willOpen ? 'block' : 'none';
+  if(willOpen){
+    // Joriy click event'ini hisobga olmaslik uchun timestamp belgilanadi
+    window._selMenuOpenedAt = Date.now();
+    // Capture phase'da ro'yxatga olish — boshqa handler'lardan oldin chaqirilishi uchun
+    if(!window._selMenuOutsideRegistered){
+      document.addEventListener('mousedown', _closeSelectMenuOnOutside, true);
+      window._selMenuOutsideRegistered = true;
+    }
   }
 }
 function _closeSelectMenuOnOutside(e){
   var menu = document.getElementById('selectAllMenu');
-  if(!menu) return;
-  if(!menu.contains(e.target) && e.target.id !== 'checkAll'){
-    menu.style.display = 'none';
-    document.removeEventListener('click', _closeSelectMenuOnOutside);
-  }
+  if(!menu || menu.style.display !== 'block') return;
+  // Menu yangi ochilgan bo'lsa (50ms ichida) — hisoblamaymiz
+  if(window._selMenuOpenedAt && (Date.now() - window._selMenuOpenedAt) < 100) return;
+  // Menu ichida yoki #checkAll ustida bosilgan bo'lsa — hech narsa qilmaymiz
+  if(menu.contains(e.target)) return;
+  if(e.target && e.target.id === 'checkAll') return;
+  // Tashqarida bosildi — yopamiz
+  menu.style.display = 'none';
+}
+// ESC bilan ham yopiladi
+if(typeof window !== 'undefined' && !window._selMenuEscRegistered){
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+      var menu = document.getElementById('selectAllMenu');
+      if(menu && menu.style.display === 'block') menu.style.display = 'none';
+    }
+  });
+  window._selMenuEscRegistered = true;
 }
 function selectThisPage(event){
   if(event){ event.stopPropagation(); }
@@ -3736,10 +3754,10 @@ async function executeBulkSend(){
 }
 
 /* ═══════════════════════════════════════
-   EXCEL EXPORT — namuna jadval bo'yicha
-   "___ davlatidan ___ davlatiga ___-yilda eksport qilgan kompaniyalarning MANZILLI RO'YXATI"
+   EXCEL EXPORT — foydalanuvchi yuborgan namuna shablonni AYNAN ishlatadi
+   Faqat data hujayralarini to'ldiradi, hech qanday styling/struktura o'zgarmaydi
 ═══════════════════════════════════════ */
-function exportSelectedToExcel(){
+async function exportSelectedToExcel(){
   if(typeof XLSX === 'undefined' || !XLSX || !XLSX.utils){
     toast('❌ Excel kutubxonasi yuklanmagan','error');
     return;
@@ -3750,7 +3768,7 @@ function exportSelectedToExcel(){
   var selected = co.filter(function(r){ return ids.indexOf(String(r.id)) !== -1; });
   if(!selected.length){ toast('⚠️ Tanlangan kompaniyalar topilmadi','error'); return; }
 
-  // Group by group key — har kompaniya 1 marta chiqsin (parent + children)
+  // Dedupe by group key
   var seen = {};
   var rows = [];
   selected.forEach(function(rec){
@@ -3760,23 +3778,6 @@ function exportSelectedToExcel(){
     rows.push(rec);
   });
 
-  // Eksportyor mamlakatlar (top 1) — title uchun
-  var countries = {};
-  rows.forEach(function(r){
-    var c = String(r.davlat || r.country || '').trim();
-    if(c) countries[c] = (countries[c]||0) + 1;
-  });
-  var topCountry = Object.keys(countries).sort(function(a,b){return countries[b]-countries[a];})[0] || '__';
-  var nowD = new Date();
-  var year = nowD.getFullYear();
-
-  // Title (namuna bo'yicha)
-  var titleText = topCountry + ' davlatidan O\'zbekiston davlatiga ' + year + '-yilda eksport qilgan kompaniyalarning\nMANZILLI RO\'YXATI';
-
-  // Headers
-  var headers = ['T/r','','Eksportyor Kompaniya nomi','Eksportyor davlati','Eksport qilingan mahsulot nomi','TN Ved (HS) kodi','Eksport hajmi','Eksport qiymati','Eksportyor kontaktlari (rahbar nomi, lavozimi, aloqa ma\'lumotlari)','Importyor Kompaniya nomi','Importyor davlati','Importyor kontaktlari (rahbar nomi, lavozimi, aloqa ma\'lumotlari)'];
-
-  // Data rows
   function _buildContacts(rec){
     var parts = [];
     var n = String(rec.contact || rec.kontakt || '').trim();
@@ -3789,7 +3790,6 @@ function exportSelectedToExcel(){
     return parts.join(', ');
   }
   function _buildImporter(rec){
-    // _partnerOf yoki _partners dan importyor olib chiqish
     var imp = null;
     if(Array.isArray(rec._partners) && rec._partners.length){
       imp = rec._partners.find(function(p){ return p.role === 'importer' || !p.role; }) || rec._partners[0];
@@ -3820,110 +3820,105 @@ function exportSelectedToExcel(){
     return v + ' kg';
   }
 
-  var dataRows = rows.map(function(r, i){
-    var importer = _buildImporter(r);
-    return [
-      i + 1,
-      'Navoiy viloyati',
-      String(r.kompaniya || '').trim(),
-      String(r.davlat || r.country || '').trim(),
-      String(r.mahsulotNomi || r.soha || '').trim(),
-      String(r.mahsulotHs || r.hsCode || '').trim(),
-      _fmtWeight(r._tradeAtlasQuantity || r.weight),
-      _fmtMoney(r._tradeAtlasTradeValue || r.import_volume || r.summa),
-      _buildContacts(r),
-      importer.name,
-      importer.country,
-      importer.contacts
-    ];
+  // Title uchun — top eksportyor davlat
+  var countries = {};
+  rows.forEach(function(r){
+    var c = String(r.davlat || r.country || '').trim();
+    if(c) countries[c] = (countries[c]||0) + 1;
   });
-
-  // AOA (Array of Arrays) bilan struktura yaratish — namunaga yaqin
-  var aoa = [];
-  aoa.push([titleText, '', '', '', '', '', '', '', '', '', '', '']); // Title
-  aoa.push(['', '', '', '', '', '', '', '', '', '', '', '']); // empty
-  aoa.push(headers); // Headers row
-  aoa.push(['', '', '', '', '', '', '', '', '', '', '', '']); // empty
-  aoa.push(['', '', 'Jami: ' + rows.length + ' ta', '', '', '', '', 0, '', 'Jami: ' + rows.length + ' ta', '', '']); // Total row
-  dataRows.forEach(function(r){ aoa.push(r); });
-
-  var ws = XLSX.utils.aoa_to_sheet(aoa);
-  // Column widths
-  ws['!cols'] = [
-    { wch: 6 },   // T/r
-    { wch: 16 },  // Navoiy viloyati
-    { wch: 32 },  // Eksportyor nomi
-    { wch: 18 },  // Eksportyor davlati
-    { wch: 28 },  // Mahsulot
-    { wch: 14 },  // HS kod
-    { wch: 14 },  // Hajm
-    { wch: 14 },  // Qiymat
-    { wch: 38 },  // Eksportyor kontaktlari
-    { wch: 32 },  // Importyor nomi
-    { wch: 18 },  // Importyor davlati
-    { wch: 38 }   // Importyor kontaktlari
-  ];
-  // Title row merge (A1:L1)
-  ws['!merges'] = ws['!merges'] || [];
-  ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } });
-
-  // Title cell styling (xlsx-js-style support)
-  if(ws['A1']){
-    ws['A1'].s = {
-      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-      font: { bold: true, sz: 13 }
-    };
-  }
-  // Headers row styling (row index 2 → A3:L3)
-  var headerLetters = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-  headerLetters.forEach(function(L){
-    var cell = ws[L + '3'];
-    if(cell){
-      cell.s = {
-        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-        font: { bold: true, sz: 10 },
-        fill: { fgColor: { rgb: 'D9E1F2' } },
-        border: {
-          top: { style: 'thin' }, bottom: { style: 'thin' },
-          left: { style: 'thin' }, right: { style: 'thin' }
-        }
-      };
-    }
-  });
-  // Data rows borders (rows 6+, indexes 5+)
-  for(var ri = 5; ri < aoa.length; ri++){
-    headerLetters.forEach(function(L){
-      var cell = ws[L + (ri + 1)];
-      if(cell){
-        cell.s = cell.s || {};
-        cell.s.border = {
-          top: { style: 'thin' }, bottom: { style: 'thin' },
-          left: { style: 'thin' }, right: { style: 'thin' }
-        };
-        cell.s.alignment = { vertical: 'center', wrapText: true };
-      }
-    });
-  }
-  // Row heights
-  ws['!rows'] = [];
-  ws['!rows'][0] = { hpt: 40 }; // Title
-  ws['!rows'][2] = { hpt: 50 }; // Headers
-
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'манзилли');
-
-  // Fayl nomi: Kompaniyalar_ro'yxati_30.04.2026.xlsx
-  var dd = String(nowD.getDate()).padStart(2,'0');
-  var mm = String(nowD.getMonth()+1).padStart(2,'0');
-  var yyyy = nowD.getFullYear();
-  var fname = 'Kompaniyalar_ro\'yxati_' + dd + '.' + mm + '.' + yyyy + '.xlsx';
+  var topCountry = Object.keys(countries).sort(function(a,b){return countries[b]-countries[a];})[0] || '__';
+  var nowD = new Date();
+  var year = nowD.getFullYear();
+  var loadingToast = (typeof toastLoading === 'function') ? toastLoading('⏳ Excel namuna yuklanmoqda...') : null;
 
   try {
+    // Namuna shablonni yuklab olish
+    var resp = await fetch('assets/templates/manzilli-template.xlsx');
+    if(!resp.ok) throw new Error('Namuna fayl yuklanmadi (HTTP ' + resp.status + ')');
+    var buf = await resp.arrayBuffer();
+    var wb = XLSX.read(buf, { type: 'array', cellStyles: true });
+    var sn = wb.SheetNames[0];
+    var ws = wb.Sheets[sn];
+    if(!ws) throw new Error('Namuna sheet topilmadi');
+
+    // Title (R1, A2:L2 merged) — namunadagi formatga mos to'ldirish
+    // Asl: "___ davlatidan ____ davlatiga _____-yilda eksport qilgan kompaniyalarning\nMANZILLI RO'YXATI"
+    if(ws['A2']){
+      var newTitle = topCountry + ' davlatidan O\'zbekiston davlatiga ' + year + '-yilda eksport qilgan kompaniyalarning \r\nMANZILLI RO\'YXATI';
+      ws['A2'].v = newTitle;
+      ws['A2'].w = newTitle;
+      if(ws['A2'].t === undefined) ws['A2'].t = 's';
+    }
+
+    // Total row R6 — "Jami: ___ ta" hujayralari (C6 va J6)
+    if(ws['C6']){ ws['C6'].v = 'Jami: ' + rows.length + ' ta'; ws['C6'].w = 'Jami: ' + rows.length + ' ta'; ws['C6'].t = 's'; }
+    if(ws['J6']){ ws['J6'].v = 'Jami: ' + rows.length + ' ta'; ws['J6'].w = 'Jami: ' + rows.length + ' ta'; ws['J6'].t = 's'; }
+
+    // Data rows — R7 dan boshlanadi (template'da R7-R14 = 8 ta empty row)
+    // Foydalanuvchi tanlagan har kompaniyani R7+i ga yozamiz
+    // Agar kompaniyalar 8 dan ko'p bo'lsa, qator stilini takrorlab yangi qatorlar qo'shamiz
+    var DATA_START_ROW = 7; // Excel R7 (0-indexed: 6)
+    var TEMPLATE_ROWS = 8;   // R7..R14
+    var COLS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+
+    function _setCell(addr, value, templateAddr){
+      // Template hujayrasidan styling olish
+      var existing = ws[addr];
+      var tmpl = templateAddr ? ws[templateAddr] : null;
+      var s = (existing && existing.s) || (tmpl && tmpl.s) || null;
+      ws[addr] = { v: value, t: 's', w: String(value) };
+      if(s) ws[addr].s = s;
+    }
+
+    rows.forEach(function(r, i){
+      var importer = _buildImporter(r);
+      var data = [
+        i + 1,                                          // A: T/r
+        'Navoiy viloyati',                              // B
+        String(r.kompaniya || '').trim(),               // C: Eksportyor
+        String(r.davlat || r.country || '').trim(),     // D
+        String(r.mahsulotNomi || r.soha || '').trim(),  // E
+        String(r.mahsulotHs || r.hsCode || '').trim(),  // F: HS
+        _fmtWeight(r._tradeAtlasQuantity || r.weight),  // G
+        _fmtMoney(r._tradeAtlasTradeValue || r.import_volume || r.summa), // H
+        _buildContacts(r),                              // I
+        importer.name,                                  // J
+        importer.country,                               // K
+        importer.contacts                               // L
+      ];
+      var rowExcel = DATA_START_ROW + i;
+      // Template hujayra namunasi — 7-qator (1-template row)
+      var refRow = (i < TEMPLATE_ROWS) ? rowExcel : DATA_START_ROW; // ortiqcha qator stilini 1-qator'dan oladi
+      COLS.forEach(function(L, ci){
+        var addr = L + rowExcel;
+        var refAddr = L + refRow;
+        _setCell(addr, data[ci], refAddr);
+      });
+    });
+
+    // Range yangilash — rows.length > 8 bo'lsa, range kengaytiriladi
+    if(rows.length > 0){
+      var lastRow = DATA_START_ROW + rows.length - 1;
+      var oldRange = XLSX.utils.decode_range(ws['!ref']);
+      if(lastRow > oldRange.e.r){
+        oldRange.e.r = lastRow;
+        ws['!ref'] = XLSX.utils.encode_range(oldRange);
+      }
+    }
+
+    // Saqlash — namuna fayldagi sheet name (манзилли) bilan
+    var dd = String(nowD.getDate()).padStart(2,'0');
+    var mm = String(nowD.getMonth()+1).padStart(2,'0');
+    var yyyy = nowD.getFullYear();
+    var fname = 'Kompaniyalar_ro\'yxati_' + dd + '.' + mm + '.' + yyyy + '.xlsx';
+
     XLSX.writeFile(wb, fname);
-    toast('✅ ' + rows.length + ' ta kompaniya Excel\'ga yozildi: ' + fname,'success');
+    if(loadingToast && typeof toastDone === 'function') toastDone(loadingToast, '✅ ' + rows.length + ' ta kompaniya namuna Excel\'ga to\'ldirildi: ' + fname, 'success');
+    else toast('✅ ' + rows.length + ' ta kompaniya namuna Excel\'ga to\'ldirildi: ' + fname,'success');
   } catch(e){
     console.error('Excel export error:', e);
-    toast('❌ Excel saqlanmadi: ' + (e.message||e),'error');
+    if(loadingToast && typeof toastDone === 'function') toastDone(loadingToast, '❌ Excel saqlanmadi: ' + (e.message||e), 'error');
+    else toast('❌ Excel saqlanmadi: ' + (e.message||e),'error');
   }
 }
 window.exportSelectedToExcel = exportSelectedToExcel;
