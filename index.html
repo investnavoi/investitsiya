@@ -933,16 +933,16 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
             <tr>
               <th style="width:30px;padding-left:.75rem;position:relative;overflow:visible">
                 <input type="checkbox" id="checkAll" onclick="toggleSelectMenu(event)" style="width:16px;height:16px;border-radius:4px;accent-color:#465fff;cursor:pointer">
-                <div id="selectAllMenu" style="display:none;position:absolute;top:100%;left:0;margin-top:6px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.15);z-index:9999;min-width:220px;padding:6px 0;white-space:nowrap">
-                  <div onclick="selectThisPage(event)" style="padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:.78rem;color:#1F2937" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='transparent'">
-                    <input type="radio" name="selScope" style="margin:0;accent-color:#465fff">
-                    <span>Select this page <span id="selPageCount" style="color:#6B7280;font-weight:600">0</span></span>
+                <div id="selectAllMenu" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()" style="display:none;position:absolute;top:100%;left:0;margin-top:6px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.15);z-index:9999;min-width:220px;padding:6px 0;white-space:nowrap">
+                  <div onmousedown="event.preventDefault();selectThisPage(event)" style="padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:.78rem;color:#1F2937;user-select:none" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='transparent'">
+                    <span style="display:inline-flex;width:14px;height:14px;border-radius:50%;border:1.5px solid #D1D5DB;flex-shrink:0;pointer-events:none"></span>
+                    <span style="pointer-events:none">Select this page <span id="selPageCount" style="color:#6B7280;font-weight:600">0</span></span>
                   </div>
-                  <div onclick="selectAll(event)" style="padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:.78rem;color:#1F2937" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='transparent'">
-                    <input type="radio" name="selScope" style="margin:0;accent-color:#465fff">
-                    <span>Select all <span id="selAllCount" style="color:#6B7280;font-weight:600">0</span></span>
+                  <div onmousedown="event.preventDefault();selectAll(event)" style="padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:.78rem;color:#1F2937;user-select:none" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='transparent'">
+                    <span style="display:inline-flex;width:14px;height:14px;border-radius:50%;border:1.5px solid #D1D5DB;flex-shrink:0;pointer-events:none"></span>
+                    <span style="pointer-events:none">Select all <span id="selAllCount" style="color:#6B7280;font-weight:600">0</span></span>
                   </div>
-                  <div onclick="clearSelection(event)" style="padding:8px 14px;cursor:pointer;font-size:.74rem;color:#EF4444;border-top:1px solid var(--border);margin-top:4px" onmouseover="this.style.background='#FEF3F2'" onmouseout="this.style.background='transparent'">Tozalash</div>
+                  <div onmousedown="event.preventDefault();clearSelection(event)" style="padding:8px 14px;cursor:pointer;font-size:.74rem;color:#EF4444;border-top:1px solid var(--border);margin-top:4px;user-select:none" onmouseover="this.style.background='#FEF3F2'" onmouseout="this.style.background='transparent'">Tozalash</div>
                 </div>
               </th>
               <th style="width:28px">#</th>
