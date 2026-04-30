@@ -3049,13 +3049,8 @@ _renderInvestorCompaniesMain = function(){
   });
   vEmailSent = Object.keys(vEmailSentGroups).length;
   vHasEmail = Object.keys(vHasEmailGroups).length;
-  // "Jami" KPI — source filter aktiv bo'lsa (Apollo/TradeAtlas), asl total'ni saqlash
-  // (114 TradeAtlas bosilganda Jami 332 bo'lib qolsin)
+  // "Jami" KPI — keyinroq _icStats yig'ilgandan keyin yangilanadi (pastki blok'da)
   var ic1El = document.getElementById('ic-k1');
-  if(ic1El){
-    var jamiTotal = _sourceFilter ? groupCount : visibleGroups.length;
-    ic1El.innerHTML = jamiTotal + ' <span class="kpi-unit">ta</span>';
-  }
   var ic2El = document.getElementById('ic-k2');
   if(ic2El) ic2El.innerHTML = vTayyor + ' <span class="kpi-unit">ta</span>';
   var ic3El = document.getElementById('ic-k3');
@@ -3071,15 +3066,18 @@ _renderInvestorCompaniesMain = function(){
   var statsBySource = { apollo: 0, tradeatlas: 0, other: 0 };
   var statsByRole = { exporters: 0, importers: 0, unknown: 0 };
   // ═══ byCountry — `co` (filter qo'llangan, parent-child reorderdan oldin) bo'yicha ═══
-  // Click qilganda ham shu logika ishlatiladi → aynan mos
+  // Faqat eksportyor — Jami = xarita yig'indisi
   var _byCountrySeenGroups = Object.create(null);
+  var _exporterGroupKeys = Object.create(null); // jami eksportyor sonini hisoblash
   co.forEach(function(rec){
-    if(_isImporterRec(rec)) return; // faqat eksportyor (click qilganda ham xuddi shu filter)
+    if(_isImporterRec(rec)) return;
     var code = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec, {}) : '';
-    if(!code) return;
     var groupKey = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
+    if(!groupKey) return;
+    _exporterGroupKeys[groupKey] = true;
+    if(!code) return;
     if(!_byCountrySeenGroups[code]) _byCountrySeenGroups[code] = Object.create(null);
-    if(_byCountrySeenGroups[code][groupKey]) return; // dedupe per country
+    if(_byCountrySeenGroups[code][groupKey]) return;
     _byCountrySeenGroups[code][groupKey] = true;
     if(!statsByCountry[code]){
       statsByCountry[code] = { code: code, count: 0, companies: [], lat: null, lon: null, name: '' };
@@ -3096,6 +3094,7 @@ _renderInvestorCompaniesMain = function(){
     if(rec.kompaniya) statsByCountry[code].companies.push(String(rec.kompaniya));
     statsByCountryName[statsByCountry[code].name] = (statsByCountryName[statsByCountry[code].name] || 0) + 1;
   });
+  var _exporterTotal = Object.keys(_exporterGroupKeys).length;
 
   // visibleGroups loop — role va source uchun saqlandi
   visibleGroups.forEach(function(g){
@@ -3126,12 +3125,13 @@ _renderInvestorCompaniesMain = function(){
   });
   // _icStats — markazlashgan source of truth
   window._icStats = {
-    jami: visibleGroups.length,
+    jami: _exporterTotal,                // ✓ FAQAT eksportyor (xarita yig'indisi bilan mos)
+    visibleTotal: visibleGroups.length,  // visibleGroups (eksp + imp) — backwards compat
     apollo: statsBySource.apollo,
     tradeatlas: statsBySource.tradeatlas,
     other: statsBySource.other,
-    exporters: statsByRole.exporters,    // ✓ alohida
-    importers: statsByRole.importers,    // ✓ alohida
+    exporters: statsByRole.exporters,
+    importers: statsByRole.importers,
     unknown: statsByRole.unknown,
     tayyor: vTayyor,
     emailSent: vEmailSent,
@@ -3143,6 +3143,10 @@ _renderInvestorCompaniesMain = function(){
     timestamp: Date.now()
   };
   console.log('[STATS] Jami:', window._icStats.jami, '| Eksp:', window._icStats.exporters, '| Imp:', window._icStats.importers, '| Apollo:', window._icStats.apollo, '| TA:', window._icStats.tradeatlas);
+  // Jami KPI — _icStats yig'ilgandan keyin (faqat eksportyor)
+  if(ic1El){
+    ic1El.innerHTML = window._icStats.jami + ' <span class="kpi-unit">ta</span>';
+  }
 
   // Pie chart va geo karta — markazlashgan stats'dan oqiydi
   if(typeof renderIcCharts === 'function') renderIcCharts(visibleRecords);
