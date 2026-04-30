@@ -2349,6 +2349,16 @@ function getInvestorCompanyGroupKey(rec){
 }
 
 _renderInvestorCompaniesMain = function(){
+  // Avvalgi render'lardan qoldirilgan in-memory synthetic record'larni DB'dan olib tashlaymiz
+  // (avvalgi bug — har render'da DB.investorCompanies o'sib boryotgan edi)
+  if(Array.isArray(DB.investorCompanies)){
+    var _cleaned = DB.investorCompanies.filter(function(r){
+      return !(r && (r._isInMemoryOnly === true || String(r.id||'').indexOf('inmem_partner_') === 0));
+    });
+    if(_cleaned.length !== DB.investorCompanies.length){
+      DB.investorCompanies = _cleaned;
+    }
+  }
   var rawCo = DB.investorCompanies || [];
   // Period filter
   var periodSel = document.getElementById('ic-period-select');
@@ -2785,10 +2795,8 @@ _renderInvestorCompaniesMain = function(){
             _displayNumber: g._displayNumber,
             _isInMemoryGroup: true
           };
-          // DB'ga ham qo'shamiz (in-memory) — ammo Firebase'ga yuborilmaydi
-          if(!Array.isArray(DB.investorCompanies)) DB.investorCompanies = [];
-          DB.investorCompanies.push(syntheticRec);
-          _existingNamesLower[pKey] = syntheticRec;
+          // FAQAT in-memory render uchun — DB.investorCompanies'ga PUSH QILMAYMIZ
+          // (har render'da kumulyativ o'sib kompaniya soni ko'paymasligi uchun)
           _groupByName[pKey] = synthGroup;
           _visited[synthGroup.key] = true;
           _orderedGroups.push(synthGroup);
