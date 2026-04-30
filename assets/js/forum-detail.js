@@ -2366,12 +2366,30 @@ _renderInvestorCompaniesMain = function(){
     if(_sourceFilter === 'tradeatlas') return src.indexOf('tradeatlas') !== -1 || src === 'trade';
     return true;
   }
+  // Record importyor ekanligini aniqlash — finderMode + _partners + _partnerOf'dan
+  function _isImporterRec(r){
+    var fm = String(r.finderMode || r.role || '').toLowerCase();
+    if(fm === 'importers' || fm === 'importer') return true;
+    if(fm === 'exporters' || fm === 'exporter') return false;
+    // Fallback: agar _partners[0].role === 'importer' bo'lsa, BU rec eksportyor (sherigi importer)
+    if(Array.isArray(r._partners) && r._partners.length){
+      var pr0 = String((r._partners[0] || {}).role || '').toLowerCase();
+      if(pr0 === 'importer') return false;
+      if(pr0 === 'exporter') return true;
+    }
+    // _partnerOf[0].role === 'exporter' bo'lsa, BU rec importer (parent eksportyor)
+    if(Array.isArray(r._partnerOf) && r._partnerOf.length){
+      var po0 = String((r._partnerOf[0] || {}).role || '').toLowerCase();
+      if(po0 === 'exporter') return true;
+      if(po0 === 'importer') return false;
+    }
+    return false; // noma'lum — eksportyor deb hisoblanadi
+  }
   const co = allCo.filter(function(r){
     if(_investorGeoFilterStateCode){
       if(getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
-      // Geo filter aktiv bo'lganda — faqat EKSPORTYORLAR (importyorlar yo'q)
-      var fm = String(r.finderMode || r.role || '').toLowerCase();
-      if(fm === 'importers' || fm === 'importer') return false;
+      // Geo filter aktiv — faqat EKSPORTYORLAR (importyorlar yo'q)
+      if(_isImporterRec(r)) return false;
     }
     if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
     if(!_matchesSourceFilter(r)) return false;
@@ -2551,9 +2569,8 @@ _renderInvestorCompaniesMain = function(){
       if(_investorGeoFilterStateCode){
         var rCode = getInvestorGeoStateCode(r, window._investorGeoStateStats || {});
         if(rCode !== _investorGeoFilterStateCode) return;
-        // Geo filter aktiv: faqat eksportyor synthetic'lar qo'shiladi
-        var rfm = String(r.finderMode || '').toLowerCase();
-        if(rfm === 'importers' || rfm === 'importer') return;
+        // Geo filter aktiv: faqat eksportyor synthetic'lar
+        if(_isImporterRec(r)) return;
       }
       co.push(r);
     });
@@ -2772,6 +2789,54 @@ _renderInvestorCompaniesMain = function(){
     if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
     return;
   }
+
+  // ═══ YANGI QOSHILGANLAR BIRINCHIDA — har group'ni eng yangi record ID/timestamp bo'yicha tartiblash ═══
+  // ID timestamp asosida (Date.now() yoki shunga o'xshash) — eng katta birinchi
+  function _maxRecTime(g){
+    if(!g || !Array.isArray(g.records) || !g.records.length) return 0;
+    var max = 0;
+    g.records.forEach(function(r){
+      // ID dan timestamp ajratish — masalan "fc_ta_partner_1735632000_xxx" yoki "1735632000" yoki Number
+      var idStr = String(r.id || '');
+      var nMatch = idStr.match(/(\d{10,})/); // 10+ raqamli timestamp (ms yoki s)
+      var t = nMatch ? Number(nMatch[1]) : Number(r.id) || 0;
+      if(Number.isFinite(t) && t > max) max = t;
+      // sana yoki createdAt ham bor bo'lsa, shu ham hisobga olinadi
+      var sd = Date.parse(r.createdAt || r.sana || '');
+      if(Number.isFinite(sd) && sd > max) max = sd;
+    });
+    return max;
+  }
+  // Parent-child orderni saqlab, lekin har parent (visible) tartibini yangilik bo'yicha qaytadan tartiblash
+  // _isHiddenChild larni ham parent tartibiga ergashtiramiz
+  var _parentSorted = grouped.filter(function(g){ return !g._isHiddenChild; })
+    .sort(function(a, b){ return _maxRecTime(b) - _maxRecTime(a); });
+  var _childByParent = Object.create(null);
+  grouped.forEach(function(g){
+    if(g._isHiddenChild && g._parentKey){
+      if(!_childByParent[g._parentKey]) _childByParent[g._parentKey] = [];
+      _childByParent[g._parentKey].push(g);
+    }
+  });
+  var _newOrder = [];
+  var _displayCounter2 = 0;
+  _parentSorted.forEach(function(parent){
+    _displayCounter2++;
+    parent._displayNumber = _displayCounter2;
+    _newOrder.push(parent);
+    var kids = _childByParent[parent.key] || [];
+    kids.forEach(function(k){
+      k._displayNumber = _displayCounter2;
+      _newOrder.push(k);
+    });
+  });
+  // Hidden child orphan'lar (parent topilmagan) — oxiriga qo'shiladi
+  grouped.forEach(function(g){
+    if(g._isHiddenChild && _newOrder.indexOf(g) === -1){
+      _newOrder.push(g);
+    }
+  });
+  grouped = _newOrder;
 
   // Pagination — faqat visible (non-hidden-child) kompaniyalar bo'yicha
   var visibleGroups = grouped.filter(function(g){ return !g._isHiddenChild; });
