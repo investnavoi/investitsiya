@@ -2330,6 +2330,19 @@ function renderInvestorCompanies(){
 }
 /* Apollo / TradeAtlas KPI kartochkasi bosilganda manbasiga qarab filter qo'llash (toggle).
    source = null bo'lsa filter butunlay olib tashlanadi (Jami bosilganda chaqiriladi) */
+// Eksportyor / Importyor bo'yicha filter (toggle)
+window.filterInvestorsByRole = function(role){
+  var current = window._investorRoleFilter || null;
+  if(current === role){
+    window._investorRoleFilter = null;
+    if(typeof toast === 'function') toast('Role filteri olib tashlandi','info');
+  } else {
+    window._investorRoleFilter = role;
+    if(typeof toast === 'function') toast(role === 'exporter' ? '📤 Eksportyorlar' : '📥 Importyorlar','info');
+  }
+  if(typeof renderInvestorCompanies === 'function') renderInvestorCompanies();
+};
+
 window.filterInvestorsBySource = function(source){
   var current = window._investorSourceFilter || null;
   if(source === null){
@@ -2466,14 +2479,21 @@ _renderInvestorCompaniesMain = function(){
     }
     return false; // noma'lum — eksportyor deb hisoblanadi
   }
+  // Role filter (Eksportyor / Importyor)
+  var _roleFilter = window._investorRoleFilter || null;
   const co = allCo.filter(function(r){
     if(_investorGeoFilterStateCode){
       if(getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
-      // Geo filter aktiv — faqat EKSPORTYORLAR (importyorlar yo'q)
       if(_isImporterRec(r)) return false;
     }
     if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
     if(!_matchesSourceFilter(r)) return false;
+    // Role filter
+    if(_roleFilter){
+      var isImp = _isImporterRec(r);
+      if(_roleFilter === 'exporter' && isImp) return false;
+      if(_roleFilter === 'importer' && !isImp) return false;
+    }
     return true;
   });
 
@@ -3055,14 +3075,14 @@ _renderInvestorCompaniesMain = function(){
   if(taEl2) taEl2.textContent = Object.keys(visibleTaGroups).length;
   // ═══ MARKAZLASHGAN STATISTIKA — barcha komponentlar shu yerdan o'qiydi ═══
   // SOURCE OF TRUTH: visibleGroups (jadvaldagi haqiqiy kompaniyalar)
-  // Har group bir kompaniya — uning birinchi (parent) record davlati ishlatiladi
   var statsByCountry = Object.create(null);
   var statsByCountryName = Object.create(null);
   var statsBySource = { apollo: 0, tradeatlas: 0, other: 0 };
+  var statsByRole = { exporters: 0, importers: 0, unknown: 0 };
   visibleGroups.forEach(function(g){
     if(!Array.isArray(g.records) || !g.records.length) return;
     var rec0 = g.records[0];
-    // Davlat — group'ning birlamchi record davlati
+    // Davlat
     var code = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec0, {}) : '';
     if(code){
       if(!statsByCountry[code]){
@@ -3080,7 +3100,19 @@ _renderInvestorCompaniesMain = function(){
       if(rec0.kompaniya) statsByCountry[code].companies.push(String(rec0.kompaniya));
       statsByCountryName[statsByCountry[code].name] = (statsByCountryName[statsByCountry[code].name] || 0) + 1;
     }
-    // Source — har record (parent + children) tekshirilib aniqlanadi
+    // Role — group._role yoki record finderMode'dan
+    var role = String(g._role || rec0.finderMode || rec0.role || '').toLowerCase();
+    if(role === 'exporter' || role === 'exporters') statsByRole.exporters++;
+    else if(role === 'importer' || role === 'importers') statsByRole.importers++;
+    else {
+      // _partners orqali aniqlash
+      var hasImpPartner = Array.isArray(rec0._partners) && rec0._partners.some(function(p){ return String(p.role||'').toLowerCase() === 'importer'; });
+      var hasExpPartnerOf = Array.isArray(rec0._partnerOf) && rec0._partnerOf.some(function(p){ return String(p.role||'').toLowerCase() === 'exporter'; });
+      if(hasImpPartner) statsByRole.exporters++;
+      else if(hasExpPartnerOf) statsByRole.importers++;
+      else statsByRole.exporters++; // noma'lum — eksportyor deb hisoblanadi
+    }
+    // Source
     var hasApollo = false, hasTa = false;
     g.records.forEach(function(r){
       var src = String(r.manba || r.source || '').toLowerCase();
@@ -3097,15 +3129,24 @@ _renderInvestorCompaniesMain = function(){
     apollo: statsBySource.apollo,
     tradeatlas: statsBySource.tradeatlas,
     other: statsBySource.other,
+    exporters: statsByRole.exporters,    // ✓ alohida
+    importers: statsByRole.importers,    // ✓ alohida
+    unknown: statsByRole.unknown,
     tayyor: vTayyor,
     emailSent: vEmailSent,
     hasEmail: vHasEmail,
-    byCountry: statsByCountry,        // { 'UZ': {count, lat, lon, name, ...}, ... }
-    byCountryName: statsByCountryName, // { 'O\'zbekiston': N, ... } — pie chart uchun
+    byCountry: statsByCountry,
+    byCountryName: statsByCountryName,
     countryCodes: Object.keys(statsByCountry),
     countryCount: Object.keys(statsByCountry).length,
     timestamp: Date.now()
   };
+  console.log('[STATS] Jami:', window._icStats.jami, '| Eksp:', window._icStats.exporters, '| Imp:', window._icStats.importers, '| Apollo:', window._icStats.apollo, '| TA:', window._icStats.tradeatlas);
+  // Eksportyor / Importyor badge'larini yangilash
+  var expEl = document.getElementById('ic-k-exporter');
+  if(expEl) expEl.textContent = window._icStats.exporters;
+  var impEl = document.getElementById('ic-k-importer');
+  if(impEl) impEl.textContent = window._icStats.importers;
 
   // Pie chart va geo karta — markazlashgan stats'dan oqiydi
   if(typeof renderIcCharts === 'function') renderIcCharts(visibleRecords);

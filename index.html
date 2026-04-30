@@ -72,7 +72,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/email-modal.js" defer></script>
 <script src="assets/js/investor-companies.js"></script>
 <script src="assets/js/excel-media.js" defer></script>
-<script src="assets/js/forum-detail.js?v=stats-refactor-v1"></script>
+<script src="assets/js/forum-detail.js?v=role-filter-v1"></script>
 <script src="assets/js/intl-forums.js"></script>
 <script src="assets/js/csv-import.js" defer></script>
 <script src="assets/js/admin-lists.js"></script>
@@ -849,6 +849,26 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
           <div style="min-width:0">
             <div style="font-size:.55rem;color:var(--text3);font-weight:600;line-height:1">TradeAtlas</div>
             <div style="font-size:.85rem;font-weight:800;color:var(--text);line-height:1.1"><span id="ic-k-tradeatlas">0</span> <span style="font-size:.55rem;font-weight:600;color:var(--text3)">ta</span></div>
+          </div>
+        </div>
+        <!-- Eksportyor badge -->
+        <div onclick="filterInvestorsByRole('exporter')" title="Eksportyor kompaniyalar" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 7px;border-radius:8px;background:rgba(5,150,105,.10);transition:background .15s;flex-shrink:0" onmouseover="this.style.background='rgba(5,150,105,.22)'" onmouseout="this.style.background='rgba(5,150,105,.10)'">
+          <div style="width:28px;height:28px;background:linear-gradient(135deg,#059669,#047857);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </div>
+          <div style="min-width:0">
+            <div style="font-size:.55rem;color:var(--text3);font-weight:600;line-height:1">Eksportyor</div>
+            <div style="font-size:.85rem;font-weight:800;color:var(--text);line-height:1.1"><span id="ic-k-exporter">0</span> <span style="font-size:.55rem;font-weight:600;color:var(--text3)">ta</span></div>
+          </div>
+        </div>
+        <!-- Importyor badge -->
+        <div onclick="filterInvestorsByRole('importer')" title="Importyor kompaniyalar" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 7px;border-radius:8px;background:rgba(124,58,237,.10);transition:background .15s;flex-shrink:0" onmouseover="this.style.background='rgba(124,58,237,.22)'" onmouseout="this.style.background='rgba(124,58,237,.10)'">
+          <div style="width:28px;height:28px;background:linear-gradient(135deg,#7C3AED,#6D28D9);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 19l-7-7 7-7"/></svg>
+          </div>
+          <div style="min-width:0">
+            <div style="font-size:.55rem;color:var(--text3);font-weight:600;line-height:1">Importyor</div>
+            <div style="font-size:.85rem;font-weight:800;color:var(--text);line-height:1.1"><span id="ic-k-importer">0</span> <span style="font-size:.55rem;font-weight:600;color:var(--text3)">ta</span></div>
           </div>
         </div>
       </div>
