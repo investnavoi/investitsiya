@@ -2374,9 +2374,23 @@ _renderInvestorCompaniesMain = function(){
   })() : null;
   const allCo = (range && typeof inRange==='function') ? rawCo.filter(function(c){return inRange(c, range);}) : rawCo;
 
-  var productFilter = _investorProductFilterId
-    ? (DB.products || []).find(function(item){ return String(item.id || '') === String(_investorProductFilterId || ''); }) || null
-    : null;
+  var productFilter = null;
+  if(_investorProductFilterId){
+    var pidStr = String(_investorProductFilterId);
+    // Manual HS kod virtual product — DB.products'da yo'q
+    if(pidStr.indexOf('manual_hs_') === 0){
+      var manualHsCode = pidStr.replace(/^manual_hs_/, '').replace(/\D/g,'');
+      productFilter = {
+        id: pidStr,
+        hs_code: manualHsCode,
+        name_uz: 'HS ' + manualHsCode,
+        name_en: 'HS ' + manualHsCode,
+        _isManualHs: true
+      };
+    } else {
+      productFilter = (DB.products || []).find(function(item){ return String(item.id || '') === pidStr; }) || null;
+    }
+  }
 
   // Source filter — Apollo yoki TradeAtlas KPI kartochkasi bosilganda
   var _sourceFilter = window._investorSourceFilter || null;

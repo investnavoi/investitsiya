@@ -527,10 +527,10 @@ input[type="checkbox"]:checked::after,
 /* Gradient ajratuvchi chiziq — biroz balandroq */
 #ic-tbody tr.ic-company-separator td{padding:5px 12px !important;background:transparent !important;border:none !important}
 #ic-tbody tr.ic-company-separator td > div{display:block !important;width:100% !important;min-height:1px !important;height:1px !important;border-radius:99px !important}
-/* Kompaniya nomini max 2 qatorgacha o'rashga yo'l qo'yish (1 qatorga sig'masa 2-ga oshadi, undan ortiq emas) */
+/* Kompaniya nomi to'liq ko'rinishi uchun — uzun nomlar 4 qatorgacha (kesilmaydi) */
 #ic-tbody .ic-company-name-2line{
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-  overflow:hidden;line-height:1.25;word-break:break-word;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;
+  overflow:hidden;line-height:1.3;word-break:break-word;white-space:normal;
 }
 /* KOMPANIYA va KONTAKTLAR ustunlari — kompaniya nomi to'liq sig'sin, ustma-ust chiqmasin */
 #ic-tbody tr.ic-group-row td:nth-child(3){
