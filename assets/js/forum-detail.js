@@ -2466,8 +2466,17 @@ _renderInvestorCompaniesMain = function(){
     }
     return false; // noma'lum — eksportyor deb hisoblanadi
   }
+  // Jami uchun "filtersiz" total (geo/source/product qo'llanmagan, faqat eksportyor + period)
+  // Source filter aktiv bo'lganda Jami KPI shu raqamni saqlaydi
+  var _jamiBaseGroupKeys = Object.create(null);
+  allCo.forEach(function(r){
+    if(_isImporterRec(r)) return;
+    var gk = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(r) : String(r.kompaniya || '').toLowerCase();
+    if(gk) _jamiBaseGroupKeys[gk] = true;
+  });
+  var _jamiBaseTotal = Object.keys(_jamiBaseGroupKeys).length;
+
   const co = allCo.filter(function(r){
-    // FAQAT eksportyor — har holatda importyorlar chiqarib tashlanadi (KPI Jami 311 bilan mos)
     if(_isImporterRec(r)) return false;
     if(_investorGeoFilterStateCode){
       if(getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
@@ -3146,9 +3155,10 @@ _renderInvestorCompaniesMain = function(){
     timestamp: Date.now()
   };
   console.log('[STATS] Jami:', window._icStats.jami, '| Eksp:', window._icStats.exporters, '| Imp:', window._icStats.importers, '| Apollo:', window._icStats.apollo, '| TA:', window._icStats.tradeatlas);
-  // Jami KPI — _icStats yig'ilgandan keyin (faqat eksportyor)
+  // Jami KPI — source filter (Apollo/TradeAtlas) aktiv bo'lganda asl total'ni saqlash
   if(ic1El){
-    ic1El.innerHTML = window._icStats.jami + ' <span class="kpi-unit">ta</span>';
+    var jamiKpiVal = _sourceFilter ? _jamiBaseTotal : window._icStats.jami;
+    ic1El.innerHTML = jamiKpiVal + ' <span class="kpi-unit">ta</span>';
   }
 
   // Pie chart va geo karta — markazlashgan stats'dan oqiydi
