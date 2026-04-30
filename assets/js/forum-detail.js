@@ -2716,14 +2716,10 @@ _renderInvestorCompaniesMain = function(){
     var parentRec = g.records[0];
     var _addedChildKeys = Object.create(null); // dedupe
     // ═══ MANBA 1: _partners VA _partnerOf — TradeAtlas saqlangan barcha sheriklar ═══
-    // Eksportyor parent uchun importerlar ikki holatda saqlanishi mumkin:
-    // a) finderMode='exporters' bilan saqlanganda → _partners[] da importerlar
-    // b) finderMode='importers' bilan saqlangan (synthetic exporter) → _partnerOf[] da importerlar
     function _addPartnersFromArray(arr, expectedRole){
       if(!Array.isArray(arr)) return;
       arr.forEach(function(p){
         if(!p || !p.kompaniya) return;
-        // Faqat kerakli rol bilan filter — eksportyor parent uchun faqat importer sheriklar
         var pRole = String(p.role || '').toLowerCase();
         if(expectedRole && pRole && pRole !== expectedRole) return;
         var pName = String(p.kompaniya).trim();
@@ -2742,12 +2738,21 @@ _renderInvestorCompaniesMain = function(){
           docCount: Number(p.docCount || 0),
           childGroupKey: childGk
         });
+        // Agar DB'da bu sherik kompaniya mavjud bo'lsa — uni hidden child sifatida belgilash
+        // Shu orqali bosilganda full row (kontakt, button, soha) chiqadi
+        if(existingChild && !_visited[existingChild.key]){
+          existingChild._isChild = true;
+          existingChild._isHiddenChild = true;
+          existingChild._parentKey = g.key;
+          existingChild._parentName = g._parentName;
+          existingChild._displayNumber = g._displayNumber;
+          _visited[existingChild.key] = true;
+          _orderedGroups.push(existingChild);
+        }
       });
     }
     if(parentRec){
-      // _partners — sherik importerlar
       _addPartnersFromArray(parentRec._partners, 'importer');
-      // _partnerOf — sinetik exporter holatda importerlar shu yerda
       _addPartnersFromArray(parentRec._partnerOf, 'importer');
     }
     // ═══ MANBA 2: DB'dagi child kompaniyalar — _parentToChildren orqali ═══
