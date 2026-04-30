@@ -989,7 +989,7 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
               '<div style="font-size:.62rem;color:#475569">Bo\'sh qoldiring = barcha '+shipTxt+' shipmentni yuklab oladi. Aks holda faqat ko\'rsatilgan miqdor.</div>'+
             '</div>'+
             '<div style="display:flex;align-items:center;gap:6px">'+
-              '<input id="taPreMaxLimit" type="number" min="1" max="10000" placeholder="masalan: 300" autocomplete="new-password" data-lpignore="true" data-form-type="other" style="width:120px;padding:7px 10px;border:1.5px solid #C7D2FE;border-radius:8px;font-size:.78rem;font-weight:600;color:#14233F;font-family:Menlo,Consolas,monospace;outline:none;background:#fff" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')">'+
+              '<input id="taPreMaxLimit" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="masalan: 300" autocomplete="off" data-lpignore="true" data-form-type="other" name="ta-limit-search" role="searchbox" readonly onfocus="this.removeAttribute(\'readonly\')" style="width:120px;padding:7px 10px;border:1.5px solid #C7D2FE;border-radius:8px;font-size:.78rem;font-weight:600;color:#14233F;font-family:Menlo,Consolas,monospace;outline:none;background:#fff" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')">'+
               '<span style="font-size:.7rem;color:#475569;font-weight:600">ta</span>'+
             '</div>'+
           '</div>'+
