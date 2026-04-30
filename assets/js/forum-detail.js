@@ -3135,8 +3135,10 @@ _renderInvestorCompaniesMain = function(){
     else statsBySource.other++;
   });
   // _icStats — markazlashgan source of truth
+  // Jami = source filter aktiv bo'lsa to'liq eksportyor jami (357), aks holda visible
+  var _jamiUnified = _sourceFilter ? _jamiBaseTotal : visibleGroups.length;
   window._icStats = {
-    jami: visibleGroups.length,          // ✓ Jadvaldagi sonega aynan mos (group-level filterdan keyin)
+    jami: _jamiUnified,                  // ✓ Jami — barcha joyda bir xil (KPI, sidebar, map, CRM)
     exporterTotalRaw: _exporterTotal,    // co dan hisoblangan raw (orphan synthetic'lar bilan)
     visibleTotal: visibleGroups.length,
     apollo: statsBySource.apollo,
@@ -3155,10 +3157,9 @@ _renderInvestorCompaniesMain = function(){
     timestamp: Date.now()
   };
   console.log('[STATS] Jami:', window._icStats.jami, '| Eksp:', window._icStats.exporters, '| Imp:', window._icStats.importers, '| Apollo:', window._icStats.apollo, '| TA:', window._icStats.tradeatlas);
-  // Jami KPI — source filter (Apollo/TradeAtlas) aktiv bo'lganda asl total'ni saqlash
+  // Jami KPI — markazlashgan _icStats.jami dan o'qiydi
   if(ic1El){
-    var jamiKpiVal = _sourceFilter ? _jamiBaseTotal : window._icStats.jami;
-    ic1El.innerHTML = jamiKpiVal + ' <span class="kpi-unit">ta</span>';
+    ic1El.innerHTML = window._icStats.jami + ' <span class="kpi-unit">ta</span>';
   }
 
   // Pie chart va geo karta — markazlashgan stats'dan oqiydi
@@ -3186,10 +3187,10 @@ _renderInvestorCompaniesMain = function(){
     }
   });
   window._icVisibleIds = _visIdsSet;
-  // Sidebar badge'ni visibleGroups asosida yangilash (jadvaldagi soniga moslashtirish)
+  // Sidebar badge — markazlashgan _icStats.jami dan (KPI bilan bir xil bo'lishi uchun)
   try {
     var sidebarBadge = document.getElementById('badge-investorco');
-    if(sidebarBadge) sidebarBadge.textContent = visibleGroups.length;
+    if(sidebarBadge) sidebarBadge.textContent = window._icStats.jami;
   } catch(_e){}
   // Pipeline CRM mavjud bo'lsa qayta render
   try { if(typeof renderCrmDashboard === 'function' && document.getElementById('crm-kpi-tree')) renderCrmDashboard(); } catch(_e){}
