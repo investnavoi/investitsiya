@@ -3747,13 +3747,29 @@ async function runCompanyFinder(source){
   updateFinderModeUI();
   var sel = document.getElementById('finder-product-select');
   var prodId = sel.value;
-  if(!prodId){
-    if(source === 'tradeatlas'){ showTradeAtlasUsageDialog(); return; }
-    toast('⚠️ Mahsulot tanlang','error');
-    return;
+  var prod = null;
+  if(prodId){
+    prod = (DB.products||[]).find(function(p){return p.id==prodId;});
   }
-  var prod = (DB.products||[]).find(function(p){return p.id==prodId;});
-  if(!prod) return;
+  // Mahsulot tanlanmasa — manual HS kod input field'ni tekshirish
+  if(!prod){
+    var manualEl = document.getElementById('finder-manual-hs');
+    var manualHs = manualEl ? String(manualEl.value || '').replace(/\D/g,'') : '';
+    if(manualHs.length >= 2){
+      // Synthetic product — manual HS kod bilan
+      prod = {
+        id: 'manual-' + manualHs,
+        hs_code: manualHs,
+        name: 'HS ' + manualHs,
+        name_uz: 'HS ' + manualHs + ' (manual)',
+        name_en: 'HS ' + manualHs + ' (manual)'
+      };
+    } else {
+      if(source === 'tradeatlas'){ showTradeAtlasUsageDialog(); return; }
+      toast('⚠️ Mahsulot tanlang yoki HS kod yozing','error');
+      return;
+    }
+  }
   var meta = getFinderModeMeta((document.getElementById('finder-mode')||{}).value || 'importers');
   _finderMode = meta.mode;
   var sourceScope = getFinderSourceSelection();

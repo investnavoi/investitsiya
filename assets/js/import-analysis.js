@@ -195,6 +195,14 @@ function getExactImportHsCode(product){
   if(hsDigits.length >= 6) return hsDigits.slice(0,6);
   if(hsDigits.length >= 4) return hsDigits.slice(0,4);
   if(hsDigits.length >= 2) return hsDigits.slice(0,2);
+  // Mahsulot tanlanmagan / HS kodi yo'q — manual input field'dan o'qish
+  try {
+    var manualEl = document.getElementById('finder-manual-hs');
+    var manual = manualEl ? String(manualEl.value || '').replace(/\D/g,'') : '';
+    if(manual.length >= 6) return manual.slice(0,6);
+    if(manual.length >= 4) return manual.slice(0,4);
+    if(manual.length >= 2) return manual.slice(0,2);
+  } catch(_e){}
   return '';
 }
 
