@@ -2739,6 +2739,8 @@ _renderInvestorCompaniesMain = function(){
     var nm = String((g.records[0] && g.records[0].kompaniya) || '').trim().toLowerCase();
     if(nm && !_groupByName[nm]) _groupByName[nm] = g;
   });
+  // GROUP DARAJASIDA importyor guruhlarni butunlay tashlash (jadvalda IMPORTYOR badge'i ko'rinmasin)
+  grouped = grouped.filter(function(g){ return g._role !== 'importer'; });
   // ═══ Parent → children map qurish (IKKALA yo'nalishdan) ═══
   // 1) Eksportyor record._partners[].role='importer' → child importerlar
   // 2) Importer record._partnerOf[].role='exporter' → bu importer parent eksportyorning bolasi
