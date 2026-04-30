@@ -980,12 +980,33 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
     }
 
     function _bodyCardsHtml(){
+      // Shipments mode'da limit input ko'rinadi (kredit tejash uchun)
+      var limitBlock = (selectedApiMode === 'shipments') ?
+        '<div style="padding:.75rem .85rem;border-radius:10px;background:linear-gradient(135deg,rgba(67,97,238,.06),rgba(124,58,237,.04));border:1px solid rgba(67,97,238,.2);margin-bottom:1rem">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:.7rem;flex-wrap:wrap">'+
+            '<div style="flex:1;min-width:200px">'+
+              '<div style="font-size:.7rem;font-weight:700;color:#1E3A8A;margin-bottom:2px">📦 Yuklab olish chegarasi (kredit tejash uchun)</div>'+
+              '<div style="font-size:.62rem;color:#475569">Bo\'sh qoldiring = barcha '+shipTxt+' shipmentni yuklab oladi. Aks holda faqat ko\'rsatilgan miqdor.</div>'+
+            '</div>'+
+            '<div style="display:flex;align-items:center;gap:6px">'+
+              '<input id="taPreMaxLimit" type="number" min="1" max="10000" placeholder="masalan: 300" autocomplete="new-password" data-lpignore="true" data-form-type="other" style="width:120px;padding:7px 10px;border:1.5px solid #C7D2FE;border-radius:8px;font-size:.78rem;font-weight:600;color:#14233F;font-family:Menlo,Consolas,monospace;outline:none;background:#fff" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')">'+
+              '<span style="font-size:.7rem;color:#475569;font-weight:600">ta</span>'+
+            '</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">'+
+            ['100','250','500','1000'].map(function(v){
+              return '<button type="button" onclick="document.getElementById(\'taPreMaxLimit\').value=\''+v+'\'" style="padding:3px 10px;border:1px solid #E5E7EB;background:#fff;color:#475569;border-radius:6px;cursor:pointer;font-size:.65rem;font-weight:600">'+v+' ta</button>';
+            }).join('')+
+            '<button type="button" onclick="document.getElementById(\'taPreMaxLimit\').value=\'\'" style="padding:3px 10px;border:1px solid #E5E7EB;background:#fff;color:#475569;border-radius:6px;cursor:pointer;font-size:.65rem;font-weight:600">Barchasi</button>'+
+          '</div>'+
+        '</div>' : '';
       return ''+
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-bottom:1rem">'+
           '<div style="padding:.85rem;border-radius:12px;background:rgba(15,118,110,.08);border:1px solid rgba(15,118,110,.25)" title="Bu HS kod uchun TradeAtlas\'da topilgan firmalar soni (eksportyor + importyor)"><div style="font-size:.6rem;color:#115E59;font-weight:700;letter-spacing:.04em">KOMPANIYALAR</div><div style="font-size:1.3rem;font-weight:800;color:#0F766E;margin-top:2px">'+firmsTxt+'</div><div style="font-size:.55rem;color:#115E59;margin-top:2px;opacity:.7">Topilgan firmalar</div></div>'+
           '<div style="padding:.85rem;border-radius:12px;background:rgba(67,97,238,.08);border:1px solid rgba(67,97,238,.2)" title="Belgilangan davlatlar va sanalar oraligida TradeAtlas\'dagi shipment yozuvlari soni"><div style="font-size:.6rem;color:#1E3A8A;font-weight:700;letter-spacing:.04em">SHIPMENTLAR</div><div style="font-size:1.3rem;font-weight:800;color:#4361EE;margin-top:2px">'+shipTxt+'</div><div style="font-size:.55rem;color:#1E3A8A;margin-top:2px;opacity:.7">Yuk tashish yozuvlari</div></div>'+
           '<div style="padding:.85rem;border-radius:12px;background:linear-gradient(135deg,rgba(217,119,6,.12),rgba(245,158,11,.08));border:1px solid rgba(217,119,6,.25)" title="Yuklab olish uchun sarflanadigan TradeAtlas krediti — Firmalar rejimi: 1 firma = 1 kredit; Shipmentlar rejimi: 1 shipment ≈ 1 kredit"><div style="font-size:.6rem;color:#9A3412;font-weight:700;letter-spacing:.04em">TAXMINIY KREDIT</div><div style="font-size:1.3rem;font-weight:800;color:#D97706;margin-top:2px">'+_creditTxtForMode(selectedApiMode)+'</div><div style="font-size:.55rem;color:#9A3412;margin-top:2px;opacity:.7">Yuklab olish narxi</div></div>'+
-        '</div>';
+        '</div>'+
+        limitBlock;
     }
 
     var overlay = document.createElement('div');
@@ -1140,7 +1161,12 @@ async function showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourc
       var rfBtn = document.getElementById('taPreRefresh');
       if(rfBtn) rfBtn.onclick = function(){ forceRefresh = true; _renderBox(); };
       document.getElementById('taPreCancel').onclick = function(){ close({confirmed:false, apiMode:selectedApiMode, forceRefresh:forceRefresh}); };
-      document.getElementById('taPreConfirm').onclick = function(){ close({confirmed:true, apiMode:selectedApiMode, forceRefresh:forceRefresh}); };
+      document.getElementById('taPreConfirm').onclick = function(){
+        var limitEl = document.getElementById('taPreMaxLimit');
+        var maxLim = limitEl ? parseInt(String(limitEl.value || '').replace(/\D/g,''), 10) : 0;
+        if(!Number.isFinite(maxLim) || maxLim < 1) maxLim = 0; // 0 = no limit
+        close({confirmed:true, apiMode:selectedApiMode, forceRefresh:forceRefresh, maxLimit:maxLim});
+      };
     }
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -1334,20 +1360,25 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   }
   if(!sourceChunks.length) sourceChunks = [allCountries];
   console.log('[ShipmentsSearch] Source countries:', allCountries.length, 'chunks:', sourceChunks.length);
-  var pageSize = 250, maxPages = 20;
+  // Foydalanuvchi tanlagan limit (0 = barchasi). Limit'ga ko'ra page size va maxPages hisoblanadi
+  var userMaxLimit = Number(window._taMaxLimit) || 0;
+  var pageSize = userMaxLimit > 0 ? Math.min(250, userMaxLimit) : 250;
+  var maxPages = userMaxLimit > 0 ? Math.max(1, Math.ceil(userMaxLimit / pageSize)) : 20;
+  if(userMaxLimit > 0) console.log('[ShipmentsSearch] User limit:', userMaxLimit, '→ pages:', maxPages, '× pageSize:', pageSize);
   var found = [];
+  var stopAll = false;
   // Har chunk uchun alohida search — birorta davlat qoldirilmasin
-  for(var chunkIdx = 0; chunkIdx < sourceChunks.length; chunkIdx++){
+  for(var chunkIdx = 0; chunkIdx < sourceChunks.length && !stopAll; chunkIdx++){
     var chunkCountries = sourceChunks[chunkIdx];
     var payload = {
       accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
       countries: chunkCountries, firmFilter: [0,1,2], firmType: taFirmType, flowType: taFlowType,
       page: 1, parameters: [{ HS_CODE: hsCode }], mode: meta.mode,
       targetCountries: targetCodes, sourceCountries: chunkCountries,
-      hsCode: hsCode, startDate: dateRange.startDate, endDate: dateRange.endDate, size: 250
+      hsCode: hsCode, startDate: dateRange.startDate, endDate: dateRange.endDate, size: pageSize
     };
     var expectedTotal = 0;
-    for(var page=1; page<=maxPages; page++){
+    for(var page=1; page<=maxPages && !stopAll; page++){
       payload.page = page;
       payload.size = pageSize;
       var data = await tradeAtlasRequestJson(payload);
@@ -1365,6 +1396,14 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
         apolloUpsertFinderItem(found, item, meta);
       });
       console.log('[ShipmentsSearch] Chunk', (chunkIdx+1)+'/'+sourceChunks.length, '['+chunkCountries.join(',')+']', 'page', page, 'firms:', firms.length, 'total:', found.length);
+      // Foydalanuvchi limit'ga yetdik — barcha chunk va sahifalar to'xtatiladi
+      if(userMaxLimit > 0 && found.length >= userMaxLimit){
+        console.log('[ShipmentsSearch] User limit reached:', found.length, '>=', userMaxLimit);
+        // Aniq limit miqdorigacha qisqartirish
+        if(found.length > userMaxLimit) found = found.slice(0, userMaxLimit);
+        stopAll = true;
+        break;
+      }
       if(!firms.length) break;
       if(found.length === beforeCount && page > 1) break;
       if(expectedTotal > 0 && firms.length < pageSize) break;
@@ -3878,6 +3917,8 @@ async function runCompanyFinder(source){
     _taApiMode = (taPreRes && taPreRes.apiMode) || 'firms';
     window._taApiMode = _taApiMode;  // Africa filter shu global'ga qaraydi
     var _taForceRefresh = !!(taPreRes && taPreRes.forceRefresh);
+    // Foydalanuvchi tomonidan tanlangan limit (kredit tejash uchun)
+    window._taMaxLimit = (taPreRes && Number(taPreRes.maxLimit)) || 0;
     if(!taConfirmed){
       document.getElementById('finderProgress').style.display = 'none';
       toast('ℹ️ TradeAtlas qidiruvi bekor qilindi','info');
