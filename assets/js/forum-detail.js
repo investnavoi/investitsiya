@@ -2712,17 +2712,43 @@ _renderInvestorCompaniesMain = function(){
     _orderedGroups.push(g);
     var pk = String(g._parentName).trim().toLowerCase();
     var childNames = _parentToChildren[pk] || [];
-    g._childrenData = []; // hover'da ko'rsatish uchun yig'amiz
+    g._childrenData = []; // ekspandda ko'rsatish uchun yig'amiz
     var parentRec = g.records[0];
+    var _addedChildKeys = Object.create(null); // dedupe
+    // ═══ MANBA 1: parentRec._partners — TradeAtlas saqlangan barcha sheriklar (DB record bo'lmasa ham) ═══
+    if(parentRec && Array.isArray(parentRec._partners)){
+      parentRec._partners.forEach(function(p){
+        if(!p || !p.kompaniya) return;
+        var pName = String(p.kompaniya).trim();
+        var pKey = pName.toLowerCase();
+        if(!pKey || _addedChildKeys[pKey]) return;
+        _addedChildKeys[pKey] = true;
+        // Agar bu sherik DB'da ham mavjud bo'lsa, child group key ham yoziladi (jadvaldagi child yashirish uchun)
+        var existingChild = _groupByName[pKey];
+        var childGk = existingChild ? existingChild.key : '';
+        g._childrenData.push({
+          kompaniya: pName,
+          davlat: p.davlat || p.country || '',
+          shahar: p.cityState || '',
+          totalQty: Number(p.totalQty || 0),
+          totalValue: Number(p.totalValue || 0),
+          lastDate: p.lastDate || '',
+          docCount: Number(p.docCount || 0),
+          childGroupKey: childGk
+        });
+        // Agar DB'da ham bor bo'lsa, uni hidden child sifatida belgilash
+        if(existingChild && !_visited[existingChild.key]){
+          // pastdagi blok ham ishlasin uchun bu yerda nothing — pastdagi for-loop davom etadi
+        }
+      });
+    }
+    // ═══ MANBA 2: DB'dagi child kompaniyalar — _parentToChildren orqali ═══
     childNames.forEach(function(childName){
       var child = _groupByName[childName];
       if(!child || _visited[child.key]) return;
       if(child._role !== 'importer' && child._role !== '') return;
       var childRec = child.records[0];
       if(childRec){
-        // Trade ma'lumotlarini IKKI manbadan qidiramiz:
-        // 1) parentRec._partners[childName] — eksportyor parent uchun importer xaridor info
-        // 2) childRec._partnerOf[parentName] — importer uchun manba eksportyor info
         var parentPartnersMatch = null;
         if(parentRec && Array.isArray(parentRec._partners)){
           parentPartnersMatch = parentRec._partners.find(function(p){
@@ -2735,18 +2761,21 @@ _renderInvestorCompaniesMain = function(){
             return String(p.kompaniya || '').trim().toLowerCase() === pk;
           });
         }
-        // Eng yaxshi manba — parent _partners (chunki importer xaridor uchun aniq), keyin childPartnerOf, oxirida child rec field
         var matched = parentPartnersMatch || childPartnerOfMatch || {};
-        g._childrenData.push({
-          kompaniya: childRec.kompaniya || '',
-          davlat: childRec.davlat || '',
-          shahar: childRec.shahar || '',
-          totalQty: Number(matched.totalQty || childRec._tradeAtlasQuantity || 0),
-          totalValue: Number(matched.totalValue || childRec._tradeAtlasTradeValue || 0),
-          lastDate: matched.lastDate || childRec._tradeAtlasLastArrivalDate || '',
-          docCount: Number(matched.docCount || childRec._tradeAtlasDocCount || 0),
-          childGroupKey: child.key
-        });
+        // Agar yuqorida _partners orqali allaqachon qo'shilgan bo'lsa, dedupe orqali takror qo'shilmaydi
+        if(!_addedChildKeys[childName]){
+          _addedChildKeys[childName] = true;
+          g._childrenData.push({
+            kompaniya: childRec.kompaniya || '',
+            davlat: childRec.davlat || '',
+            shahar: childRec.shahar || '',
+            totalQty: Number(matched.totalQty || childRec._tradeAtlasQuantity || 0),
+            totalValue: Number(matched.totalValue || childRec._tradeAtlasTradeValue || 0),
+            lastDate: matched.lastDate || childRec._tradeAtlasLastArrivalDate || '',
+            docCount: Number(matched.docCount || childRec._tradeAtlasDocCount || 0),
+            childGroupKey: child.key
+          });
+        }
       }
       child._isChild = true;
       child._isHiddenChild = true;
