@@ -2468,13 +2468,22 @@ _renderInvestorCompaniesMain = function(){
   }
   // Jami uchun "filtersiz" total (geo/source/product qo'llanmagan, faqat eksportyor + period)
   // Source filter aktiv bo'lganda Jami KPI shu raqamni saqlaydi
+  // Apollo va TradeAtlas badge'lari ham shu yerdan filtersiz total'ni oladi
   var _jamiBaseGroupKeys = Object.create(null);
+  var _apolloBaseGroupKeys = Object.create(null);
+  var _taBaseGroupKeys = Object.create(null);
   allCo.forEach(function(r){
     if(_isImporterRec(r)) return;
     var gk = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(r) : String(r.kompaniya || '').toLowerCase();
-    if(gk) _jamiBaseGroupKeys[gk] = true;
+    if(!gk) return;
+    _jamiBaseGroupKeys[gk] = true;
+    var src = String(r.manba || r.source || '').toLowerCase().trim();
+    if(src.indexOf('apollo') !== -1 || src === 'csv-import' || src === 'finder') _apolloBaseGroupKeys[gk] = true;
+    if(src.indexOf('tradeatlas') !== -1 || src.indexOf('trade atlas') !== -1 || src === 'trade' || src === 'ta') _taBaseGroupKeys[gk] = true;
   });
   var _jamiBaseTotal = Object.keys(_jamiBaseGroupKeys).length;
+  var _apolloBaseTotal = Object.keys(_apolloBaseGroupKeys).length;
+  var _taBaseTotal = Object.keys(_taBaseGroupKeys).length;
 
   const co = allCo.filter(function(r){
     if(_isImporterRec(r)) return false;
@@ -3066,10 +3075,11 @@ _renderInvestorCompaniesMain = function(){
   if(ic2El) ic2El.innerHTML = vTayyor + ' <span class="kpi-unit">ta</span>';
   var ic3El = document.getElementById('ic-k3');
   if(ic3El) ic3El.innerHTML = vEmailSent + '/' + vHasEmail + ' <span class="kpi-unit">ta</span>';
+  // Apollo/TradeAtlas badge'lari — har doim filtersiz to'liq sonni ko'rsatadi
   var apolloEl2 = document.getElementById('ic-k-apollo');
-  if(apolloEl2) apolloEl2.textContent = Object.keys(visibleApolloGroups).length;
+  if(apolloEl2) apolloEl2.textContent = _apolloBaseTotal;
   var taEl2 = document.getElementById('ic-k-tradeatlas');
-  if(taEl2) taEl2.textContent = Object.keys(visibleTaGroups).length;
+  if(taEl2) taEl2.textContent = _taBaseTotal;
   // ═══ MARKAZLASHGAN STATISTIKA — barcha komponentlar shu yerdan o'qiydi ═══
   // SOURCE OF TRUTH: visibleGroups (jadvaldagi haqiqiy kompaniyalar)
   var statsByCountry = Object.create(null);
@@ -3141,8 +3151,10 @@ _renderInvestorCompaniesMain = function(){
     jami: _jamiUnified,                  // ✓ Jami — barcha joyda bir xil (KPI, sidebar, map, CRM)
     exporterTotalRaw: _exporterTotal,    // co dan hisoblangan raw (orphan synthetic'lar bilan)
     visibleTotal: visibleGroups.length,
-    apollo: statsBySource.apollo,
-    tradeatlas: statsBySource.tradeatlas,
+    apollo: _apolloBaseTotal,            // ✓ filtersiz to'liq son
+    tradeatlas: _taBaseTotal,            // ✓ filtersiz to'liq son
+    apolloVisible: statsBySource.apollo, // visible (filterlangan) — kerak bo'lsa
+    tradeatlasVisible: statsBySource.tradeatlas,
     other: statsBySource.other,
     exporters: statsByRole.exporters,
     importers: statsByRole.importers,
