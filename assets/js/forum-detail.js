@@ -3362,17 +3362,29 @@ function toggleAllCheckboxes(el){
 }
 
 function updateSelectedCount(){
-  const n = getSelectedIds().length;
+  // ID emas, GURUH (kompaniya) soni — har kompaniya parent + child IDs ga ega
+  var groupCount = 0;
+  if(window._icSelectedIds && window._icSelectedIds.size){
+    var co = DB.investorCompanies || [];
+    var seen = Object.create(null);
+    window._icSelectedIds.forEach(function(id){
+      var rec = co.find(function(r){ return String(r.id) === String(id); });
+      if(rec){
+        var gk = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
+        if(gk && !seen[gk]){ seen[gk] = true; groupCount++; }
+      }
+    });
+  }
   const el = document.getElementById('selectedCount');
-  if(el) el.textContent = n ? `${n} ta tanlangan` : '0 ta tanlangan';
+  if(el) el.textContent = groupCount ? (groupCount + ' ta tanlangan') : '0 ta tanlangan';
   const bulkAiBtn = document.getElementById('bulkAiBtn');
-  if(bulkAiBtn) bulkAiBtn.disabled = !n;
+  if(bulkAiBtn) bulkAiBtn.disabled = !groupCount;
   const bulkSendBtn = document.getElementById('bulkSendBtn');
-  if(bulkSendBtn) bulkSendBtn.disabled = !n;
+  if(bulkSendBtn) bulkSendBtn.disabled = !groupCount;
   const bulkSchedBtn = document.getElementById('bulkSchedBtn');
-  if(bulkSchedBtn) bulkSchedBtn.disabled = !n;
+  if(bulkSchedBtn) bulkSchedBtn.disabled = !groupCount;
   const bulkExcelBtn = document.getElementById('bulkExcelBtn');
-  if(bulkExcelBtn) bulkExcelBtn.disabled = !n;
+  if(bulkExcelBtn) bulkExcelBtn.disabled = !groupCount;
 }
 
 function toggleSelectMenu(event){
@@ -3380,7 +3392,11 @@ function toggleSelectMenu(event){
   var cb = document.getElementById('checkAll'); if(cb) cb.checked = false;
   var menu = document.getElementById('selectAllMenu');
   if(!menu) return;
-  var pageCount = document.querySelectorAll('.ic-check').length;
+  // Faqat KO'RINIB TURGAN checkbox'larni hisoblash (yashirin child qatorlarni hisoblamaslik)
+  var pageCount = 0;
+  document.querySelectorAll('.ic-check').forEach(function(c){
+    if(c.offsetParent !== null) pageCount++;
+  });
   // Filter qo'llangan visible kompaniyalar soni (jadvaldagi haqiqiy soni)
   var totalCount = (window._icCounts && typeof window._icCounts.jami === 'number')
     ? window._icCounts.jami
@@ -3423,7 +3439,9 @@ if(typeof window !== 'undefined' && !window._selMenuEscRegistered){
 function selectThisPage(event){
   if(event){ event.stopPropagation(); }
   if(!window._icSelectedIds) window._icSelectedIds = new Set();
+  // Faqat KO'RINIB TURGAN checkbox'larni tanlash (yashirin child qatorlar emas)
   document.querySelectorAll('.ic-check').forEach(function(cb){
+    if(cb.offsetParent === null) return; // yashirin — o'tib ketamiz
     cb.checked = true;
     if(typeof saveIcCheck === 'function') saveIcCheck(cb);
   });
