@@ -810,12 +810,30 @@ function renderInvestorGeoCard(companies){
   var stateStats = {};
   var seenGroupsGlobal = {};
   var uniqueCompanyCount = 0;
+  // Group bo'yicha role aniqlash — agar groupda eksportyor record bo'lmasa va faqat importer bo'lsa, hisoblamaymiz
+  var groupHasExporter = Object.create(null);
+  companies.forEach(function(rec){
+    var groupKey = (typeof getInvestorCompanyGroupKey === 'function')
+      ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
+    if(!groupKey) return;
+    var fm = String(rec.finderMode || rec.role || '').toLowerCase();
+    var isExp = (fm === 'exporters' || fm === 'exporter');
+    var isImp = (fm === 'importers' || fm === 'importer');
+    if(isExp){ groupHasExporter[groupKey] = true; }
+    else if(!isImp){ groupHasExporter[groupKey] = groupHasExporter[groupKey] || true; } // unknown — eksportyor deb hisoblash
+    // _partners/_partnerOf orqali role
+    if(Array.isArray(rec._partners) && rec._partners.some(function(p){ return String(p.role||'').toLowerCase() === 'importer'; })){
+      groupHasExporter[groupKey] = true;
+    }
+  });
   companies.forEach(function(rec){
     var code = getInvestorGeoStateCode(rec, {});
     if(!code) return;
     var groupKey = (typeof getInvestorCompanyGroupKey === 'function')
       ? getInvestorCompanyGroupKey(rec)
       : String(rec.kompaniya || rec.id || '').toLowerCase();
+    // Importyor-only group bo'lsa — xaritada ham hisoblamaymiz (jadvalga moslash uchun)
+    if(!groupHasExporter[groupKey]) return;
     if(!stateStats[code]){
       stateStats[code] = { code: code, name: String(getInvestorGeoCountrySource(rec) || code), count: 0, companies: [], lat: null, lon: null, _seenGroups: {} };
     }
@@ -2037,6 +2055,12 @@ function renderExportTradeSection(rec){
 window.renderExportTradeSection = renderExportTradeSection;
 
 function openInvestorDetailModal(id){
+  // Foydalanuvchi text tanlagan (kopirovat qilayotgan) bo'lsa — modal ochilmaydi
+  try {
+    var sel = window.getSelection ? window.getSelection() : null;
+    var selText = sel ? String(sel.toString() || '').trim() : '';
+    if(selText.length > 0) return; // text tanlangan — modal yopiq qoladi
+  } catch(_e){}
   _investorDetailId = String(id || '');
   var rec = (DB.investorCompanies || []).find(function(item){ return String(item.id) === _investorDetailId; });
   if(!rec) return;
@@ -2183,6 +2207,11 @@ window.findContactsForInvestorRecord = async function(recordId, btnEl){
 };
 
 function openInvestorSohaEdit(id){
+  // Text tanlangan bo'lsa — modal/edit ochilmaydi (kopirovat qilish uchun)
+  try {
+    var _sel = window.getSelection ? window.getSelection() : null;
+    if(_sel && String(_sel.toString() || '').trim().length > 0) return;
+  } catch(_e){}
   _investorSohaEditId = String(id || '');
   renderInvestorCompanies();
   setTimeout(function(){
