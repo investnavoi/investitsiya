@@ -4004,6 +4004,12 @@ async function exportSelectedToExcel(){
     // Jami: ___ ta — C6 va J6 (orange row) — value yangilanadi
     ws.getCell('C6').value = 'Jami: ' + rows.length + ' ta';
     ws.getCell('J6').value = 'Jami: ' + rows.length + ' ta';
+    // H6 — Eksport qiymati umumiy yig'indisi (ming dollarda)
+    var totalExportValue = rows.reduce(function(sum, r){
+      var t = _sumTradeData(r);
+      return sum + (Number(t.value) || 0);
+    }, 0);
+    ws.getCell('H6').value = totalExportValue ? _fmtMoneyK(totalExportValue) : 0;
 
     // Data rows — R7 dan boshlanadi
     var DATA_START_ROW = 7;
