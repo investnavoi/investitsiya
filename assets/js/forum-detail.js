@@ -3987,7 +3987,8 @@ async function exportSelectedToExcel(){
 
   try {
     // Namuna shablonni ExcelJS bilan yuklab olish — barcha styling saqlanadi
-    var resp = await fetch('assets/templates/manzilli-template.xlsx');
+    // Cache-bust: har safar yangi versiyani majburlash
+    var resp = await fetch('assets/templates/manzilli-template.xlsx?t=' + Date.now(), { cache: 'no-store' });
     if(!resp.ok) throw new Error('Namuna fayl yuklanmadi (HTTP ' + resp.status + ')');
     var buf = await resp.arrayBuffer();
     var wb = new ExcelJS.Workbook();
