@@ -2657,13 +2657,12 @@ _renderInvestorCompaniesMain = function(){
       DB.investorCompanies.push(r);
       if(typeof fbSave === 'function') fbSave('investorCompanies', r);
     });
-    // Sintetiklarni co'ga qo'shish — geo filter aktiv bo'lsa, mos kelmaydiganlarini ham qo'shmaymiz
+    // Sintetiklarni co'ga qo'shish — DOIM faqat eksportyorlar (importyor sinetiklar tashlanadi)
     _backfillNeeded.forEach(function(r){
+      if(_isImporterRec(r)) return; // har holatda importyorlar yo'q
       if(_investorGeoFilterStateCode){
         var rCode = getInvestorGeoStateCode(r, window._investorGeoStateStats || {});
         if(rCode !== _investorGeoFilterStateCode) return;
-        // Geo filter aktiv: faqat eksportyor synthetic'lar
-        if(_isImporterRec(r)) return;
       }
       co.push(r);
     });
