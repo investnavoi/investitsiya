@@ -3188,10 +3188,30 @@ _renderInvestorCompaniesMain = function(){
     // Avatar oldida child bo'lsa indentation (orphan importerlar uchun ham qo'llanmaydi endi)
     var _avatarPrefixHtml = '';
 
-    // Pastida nechta importyor borligi (clickable — bosilganda importyor badgelar ochiladi)
+    // Pastida nechta importyor borligi (clickable — bosilganda importyor badgelar VA child row'lar ochiladi/yopiladi)
     var _importerCountLine = '';
     if(_isParent && _childrenData.length){
-      _importerCountLine = '<div onclick="event.stopPropagation();var p=this.parentNode;var b=p.querySelectorAll(\'.ic-importer-hover\');var open=b[0]&&b[0].style.display===\'block\';for(var i=0;i<b.length;i++){b[i].style.display=open?\'none\':\'block\';b[i].dataset.pinned=open?\'\':\'1\';}var arr=this.querySelector(\'.ic-toggle-arrow\');if(arr)arr.textContent=open?\'▸\':\'▾\';" style="font-size:.62rem;color:#7C3AED;margin-top:3px;font-weight:600;cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:6px;background:rgba(124,58,237,.08);transition:background .15s" onmouseover="this.style.background=\'rgba(124,58,237,.18)\'" onmouseout="this.style.background=\'rgba(124,58,237,.08)\'" title="Importyor xaridorlarni ko\'rsatish/yashirish"><span class="ic-toggle-arrow">▸</span> '+_childrenData.length+' ta importyor</div>';
+      // Onclick: badge wrapper'ni toggle qiladi VA yopilganda barcha ochilgan child row'larni ham yopadi
+      var _toggleScript = 'event.stopPropagation();' +
+        'var p=this.parentNode;' +
+        'var b=p.querySelectorAll(".ic-importer-hover");' +
+        'var open=b[0]&&b[0].style.display==="block";' +
+        'for(var i=0;i<b.length;i++){b[i].style.display=open?"none":"block";b[i].dataset.pinned=open?"":"1";}' +
+        // Yopilganda — ushbu wrapper ichidagi barcha child row'larni ham yopish
+        'if(open){' +
+          'var keys=p.querySelectorAll("[onclick*=toggleHiddenChildRow]");' +
+          'for(var k=0;k<keys.length;k++){' +
+            'var m=String(keys[k].getAttribute("onclick")||"").match(/toggleHiddenChildRow\\([\\\'\\\"]([^\\\'\\\"]+)[\\\'\\\"]/);' +
+            'if(m&&m[1]){' +
+              'var rs=document.querySelectorAll("tr[data-child-key=\\\""+m[1]+"\\\"]");' +
+              'for(var r=0;r<rs.length;r++)rs[r].style.display="none";' +
+              'var ar=keys[k].querySelector(".ic-toggle-arrow");' +
+              'if(ar)ar.textContent="▶";' +
+            '}' +
+          '}' +
+        '}' +
+        'var arr=this.querySelector(".ic-toggle-arrow");if(arr)arr.textContent=open?"▸":"▾";';
+      _importerCountLine = '<div onclick=\''+_toggleScript+'\' style="font-size:.62rem;color:#7C3AED;margin-top:3px;font-weight:600;cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:6px;background:rgba(124,58,237,.08);transition:background .15s" onmouseover="this.style.background=\'rgba(124,58,237,.18)\'" onmouseout="this.style.background=\'rgba(124,58,237,.08)\'" title="Importyor xaridorlarni ko\'rsatish/yashirish"><span class="ic-toggle-arrow">▸</span> '+_childrenData.length+' ta importyor</div>';
     }
     var companyHtml = '<div onclick="openInvestorDetailModal(\''+companyRec.id+'\')" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:4px 6px;border-radius:8px;transition:background .15s'+(_isChild?';padding-left:20px':'')+'" onmouseover="this.style.background=\'rgba(70,95,255,.06)\'" onmouseout="this.style.background=\'\'" title="Batafsil — eksport hajmi, qiymati va sanasi modalda">' +
       _avatarPrefixHtml +
