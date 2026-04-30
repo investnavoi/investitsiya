@@ -3896,15 +3896,21 @@ async function exportSelectedToExcel(){
     return { name: name, hs: hs };
   }
 
+  // Bo'sh yoki faqat punctuation (".", ",", ";", "-") qiymatni "ma'nosiz" deb hisoblash
+  function _isMeaningful(s){
+    var t = String(s || '').trim();
+    if(!t) return false;
+    return !/^[.,;\-_\s]+$/.test(t);
+  }
   function _buildContacts(rec){
     var parts = [];
     var n = String(rec.contact || rec.kontakt || '').trim();
     var pos = String(rec.position || rec.lavozim || '').trim();
     var em = String(rec.email || '').trim();
     var tel = String(rec.telefon || rec.phone || '').trim();
-    if(n) parts.push(n + (pos ? (' (' + pos + ')') : ''));
-    if(em) parts.push(em);
-    if(tel) parts.push(tel);
+    if(_isMeaningful(n)) parts.push(n + (_isMeaningful(pos) ? (' (' + pos + ')') : ''));
+    if(_isMeaningful(em)) parts.push(em);
+    if(_isMeaningful(tel)) parts.push(tel);
     return parts.length ? parts.join(', ') : '-';
   }
   function _buildImporter(rec){
@@ -3916,11 +3922,14 @@ async function exportSelectedToExcel(){
       imp = rec._partnerOf.find(function(p){ return p.role === 'importer' || !p.role; }) || rec._partnerOf[0];
     }
     if(!imp) return { name: '-', country: '-', contacts: '-' };
-    var contacts = [imp.contact, imp.email, imp.telefon].filter(Boolean).join(', ');
+    var cParts = [imp.contact, imp.email, imp.telefon].filter(_isMeaningful);
+    var contacts = cParts.length ? cParts.join(', ') : '-';
+    var impName = String(imp.kompaniya || imp.name || '').trim();
+    var impCountry = _toUzCountry(imp.davlat || imp.country || '');
     return {
-      name: String(imp.kompaniya || imp.name || '').trim() || '-',
-      country: _toUzCountry(imp.davlat || imp.country || '') || '-',
-      contacts: contacts || '-'
+      name: _isMeaningful(impName) ? impName : '-',
+      country: _isMeaningful(impCountry) ? impCountry : '-',
+      contacts: contacts
     };
   }
   // Batafsil panel'da ko'rsatiladigan jami hajm/qiymat — _partners/_partnerOf'dan yig'ish
@@ -3948,13 +3957,15 @@ async function exportSelectedToExcel(){
     }
     return { qty: totalQty, value: totalValue };
   }
-  function _fmtMoney(n){
+  // Ming dollar yaxlitligida — masalan: $110000 → "110", $100 → "0.1", $50 → "0.05"
+  function _fmtMoneyK(n){
     var v = Number(n) || 0;
-    if(!v) return '';
-    if(v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
-    if(v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
-    if(v >= 1e3) return '$' + (v/1e3).toFixed(0) + 'K';
-    return '$' + v;
+    if(!v) return '-';
+    var k = v / 1000;
+    if(k >= 100) return String(Math.round(k));      // 110, 1500
+    if(k >= 1)   return (Math.round(k * 10) / 10) + ''; // 1.5 yoki 5
+    if(k >= 0.1) return (Math.round(k * 100) / 100) + ''; // 0.1, 0.15
+    return (Math.round(k * 1000) / 1000) + '';      // 0.005 yoki kichikroq
   }
   function _fmtWeight(kg){
     var v = Number(kg) || 0;
@@ -3984,9 +3995,10 @@ async function exportSelectedToExcel(){
     var ws = wb.worksheets[0];
     if(!ws) throw new Error('Namuna sheet topilmadi');
 
-    // Title (R2 — A2:L2 merged) — faqat value o'zgaradi, styling saqlanadi
+    // Title (R2 — A2:L2 merged) — davlat nomi O'zbekchada
     var titleCell = ws.getCell('A2');
-    titleCell.value = topCountry + ' davlatidan O\'zbekiston davlatiga ' + year + '-yilda eksport qilgan kompaniyalarning\r\nMANZILLI RO\'YXATI';
+    var topCountryUz = _toUzCountry(topCountry);
+    titleCell.value = topCountryUz + ' davlatidan O\'zbekiston davlatiga ' + year + '-yilda eksport qilgan kompaniyalarning\r\nMANZILLI RO\'YXATI';
 
     // Jami: ___ ta — C6 va J6 (orange row) — value yangilanadi
     ws.getCell('C6').value = 'Jami: ' + rows.length + ' ta';
@@ -4025,7 +4037,7 @@ async function exportSelectedToExcel(){
       ws.getCell('E' + rowNum).value = product.name || '-';   // faqat mahsulot nomi
       ws.getCell('F' + rowNum).value = product.hs || '-';      // faqat HS kod (raqam)
       ws.getCell('G' + rowNum).value = trade.qty ? _fmtWeight(trade.qty) : '-';
-      ws.getCell('H' + rowNum).value = trade.value ? _fmtMoney(trade.value) : '-';
+      ws.getCell('H' + rowNum).value = trade.value ? _fmtMoneyK(trade.value) : '-';
       ws.getCell('I' + rowNum).value = exporterContacts;
       ws.getCell('J' + rowNum).value = importer.name;
       ws.getCell('K' + rowNum).value = importer.country;
