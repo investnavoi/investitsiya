@@ -810,48 +810,65 @@ function renderInvestorGeoCard(companies){
   var stateStats = {};
   var seenGroupsGlobal = {};
   var uniqueCompanyCount = 0;
-  // Group bo'yicha role aniqlash — agar groupda eksportyor record bo'lmasa va faqat importer bo'lsa, hisoblamaymiz
-  var groupHasExporter = Object.create(null);
-  companies.forEach(function(rec){
-    var groupKey = (typeof getInvestorCompanyGroupKey === 'function')
-      ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
-    if(!groupKey) return;
-    var fm = String(rec.finderMode || rec.role || '').toLowerCase();
-    var isExp = (fm === 'exporters' || fm === 'exporter');
-    var isImp = (fm === 'importers' || fm === 'importer');
-    if(isExp){ groupHasExporter[groupKey] = true; }
-    else if(!isImp){ groupHasExporter[groupKey] = groupHasExporter[groupKey] || true; } // unknown — eksportyor deb hisoblash
-    // _partners/_partnerOf orqali role
-    if(Array.isArray(rec._partners) && rec._partners.some(function(p){ return String(p.role||'').toLowerCase() === 'importer'; })){
-      groupHasExporter[groupKey] = true;
-    }
-  });
-  companies.forEach(function(rec){
-    var code = getInvestorGeoStateCode(rec, {});
-    if(!code) return;
-    var groupKey = (typeof getInvestorCompanyGroupKey === 'function')
-      ? getInvestorCompanyGroupKey(rec)
-      : String(rec.kompaniya || rec.id || '').toLowerCase();
-    // Importyor-only group bo'lsa — xaritada ham hisoblamaymiz (jadvalga moslash uchun)
-    if(!groupHasExporter[groupKey]) return;
-    if(!stateStats[code]){
-      stateStats[code] = { code: code, name: String(getInvestorGeoCountrySource(rec) || code), count: 0, companies: [], lat: null, lon: null, _seenGroups: {} };
-    }
-    var st = stateStats[code];
-    if(!st._seenGroups[groupKey]){
-      st._seenGroups[groupKey] = true;
-      st.count += 1;
-      if(rec.kompaniya) st.companies.push(String(rec.kompaniya));
-    }
-    if(!seenGroupsGlobal[groupKey]){
-      seenGroupsGlobal[groupKey] = true;
-      uniqueCompanyCount += 1;
-    }
-    if(st.lat == null || st.lon == null){
-      var geo = getInvestorGeoHub(rec);
-      if(geo){ st.lat = geo.lat; st.lon = geo.lon; }
-    }
-  });
+
+  // ═══ AGAR markazlashgan _icStats mavjud bo'lsa — to'g'ridan-to'g'ri shu yerdan o'qiydi ═══
+  // (xarita = jadval bilan AYNAN mos: 368 = 368)
+  if(window._icStats && window._icStats.byCountry){
+    Object.keys(window._icStats.byCountry).forEach(function(code){
+      var src = window._icStats.byCountry[code];
+      stateStats[code] = {
+        code: code,
+        name: src.name || code,
+        count: src.count,
+        companies: (src.companies || []).slice(),
+        lat: src.lat,
+        lon: src.lon,
+        _seenGroups: {}
+      };
+    });
+    uniqueCompanyCount = window._icStats.jami;
+  } else {
+    // Fallback (eski mantiq) — _icStats yo'q bo'lsa ishlatamiz
+    var groupHasExporter = Object.create(null);
+    companies.forEach(function(rec){
+      var groupKey = (typeof getInvestorCompanyGroupKey === 'function')
+        ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
+      if(!groupKey) return;
+      var fm = String(rec.finderMode || rec.role || '').toLowerCase();
+      var isExp = (fm === 'exporters' || fm === 'exporter');
+      var isImp = (fm === 'importers' || fm === 'importer');
+      if(isExp){ groupHasExporter[groupKey] = true; }
+      else if(!isImp){ groupHasExporter[groupKey] = groupHasExporter[groupKey] || true; }
+      if(Array.isArray(rec._partners) && rec._partners.some(function(p){ return String(p.role||'').toLowerCase() === 'importer'; })){
+        groupHasExporter[groupKey] = true;
+      }
+    });
+    companies.forEach(function(rec){
+      var code = getInvestorGeoStateCode(rec, {});
+      if(!code) return;
+      var groupKey = (typeof getInvestorCompanyGroupKey === 'function')
+        ? getInvestorCompanyGroupKey(rec)
+        : String(rec.kompaniya || rec.id || '').toLowerCase();
+      if(!groupHasExporter[groupKey]) return;
+      if(!stateStats[code]){
+        stateStats[code] = { code: code, name: String(getInvestorGeoCountrySource(rec) || code), count: 0, companies: [], lat: null, lon: null, _seenGroups: {} };
+      }
+      var st = stateStats[code];
+      if(!st._seenGroups[groupKey]){
+        st._seenGroups[groupKey] = true;
+        st.count += 1;
+        if(rec.kompaniya) st.companies.push(String(rec.kompaniya));
+      }
+      if(!seenGroupsGlobal[groupKey]){
+        seenGroupsGlobal[groupKey] = true;
+        uniqueCompanyCount += 1;
+      }
+      if(st.lat == null || st.lon == null){
+        var geo = getInvestorGeoHub(rec);
+        if(geo){ st.lat = geo.lat; st.lon = geo.lon; }
+      }
+    });
+  }
   window._investorGeoStateStats = stateStats;
 
   var regionColors = {};
@@ -3036,23 +3053,76 @@ _renderInvestorCompaniesMain = function(){
   if(apolloEl2) apolloEl2.textContent = Object.keys(visibleApolloGroups).length;
   var taEl2 = document.getElementById('ic-k-tradeatlas');
   if(taEl2) taEl2.textContent = Object.keys(visibleTaGroups).length;
-  // Pie chart va geo karta — visibleRecords dan
+  // ═══ MARKAZLASHGAN STATISTIKA — barcha komponentlar shu yerdan o'qiydi ═══
+  // SOURCE OF TRUTH: visibleGroups (jadvaldagi haqiqiy kompaniyalar)
+  // Har group bir kompaniya — uning birinchi (parent) record davlati ishlatiladi
+  var statsByCountry = Object.create(null);
+  var statsByCountryName = Object.create(null);
+  var statsBySource = { apollo: 0, tradeatlas: 0, other: 0 };
+  visibleGroups.forEach(function(g){
+    if(!Array.isArray(g.records) || !g.records.length) return;
+    var rec0 = g.records[0];
+    // Davlat — group'ning birlamchi record davlati
+    var code = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec0, {}) : '';
+    if(code){
+      if(!statsByCountry[code]){
+        statsByCountry[code] = { code: code, count: 0, companies: [], lat: null, lon: null, name: '' };
+        var hub = (typeof getInvestorGeoHub === 'function') ? getInvestorGeoHub(rec0) : null;
+        if(hub){
+          statsByCountry[code].lat = hub.lat;
+          statsByCountry[code].lon = hub.lon;
+          statsByCountry[code].name = hub.display || (typeof getInvestorGeoCountrySource === 'function' ? getInvestorGeoCountrySource(rec0) : '') || code;
+        } else {
+          statsByCountry[code].name = (typeof getInvestorGeoCountrySource === 'function' ? getInvestorGeoCountrySource(rec0) : '') || code;
+        }
+      }
+      statsByCountry[code].count++;
+      if(rec0.kompaniya) statsByCountry[code].companies.push(String(rec0.kompaniya));
+      statsByCountryName[statsByCountry[code].name] = (statsByCountryName[statsByCountry[code].name] || 0) + 1;
+    }
+    // Source — har record (parent + children) tekshirilib aniqlanadi
+    var hasApollo = false, hasTa = false;
+    g.records.forEach(function(r){
+      var src = String(r.manba || r.source || '').toLowerCase();
+      if(src.indexOf('apollo') !== -1 || src === 'csv-import' || src === 'finder') hasApollo = true;
+      if(src.indexOf('tradeatlas') !== -1 || src === 'trade' || src === 'ta') hasTa = true;
+    });
+    if(hasTa) statsBySource.tradeatlas++;
+    else if(hasApollo) statsBySource.apollo++;
+    else statsBySource.other++;
+  });
+  // _icStats — markazlashgan source of truth
+  window._icStats = {
+    jami: visibleGroups.length,
+    apollo: statsBySource.apollo,
+    tradeatlas: statsBySource.tradeatlas,
+    other: statsBySource.other,
+    tayyor: vTayyor,
+    emailSent: vEmailSent,
+    hasEmail: vHasEmail,
+    byCountry: statsByCountry,        // { 'UZ': {count, lat, lon, name, ...}, ... }
+    byCountryName: statsByCountryName, // { 'O\'zbekiston': N, ... } — pie chart uchun
+    countryCodes: Object.keys(statsByCountry),
+    countryCount: Object.keys(statsByCountry).length,
+    timestamp: Date.now()
+  };
+
+  // Pie chart va geo karta — markazlashgan stats'dan oqiydi
   if(typeof renderIcCharts === 'function') renderIcCharts(visibleRecords);
-  // Geo karta hash yangilash
   var visGeoHash = visibleRecords.map(function(r){ return (r.id||'')+'|'+(r.davlat||r.country||''); }).join(',') + '|src:' + (_sourceFilter || '') + '|v:visible';
   if(visGeoHash !== _icGeoHash){
     _icGeoHash = visGeoHash;
     if(typeof renderInvestorGeoCard === 'function') renderInvestorGeoCard(visibleRecords);
   }
-  // Pipeline CRM va sidebar uchun visibleGroups soni global
+  // Backwards compatibility — eski _icCounts API (pipeline-crm va sidebar uchun)
   window._icCounts = {
-    jami: visibleGroups.length,
-    apollo: Object.keys(visibleApolloGroups).length,
-    tradeatlas: Object.keys(visibleTaGroups).length,
-    tayyor: vTayyor,
-    emailSent: vEmailSent,
-    hasEmail: vHasEmail,
-    timestamp: Date.now()
+    jami: window._icStats.jami,
+    apollo: window._icStats.apollo,
+    tradeatlas: window._icStats.tradeatlas,
+    tayyor: window._icStats.tayyor,
+    emailSent: window._icStats.emailSent,
+    hasEmail: window._icStats.hasEmail,
+    timestamp: window._icStats.timestamp
   };
   // Select all uchun visible record IDs (filter qo'llangan)
   var _visIdsSet = new Set();
