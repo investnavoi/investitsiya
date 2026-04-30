@@ -2715,15 +2715,21 @@ _renderInvestorCompaniesMain = function(){
     g._childrenData = []; // ekspandda ko'rsatish uchun yig'amiz
     var parentRec = g.records[0];
     var _addedChildKeys = Object.create(null); // dedupe
-    // ═══ MANBA 1: parentRec._partners — TradeAtlas saqlangan barcha sheriklar (DB record bo'lmasa ham) ═══
-    if(parentRec && Array.isArray(parentRec._partners)){
-      parentRec._partners.forEach(function(p){
+    // ═══ MANBA 1: _partners VA _partnerOf — TradeAtlas saqlangan barcha sheriklar ═══
+    // Eksportyor parent uchun importerlar ikki holatda saqlanishi mumkin:
+    // a) finderMode='exporters' bilan saqlanganda → _partners[] da importerlar
+    // b) finderMode='importers' bilan saqlangan (synthetic exporter) → _partnerOf[] da importerlar
+    function _addPartnersFromArray(arr, expectedRole){
+      if(!Array.isArray(arr)) return;
+      arr.forEach(function(p){
         if(!p || !p.kompaniya) return;
+        // Faqat kerakli rol bilan filter — eksportyor parent uchun faqat importer sheriklar
+        var pRole = String(p.role || '').toLowerCase();
+        if(expectedRole && pRole && pRole !== expectedRole) return;
         var pName = String(p.kompaniya).trim();
         var pKey = pName.toLowerCase();
         if(!pKey || _addedChildKeys[pKey]) return;
         _addedChildKeys[pKey] = true;
-        // Agar bu sherik DB'da ham mavjud bo'lsa, child group key ham yoziladi (jadvaldagi child yashirish uchun)
         var existingChild = _groupByName[pKey];
         var childGk = existingChild ? existingChild.key : '';
         g._childrenData.push({
@@ -2736,11 +2742,13 @@ _renderInvestorCompaniesMain = function(){
           docCount: Number(p.docCount || 0),
           childGroupKey: childGk
         });
-        // Agar DB'da ham bor bo'lsa, uni hidden child sifatida belgilash
-        if(existingChild && !_visited[existingChild.key]){
-          // pastdagi blok ham ishlasin uchun bu yerda nothing — pastdagi for-loop davom etadi
-        }
       });
+    }
+    if(parentRec){
+      // _partners — sherik importerlar
+      _addPartnersFromArray(parentRec._partners, 'importer');
+      // _partnerOf — sinetik exporter holatda importerlar shu yerda
+      _addPartnersFromArray(parentRec._partnerOf, 'importer');
     }
     // ═══ MANBA 2: DB'dagi child kompaniyalar — _parentToChildren orqali ═══
     childNames.forEach(function(childName){
