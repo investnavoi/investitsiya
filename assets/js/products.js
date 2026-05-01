@@ -980,13 +980,22 @@ function renderInvestorProductFilterPicker(){
       html += '</div></div>';
     });
     // ═══ Manual HS kodlari section ═══
-    if(virtualHsProducts.length){
+    // Faqat haqiqatan kompaniya mos keladigan HS kodlarni ko'rsatamiz (count > 0)
+    var virtualHsWithCount = virtualHsProducts.map(function(p){
+      var c = 0;
+      investorCompanies.forEach(function(rec){
+        if(typeof investorCompanyMatchesProductFilter === 'function' && investorCompanyMatchesProductFilter(rec, p)) c++;
+      });
+      return { product: p, count: c };
+    }).filter(function(x){ return x.count > 0; });
+    if(virtualHsWithCount.length){
       html += '<div class="csd-group csd-group-section" data-section="manual_hs">';
-      html += '<div class="csd-group-head csd-section-head" onclick="toggleCsdGroup(this)"><span>📋 Manual HS kodlari</span><span class="csd-count">'+virtualHsProducts.length+'</span><span class="csd-caret">▾</span></div>';
+      html += '<div class="csd-group-head csd-section-head" onclick="toggleCsdGroup(this)"><span>📋 Manual HS kodlari</span><span class="csd-count">'+virtualHsWithCount.length+'</span><span class="csd-caret">▾</span></div>';
       html += '<div class="csd-group-items csd-section-items">';
-      virtualHsProducts.forEach(function(p){
+      virtualHsWithCount.forEach(function(x){
+        var p = x.product;
         var label = escapeHtmlText(p.name_uz) + ' (' + escapeHtmlText(p.hs_code) + ')';
-        html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectInvestorProductFilter(this,\''+p.id+'\')">'+label+'</div>';
+        html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectInvestorProductFilter(this,\''+p.id+'\')">'+label+'<span class="csd-count" style="margin-left:6px;font-size:.65rem;color:var(--text3)">'+x.count+'</span></div>';
       });
       html += '</div></div>';
     }
