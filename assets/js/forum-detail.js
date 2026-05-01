@@ -2253,12 +2253,19 @@ async function saveInvestorSohaEdit(id){
   var inp = document.getElementById('investor-soha-input-' + id);
   var value = String((inp && inp.value) || '').trim();
   // Manual HS guruh — bir xil HS kodli barcha recordlarga tarqatish
-  var editedHs = String(rec.mahsulotHs || rec.hsCode || '').replace(/\D/g,'');
+  // HS quyidagilardan olinadi: mahsulotHs → hsCode → mahsulotNomi ichidagi "HS NNNNNN" regex
+  function _extractRecHs(r){
+    var hs = String((r && (r.mahsulotHs || r.hsCode)) || '').replace(/\D/g,'');
+    if(hs) return hs;
+    var nm = String((r && r.mahsulotNomi) || '');
+    var m = nm.match(/HS\s*(\d{2,10})/i);
+    return m ? m[1] : '';
+  }
+  var editedHs = _extractRecHs(rec);
   var groupRecs = [];
   if(editedHs){
     groupRecs = (DB.investorCompanies || []).filter(function(r){
-      var rh = String(r.mahsulotHs || r.hsCode || '').replace(/\D/g,'');
-      return rh && rh === editedHs;
+      return _extractRecHs(r) === editedHs;
     });
   }
   if(!groupRecs.length) groupRecs = [rec];
