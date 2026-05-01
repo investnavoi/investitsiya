@@ -3258,7 +3258,37 @@ var INVEST_AI_COUNTRY_RU = {
   'Zambia':'Замбия', 'Angola':'Ангола', 'Mozambique':'Мозамбик',
   'Madagascar':'Мадагаскар', 'Mauritius':'Маврикий',
   'Australia':'Австралия', 'New Zealand':'Новая Зеландия',
-  'Fiji':'Фиджи', 'Papua New Guinea':'Папуа — Новая Гвинея'
+  'Fiji':'Фиджи', 'Papua New Guinea':'Папуа — Новая Гвинея',
+  // Uzbek country names → Russian
+  "O'zbekiston":'Узбекистан', 'Uzbekiston':'Узбекистан',
+  "Qozog'iston":'Казахстан', 'Qozogiston':'Казахстан', 'Qozogʻiston':'Казахстан',
+  "Qirg'iziston":'Кыргызстан', 'Qirgiziston':'Кыргызстан',
+  'Tojikiston':'Таджикистан', 'Turkmaniston':'Туркменистан',
+  'Rossiya':'Россия', "Mo'g'uliston":'Монголия', 'Mongoliya':'Монголия',
+  'Ozarbayjon':'Азербайджан', 'Gruziya':'Грузия', 'Armaniston':'Армения',
+  'Eron':'Иран', "Afg'oniston":'Афганистан', 'Pokiston':'Пакистан',
+  'Xitoy':'Китай', 'Hindiston':'Индия', 'Yaponiya':'Япония',
+  'Janubiy Koreya':'Южная Корея', 'Koreya':'Корея',
+  'Vyetnam':'Вьетнам', 'Tailand':'Таиланд', 'Indoneziya':'Индонезия',
+  'Malayziya':'Малайзия', 'Singapur':'Сингапур', 'Filippin':'Филиппины',
+  'Tayvan':'Тайвань', 'Bangladesh':'Бангладеш', 'Myanma':'Мьянма',
+  'AQSH':'США', 'AQSh':'США', 'Kanada':'Канада', 'Meksika':'Мексика',
+  'Braziliya':'Бразилия', 'Argentina':'Аргентина', 'Chili':'Чили',
+  'Buyuk Britaniya':'Великобритания', 'Germaniya':'Германия',
+  'Fransiya':'Франция', 'Italiya':'Италия', 'Ispaniya':'Испания',
+  'Niderlandiya':'Нидерланды', 'Belgiya':'Бельгия', 'Shveysariya':'Швейцария',
+  'Avstriya':'Австрия', 'Shvetsiya':'Швеция', 'Norvegiya':'Норвегия',
+  'Daniya':'Дания', 'Finlandiya':'Финляндия', 'Polsha':'Польша',
+  'Chexiya':'Чехия', 'Slovakiya':'Словакия', 'Vengriya':'Венгрия',
+  'Ruminiya':'Румыния', 'Bolgariya':'Болгария', 'Yunoniston':'Греция',
+  'Estoniya':'Эстония', 'Latviya':'Латвия', 'Litva':'Литва',
+  'Belarus':'Беларусь', 'Ukraina':'Украина', 'Moldova':'Молдова',
+  'Turkiya':'Турция', 'Isroil':'Израиль', 'Saudiya Arabistoni':'Саудовская Аравия',
+  'BAA':'ОАЭ', 'Qatar':'Катар', 'Kuvayt':'Кувейт',
+  'Iroq':'Ирак', 'Suriya':'Сирия', 'Iordaniya':'Иордания',
+  'Livan':'Ливан', 'Misr':'Египет', 'Marokash':'Марокко',
+  'Tunis':'Тунис', 'Jazoir':'Алжир', 'Liviya':'Ливия',
+  'Janubiy Afrika':'ЮАР', 'Avstraliya':'Австралия', 'Yangi Zelandiya':'Новая Зеландия'
 };
 
 function investAiTranslateCountry(name){
@@ -3810,9 +3840,29 @@ function buildInvestAiWorkbookData(material, markdown){
   ];
 }
 
+// Convert column number (1-based) to Excel letter (A, B, ..., AA, AB)
+function investAiColLetter(col){
+  var s = '';
+  while(col > 0){
+    var rem = (col - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    col = Math.floor((col - 1) / 26);
+  }
+  return s;
+}
+
+// Format USD as compact string ($1.5B, $447M, $12K)
+function investAiFmtCompactUsd(v){
+  v = Number(v) || 0;
+  if(v >= 1e9) return '$' + (v/1e9).toFixed(1).replace(/\.0$/,'') + ' млрд';
+  if(v >= 1e6) return '$' + (v/1e6).toFixed(0) + ' млн';
+  if(v >= 1e3) return '$' + (v/1e3).toFixed(0) + ' тыс';
+  return '$' + Math.round(v);
+}
+
 async function exportInvestAiWorkbook(){
-  if(!window.XLSX){
-    toast('⚠️ XLSX kutubxonasi topilmadi','error');
+  if(typeof ExcelJS === 'undefined' || !ExcelJS){
+    toast('⚠️ ExcelJS kutubxonasi topilmadi','error');
     return;
   }
   var material = String(_investAiCurrentMaterial || ((document.getElementById('materialAiInput')||{}).value || '')).trim();
@@ -3826,36 +3876,96 @@ async function exportInvestAiWorkbook(){
     return;
   }
 
+  var ctx = investAiBuildWorkbookContext(material, markdown);
+
   // Mahsulot nomlarini ruschaga tarjima qilish (static map + Gemini fallback)
-  var ctxPreview = investAiBuildWorkbookContext(material, markdown);
   var translatingToast = (typeof toastLoading === 'function') ? toastLoading('🔤 Mahsulot nomlari ruschaga tarjima qilinmoqda...') : null;
   try {
-    await investAiBatchTranslateProductsRu(ctxPreview.entries);
+    await investAiBatchTranslateProductsRu(ctx.entries);
   } catch(_e){ console.warn('[invest-ai] product RU translate failed', _e); }
   finally { if(translatingToast && typeof translatingToast.close === 'function') translatingToast.close(); }
 
-  var wb = XLSX.utils.book_new();
-  // Build sheets with already-translated entries (translation is on ctxPreview.entries by reference,
-  // but buildInvestAiWorkbookData rebuilds context — so apply same translations directly)
-  var translatedHsToRu = Object.create(null);
-  ctxPreview.entries.forEach(function(e){
-    var hs = String(e.hsCode || '').replace(/\D/g,'');
-    if(hs && e.displayName) translatedHsToRu[hs] = e.displayName;
-  });
-  var sheetData = buildInvestAiWorkbookData(material, markdown);
-  // Re-apply translations to fresh ctx entries (in case build re-creates them)
-  // (buildInvestAiWorkbookData calls investAiBuildWorkbookContext internally — entries differ by reference)
-  // To be safe, mutate entries before building. Use a wrapper:
-  // Note: buildInvestAiWorkbookData already finished. As a fallback the static map
-  // covers most cases at sheet build time via investAiLookupHsRu in entries' displayName.
-  sheetData.forEach(function(sheet){
-    XLSX.utils.book_append_sheet(wb, sheet.ws, sheet.name.slice(0,31));
+  // Apply static + cached RU names to entries (safety pass)
+  ctx.entries.forEach(function(e){
+    var ru = investAiLookupHsRu(e.hsCode);
+    if(ru) e.displayName = ru;
   });
 
-  var fileSafe = material.replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().replace(/\s/g,'_') || 'Material';
-  var dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  XLSX.writeFile(wb, 'Navoi_' + fileSafe + '_Trade_Analysis_RU_' + dateStr + '.xlsx');
-  toast('📥 Excel-отчёт скачан (RU)!');
+  var loadingToast = (typeof toastLoading === 'function') ? toastLoading('📥 Шаблон загружается...') : null;
+  try {
+    // Shablonni ExcelJS bilan yuklash — barcha style/border/format saqlanadi
+    var resp = await fetch('assets/templates/navoi_analysis_template_ru.xlsx?t=' + Date.now(), { cache:'no-store' });
+    if(!resp.ok) throw new Error('Шаблон не загружен (HTTP ' + resp.status + ')');
+    var buf = await resp.arrayBuffer();
+    var wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+
+    // ═══ Sheet 1: Главная панель ═══
+    var ws1 = wb.getWorksheet('Главная панель');
+    if(ws1){
+      var matUpper = String(material || '').toUpperCase();
+      // Title (A1) — material nomi bilan
+      ws1.getCell('A1').value = 'НАВОИЙСКИЙ РЕГИОН — ' + matUpper + ': АНАЛИЗ ТОРГОВЛИ И ИНВЕСТИЦИОННЫЕ ВОЗМОЖНОСТИ';
+      // Subtitle (A2)
+      ws1.getCell('A2').value = 'Сырьё: ' + material + ' — Анализ регионального импортного спроса (Данные UN Comtrade ' + ctx.analysisYear + ')';
+      // KPI cards (row 4)
+      ws1.getCell('A4').value = investAiFmtCompactUsd(ctx.totalRegionalDemand);
+      ws1.getCell('C4').value = investAiFmtCompactUsd(ctx.totalUzbImports);
+      ws1.getCell('E4').value = ctx.entries.length;
+      ws1.getCell('G4').value = ctx.entries.filter(function(e){ return Number(e.analysisValue || 0) >= 10000000; }).length;
+      // KPI labels (row 5) — already in template, just adapt 4th label dynamically
+      ws1.getCell('E5').value = 'Продуктов проанализировано';
+      ws1.getCell('G5').value = 'Продуктов с >$10 млн спросом';
+      // TOP section title (row 7)
+      ws1.getCell('A7').value = 'ТОП ПРОДУКТОВ ПО РЕГИОНАЛЬНОМУ ИМПОРТНОМУ СПРОСУ (' + ctx.analysisYear + ')';
+      // Headers (row 8) — already in template, leave
+      // Rows 9 onward: TOP-N entries — clear old NavoiAzot data, fill new
+      // Template has 20 product rows (9-28). Clear all first.
+      for(var r = 9; r <= 28; r++){
+        for(var c = 1; c <= 8; c++){
+          var cell = ws1.getCell(r, c);
+          cell.value = null;
+        }
+      }
+      // Sort entries by analysisValue desc and fill
+      var sortedEntries = ctx.entries.slice().sort(function(a,b){ return (Number(b.analysisValue)||0) - (Number(a.analysisValue)||0); });
+      sortedEntries.slice(0, 20).forEach(function(entry, idx){
+        var rowIdx = 9 + idx;
+        ws1.getCell('A' + rowIdx).value = idx + 1;
+        ws1.getCell('B' + rowIdx).value = entry.hsCode || '—';
+        ws1.getCell('C' + rowIdx).value = entry.displayName || '—';
+        ws1.getCell('D' + rowIdx).value = Number(entry.analysisValue) || 0;
+        ws1.getCell('E' + rowIdx).value = Number(entry.uzbValue) || 0;
+        ws1.getCell('F' + rowIdx).value = investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—');
+        ws1.getCell('G' + rowIdx).value = Number((entry.topImporter && entry.topImporter.value) || 0);
+        ws1.getCell('H' + rowIdx).value = investAiTranslatePriority(entry.priority || 'Priority D');
+      });
+    }
+
+    // ═══ Sheet 2-7: Boshqa sheetlar — keyingi commitlarda dinamik to'ldiriladi
+    // Hozircha shablon ichidagi NavoiAzot demo ma'lumotlari saqlanadi (foydalanuvchi
+    // sheet 1'ni tekshirsa, qolgan sheetlar keyingi PR'da yangilanadi).
+
+    // Faylni yuklash
+    var fileSafe = material.replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().replace(/\s/g,'_') || 'Material';
+    var dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    var outBuf = await wb.xlsx.writeBuffer();
+    var blob = new Blob([outBuf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'Navoi_' + fileSafe + '_Trade_Analysis_RU_' + dateStr + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    toast('📥 Excel-отчёт скачан (по шаблону НавоиАзот)');
+  } catch(e){
+    console.error('[invest-ai] template export failed', e);
+    toast('⚠️ Excel eksport xatosi: ' + (e && e.message ? e.message : 'noma\'lum'),'error');
+  } finally {
+    if(loadingToast && typeof loadingToast.close === 'function') loadingToast.close();
+  }
 }
 
 function investAiSummarizeCountries(countries){
