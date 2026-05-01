@@ -3981,8 +3981,8 @@ async function exportInvestAiWorkbook(){
       ws2.getCell('F4').value = 'Код ТН ВЭД';
       ws2.getCell('G4').value = 'Технология / Процесс';
       // Clear rows 5+ from template
-      for(var r2 = 5; r2 <= 60; r2++){
-        for(var c2 = 1; c2 <= 7; c2++){
+      for(var r2 = 5; r2 <= 100; r2++){
+        for(var c2 = 1; c2 <= 15; c2++){
           ws2.getCell(r2, c2).value = null;
         }
       }
@@ -4003,9 +4003,9 @@ async function exportInvestAiWorkbook(){
     if(ws3){
       ws3.getCell('A1').value = 'ИМПОРТ ПРОДУКЦИИ ПО СТРАНАМ — ' + matUpper + ' (2021–2024, ДОЛЛ. США)';
       ws3.getCell('A2').value = 'Источник: UN Comtrade | Поток: Импорт | Партнёр: Мир (всего) | Значения в долл. США';
-      // Tozalash — shablondagi 30 blok (taxminan 290 qator)
-      for(var r3 = 4; r3 <= 320; r3++){
-        for(var c3 = 1; c3 <= 16; c3++){
+      // Tozalash — shablondagi 30 blok (taxminan 290 qator) — kengroq diapazon
+      for(var r3 = 3; r3 <= 350; r3++){
+        for(var c3 = 1; c3 <= 25; c3++){
           ws3.getCell(r3, c3).value = null;
         }
       }
@@ -4046,10 +4046,13 @@ async function exportInvestAiWorkbook(){
     var ws4 = wb.getWorksheet('Профили стран-импортёров') || wb.getWorksheet('Профили стран');
     if(ws4){
       ws4.getCell('A1').value = 'ПРОФИЛЬ ИМПОРТНОГО СПРОСА СТРАН — ' + matUpper + ' (' + ctx.analysisYear + ', ДОЛЛ. США)';
-      // Tozalash
-      for(var r4 = 3; r4 <= 100; r4++){
-        for(var c4 = 1; c4 <= 16; c4++){
-          ws4.getCell(r4, c4).value = null;
+      // Tozalash — shablon Q-AC (17-30) ustunlarda NavoiAzot mahsulotlar bo'yicha breakdown qoldirgan
+      for(var r4 = 2; r4 <= 100; r4++){
+        for(var c4 = 1; c4 <= 50; c4++){
+          var c4Cell = ws4.getCell(r4, c4);
+          c4Cell.value = null;
+          // Format ham tozalanadi (shablonning asl style'i ustun-darajasida ishlaydi, lekin
+          // bo'sh hujayralar jadvalda chiziq qoldirmasligi uchun)
         }
       }
       // Davlat → jami import (2024)
@@ -4084,9 +4087,9 @@ async function exportInvestAiWorkbook(){
     var ws5 = wb.getWorksheet('Матрица инвестприоритетов') || wb.getWorksheet('Матрица');
     if(ws5){
       ws5.getCell('A1').value = 'МАТРИЦА ИНВЕСТИЦИОННЫХ ПРИОРИТЕТОВ — ' + matUpper;
-      // Tozalash
-      for(var r5 = 3; r5 <= 80; r5++){
-        for(var c5 = 1; c5 <= 11; c5++){
+      // Tozalash — shablon L (12+) ustunlarda "ВЫСОКИЙ — Сильный..." vereditlar qoldirgan
+      for(var r5 = 2; r5 <= 100; r5++){
+        for(var c5 = 1; c5 <= 20; c5++){
           ws5.getCell(r5, c5).value = null;
         }
       }
@@ -4122,9 +4125,9 @@ async function exportInvestAiWorkbook(){
     var ws6 = wb.getWorksheet('Импортозамещение УЗБ') || wb.getWorksheet('Импортозамещение');
     if(ws6){
       ws6.getCell('A1').value = 'ВОЗМОЖНОСТИ ИМПОРТОЗАМЕЩЕНИЯ УЗБЕКИСТАНА — ' + matUpper;
-      // Tozalash
-      for(var r6 = 3; r6 <= 80; r6++){
-        for(var c6 = 1; c6 <= 9; c6++){
+      // Tozalash — kengroq diapazon
+      for(var r6 = 2; r6 <= 100; r6++){
+        for(var c6 = 1; c6 <= 20; c6++){
           ws6.getCell(r6, c6).value = null;
         }
       }
