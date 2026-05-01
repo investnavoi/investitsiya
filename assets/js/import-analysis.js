@@ -4322,21 +4322,57 @@ async function collectInvestAiTradeContext(material){
         countries: liveByHs[hsCode]
       };
     }
-    // If no snapshot and HS not yet fetched, fetch from API
+    // If no snapshot and HS not yet fetched, fetch from API for ALL years (2021-2024) in parallel
     if(!snapshot && !uniqueHsFetches[hsCode]){
       uniqueHsFetches[hsCode] = true;
       fetchedCount += 1;
       try{
-        var liveCountries = await fetchComtrade(hsCode, '2023');
-        if(liveCountries && liveCountries.length){
+        var YEARS_TO_FETCH = ['2021', '2022', '2023', '2024'];
+        var perYearResults = await Promise.all(YEARS_TO_FETCH.map(function(yr){
+          return fetchComtrade(hsCode, yr).catch(function(){ return null; });
+        }));
+        // Merge: build a country-keyed map with year_imports populated for all years
+        var byCode = Object.create(null);
+        perYearResults.forEach(function(rows, yi){
+          if(!rows || !rows.length) return;
+          var yr = YEARS_TO_FETCH[yi];
+          rows.forEach(function(c){
+            var code = String(c.code || c.c || '').toUpperCase();
+            if(!code) return;
+            if(!byCode[code]){
+              byCode[code] = {
+                code: code,
+                name: c.name || c.n || code,
+                flag: c.flag || c.f || '',
+                import_usd: 0,
+                trend_pct: typeof c.trend_pct === 'number' ? c.trend_pct : null,
+                volume_tons: 0,
+                year_imports: {},
+                year_statuses: {},
+                status: 'ok'
+              };
+            }
+            var v = Number(c.import_usd || c.u || 0) || 0;
+            if(v) byCode[code].year_imports[yr] = v;
+            byCode[code].year_statuses[yr] = c.status || 'ok';
+            if(c.volume_tons || c.v) byCode[code].volume_tons = Math.max(byCode[code].volume_tons, Number(c.volume_tons || c.v || 0) || 0);
+          });
+        });
+        var liveCountries = Object.keys(byCode).map(function(k){
+          var co = byCode[k];
+          // Set import_usd to latest available year (2024 -> 2023 -> 2022 -> 2021)
+          co.import_usd = Number(co.year_imports['2024'] || co.year_imports['2023'] || co.year_imports['2022'] || co.year_imports['2021'] || 0) || 0;
+          return co;
+        });
+        if(liveCountries.length){
           liveByHs[hsCode] = liveCountries;
-          saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real)');
+          saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real, multi-year)');
           snapshot = {
             id: buildImportSnapshotId(product, hsCode, FINDER_ALWAYS_TARGET_COUNTRIES, 'comtrade'),
             productId: String(product.id || ''),
             productName: formatBilingualProductName(product),
             hsCode: hsCode,
-            source: 'UN Comtrade (real)',
+            source: 'UN Comtrade (real, multi-year)',
             countries: liveCountries
           };
         }
