@@ -1344,8 +1344,9 @@ async function tradeAtlasRequestJson(payload){
 }
 
 async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
-  var hsCode = getExactImportHsCode(prod);
-  if(!hsCode) throw new Error('TradeAtlas uchun mahsulot HS kodi topilmadi');
+  var isFirmNameSearch = !!(prod && prod._firmNameSearch && prod._firmName);
+  var hsCode = isFirmNameSearch ? '' : getExactImportHsCode(prod);
+  if(!isFirmNameSearch && !hsCode) throw new Error('TradeAtlas uchun mahsulot HS kodi yoki firma nomi topilmadi');
   var targetCodes = (targetCountries || []).map(getTradeAtlasCountryCode).filter(Boolean);
   if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
   var sourceCodes = filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
@@ -1370,12 +1371,16 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   // Har chunk uchun alohida search — birorta davlat qoldirilmasin
   for(var chunkIdx = 0; chunkIdx < sourceChunks.length && !stopAll; chunkIdx++){
     var chunkCountries = sourceChunks[chunkIdx];
+    var _params = isFirmNameSearch
+      ? [{ FIRM_NAME: prod._firmName }]
+      : [{ HS_CODE: hsCode }];
     var payload = {
       accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
       countries: chunkCountries, firmFilter: [0,1,2], firmType: taFirmType, flowType: taFlowType,
-      page: 1, parameters: [{ HS_CODE: hsCode }], mode: meta.mode,
+      page: 1, parameters: _params, mode: meta.mode,
       targetCountries: targetCodes, sourceCountries: chunkCountries,
-      hsCode: hsCode, startDate: dateRange.startDate, endDate: dateRange.endDate, size: pageSize
+      hsCode: hsCode, firmName: isFirmNameSearch ? prod._firmName : '',
+      startDate: dateRange.startDate, endDate: dateRange.endDate, size: pageSize
     };
     var expectedTotal = 0;
     for(var page=1; page<=maxPages && !stopAll; page++){
@@ -3790,11 +3795,13 @@ async function runCompanyFinder(source){
   if(prodId){
     prod = (DB.products||[]).find(function(p){return p.id==prodId;});
   }
-  // Mahsulot tanlanmasa — manual HS kod input field'ni tekshirish
+  // Mahsulot tanlanmasa — manual HS kod yoki firma nomi input field'ni tekshirish
   if(!prod){
     var manualEl = document.getElementById('finder-manual-hs');
-    var manualHs = manualEl ? String(manualEl.value || '').replace(/\D/g,'') : '';
-    if(manualHs.length >= 2){
+    var manualRaw = manualEl ? String(manualEl.value || '').trim() : '';
+    var manualHs = manualRaw.replace(/\D/g,'');
+    var isPureDigits = manualRaw.length > 0 && /^\d+$/.test(manualRaw);
+    if(isPureDigits && manualHs.length >= 2){
       // Synthetic product — manual HS kod bilan
       prod = {
         id: 'manual-' + manualHs,
@@ -3803,9 +3810,24 @@ async function runCompanyFinder(source){
         name_uz: 'HS ' + manualHs + ' (manual)',
         name_en: 'HS ' + manualHs + ' (manual)'
       };
+    } else if(!isPureDigits && manualRaw.length >= 2){
+      // Synthetic product — firma nomi bo'yicha qidiruv (faqat TradeAtlas qo'llab-quvvatlaydi)
+      if(source !== 'tradeatlas'){
+        toast('⚠️ Firma nomi bilan qidiruv faqat TradeAtlas\'da ishlaydi','error');
+        return;
+      }
+      prod = {
+        id: 'manual-firm-' + manualRaw.toLowerCase().replace(/\s+/g,'-').slice(0,40),
+        hs_code: '',
+        name: manualRaw,
+        name_uz: manualRaw,
+        name_en: manualRaw,
+        _firmNameSearch: true,
+        _firmName: manualRaw
+      };
     } else {
       if(source === 'tradeatlas'){ showTradeAtlasUsageDialog(); return; }
-      toast('⚠️ Mahsulot tanlang yoki HS kod yozing','error');
+      toast('⚠️ Mahsulot tanlang, HS kod yoki firma nomini yozing','error');
       return;
     }
   }
