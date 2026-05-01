@@ -3905,7 +3905,7 @@ async function exportInvestAiWorkbook(){
     if(ws1){
       var matUpper = String(material || '').toUpperCase();
       // Title (A1) — material nomi bilan
-      ws1.getCell('A1').value = 'НАВОИЙСКИЙ РЕГИОН — ' + matUpper + ': АНАЛИЗ ТОРГОВЛИ И ИНВЕСТИЦИОННЫЕ ВОЗМОЖНОСТИ';
+      ws1.getCell('A1').value = matUpper + ' — АНАЛИЗ ТОРГОВЛИ И ИНВЕСТИЦИОННЫЕ ВОЗМОЖНОСТИ';
       // Subtitle (A2)
       ws1.getCell('A2').value = 'Сырьё: ' + material + ' — Анализ регионального импортного спроса (Данные UN Comtrade ' + ctx.analysisYear + ')';
       // KPI cards (row 4)
@@ -3934,10 +3934,10 @@ async function exportInvestAiWorkbook(){
         ws1.getCell('A' + rowIdx).value = idx + 1;
         ws1.getCell('B' + rowIdx).value = entry.hsCode || '—';
         ws1.getCell('C' + rowIdx).value = entry.displayName || '—';
-        ws1.getCell('D' + rowIdx).value = Number(entry.analysisValue) || 0;
-        ws1.getCell('E' + rowIdx).value = Number(entry.uzbValue) || 0;
+        var dCell = ws1.getCell('D' + rowIdx); dCell.value = Number(entry.analysisValue) || 0; dCell.numFmt = '$#,##0';
+        var eCell = ws1.getCell('E' + rowIdx); eCell.value = Number(entry.uzbValue) || 0; eCell.numFmt = '$#,##0';
         ws1.getCell('F' + rowIdx).value = investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—');
-        ws1.getCell('G' + rowIdx).value = Number((entry.topImporter && entry.topImporter.value) || 0);
+        var gCell = ws1.getCell('G' + rowIdx); gCell.value = Number((entry.topImporter && entry.topImporter.value) || 0); gCell.numFmt = '$#,##0';
         ws1.getCell('H' + rowIdx).value = investAiTranslatePriority(entry.priority || 'Priority D');
       });
     }
@@ -3945,10 +3945,19 @@ async function exportInvestAiWorkbook(){
     // ═══ Sheet 2: Карта продуктов — material'ning xomashyo→mahsulot zanjiri ═══
     var ws2 = wb.getWorksheet('Карта продуктов НавоиАзот') || wb.getWorksheet('Карта продуктов');
     if(ws2){
+      // Sheet tab nomini ham yangilab qoyamiz (НавоиАзот yozuvi qolmasligi uchun)
+      try { ws2.name = 'Карта продуктов'; } catch(_e){}
       ws2.getCell('A1').value = 'КАРТА ПРОДУКТОВ — ' + matUpper;
-      ws2.getCell('A2').value = 'Инвестиционная возможность: переработка сырья «' + material + '» в высокомаржинальную продукцию в Навоийской области';
-      // Row 4 — headers stay (template has them in Russian already)
-      // Clear rows 5+ from template (NavoiAzot demo)
+      ws2.getCell('A2').value = 'Инвестиционная возможность: переработка сырья «' + material + '» в высокомаржинальную продукцию';
+      // Row 4 — generic headers (NavoiAzot mention olib tashlandi)
+      ws2.getCell('A4').value = '№';
+      ws2.getCell('B4').value = 'Сырьё';
+      ws2.getCell('C4').value = 'Код ТН ВЭД сырья';
+      ws2.getCell('D4').value = 'Цепочка создания стоимости';
+      ws2.getCell('E4').value = 'Продукт';
+      ws2.getCell('F4').value = 'Код ТН ВЭД';
+      ws2.getCell('G4').value = 'Технология / Процесс';
+      // Clear rows 5+ from template
       for(var r2 = 5; r2 <= 60; r2++){
         for(var c2 = 1; c2 <= 7; c2++){
           ws2.getCell(r2, c2).value = null;
@@ -3999,10 +4008,14 @@ async function exportInvestAiWorkbook(){
           var regTotal = 0;
           moyCountries.forEach(function(co, ci){
             var v = Number((((entry.countryMap || {})[co.code] || {}).years || {})[yr] || 0) || 0;
-            ws3.getCell(curRow, 2 + ci).value = v || null;
+            var c3v = ws3.getCell(curRow, 2 + ci);
+            c3v.value = v || null;
+            if(v) c3v.numFmt = '$#,##0';
             regTotal += v;
           });
-          ws3.getCell(curRow, 2 + moyCountries.length).value = regTotal || null;
+          var c3total = ws3.getCell(curRow, 2 + moyCountries.length);
+          c3total.value = regTotal || null;
+          if(regTotal) c3total.numFmt = '$#,##0';
           curRow++;
         });
         // Spacer row
@@ -4039,15 +4052,13 @@ async function exportInvestAiWorkbook(){
         var rowIdx = 4 + idx;
         ws4.getCell('A' + rowIdx).value = idx + 1;
         ws4.getCell('B' + rowIdx).value = co.name;
-        ws4.getCell('C' + rowIdx).value = co.total || null;
-        ws4.getCell('D' + rowIdx).value = grandTotal > 0 ? (co.total / grandTotal) : 0;
-        ws4.getCell('D' + rowIdx).numFmt = '0.0%';
+        var c4Cell = ws4.getCell('C' + rowIdx); c4Cell.value = co.total || null; c4Cell.numFmt = '$#,##0';
+        var d4Cell = ws4.getCell('D' + rowIdx); d4Cell.value = grandTotal > 0 ? (co.total / grandTotal) : 0; d4Cell.numFmt = '0.0%';
       });
       var totalRow = 4 + moy4.length;
       ws4.getCell('A' + totalRow).value = 'РЕГИОНАЛЬНЫЙ ИТОГО';
-      ws4.getCell('C' + totalRow).value = grandTotal || null;
-      ws4.getCell('D' + totalRow).value = 1;
-      ws4.getCell('D' + totalRow).numFmt = '0.0%';
+      var c4tot = ws4.getCell('C' + totalRow); c4tot.value = grandTotal || null; c4tot.numFmt = '$#,##0';
+      var d4tot = ws4.getCell('D' + totalRow); d4tot.value = 1; d4tot.numFmt = '0.0%';
     }
 
     // ═══ Sheet 5: Матрица инвестприоритетов ═══
@@ -4077,11 +4088,11 @@ async function exportInvestAiWorkbook(){
         ws5.getCell('A' + rowIdx).value = String(entry.priority || 'Priority D').replace('Priority ','');
         ws5.getCell('B' + rowIdx).value = entry.hsCode || '—';
         ws5.getCell('C' + rowIdx).value = entry.displayName || '—';
-        ws5.getCell('D' + rowIdx).value = Number(entry.analysisValue) || 0;
-        ws5.getCell('E' + rowIdx).value = Number(entry.uzbValue) || 0;
+        var d5 = ws5.getCell('D' + rowIdx); d5.value = Number(entry.analysisValue) || 0; d5.numFmt = '$#,##0';
+        var e5 = ws5.getCell('E' + rowIdx); e5.value = Number(entry.uzbValue) || 0; e5.numFmt = '$#,##0';
         ws5.getCell('F' + rowIdx).value = investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—');
-        ws5.getCell('G' + rowIdx).value = entry.cagr != null ? Number(entry.cagr) : null;
-        if(entry.cagr != null) ws5.getCell('G' + rowIdx).numFmt = '0.0%';
+        var g5 = ws5.getCell('G' + rowIdx); g5.value = entry.cagr != null ? Number(entry.cagr) : null;
+        if(entry.cagr != null) g5.numFmt = '0.0%';
         ws5.getCell('H' + rowIdx).value = entry.level || '—';
         ws5.getCell('I' + rowIdx).value = entry.capital || '—';
         ws5.getCell('J' + rowIdx).value = entry.competitiveness || '—';
@@ -4115,12 +4126,12 @@ async function exportInvestAiWorkbook(){
         var cagr = investAiCalcCagr(uz);
         ws6.getCell('A' + rowIdx).value = entry.hsCode || '—';
         ws6.getCell('B' + rowIdx).value = entry.displayName || '—';
-        ws6.getCell('C' + rowIdx).value = Number(uz['2021']) || null;
-        ws6.getCell('D' + rowIdx).value = Number(uz['2022']) || null;
-        ws6.getCell('E' + rowIdx).value = Number(uz['2023']) || null;
-        ws6.getCell('F' + rowIdx).value = Number(uz['2024']) || null;
-        ws6.getCell('G' + rowIdx).value = cagr != null ? Number(cagr) : null;
-        if(cagr != null) ws6.getCell('G' + rowIdx).numFmt = '0.0%';
+        var c6 = ws6.getCell('C' + rowIdx); c6.value = Number(uz['2021']) || null; if(uz['2021']) c6.numFmt = '$#,##0';
+        var d6 = ws6.getCell('D' + rowIdx); d6.value = Number(uz['2022']) || null; if(uz['2022']) d6.numFmt = '$#,##0';
+        var e6 = ws6.getCell('E' + rowIdx); e6.value = Number(uz['2023']) || null; if(uz['2023']) e6.numFmt = '$#,##0';
+        var f6 = ws6.getCell('F' + rowIdx); f6.value = Number(uz['2024']) || null; if(uz['2024']) f6.numFmt = '$#,##0';
+        var g6 = ws6.getCell('G' + rowIdx); g6.value = cagr != null ? Number(cagr) : null;
+        if(cagr != null) g6.numFmt = '0.0%';
         var pot = entry.priority === 'Priority A' ? 'Высокий' : (entry.priority === 'Priority B' ? 'Средний' : 'Выборочный');
         ws6.getCell('H' + rowIdx).value = pot;
         ws6.getCell('I' + rowIdx).value = investAiTranslatePriority(entry.priority || 'Priority D');
@@ -4158,7 +4169,7 @@ async function exportInvestAiWorkbook(){
         ['C — Средний', 'Региональный спрос ≥ $5 млн'],
         ['D — Низкий', 'Прочие — требует углублённой проверки'],
         ['', ''],
-        ['ПОДГОТОВЛЕНО', 'Управление инвестиций Навоийской области'],
+        ['ПОДГОТОВЛЕНО', 'Управление инвестиций — investnavoi.uz'],
         ['ДАТА', today.toLocaleDateString('ru-RU', { year:'numeric', month:'long', day:'numeric' })],
         ['КОНТАКТ', 'investnavoi.uz']
       ];
