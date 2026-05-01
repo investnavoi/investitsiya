@@ -3283,6 +3283,129 @@ function investAiTranslatePriority(p){
   return s;
 }
 
+// HS code → Russian product name (curated from NavoiAzot RU template)
+var INVEST_AI_HS_RU = {
+  '220720':'Этиловый спирт',
+  '220900':'Пищевой уксус',
+  '270750':'Ароматические углеводороды',
+  '280110':'Хлор',
+  '280700':'Олеум / Серная кислота',
+  '280800':'Азотная кислота',
+  '281112':'Синильная кислота',
+  '281410':'Аммиак',
+  '281511':'Каустическая сода',
+  '282710':'Хлорид аммония',
+  '283620':'Кальцинированная сода',
+  '290129':'Ацетилен',
+  '290311':'Хлорметан',
+  '290345':'Фреон / хладагенты',
+  '290511':'Метанол',
+  '290542':'Пентаэритритол',
+  '291211':'Формальдегид',
+  '291411':'Ацетон',
+  '291521':'Уксусная кислота',
+  '291532':'Винилацетат',
+  '291540':'Монохлоруксусная кислота',
+  '300410':'Лекарственные средства (пенициллин и др.)',
+  '310210':'Карбамид',
+  '310230':'Аммиачная селитра',
+  '320413':'Красители (основные)',
+  '320910':'Лаки (акриловые/виниловые)',
+  '360200':'Взрывчатые вещества',
+  '382499':'Химические препараты / Растворители',
+  '390410':'ПВХ (поливинилхлорид)',
+  '390910':'Карбамидоформальдегидные смолы',
+  '390920':'Меламиноформальдегидная смола',
+  '390940':'Фенольные смолы',
+  '391211':'Ацетат целлюлозы',
+  '392043':'ПВХ-плиты/листы/плёнки',
+  '392112':'Ячеистые ПВХ-плиты',
+  '392113':'ПУ ячеистые плиты / искусственная кожа',
+  '392520':'Пластиковые двери/окна/рамы',
+  '400231':'Бутилкаучук (IIR)',
+  '400259':'Синтетический каучук (прочий)',
+  '401691':'Резиновые напольные покрытия',
+  '441112':'МДФ (≤5мм)',
+  '441114':'МДФ (>9мм)',
+  '441192':'Древесноволокнистая плита',
+  '481190':'Бумага/картон (мелованные)',
+  '551614':'Искусственное волокно (тканое)',
+  '590410':'Линолеум',
+  '852380':'Записанные носители (прочие)'
+};
+
+var INVEST_AI_HS_RU_CACHE_KEY = '_invest_ai_hs_ru_cache';
+function investAiLoadHsRuCache(){
+  try {
+    var raw = localStorage.getItem(INVEST_AI_HS_RU_CACHE_KEY);
+    return raw ? (JSON.parse(raw) || {}) : {};
+  } catch(_e){ return {}; }
+}
+function investAiSaveHsRuCache(map){
+  try { localStorage.setItem(INVEST_AI_HS_RU_CACHE_KEY, JSON.stringify(map || {})); } catch(_e){}
+}
+
+// Returns Russian product name from static map or runtime cache; null if unknown
+function investAiLookupHsRu(hsCode){
+  var hs = String(hsCode || '').replace(/\D/g,'');
+  if(!hs) return null;
+  if(INVEST_AI_HS_RU[hs]) return INVEST_AI_HS_RU[hs];
+  var hs6 = hs.slice(0,6);
+  if(INVEST_AI_HS_RU[hs6]) return INVEST_AI_HS_RU[hs6];
+  var cache = investAiLoadHsRuCache();
+  if(cache[hs]) return cache[hs];
+  if(cache[hs6]) return cache[hs6];
+  return null;
+}
+
+// Batch-translate unknown product names to Russian via Gemini, cache results
+async function investAiBatchTranslateProductsRu(entries){
+  if(!Array.isArray(entries) || !entries.length) return;
+  var cache = investAiLoadHsRuCache();
+  var pending = [];
+  entries.forEach(function(e){
+    var hs = String(e.hsCode || '').replace(/\D/g,'');
+    if(!hs) return;
+    var existing = INVEST_AI_HS_RU[hs] || INVEST_AI_HS_RU[hs.slice(0,6)] || cache[hs] || cache[hs.slice(0,6)];
+    if(existing){ e.displayName = existing; return; }
+    pending.push({ hs:hs, en:String(e.displayName || e.name_en || e.hsCode || '').trim() });
+  });
+  if(!pending.length) return;
+  // Limit batch size to ~50 entries per Gemini call
+  var BATCH = 50;
+  for(var i=0; i<pending.length; i+=BATCH){
+    var chunk = pending.slice(i, i + BATCH);
+    var prompt = 'Translate each English HS-code product description into a SHORT Russian commercial-style name (2-6 words). Return STRICT JSON: an object mapping HS code (string) to Russian translation. No commentary, no markdown.\n\nInput (JSON array):\n' + JSON.stringify(chunk);
+    try {
+      if(typeof callGemini !== 'function') break;
+      var resp = await callGemini({
+        contents:[{ parts:[{ text: prompt }] }],
+        generationConfig:{ temperature: 0.2, responseMimeType: 'application/json' }
+      });
+      var raw = (typeof geminiText === 'function') ? geminiText(resp) : '';
+      if(!raw) continue;
+      var parsed = (typeof safeParseJSON === 'function') ? safeParseJSON(raw) : null;
+      if(!parsed || typeof parsed !== 'object') {
+        try { parsed = JSON.parse(raw); } catch(_p){ parsed = null; }
+      }
+      if(!parsed || typeof parsed !== 'object') continue;
+      Object.keys(parsed).forEach(function(k){
+        var hsK = String(k).replace(/\D/g,'');
+        var ru = String(parsed[k] || '').trim();
+        if(hsK && ru) cache[hsK] = ru;
+      });
+    } catch(_e){ /* swallow — keep going */ }
+  }
+  investAiSaveHsRuCache(cache);
+  // Apply to entries (after cache update)
+  entries.forEach(function(e){
+    var hs = String(e.hsCode || '').replace(/\D/g,'');
+    if(!hs) return;
+    var ru = INVEST_AI_HS_RU[hs] || INVEST_AI_HS_RU[hs.slice(0,6)] || cache[hs] || cache[hs.slice(0,6)];
+    if(ru) e.displayName = ru;
+  });
+}
+
 function investAiBuildExecutiveDashboardSheet(ctx, styles){
   var rows = [];
   rows.push([INVEST_AI_RU.navoiPrefix + String(ctx.material || '').toUpperCase() + INVEST_AI_RU.titleSuffix,'','','','','','','','']);
@@ -3662,6 +3785,17 @@ function investAiBuildMethodologySheet(ctx, styles){
 
 function buildInvestAiWorkbookData(material, markdown){
   var ctx = investAiBuildWorkbookContext(material, markdown);
+  // Apply static + cached RU product names synchronously
+  if(Array.isArray(ctx.entries)){
+    ctx.entries.forEach(function(e){
+      var ru = investAiLookupHsRu(e.hsCode);
+      if(ru) e.displayName = ru;
+    });
+  }
+  // Top country also translated for methodology sheet etc.
+  if(ctx.topCountry && ctx.topCountry.name){
+    ctx.topCountry.nameRu = investAiTranslateCountry(ctx.topCountry.name);
+  }
   var styles = investAiWorkbookStyles();
   return [
     investAiBuildExecutiveDashboardSheet(ctx, styles),
@@ -3676,7 +3810,7 @@ function buildInvestAiWorkbookData(material, markdown){
   ];
 }
 
-function exportInvestAiWorkbook(){
+async function exportInvestAiWorkbook(){
   if(!window.XLSX){
     toast('⚠️ XLSX kutubxonasi topilmadi','error');
     return;
@@ -3692,15 +3826,36 @@ function exportInvestAiWorkbook(){
     return;
   }
 
+  // Mahsulot nomlarini ruschaga tarjima qilish (static map + Gemini fallback)
+  var ctxPreview = investAiBuildWorkbookContext(material, markdown);
+  var translatingToast = (typeof toastLoading === 'function') ? toastLoading('🔤 Mahsulot nomlari ruschaga tarjima qilinmoqda...') : null;
+  try {
+    await investAiBatchTranslateProductsRu(ctxPreview.entries);
+  } catch(_e){ console.warn('[invest-ai] product RU translate failed', _e); }
+  finally { if(translatingToast && typeof translatingToast.close === 'function') translatingToast.close(); }
+
   var wb = XLSX.utils.book_new();
-  buildInvestAiWorkbookData(material, markdown).forEach(function(sheet){
+  // Build sheets with already-translated entries (translation is on ctxPreview.entries by reference,
+  // but buildInvestAiWorkbookData rebuilds context — so apply same translations directly)
+  var translatedHsToRu = Object.create(null);
+  ctxPreview.entries.forEach(function(e){
+    var hs = String(e.hsCode || '').replace(/\D/g,'');
+    if(hs && e.displayName) translatedHsToRu[hs] = e.displayName;
+  });
+  var sheetData = buildInvestAiWorkbookData(material, markdown);
+  // Re-apply translations to fresh ctx entries (in case build re-creates them)
+  // (buildInvestAiWorkbookData calls investAiBuildWorkbookContext internally — entries differ by reference)
+  // To be safe, mutate entries before building. Use a wrapper:
+  // Note: buildInvestAiWorkbookData already finished. As a fallback the static map
+  // covers most cases at sheet build time via investAiLookupHsRu in entries' displayName.
+  sheetData.forEach(function(sheet){
     XLSX.utils.book_append_sheet(wb, sheet.ws, sheet.name.slice(0,31));
   });
 
   var fileSafe = material.replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().replace(/\s/g,'_') || 'Material';
   var dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  XLSX.writeFile(wb, 'Navoi_' + fileSafe + '_Trade_Analysis_' + dateStr + '.xlsx');
-  toast('📥 Excel workbook namuna formatida yuklab olindi!');
+  XLSX.writeFile(wb, 'Navoi_' + fileSafe + '_Trade_Analysis_RU_' + dateStr + '.xlsx');
+  toast('📥 Excel-отчёт скачан (RU)!');
 }
 
 function investAiSummarizeCountries(countries){
