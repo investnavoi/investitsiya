@@ -1565,7 +1565,19 @@ async function runImportAnalysis(forceRefresh, sourceOverride){
       };
     }
   }
-  if(!prod){ toast('Mahsulot tanlang yoki HS kodni yozing','error'); return; }
+  // Mahsulot YO'Q va HS YO'Q — umumiy savdo (HS=TOTAL) rejimida ishga tushadi
+  // UN Comtrade barcha tovarlar bo'yicha agregat ma'lumotni TOTAL kodi orqali qaytaradi
+  if(!prod){
+    prod = {
+      id: 'total-trade',
+      hs_code: 'TOTAL',
+      name: 'Umumiy savdo (barcha tovarlar)',
+      name_uz: 'Umumiy savdo',
+      name_en: 'Total Trade',
+      raw_id: '',
+      raw_name: ''
+    };
+  }
   if(!targetCountries.length){ toast('Kamida bitta maqsad davlat tanlang','error'); return; }
 
   var resultsEl = document.getElementById('importResults');
@@ -1577,8 +1589,9 @@ async function runImportAnalysis(forceRefresh, sourceOverride){
   if(finderEmptyEl) finderEmptyEl.style.display = 'none';
   if(detailEl) detailEl.style.display = 'none';
 
-  var hsCode = getExactImportHsCode(prod);
-  if(hsCode.length < 2){
+  // TOTAL umumiy savdo rejimi — HS code = 'TOTAL' literal sifatida ishlatiladi
+  var hsCode = (prod.hs_code === 'TOTAL') ? 'TOTAL' : getExactImportHsCode(prod);
+  if(hsCode !== 'TOTAL' && hsCode.length < 2){
     if(resultsEl) resultsEl.style.display = 'none';
     if(emptyEl) emptyEl.style.display = 'block';
     if(finderEmptyEl) finderEmptyEl.style.display = '';
