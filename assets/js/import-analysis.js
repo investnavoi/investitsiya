@@ -3942,9 +3942,231 @@ async function exportInvestAiWorkbook(){
       });
     }
 
-    // ═══ Sheet 2-7: Boshqa sheetlar — keyingi commitlarda dinamik to'ldiriladi
-    // Hozircha shablon ichidagi NavoiAzot demo ma'lumotlari saqlanadi (foydalanuvchi
-    // sheet 1'ni tekshirsa, qolgan sheetlar keyingi PR'da yangilanadi).
+    // ═══ Sheet 2: Карта продуктов — material'ning xomashyo→mahsulot zanjiri ═══
+    var ws2 = wb.getWorksheet('Карта продуктов НавоиАзот') || wb.getWorksheet('Карта продуктов');
+    if(ws2){
+      ws2.getCell('A1').value = 'КАРТА ПРОДУКТОВ — ' + matUpper;
+      ws2.getCell('A2').value = 'Инвестиционная возможность: переработка сырья «' + material + '» в высокомаржинальную продукцию в Навоийской области';
+      // Row 4 — headers stay (template has them in Russian already)
+      // Clear rows 5+ from template (NavoiAzot demo)
+      for(var r2 = 5; r2 <= 60; r2++){
+        for(var c2 = 1; c2 <= 7; c2++){
+          ws2.getCell(r2, c2).value = null;
+        }
+      }
+      ctx.entries.forEach(function(entry, idx){
+        var rowIdx = 5 + idx;
+        ws2.getCell('A' + rowIdx).value = idx + 1;
+        ws2.getCell('B' + rowIdx).value = material;
+        ws2.getCell('C' + rowIdx).value = (ctx.raw && ctx.raw.hs_code) || '—';
+        ws2.getCell('D' + rowIdx).value = entry.category || entry.level || '—';
+        ws2.getCell('E' + rowIdx).value = entry.displayName || '—';
+        ws2.getCell('F' + rowIdx).value = entry.hsCode || '—';
+        ws2.getCell('G' + rowIdx).value = entry.technology || entry.endUse || '—';
+      });
+    }
+
+    // ═══ Sheet 3: Торговые данные — har mahsulot uchun yillik × davlat blok ═══
+    var ws3 = wb.getWorksheet('Торговые данные — Все продукты') || wb.getWorksheet('Торговые данные');
+    if(ws3){
+      ws3.getCell('A1').value = 'ИМПОРТ ПРОДУКЦИИ ПО СТРАНАМ — ' + matUpper + ' (2021–2024, ДОЛЛ. США)';
+      ws3.getCell('A2').value = 'Источник: UN Comtrade | Поток: Импорт | Партнёр: Мир (всего) | Значения в долл. США';
+      // Tozalash — shablondagi 30 blok (taxminan 290 qator)
+      for(var r3 = 4; r3 <= 320; r3++){
+        for(var c3 = 1; c3 <= 16; c3++){
+          ws3.getCell(r3, c3).value = null;
+        }
+      }
+      // 13 ta MOY davlat ro'yxati (TARGET_COUNTRIES) — ruschada
+      var moyCountries = TARGET_COUNTRIES.map(function(t){ return { code: t.code, name: investAiTranslateCountry(t.name) }; });
+      var blockYears = ['2021','2022','2023','2024'];
+      var curRow = 4;
+      ctx.entries.forEach(function(entry){
+        // Block header
+        var totalThisYear = Number(entry.analysisValue || 0);
+        ws3.getCell('A' + curRow).value = 'ТН ВЭД ' + (entry.hsCode || '—') + ' — ' + (entry.displayName || '—') + ' | Региональный итого ' + ctx.analysisYear + ': ' + investAiFmtCompactUsd(totalThisYear);
+        curRow++;
+        // Year header row
+        ws3.getCell('A' + curRow).value = 'Год';
+        moyCountries.forEach(function(co, ci){
+          ws3.getCell(curRow, 2 + ci).value = co.name;
+        });
+        ws3.getCell(curRow, 2 + moyCountries.length).value = 'Рег. итого';
+        curRow++;
+        // 4 yil x davlatlar
+        blockYears.forEach(function(yr){
+          ws3.getCell('A' + curRow).value = yr;
+          var regTotal = 0;
+          moyCountries.forEach(function(co, ci){
+            var v = Number((((entry.countryMap || {})[co.code] || {}).years || {})[yr] || 0) || 0;
+            ws3.getCell(curRow, 2 + ci).value = v || null;
+            regTotal += v;
+          });
+          ws3.getCell(curRow, 2 + moyCountries.length).value = regTotal || null;
+          curRow++;
+        });
+        // Spacer row
+        curRow++;
+      });
+    }
+
+    // ═══ Sheet 4: Профили стран-импортёров — har bir davlat 2024 import jami ═══
+    var ws4 = wb.getWorksheet('Профили стран-импортёров') || wb.getWorksheet('Профили стран');
+    if(ws4){
+      ws4.getCell('A1').value = 'ПРОФИЛЬ ИМПОРТНОГО СПРОСА СТРАН — ' + matUpper + ' (' + ctx.analysisYear + ', ДОЛЛ. США)';
+      // Tozalash
+      for(var r4 = 3; r4 <= 100; r4++){
+        for(var c4 = 1; c4 <= 16; c4++){
+          ws4.getCell(r4, c4).value = null;
+        }
+      }
+      // Davlat → jami import (2024)
+      var moy4 = TARGET_COUNTRIES.map(function(t){ return { code: t.code, name: investAiTranslateCountry(t.name), total: 0 }; });
+      ctx.entries.forEach(function(entry){
+        moy4.forEach(function(co){
+          var v = Number((((entry.countryMap || {})[co.code] || {}).years || {})[ctx.analysisYear] || 0) || 0;
+          co.total += v;
+        });
+      });
+      moy4.sort(function(a,b){ return b.total - a.total; });
+      // Header
+      ws4.getCell('A3').value = '№';
+      ws4.getCell('B3').value = 'Страна';
+      ws4.getCell('C3').value = 'Импорт ' + ctx.analysisYear + ' ($)';
+      ws4.getCell('D3').value = 'Доля региона';
+      var grandTotal = moy4.reduce(function(s, c){ return s + c.total; }, 0);
+      moy4.forEach(function(co, idx){
+        var rowIdx = 4 + idx;
+        ws4.getCell('A' + rowIdx).value = idx + 1;
+        ws4.getCell('B' + rowIdx).value = co.name;
+        ws4.getCell('C' + rowIdx).value = co.total || null;
+        ws4.getCell('D' + rowIdx).value = grandTotal > 0 ? (co.total / grandTotal) : 0;
+        ws4.getCell('D' + rowIdx).numFmt = '0.0%';
+      });
+      var totalRow = 4 + moy4.length;
+      ws4.getCell('A' + totalRow).value = 'РЕГИОНАЛЬНЫЙ ИТОГО';
+      ws4.getCell('C' + totalRow).value = grandTotal || null;
+      ws4.getCell('D' + totalRow).value = 1;
+      ws4.getCell('D' + totalRow).numFmt = '0.0%';
+    }
+
+    // ═══ Sheet 5: Матрица инвестприоритетов ═══
+    var ws5 = wb.getWorksheet('Матрица инвестприоритетов') || wb.getWorksheet('Матрица');
+    if(ws5){
+      ws5.getCell('A1').value = 'МАТРИЦА ИНВЕСТИЦИОННЫХ ПРИОРИТЕТОВ — ' + matUpper;
+      // Tozalash
+      for(var r5 = 3; r5 <= 80; r5++){
+        for(var c5 = 1; c5 <= 11; c5++){
+          ws5.getCell(r5, c5).value = null;
+        }
+      }
+      // Header
+      ws5.getCell('A3').value = 'Пр.';
+      ws5.getCell('B3').value = 'Код ТН ВЭД';
+      ws5.getCell('C3').value = 'Продукт';
+      ws5.getCell('D3').value = 'Регион. итого ($)';
+      ws5.getCell('E3').value = 'Узбекистан ($)';
+      ws5.getCell('F3').value = 'Крупнейший рынок';
+      ws5.getCell('G3').value = 'CAGR';
+      ws5.getCell('H3').value = 'Уровень';
+      ws5.getCell('I3').value = 'Капитал';
+      ws5.getCell('J3').value = 'Конкур.';
+      ws5.getCell('K3').value = 'Вывод';
+      ctx.entries.slice().sort(function(a,b){ return (Number(b.analysisValue)||0) - (Number(a.analysisValue)||0); }).forEach(function(entry, idx){
+        var rowIdx = 4 + idx;
+        ws5.getCell('A' + rowIdx).value = String(entry.priority || 'Priority D').replace('Priority ','');
+        ws5.getCell('B' + rowIdx).value = entry.hsCode || '—';
+        ws5.getCell('C' + rowIdx).value = entry.displayName || '—';
+        ws5.getCell('D' + rowIdx).value = Number(entry.analysisValue) || 0;
+        ws5.getCell('E' + rowIdx).value = Number(entry.uzbValue) || 0;
+        ws5.getCell('F' + rowIdx).value = investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—');
+        ws5.getCell('G' + rowIdx).value = entry.cagr != null ? Number(entry.cagr) : null;
+        if(entry.cagr != null) ws5.getCell('G' + rowIdx).numFmt = '0.0%';
+        ws5.getCell('H' + rowIdx).value = entry.level || '—';
+        ws5.getCell('I' + rowIdx).value = entry.capital || '—';
+        ws5.getCell('J' + rowIdx).value = entry.competitiveness || '—';
+        ws5.getCell('K' + rowIdx).value = entry.verdict || '—';
+      });
+    }
+
+    // ═══ Sheet 6: Импортозамещение УЗБ ═══
+    var ws6 = wb.getWorksheet('Импортозамещение УЗБ') || wb.getWorksheet('Импортозамещение');
+    if(ws6){
+      ws6.getCell('A1').value = 'ВОЗМОЖНОСТИ ИМПОРТОЗАМЕЩЕНИЯ УЗБЕКИСТАНА — ' + matUpper;
+      // Tozalash
+      for(var r6 = 3; r6 <= 80; r6++){
+        for(var c6 = 1; c6 <= 9; c6++){
+          ws6.getCell(r6, c6).value = null;
+        }
+      }
+      // Header
+      ws6.getCell('A3').value = 'Код ТН ВЭД';
+      ws6.getCell('B3').value = 'Продукт';
+      ws6.getCell('C3').value = '2021 ($)';
+      ws6.getCell('D3').value = '2022 ($)';
+      ws6.getCell('E3').value = '2023 ($)';
+      ws6.getCell('F3').value = '2024 ($)';
+      ws6.getCell('G3').value = 'CAGR';
+      ws6.getCell('H3').value = 'Потенциал';
+      ws6.getCell('I3').value = 'Приоритет';
+      ctx.entries.forEach(function(entry, idx){
+        var rowIdx = 4 + idx;
+        var uz = ((entry.countryMap || {}).UZ || {}).years || {};
+        var cagr = investAiCalcCagr(uz);
+        ws6.getCell('A' + rowIdx).value = entry.hsCode || '—';
+        ws6.getCell('B' + rowIdx).value = entry.displayName || '—';
+        ws6.getCell('C' + rowIdx).value = Number(uz['2021']) || null;
+        ws6.getCell('D' + rowIdx).value = Number(uz['2022']) || null;
+        ws6.getCell('E' + rowIdx).value = Number(uz['2023']) || null;
+        ws6.getCell('F' + rowIdx).value = Number(uz['2024']) || null;
+        ws6.getCell('G' + rowIdx).value = cagr != null ? Number(cagr) : null;
+        if(cagr != null) ws6.getCell('G' + rowIdx).numFmt = '0.0%';
+        var pot = entry.priority === 'Priority A' ? 'Высокий' : (entry.priority === 'Priority B' ? 'Средний' : 'Выборочный');
+        ws6.getCell('H' + rowIdx).value = pot;
+        ws6.getCell('I' + rowIdx).value = investAiTranslatePriority(entry.priority || 'Priority D');
+      });
+    }
+
+    // ═══ Sheet 7: Методология ═══
+    var ws7 = wb.getWorksheet('Методология и качество данных') || wb.getWorksheet('Методология');
+    if(ws7){
+      var today = new Date();
+      // Tozalash
+      for(var r7 = 1; r7 <= 60; r7++){
+        for(var c7 = 1; c7 <= 4; c7++){
+          ws7.getCell(r7, c7).value = null;
+        }
+      }
+      ws7.getCell('A1').value = 'МЕТОДОЛОГИЯ, ИСТОЧНИКИ ДАННЫХ И ПРИМЕЧАНИЯ ПО КАЧЕСТВУ — ' + matUpper;
+      var rows7 = [
+        ['ИСТОЧНИК ДАННЫХ', 'UN Comtrade API / официальные кэшированные снимки + AI-нарратив'],
+        ['ВЕРСИЯ API', 'public-v2'],
+        ['ПОТОК', 'Импорт (M)'],
+        ['ПЕРИОДЫ', '2021–2024'],
+        ['КЛАССИФИКАЦИЯ', 'ТН ВЭД 4/6 знаков, сопоставлено с базой продуктов Навои'],
+        ['ЗНАЧЕНИЯ', 'Стоимость импорта в долл. США (CIF)'],
+        ['СТРАНЫ-ОТЧЁТНИКИ', TARGET_COUNTRIES.map(function(t){ return investAiTranslateCountry(t.name); }).join(', ')],
+        ['', ''],
+        ['ПРИМЕЧАНИЯ ПО КАЧЕСТВУ ДАННЫХ', ''],
+        ['Кэшированные снимки', String(ctx.entries.filter(function(e){ return e.hasSnapshot; }).length) + ' из ' + String(ctx.entries.length)],
+        ['Крупнейший рынок (' + ctx.analysisYear + ')', investAiTranslateCountry(ctx.topCountry.name) + ' — ' + investAiFmtUsd(ctx.topCountryValue)],
+        ['Оговорка по России', 'Видимость торговли с Россией может быть неполной из-за санкций, переадресации, пробелов в зеркальных данных и классификационного шума.'],
+        ['', ''],
+        ['СИСТЕМА ОЦЕНКИ ИНВЕСТИЦИОННЫХ ПРИОРИТЕТОВ', ''],
+        ['A — Стратегический', 'Региональный спрос ≥ $50 млн И импорт УЗБ ≥ $1 млн'],
+        ['B — Высокий', 'Региональный спрос ≥ $15 млн И импорт УЗБ ≥ $0.25 млн'],
+        ['C — Средний', 'Региональный спрос ≥ $5 млн'],
+        ['D — Низкий', 'Прочие — требует углублённой проверки'],
+        ['', ''],
+        ['ПОДГОТОВЛЕНО', 'Управление инвестиций Навоийской области'],
+        ['ДАТА', today.toLocaleDateString('ru-RU', { year:'numeric', month:'long', day:'numeric' })],
+        ['КОНТАКТ', 'investnavoi.uz']
+      ];
+      rows7.forEach(function(r, i){
+        ws7.getCell('A' + (i + 3)).value = r[0];
+        ws7.getCell('B' + (i + 3)).value = r[1];
+      });
+    }
 
     // Faylni yuklash
     var fileSafe = material.replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().replace(/\s/g,'_') || 'Material';
