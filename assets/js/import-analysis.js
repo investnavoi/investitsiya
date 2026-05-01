@@ -1606,11 +1606,25 @@ async function runImportAnalysis(forceRefresh, sourceOverride){
   }
 
   // 1-qadam: Firebase kolleksiyasini yuklab, snapshot bor-yo'qligini tekshiramiz
+  // TOTAL/manual HS rejimida keshni o'tkazib yuboramiz — eski bo'sh natijalardan qutilish uchun
+  var _isManualOrTotal = (hsCode === 'TOTAL') ||
+    String(prod.id || '').indexOf('manual-') === 0 ||
+    String(prod.id || '') === 'total-trade';
   var _snapshotToast = toastLoading('⏳ Firebase ma\'lumot bazasi tekshirilmoqda...');
   try {
     if(typeof ensureCollectionLoaded === 'function') await ensureCollectionLoaded('importSnapshots');
   } catch(_e){}
-  var savedSnapshot = getImportSnapshot(prod, hsCode, targetCountries, sourceKey);
+  var savedSnapshot = _isManualOrTotal ? null : getImportSnapshot(prod, hsCode, targetCountries, sourceKey);
+  // Bo'sh kesh (barcha countries import_usd=0) ham ishlatilmasin
+  if(savedSnapshot && Array.isArray(savedSnapshot.countries)){
+    var _hasNonZero = savedSnapshot.countries.some(function(c){
+      return Number(c.import_usd || c.u || c.latest_import_usd || 0) > 0;
+    });
+    if(!_hasNonZero){
+      console.log('[runImportAnalysis] cached snapshot has all zeros — re-fetching');
+      savedSnapshot = null;
+    }
+  }
   if(_snapshotToast && _snapshotToast.parentNode){ clearTimeout(_snapshotToast._toastTimer); _snapshotToast.remove(); }
   if(savedSnapshot){
     restoreImportSnapshot(savedSnapshot, false);
