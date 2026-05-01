@@ -3075,18 +3075,48 @@ _renderInvestorCompaniesMain = function(){
   if(ic2El) ic2El.innerHTML = vTayyor + ' <span class="kpi-unit">ta</span>';
   var ic3El = document.getElementById('ic-k3');
   if(ic3El) ic3El.innerHTML = vEmailSent + '/' + vHasEmail + ' <span class="kpi-unit">ta</span>';
-  // Apollo/TradeAtlas badge'lari — group-level role bilan, hasGeo SHARTSIZ
-  // (jadvaldagi son bilan mos: source filter qo'llaganda visible == badge)
-  var _apolloFullGroups = Object.create(null);
-  var _taFullGroups = Object.create(null);
+  // Apollo/TradeAtlas badge'lari — jadval bilan AYNAN MOS qilish uchun
+  // Jadval _detectGroupRole(first record) ishlatadi, biz ham xuddi shunday qilamiz
+  function _firstRecRole(rec){
+    var mode = String(rec.finderMode || rec.role || '').toLowerCase();
+    if(mode === 'exporters' || mode === 'exporter') return 'exporter';
+    if(mode === 'importers' || mode === 'importer') return 'importer';
+    if(Array.isArray(rec._partners) && rec._partners.length){
+      var fp = rec._partners[0];
+      if(fp && fp.role === 'importer') return 'exporter';
+      if(fp && fp.role === 'exporter') return 'importer';
+    }
+    if(Array.isArray(rec._partnerOf) && rec._partnerOf.length){
+      var fr = rec._partnerOf[0];
+      if(fr && fr.role === 'exporter') return 'importer';
+      if(fr && fr.role === 'importer') return 'exporter';
+    }
+    return '';
+  }
+  // allCo'dan group → birinchi record map yasab, jadval logikasini takrorlaymiz
+  var _firstRecByGroup = Object.create(null);
+  var _allRecsByGroup = Object.create(null);
   allCo.forEach(function(rec){
     var key = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
     if(!key) return;
-    var role = groupRoles[key];
-    if(role && role.hasImporter && !role.hasExporter) return; // importer-only group
-    var src = String(rec.manba || rec.source || '').toLowerCase().trim();
-    if(src.indexOf('apollo') !== -1 || src === 'csv-import' || src === 'finder') _apolloFullGroups[key] = true;
-    if(src.indexOf('tradeatlas') !== -1 || src.indexOf('trade atlas') !== -1 || src === 'trade' || src === 'ta') _taFullGroups[key] = true;
+    if(!_firstRecByGroup[key]) _firstRecByGroup[key] = rec;
+    if(!_allRecsByGroup[key]) _allRecsByGroup[key] = [];
+    _allRecsByGroup[key].push(rec);
+  });
+  var _apolloFullGroups = Object.create(null);
+  var _taFullGroups = Object.create(null);
+  Object.keys(_firstRecByGroup).forEach(function(key){
+    var role = _firstRecRole(_firstRecByGroup[key]);
+    if(role === 'importer') return; // jadvaldagi line 2761 filter bilan bir xil
+    var recs = _allRecsByGroup[key] || [];
+    var hasApollo = false, hasTa = false;
+    recs.forEach(function(r){
+      var src = String(r.manba || r.source || '').toLowerCase().trim();
+      if(src.indexOf('apollo') !== -1 || src === 'csv-import' || src === 'finder') hasApollo = true;
+      if(src.indexOf('tradeatlas') !== -1 || src.indexOf('trade atlas') !== -1 || src === 'trade' || src === 'ta') hasTa = true;
+    });
+    if(hasApollo) _apolloFullGroups[key] = true;
+    if(hasTa) _taFullGroups[key] = true;
   });
   var _apolloFullTotal = Object.keys(_apolloFullGroups).length;
   var _taFullTotal = Object.keys(_taFullGroups).length;
