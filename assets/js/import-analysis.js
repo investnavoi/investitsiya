@@ -1858,8 +1858,15 @@ function renderImportResults(countries, prod, source, targetCountries){
     return {label:(country && country.name) || '—', flag:(country && country.flag) || ''};
   }
 
-  var okCountries = countries.filter(function(c){ return c.status === 'ok'; });
-  var total = okCountries.reduce(function(s,c){return s+(c.import_usd||0);},0);
+  // Status 'ok' YOKI import qiymati pozitiv bo'lgan davlatlarni qabul qilamiz
+  // (proxy ba'zi davlatlar uchun status field qaytarmasligi mumkin)
+  var okCountries = countries.filter(function(c){
+    return c.status === 'ok' || (Number(c.import_usd || c.latest_import_usd || 0) || 0) > 0;
+  });
+  var total = okCountries.reduce(function(s,c){
+    return s + (Number(c.import_usd || c.latest_import_usd || 0) || 0);
+  },0);
+  console.log('[renderImportResults] countries received:', countries.length, 'okCountries:', okCountries.length, 'total:', total, 'sample[0]:', countries[0]);
   var biggest = okCountries.slice().sort(function(a, b){
     return (b.import_usd || 0) - (a.import_usd || 0);
   })[0] || {};
