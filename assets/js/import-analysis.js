@@ -3883,6 +3883,22 @@ function _investAiSetGeneral(cell, value){
   cell.style = Object.assign({}, cell.style || {}, { numFmt: 'General' });
 }
 
+// Clear values AND styles for cells in a range — used to wipe template's
+// trailing rows/cells where no new data is written (otherwise template's
+// block-header background colors remain visible on empty rows).
+function _investAiClearRange(ws, fromRow, toRow, fromCol, toCol){
+  if(!ws) return;
+  for(var r = fromRow; r <= toRow; r++){
+    for(var c = fromCol; c <= toCol; c++){
+      var cell = ws.getCell(r, c);
+      cell.value = null;
+      cell.style = {};
+    }
+    // Reset row height to default (template often had ht=20+ for header rows)
+    try { ws.getRow(r).height = undefined; } catch(_e){}
+  }
+}
+
 async function exportInvestAiWorkbook(){
   if(typeof ExcelJS === 'undefined' || !ExcelJS){
     toast('⚠️ ExcelJS kutubxonasi topilmadi','error');
@@ -3952,6 +3968,7 @@ async function exportInvestAiWorkbook(){
       }
       // Sort entries by analysisValue desc and fill
       var sortedEntries = ctx.entries.slice().sort(function(a,b){ return (Number(b.analysisValue)||0) - (Number(a.analysisValue)||0); });
+      var rowsWritten = Math.min(sortedEntries.length, 20);
       sortedEntries.slice(0, 20).forEach(function(entry, idx){
         var rowIdx = 9 + idx;
         _investAiSetGeneral(ws1.getCell('A' + rowIdx), idx + 1);
@@ -3963,6 +3980,8 @@ async function exportInvestAiWorkbook(){
         _investAiSetUsd(ws1.getCell('G' + rowIdx), Number((entry.topImporter && entry.topImporter.value) || 0));
         _investAiSetText(ws1.getCell('H' + rowIdx), investAiTranslatePriority(entry.priority || 'Priority D'));
       });
+      // Ortiqcha ranglarni tozalash — TOP-N dan keyingi qatorlar (template'da 20 qator bor edi)
+      _investAiClearRange(ws1, 9 + rowsWritten, 28, 1, 12);
     }
 
     // ═══ Sheet 2: Карта продуктов — material'ning xomashyo→mahsulot zanjiri ═══
@@ -3996,6 +4015,8 @@ async function exportInvestAiWorkbook(){
         ws2.getCell('F' + rowIdx).value = entry.hsCode || '—';
         ws2.getCell('G' + rowIdx).value = entry.technology || entry.endUse || '—';
       });
+      // Ortiqcha ranglar/stillarni tozalash — data dan keyingi qatorlar
+      _investAiClearRange(ws2, 5 + ctx.entries.length, 100, 1, 15);
     }
 
     // ═══ Sheet 3: Торговые данные — har mahsulot uchun yillik × davlat blok ═══
@@ -4040,6 +4061,8 @@ async function exportInvestAiWorkbook(){
         // Spacer row
         curRow++;
       });
+      // Ortiqcha ranglarni tozalash — data dan keyingi qatorlar
+      _investAiClearRange(ws3, curRow, 350, 1, 25);
     }
 
     // ═══ Sheet 4: Профили стран-импортёров — har bir davlat 2024 import jami ═══
@@ -4081,6 +4104,8 @@ async function exportInvestAiWorkbook(){
       _investAiSetText(ws4.getCell('A' + totalRow), 'РЕГИОНАЛЬНЫЙ ИТОГО');
       _investAiSetUsd(ws4.getCell('C' + totalRow), grandTotal || null);
       _investAiSetPct(ws4.getCell('D' + totalRow), 1);
+      // Ortiqcha ranglarni tozalash
+      _investAiClearRange(ws4, totalRow + 1, 100, 1, 50);
     }
 
     // ═══ Sheet 5: Матрица инвестприоритетов ═══
@@ -4119,6 +4144,8 @@ async function exportInvestAiWorkbook(){
         _investAiSetText(ws5.getCell('J' + rowIdx), entry.competitiveness || '—');
         _investAiSetText(ws5.getCell('K' + rowIdx), entry.verdict || '—');
       });
+      // Ortiqcha ranglarni tozalash
+      _investAiClearRange(ws5, 4 + ctx.entries.length, 100, 1, 20);
     }
 
     // ═══ Sheet 6: Импортозамещение УЗБ ═══
@@ -4156,6 +4183,8 @@ async function exportInvestAiWorkbook(){
         _investAiSetText(ws6.getCell('H' + rowIdx), pot);
         _investAiSetText(ws6.getCell('I' + rowIdx), investAiTranslatePriority(entry.priority || 'Priority D'));
       });
+      // Ortiqcha ranglarni tozalash
+      _investAiClearRange(ws6, 4 + ctx.entries.length, 100, 1, 20);
     }
 
     // ═══ Sheet 7: Методология ═══
