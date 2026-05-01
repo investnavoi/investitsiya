@@ -2455,8 +2455,33 @@ function saveInvestAiHistory(material, markdown, tradeContext){
   try { localStorage.setItem(INVEST_AI_HISTORY_KEY, JSON.stringify(cachedList)); } catch(e){}
 
   // Save to Firebase for cross-device sync (fire-and-forget)
+  // tradeContext ~2MB bo'lishi mumkin, Firebase doc 1MB limit. Faqat slim ma'lumotni saqlaymiz.
   if(typeof window.fbSave === 'function'){
-    try { window.fbSave('investAiHistory', record); } catch(e){ console.warn('fbSave investAiHistory failed', e); }
+    try {
+      var slimTradeContext = null;
+      if(record.tradeContext){
+        slimTradeContext = {
+          material: record.tradeContext.material || material,
+          officialDataAvailable: !!record.tradeContext.officialDataAvailable,
+          analyzedProductsCount: Array.isArray(record.tradeContext.analyzedProducts) ? record.tradeContext.analyzedProducts.length : 0,
+          rawId: (record.tradeContext.raw && record.tradeContext.raw.id) || null,
+          rawNameUz: (record.tradeContext.raw && record.tradeContext.raw.name_uz) || null,
+          rawNameEn: (record.tradeContext.raw && record.tradeContext.raw.name_en) || null
+        };
+      }
+      // Markdown ham 800KB'dan oshib ketmasligi uchun cheklash
+      var slimMarkdown = String(record.markdown || '');
+      if(slimMarkdown.length > 800000) slimMarkdown = slimMarkdown.slice(0, 800000) + '\n\n[truncated]';
+      var slimRecord = {
+        id: record.id,
+        material: record.material,
+        markdown: slimMarkdown,
+        headline: record.headline,
+        savedAt: record.savedAt,
+        tradeContext: slimTradeContext
+      };
+      window.fbSave('investAiHistory', slimRecord);
+    } catch(e){ console.warn('fbSave investAiHistory failed', e); }
   }
 
   // Trigger chip re-render so the "AI" badge appears on the analyzed raw material
