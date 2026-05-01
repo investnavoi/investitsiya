@@ -3860,6 +3860,29 @@ function investAiFmtCompactUsd(v){
   return '$' + Math.round(v);
 }
 
+// Helpers to forcefully override inherited column/row formats from the template
+function _investAiSetUsd(cell, value){
+  cell.value = (value == null || value === '') ? null : Number(value);
+  cell.numFmt = '$#,##0';
+  cell.style = Object.assign({}, cell.style || {}, { numFmt: '$#,##0' });
+}
+function _investAiSetPct(cell, value){
+  cell.value = (value == null || value === '') ? null : Number(value);
+  cell.numFmt = '0.0%';
+  cell.style = Object.assign({}, cell.style || {}, { numFmt: '0.0%' });
+}
+function _investAiSetText(cell, value){
+  cell.value = value == null ? null : String(value);
+  // Clear inherited numeric formats so text doesn't get number-formatted
+  cell.numFmt = '@';
+  cell.style = Object.assign({}, cell.style || {}, { numFmt: '@' });
+}
+function _investAiSetGeneral(cell, value){
+  cell.value = value;
+  cell.numFmt = 'General';
+  cell.style = Object.assign({}, cell.style || {}, { numFmt: 'General' });
+}
+
 async function exportInvestAiWorkbook(){
   if(typeof ExcelJS === 'undefined' || !ExcelJS){
     toast('⚠️ ExcelJS kutubxonasi topilmadi','error');
@@ -3931,14 +3954,14 @@ async function exportInvestAiWorkbook(){
       var sortedEntries = ctx.entries.slice().sort(function(a,b){ return (Number(b.analysisValue)||0) - (Number(a.analysisValue)||0); });
       sortedEntries.slice(0, 20).forEach(function(entry, idx){
         var rowIdx = 9 + idx;
-        ws1.getCell('A' + rowIdx).value = idx + 1;
-        ws1.getCell('B' + rowIdx).value = entry.hsCode || '—';
-        ws1.getCell('C' + rowIdx).value = entry.displayName || '—';
-        var dCell = ws1.getCell('D' + rowIdx); dCell.value = Number(entry.analysisValue) || 0; dCell.numFmt = '$#,##0';
-        var eCell = ws1.getCell('E' + rowIdx); eCell.value = Number(entry.uzbValue) || 0; eCell.numFmt = '$#,##0';
-        ws1.getCell('F' + rowIdx).value = investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—');
-        var gCell = ws1.getCell('G' + rowIdx); gCell.value = Number((entry.topImporter && entry.topImporter.value) || 0); gCell.numFmt = '$#,##0';
-        ws1.getCell('H' + rowIdx).value = investAiTranslatePriority(entry.priority || 'Priority D');
+        _investAiSetGeneral(ws1.getCell('A' + rowIdx), idx + 1);
+        _investAiSetText(ws1.getCell('B' + rowIdx), entry.hsCode || '—');
+        _investAiSetText(ws1.getCell('C' + rowIdx), entry.displayName || '—');
+        _investAiSetUsd(ws1.getCell('D' + rowIdx), Number(entry.analysisValue) || 0);
+        _investAiSetUsd(ws1.getCell('E' + rowIdx), Number(entry.uzbValue) || 0);
+        _investAiSetText(ws1.getCell('F' + rowIdx), investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—'));
+        _investAiSetUsd(ws1.getCell('G' + rowIdx), Number((entry.topImporter && entry.topImporter.value) || 0));
+        _investAiSetText(ws1.getCell('H' + rowIdx), investAiTranslatePriority(entry.priority || 'Priority D'));
       });
     }
 
@@ -4004,18 +4027,14 @@ async function exportInvestAiWorkbook(){
         curRow++;
         // 4 yil x davlatlar
         blockYears.forEach(function(yr){
-          ws3.getCell('A' + curRow).value = yr;
+          _investAiSetText(ws3.getCell('A' + curRow), yr);
           var regTotal = 0;
           moyCountries.forEach(function(co, ci){
             var v = Number((((entry.countryMap || {})[co.code] || {}).years || {})[yr] || 0) || 0;
-            var c3v = ws3.getCell(curRow, 2 + ci);
-            c3v.value = v || null;
-            if(v) c3v.numFmt = '$#,##0';
+            _investAiSetUsd(ws3.getCell(curRow, 2 + ci), v || null);
             regTotal += v;
           });
-          var c3total = ws3.getCell(curRow, 2 + moyCountries.length);
-          c3total.value = regTotal || null;
-          if(regTotal) c3total.numFmt = '$#,##0';
+          _investAiSetUsd(ws3.getCell(curRow, 2 + moyCountries.length), regTotal || null);
           curRow++;
         });
         // Spacer row
@@ -4050,15 +4069,15 @@ async function exportInvestAiWorkbook(){
       var grandTotal = moy4.reduce(function(s, c){ return s + c.total; }, 0);
       moy4.forEach(function(co, idx){
         var rowIdx = 4 + idx;
-        ws4.getCell('A' + rowIdx).value = idx + 1;
-        ws4.getCell('B' + rowIdx).value = co.name;
-        var c4Cell = ws4.getCell('C' + rowIdx); c4Cell.value = co.total || null; c4Cell.numFmt = '$#,##0';
-        var d4Cell = ws4.getCell('D' + rowIdx); d4Cell.value = grandTotal > 0 ? (co.total / grandTotal) : 0; d4Cell.numFmt = '0.0%';
+        _investAiSetGeneral(ws4.getCell('A' + rowIdx), idx + 1);
+        _investAiSetText(ws4.getCell('B' + rowIdx), co.name);
+        _investAiSetUsd(ws4.getCell('C' + rowIdx), co.total || null);
+        _investAiSetPct(ws4.getCell('D' + rowIdx), grandTotal > 0 ? (co.total / grandTotal) : 0);
       });
       var totalRow = 4 + moy4.length;
-      ws4.getCell('A' + totalRow).value = 'РЕГИОНАЛЬНЫЙ ИТОГО';
-      var c4tot = ws4.getCell('C' + totalRow); c4tot.value = grandTotal || null; c4tot.numFmt = '$#,##0';
-      var d4tot = ws4.getCell('D' + totalRow); d4tot.value = 1; d4tot.numFmt = '0.0%';
+      _investAiSetText(ws4.getCell('A' + totalRow), 'РЕГИОНАЛЬНЫЙ ИТОГО');
+      _investAiSetUsd(ws4.getCell('C' + totalRow), grandTotal || null);
+      _investAiSetPct(ws4.getCell('D' + totalRow), 1);
     }
 
     // ═══ Sheet 5: Матрица инвестприоритетов ═══
@@ -4085,18 +4104,17 @@ async function exportInvestAiWorkbook(){
       ws5.getCell('K3').value = 'Вывод';
       ctx.entries.slice().sort(function(a,b){ return (Number(b.analysisValue)||0) - (Number(a.analysisValue)||0); }).forEach(function(entry, idx){
         var rowIdx = 4 + idx;
-        ws5.getCell('A' + rowIdx).value = String(entry.priority || 'Priority D').replace('Priority ','');
-        ws5.getCell('B' + rowIdx).value = entry.hsCode || '—';
-        ws5.getCell('C' + rowIdx).value = entry.displayName || '—';
-        var d5 = ws5.getCell('D' + rowIdx); d5.value = Number(entry.analysisValue) || 0; d5.numFmt = '$#,##0';
-        var e5 = ws5.getCell('E' + rowIdx); e5.value = Number(entry.uzbValue) || 0; e5.numFmt = '$#,##0';
-        ws5.getCell('F' + rowIdx).value = investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—');
-        var g5 = ws5.getCell('G' + rowIdx); g5.value = entry.cagr != null ? Number(entry.cagr) : null;
-        if(entry.cagr != null) g5.numFmt = '0.0%';
-        ws5.getCell('H' + rowIdx).value = entry.level || '—';
-        ws5.getCell('I' + rowIdx).value = entry.capital || '—';
-        ws5.getCell('J' + rowIdx).value = entry.competitiveness || '—';
-        ws5.getCell('K' + rowIdx).value = entry.verdict || '—';
+        _investAiSetText(ws5.getCell('A' + rowIdx), String(entry.priority || 'Priority D').replace('Priority ',''));
+        _investAiSetText(ws5.getCell('B' + rowIdx), entry.hsCode || '—');
+        _investAiSetText(ws5.getCell('C' + rowIdx), entry.displayName || '—');
+        _investAiSetUsd(ws5.getCell('D' + rowIdx), Number(entry.analysisValue) || 0);
+        _investAiSetUsd(ws5.getCell('E' + rowIdx), Number(entry.uzbValue) || 0);
+        _investAiSetText(ws5.getCell('F' + rowIdx), investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—'));
+        _investAiSetPct(ws5.getCell('G' + rowIdx), entry.cagr != null ? Number(entry.cagr) : null);
+        _investAiSetText(ws5.getCell('H' + rowIdx), entry.level || '—');
+        _investAiSetText(ws5.getCell('I' + rowIdx), entry.capital || '—');
+        _investAiSetText(ws5.getCell('J' + rowIdx), entry.competitiveness || '—');
+        _investAiSetText(ws5.getCell('K' + rowIdx), entry.verdict || '—');
       });
     }
 
@@ -4124,17 +4142,16 @@ async function exportInvestAiWorkbook(){
         var rowIdx = 4 + idx;
         var uz = ((entry.countryMap || {}).UZ || {}).years || {};
         var cagr = investAiCalcCagr(uz);
-        ws6.getCell('A' + rowIdx).value = entry.hsCode || '—';
-        ws6.getCell('B' + rowIdx).value = entry.displayName || '—';
-        var c6 = ws6.getCell('C' + rowIdx); c6.value = Number(uz['2021']) || null; if(uz['2021']) c6.numFmt = '$#,##0';
-        var d6 = ws6.getCell('D' + rowIdx); d6.value = Number(uz['2022']) || null; if(uz['2022']) d6.numFmt = '$#,##0';
-        var e6 = ws6.getCell('E' + rowIdx); e6.value = Number(uz['2023']) || null; if(uz['2023']) e6.numFmt = '$#,##0';
-        var f6 = ws6.getCell('F' + rowIdx); f6.value = Number(uz['2024']) || null; if(uz['2024']) f6.numFmt = '$#,##0';
-        var g6 = ws6.getCell('G' + rowIdx); g6.value = cagr != null ? Number(cagr) : null;
-        if(cagr != null) g6.numFmt = '0.0%';
+        _investAiSetText(ws6.getCell('A' + rowIdx), entry.hsCode || '—');
+        _investAiSetText(ws6.getCell('B' + rowIdx), entry.displayName || '—');
+        _investAiSetUsd(ws6.getCell('C' + rowIdx), Number(uz['2021']) || null);
+        _investAiSetUsd(ws6.getCell('D' + rowIdx), Number(uz['2022']) || null);
+        _investAiSetUsd(ws6.getCell('E' + rowIdx), Number(uz['2023']) || null);
+        _investAiSetUsd(ws6.getCell('F' + rowIdx), Number(uz['2024']) || null);
+        _investAiSetPct(ws6.getCell('G' + rowIdx), cagr != null ? Number(cagr) : null);
         var pot = entry.priority === 'Priority A' ? 'Высокий' : (entry.priority === 'Priority B' ? 'Средний' : 'Выборочный');
-        ws6.getCell('H' + rowIdx).value = pot;
-        ws6.getCell('I' + rowIdx).value = investAiTranslatePriority(entry.priority || 'Priority D');
+        _investAiSetText(ws6.getCell('H' + rowIdx), pot);
+        _investAiSetText(ws6.getCell('I' + rowIdx), investAiTranslatePriority(entry.priority || 'Priority D'));
       });
     }
 
