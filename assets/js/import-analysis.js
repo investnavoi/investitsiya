@@ -214,12 +214,15 @@ function syncImportSourceSelect(source){
 
 async function fetchComtrade(hsCode, year, targetCountries, source){
   try {
-    var countriesParam = ((targetCountries && targetCountries.length) ? targetCountries : TARGET_COUNTRIES).map(function(t){
+    var countryNames = ((targetCountries && targetCountries.length) ? targetCountries : TARGET_COUNTRIES).map(function(t){
       if(typeof t === 'string') return t;
-      // Prefer comtrade code, then english name variants, then code
-      return String((t && (t.comtrade || t.name_en || t.label_en || t.name || t.label || t.code)) || '').trim();
-    }).filter(Boolean).join('|');
-    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countriesParam)+'&source='+encodeURIComponent(getImportAnalysisSourceKey(source));
+      // Prefer english name variants, then label/code (skip comtrade numeric code — proxy expects names)
+      return String((t && (t.name_en || t.label_en || t.name || t.label || t.code)) || '').trim();
+    }).filter(Boolean);
+    // Each country name URL-encoded individually, joined with literal `|` (not encoded)
+    // because proxy splits on raw `|` and may not decode %7C
+    var countriesParam = countryNames.map(function(n){ return encodeURIComponent(n); }).join('|');
+    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+countriesParam+'&source='+encodeURIComponent(getImportAnalysisSourceKey(source));
     // Flow param — TOTAL rejimida flow yubormaymiz (proxy default'i ishlatiladi)
     if(hsCode !== 'TOTAL'){
       url += '&flow='+encodeURIComponent(getImportAnalysisTradeFlowCode());
