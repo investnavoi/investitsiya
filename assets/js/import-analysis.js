@@ -3142,56 +3142,200 @@ function investAiMerge(ws, startRow, startCol, endRow, endCol){
   ws['!merges'].push({ s:{r:startRow,c:startCol}, e:{r:endRow,c:endCol} });
 }
 
+// ═══════ Russian translation layer (Phase 1) ═══════
+var INVEST_AI_RU = {
+  // Sheet names (max 31 chars)
+  sheetExec: 'Главная панель',
+  sheetProductMap: 'Карта продуктов',
+  sheetTrade: 'Торговые данные',
+  sheetCountryMatrix: 'Матрица импорта по странам',
+  sheetSuppliers: 'Поставщики',
+  sheetPriority: 'Матрица инвестприоритетов',
+  sheetImportSubUz: 'Импортозамещение УЗБ',
+  sheetImportSubRegional: 'Импортозамещение — регион',
+  sheetMethodology: 'Методология',
+  // Titles & subtitles
+  titleSuffix: ': АНАЛИЗ ТОРГОВЛИ И ИНВЕСТИЦИОННЫЕ ВОЗМОЖНОСТИ',
+  navoiPrefix: 'НАВОИЙСКИЙ РЕГИОН — ',
+  rawMaterial: 'Сырьё',
+  mappedNote: 'Сопоставлено с продуктовым портфелем Навои и анализом регионального спроса',
+  // KPI labels
+  kpiProducts: 'Продукты',
+  kpiRegionalDemand: 'Региональный спрос',
+  kpiUzbImports: 'Импорт Узбекистана',
+  kpiPriorityA: 'Приоритет A',
+  kpiCountries: 'Страны',
+  kpiTopMarket: 'Крупнейший рынок',
+  // Column headers
+  hRank: 'Ранг',
+  hHs: 'Код ТН ВЭД',
+  hProduct: 'Продукт',
+  hRegionalDemand: 'Регион. итого ($)',
+  hUzbImports: 'Узбекистан ($)',
+  hTopImporter: 'Крупнейший импортёр',
+  hTopSupplier: 'Крупнейший поставщик',
+  hCagr: 'CAGR',
+  hPriority: 'Приоритет',
+  hCategory: 'Категория',
+  hLevel: 'Уровень',
+  hCapital: 'Капитал',
+  hTechnology: 'Технология',
+  hEndUse: 'Применение',
+  hFeasibility: 'Реализуемость',
+  hYear: 'Год',
+  hImport: 'Импорт ($)',
+  hCountry: 'Страна',
+  hVolume: 'Объём ($)',
+  hNote: 'Примечание',
+  hShare: 'Доля',
+  hTrend: 'Тренд',
+  hValueChain: 'Цепочка создания стоимости',
+  // Section labels
+  secExecSummary: 'Резюме',
+  secVerification: 'Примечания по верификации',
+  secMethodology: 'Методология, источники данных и примечания по качеству',
+  secDataSource: 'ИСТОЧНИК ДАННЫХ',
+  secApiVersion: 'ВЕРСИЯ API',
+  secFlow: 'ПОТОК',
+  secPeriods: 'ПЕРИОДЫ',
+  secClassification: 'КЛАССИФИКАЦИЯ',
+  secValues: 'ЗНАЧЕНИЯ',
+  secCountries: 'СТРАНЫ-ОТЧЁТНИКИ',
+  secNotes: 'ПРИМЕЧАНИЯ ПО КАЧЕСТВУ ДАННЫХ',
+  secPriorityScoring: 'СИСТЕМА ОЦЕНКИ ИНВЕСТИЦИОННЫХ ПРИОРИТЕТОВ',
+  // Priority labels
+  priorityA: 'A — Стратегический',
+  priorityB: 'B — Высокий',
+  priorityC: 'C — Средний',
+  priorityD: 'D — Низкий'
+};
+
+// EN → RU country names (top-100 most common partners)
+var INVEST_AI_COUNTRY_RU = {
+  'Uzbekistan':'Узбекистан', 'Kazakhstan':'Казахстан', 'Kyrgyzstan':'Кыргызстан',
+  'Tajikistan':'Таджикистан', 'Turkmenistan':'Туркменистан', 'Russia':'Россия',
+  'Russian Federation':'Россия', 'Mongolia':'Монголия', 'Azerbaijan':'Азербайджан',
+  'Georgia':'Грузия', 'Armenia':'Армения', 'Iran':'Иран',
+  'Iran, Islamic Republic of':'Иран', 'Afghanistan':'Афганистан', 'Pakistan':'Пакистан',
+  'China':'Китай', "China, People's Republic of":'Китай',
+  'Hong Kong':'Гонконг', 'Hong Kong, China':'Гонконг',
+  'India':'Индия', 'Japan':'Япония', 'South Korea':'Южная Корея',
+  'Korea, Republic of':'Южная Корея', 'Republic of Korea':'Южная Корея',
+  'North Korea':'Северная Корея', 'Vietnam':'Вьетнам', 'Viet Nam':'Вьетнам',
+  'Thailand':'Таиланд', 'Indonesia':'Индонезия', 'Malaysia':'Малайзия',
+  'Singapore':'Сингапур', 'Philippines':'Филиппины', 'Taiwan':'Тайвань',
+  'Bangladesh':'Бангладеш', 'Sri Lanka':'Шри-Ланка', 'Nepal':'Непал',
+  'Myanmar':'Мьянма', 'Cambodia':'Камбоджа', 'Laos':'Лаос',
+  'United States':'США', 'United States of America':'США', 'USA':'США',
+  'Canada':'Канада', 'Mexico':'Мексика', 'Brazil':'Бразилия',
+  'Argentina':'Аргентина', 'Chile':'Чили', 'Peru':'Перу',
+  'Colombia':'Колумбия', 'Venezuela':'Венесуэла', 'Ecuador':'Эквадор',
+  'United Kingdom':'Великобритания', 'UK':'Великобритания',
+  'Germany':'Германия', 'France':'Франция', 'Italy':'Италия',
+  'Spain':'Испания', 'Portugal':'Португалия', 'Netherlands':'Нидерланды',
+  'Belgium':'Бельгия', 'Switzerland':'Швейцария', 'Austria':'Австрия',
+  'Sweden':'Швеция', 'Norway':'Норвегия', 'Denmark':'Дания',
+  'Finland':'Финляндия', 'Poland':'Польша', 'Czech Republic':'Чехия',
+  'Czechia':'Чехия', 'Slovakia':'Словакия', 'Hungary':'Венгрия',
+  'Romania':'Румыния', 'Bulgaria':'Болгария', 'Greece':'Греция',
+  'Croatia':'Хорватия', 'Serbia':'Сербия', 'Slovenia':'Словения',
+  'Bosnia and Herzegovina':'Босния и Герцеговина', 'Albania':'Албания',
+  'North Macedonia':'Северная Македония', 'Macedonia':'Северная Македония',
+  'Estonia':'Эстония', 'Latvia':'Латвия', 'Lithuania':'Литва',
+  'Belarus':'Беларусь', 'Ukraine':'Украина', 'Moldova':'Молдова',
+  'Republic of Moldova':'Молдова', 'Cyprus':'Кипр', 'Malta':'Мальта',
+  'Iceland':'Исландия', 'Ireland':'Ирландия', 'Luxembourg':'Люксембург',
+  'Turkey':'Турция', 'Türkiye':'Турция', 'Israel':'Израиль',
+  'Saudi Arabia':'Саудовская Аравия', 'United Arab Emirates':'ОАЭ',
+  'UAE':'ОАЭ', 'Qatar':'Катар', 'Kuwait':'Кувейт',
+  'Bahrain':'Бахрейн', 'Oman':'Оман', 'Yemen':'Йемен',
+  'Iraq':'Ирак', 'Syria':'Сирия', 'Jordan':'Иордания',
+  'Lebanon':'Ливан', 'Egypt':'Египет', 'Morocco':'Марокко',
+  'Tunisia':'Тунис', 'Algeria':'Алжир', 'Libya':'Ливия',
+  'Sudan':'Судан', 'Ethiopia':'Эфиопия', 'Kenya':'Кения',
+  'Tanzania':'Танзания', 'Uganda':'Уганда', 'Nigeria':'Нигерия',
+  'Ghana':'Гана', 'South Africa':'ЮАР', 'Zimbabwe':'Зимбабве',
+  'Zambia':'Замбия', 'Angola':'Ангола', 'Mozambique':'Мозамбик',
+  'Madagascar':'Мадагаскар', 'Mauritius':'Маврикий',
+  'Australia':'Австралия', 'New Zealand':'Новая Зеландия',
+  'Fiji':'Фиджи', 'Papua New Guinea':'Папуа — Новая Гвинея'
+};
+
+function investAiTranslateCountry(name){
+  if(!name) return '—';
+  var s = String(name).trim();
+  if(INVEST_AI_COUNTRY_RU[s]) return INVEST_AI_COUNTRY_RU[s];
+  // case-insensitive fallback
+  var keys = Object.keys(INVEST_AI_COUNTRY_RU);
+  var lower = s.toLowerCase();
+  for(var i=0;i<keys.length;i++){
+    if(keys[i].toLowerCase() === lower) return INVEST_AI_COUNTRY_RU[keys[i]];
+  }
+  return s; // unknown — keep original
+}
+
+function investAiTranslatePriority(p){
+  var s = String(p || '').trim();
+  if(s === 'Priority A') return INVEST_AI_RU.priorityA;
+  if(s === 'Priority B') return INVEST_AI_RU.priorityB;
+  if(s === 'Priority C') return INVEST_AI_RU.priorityC;
+  if(s === 'Priority D') return INVEST_AI_RU.priorityD;
+  return s;
+}
+
 function investAiBuildExecutiveDashboardSheet(ctx, styles){
   var rows = [];
-  rows.push(['NAVOI REGION — ' + String(ctx.material || '').toUpperCase() + ': TRADE ANALYSIS & INVESTMENT OPPORTUNITIES','','','','','','','','']);
-  rows.push(['Raw Material: ' + (ctx.material || '—') + ' — ' + ((ctx.raw && (ctx.raw.name_en || ctx.raw.name_uz)) || 'Mapped to Navoi product portfolio and regional demand analysis'),'','','','','','','','']);
+  rows.push([INVEST_AI_RU.navoiPrefix + String(ctx.material || '').toUpperCase() + INVEST_AI_RU.titleSuffix,'','','','','','','','']);
+  rows.push([INVEST_AI_RU.rawMaterial + ': ' + (ctx.material || '—') + ' — ' + ((ctx.raw && (ctx.raw.name_en || ctx.raw.name_uz)) || INVEST_AI_RU.mappedNote),'','','','','','','','']);
   rows.push([]);
-  rows.push(['Products','Regional Demand ' + ctx.analysisYear,'UZB Imports','Priority A','Countries','Top Market','','','']);
+  rows.push([INVEST_AI_RU.kpiProducts, INVEST_AI_RU.kpiRegionalDemand + ' ' + ctx.analysisYear, INVEST_AI_RU.kpiUzbImports, INVEST_AI_RU.kpiPriorityA, INVEST_AI_RU.kpiCountries, INVEST_AI_RU.kpiTopMarket,'','','']);
   rows.push([
     ctx.entries.length,
     investAiFmtShortUsd(ctx.totalRegionalDemand),
     investAiFmtShortUsd(ctx.totalUzbImports),
     ctx.priorityACount,
     ctx.countryCount,
-    ctx.topCountry.name + ' · ' + investAiFmtShortUsd(ctx.topCountryValue),
+    investAiTranslateCountry(ctx.topCountry.name) + ' · ' + investAiFmtShortUsd(ctx.topCountryValue),
     '','',''
   ]);
   rows.push([]);
-  rows.push(['Rank','HS Code','Product','Regional Demand ($)','UZB Imports ($)','Top Importer','Top Supplier','CAGR','Priority']);
+  rows.push([INVEST_AI_RU.hRank, INVEST_AI_RU.hHs, INVEST_AI_RU.hProduct, INVEST_AI_RU.hRegionalDemand, INVEST_AI_RU.hUzbImports, INVEST_AI_RU.hTopImporter, INVEST_AI_RU.hTopSupplier, INVEST_AI_RU.hCagr, INVEST_AI_RU.hPriority]);
+  // Show ALL entries from the raw material (not capped at 15) — user requested dynamic count
   (ctx.entries.length ? ctx.entries : [{
-    hsCode:'—', displayName:'No mapped products found for this material', analysisValue:0, uzbValue:0, topImporter:{name:'—'}, cagr:null, priority:'Priority D'
-  }]).slice(0,15).forEach(function(entry, idx){
+    hsCode:'—', displayName:'Для этого сырья не найдено сопоставленных продуктов', analysisValue:0, uzbValue:0, topImporter:{name:'—'}, cagr:null, priority:'Priority D'
+  }]).forEach(function(entry, idx){
     rows.push([
       idx + 1,
       entry.hsCode || '—',
       entry.displayName || '—',
       investAiFmtUsd(entry.analysisValue || 0),
       investAiFmtUsd(entry.uzbValue || 0),
-      (entry.topImporter && entry.topImporter.name) || '—',
-      entry.hasSnapshot ? 'Supplier-level customs data required' : 'No supplier data in cache',
+      investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || ''),
+      entry.hasSnapshot ? 'Требуются таможенные данные на уровне поставщиков' : 'Данные поставщиков отсутствуют в кэше',
       investAiFmtPct(entry.cagr),
-      entry.priority || 'Priority D'
+      investAiTranslatePriority(entry.priority || 'Priority D')
     ]);
   });
   rows.push([]);
-  rows.push(['Executive Summary','','','','','','','','']);
+  rows.push([INVEST_AI_RU.secExecSummary,'','','','','','','','']);
   var summaryLines = (ctx.executiveSummaryRows.length ? ctx.executiveSummaryRows.map(function(row){ return row[0]; }) : ctx.summaryLines.slice(0,6));
   summaryLines.slice(0,6).forEach(function(line){
     rows.push([line,'','','','','','','','']);
   });
   rows.push([]);
-  rows.push(['Verification Notes','','','','','','','','']);
-  (ctx.verificationRows.length ? ctx.verificationRows : [['△ Live supplier-level data not available in current workbook cache'],['⚠ Russia-related trade visibility may contain gaps due to sanctions and rerouting noise']]).slice(0,4).forEach(function(row){
+  rows.push([INVEST_AI_RU.secVerification,'','','','','','','','']);
+  (ctx.verificationRows.length ? ctx.verificationRows : [['△ Данные поставщиков на уровне таможни недоступны в текущем кэше'],['⚠ Видимость торговли с Россией может содержать пробелы из-за санкций и переадресаций']]).slice(0,4).forEach(function(row){
     rows.push([row[0],'','','','','','','','']);
   });
 
   var ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{wch:8},{wch:12},{wch:42},{wch:18},{wch:18},{wch:16},{wch:20},{wch:10},{wch:12}];
+  // Dinamik entry soni — endi cheklanmagan
+  var entriesCount = Math.max(ctx.entries.length || 1, 1);
   investAiMerge(ws,0,0,0,8);
   investAiMerge(ws,1,0,1,8);
-  investAiMerge(ws,10 + Math.min(ctx.entries.length || 1, 15),0,10 + Math.min(ctx.entries.length || 1, 15),8);
-  var summaryStart = 11 + Math.min(ctx.entries.length || 1, 15);
+  investAiMerge(ws,10 + entriesCount,0,10 + entriesCount,8);
+  var summaryStart = 11 + entriesCount;
   for(var s=0;s<summaryLines.slice(0,6).length;s++) investAiMerge(ws, summaryStart + s,0,summaryStart + s,8);
   investAiMerge(ws, summaryStart + summaryLines.slice(0,6).length + 1,0,summaryStart + summaryLines.slice(0,6).length + 1,8);
   var verificationStart = summaryStart + summaryLines.slice(0,6).length + 2;
@@ -3203,19 +3347,19 @@ function investAiBuildExecutiveDashboardSheet(ctx, styles){
   investAiStyleRow(ws,3,6,styles.metricHead);
   investAiStyleRow(ws,4,6,styles.metricValue);
   investAiStyleRow(ws,6,9,styles.header);
-  investAiStyleRowsAlternating(ws,7,7 + Math.min(ctx.entries.length || 1, 15) - 1,9,styles);
-  investAiStyleRow(ws,10 + Math.min(ctx.entries.length || 1, 15),9,styles.section);
+  investAiStyleRowsAlternating(ws,7,7 + entriesCount - 1,9,styles);
+  investAiStyleRow(ws,10 + entriesCount,9,styles.section);
   for(var sr=summaryStart; sr<summaryStart + summaryLines.slice(0,6).length; sr++) investAiStyleRow(ws,sr,9,styles.body);
   investAiStyleRow(ws,summaryStart + summaryLines.slice(0,6).length + 1,9,styles.section);
   for(var vr=verificationStart; vr<verificationStart + verificationCount; vr++) investAiStyleRow(ws,vr,9,styles.note);
-  return { name:'Executive Dashboard', ws:ws };
+  return { name: INVEST_AI_RU.sheetExec, ws:ws };
 }
 
 function investAiBuildProductMapSheet(ctx, styles){
   var rows = [];
-  rows.push(['PRODUCT MAP — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','']);
+  rows.push(['КАРТА ПРОДУКТОВ — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','']);
   rows.push(['','','','','','','','','']);
-  rows.push(['#','Category','Product','HS Code','Level','Capital','Technology','End-Use','Feasibility']);
+  rows.push(['#', INVEST_AI_RU.hCategory, INVEST_AI_RU.hProduct, INVEST_AI_RU.hHs, INVEST_AI_RU.hLevel, INVEST_AI_RU.hCapital, INVEST_AI_RU.hTechnology, INVEST_AI_RU.hEndUse, INVEST_AI_RU.hFeasibility]);
   var lastCategory = '';
   var count = 0;
   (ctx.entries.length ? ctx.entries : []).forEach(function(entry){
@@ -3232,11 +3376,11 @@ function investAiBuildProductMapSheet(ctx, styles){
       entry.level,
       entry.capital,
       entry.technology,
-      entry.endUse || 'Requires validation',
+      entry.endUse || 'Требует проверки',
       entry.feasibility
     ]);
   });
-  if(count === 0) rows.push(['1','RAW','No mapped Navoi product found','—','—','—','—','Requires product mapping','Low']);
+  if(count === 0) rows.push(['1','RAW','Сопоставленный продукт не найден','—','—','—','—','Требует сопоставления','Низкий']);
 
   var ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{wch:6},{wch:15},{wch:38},{wch:12},{wch:12},{wch:14},{wch:16},{wch:28},{wch:12}];
@@ -3247,14 +3391,14 @@ function investAiBuildProductMapSheet(ctx, styles){
     if(rows[r][1] === '' && rows[r][0]) investAiStyleRow(ws,r,9,styles.group);
     else investAiStyleRow(ws,r,9,(r % 2 === 0 ? styles.alt : styles.body));
   }
-  return { name:'Product Map', ws:ws };
+  return { name: INVEST_AI_RU.sheetProductMap, ws:ws };
 }
 
 function investAiBuildTradeDataSheet(ctx, styles){
   var rows = [];
-  rows.push(['COMTRADE DATA — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','','']);
+  rows.push(['ТОРГОВЫЕ ДАННЫЕ UN COMTRADE — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','','']);
   rows.push([]);
-  rows.push(['HS','Product','Country','2021 ($)','2022 ($)','2023 ($)','2024 ($)','CAGR','Trend','Quality']);
+  rows.push([INVEST_AI_RU.hHs, INVEST_AI_RU.hProduct, INVEST_AI_RU.hCountry, '2021 ($)','2022 ($)','2023 ($)','2024 ($)', INVEST_AI_RU.hCagr, INVEST_AI_RU.hTrend, 'Качество']);
   ctx.entries.forEach(function(entry){
     TARGET_COUNTRIES.forEach(function(target){
       var country = (entry.countryMap || {})[target.code];
@@ -3266,12 +3410,12 @@ function investAiBuildTradeDataSheet(ctx, styles){
       if(!(y2021 || y2022 || y2023 || y2024 || country.status === 'rate_limited')) return;
       var series = {'2021':y2021,'2022':y2022,'2023':y2023,'2024':y2024};
       var cagr = investAiCalcCagr(series);
-      var trend = y2024 > y2023 ? 'Up' : (y2024 < y2023 ? 'Down' : 'Flat');
-      var quality = country.status === 'ok' ? 'Verified cache' : (country.status === 'rate_limited' ? 'Rate-limited / partial' : 'No data');
+      var trend = y2024 > y2023 ? 'Рост' : (y2024 < y2023 ? 'Спад' : 'Стабильно');
+      var quality = country.status === 'ok' ? 'Подтверждено' : (country.status === 'rate_limited' ? 'Лимит API / частично' : 'Нет данных');
       rows.push([
         entry.hsCode || '—',
         entry.displayName,
-        target.name,
+        investAiTranslateCountry(target.name),
         investAiFmtUsd(y2021),
         investAiFmtUsd(y2022),
         investAiFmtUsd(y2023),
@@ -3282,7 +3426,7 @@ function investAiBuildTradeDataSheet(ctx, styles){
       ]);
     });
   });
-  if(rows.length === 3) rows.push(['—','No trade snapshot found','—','$0','$0','$0','$0','—','Flat','No cached UN Comtrade data']);
+  if(rows.length === 3) rows.push(['—','Снимок данных не найден','—','$0','$0','$0','$0','—','Стабильно','Нет данных в кэше']);
 
   var ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{wch:10},{wch:36},{wch:18},{wch:13},{wch:13},{wch:13},{wch:13},{wch:10},{wch:10},{wch:20}];
@@ -3290,13 +3434,13 @@ function investAiBuildTradeDataSheet(ctx, styles){
   investAiStyleRow(ws,0,10,styles.title);
   investAiStyleRow(ws,2,10,styles.header);
   investAiStyleRowsAlternating(ws,3,rows.length - 1,10,styles);
-  return { name:'Trade Data', ws:ws };
+  return { name: INVEST_AI_RU.sheetTrade, ws:ws };
 }
 
 function investAiBuildCountryMatrixSheet(ctx, styles){
-  var header = ['HS','Product'].concat(TARGET_COUNTRIES.map(function(target){ return target.name; })).concat(['TOTAL']);
+  var header = [INVEST_AI_RU.hHs, INVEST_AI_RU.hProduct].concat(TARGET_COUNTRIES.map(function(target){ return investAiTranslateCountry(target.name); })).concat(['ИТОГО']);
   var rows = [];
-  rows.push(['IMPORT MATRIX — ' + String(ctx.material || '').toUpperCase() + ' — ' + ctx.analysisYear + ' ($)']);
+  rows.push(['МАТРИЦА ИМПОРТА — ' + String(ctx.material || '').toUpperCase() + ' — ' + ctx.analysisYear + ' ($)']);
   rows.push([]);
   rows.push(header);
   ctx.entries.forEach(function(entry){
@@ -3311,7 +3455,7 @@ function investAiBuildCountryMatrixSheet(ctx, styles){
     rows.push(row);
   });
   if(rows.length === 3){
-    var emptyRow = ['—','No cached country matrix'];
+    var emptyRow = ['—','Кэш матрицы стран отсутствует'];
     while(emptyRow.length < header.length) emptyRow.push('—');
     rows.push(emptyRow);
   }
@@ -3325,21 +3469,21 @@ function investAiBuildCountryMatrixSheet(ctx, styles){
   investAiStyleRow(ws,0,header.length,styles.title);
   investAiStyleRow(ws,2,header.length,styles.header);
   investAiStyleRowsAlternating(ws,3,rows.length - 1,header.length,styles);
-  return { name:'Country Matrix', ws:ws };
+  return { name: INVEST_AI_RU.sheetCountryMatrix, ws:ws };
 }
 
 function investAiBuildSuppliersSheet(ctx, styles){
   var rows = [];
-  rows.push(['SUPPLIER ANALYSIS — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','','']);
+  rows.push(['АНАЛИЗ ПОСТАВЩИКОВ — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','','']);
   rows.push([]);
-  rows.push(['HS','Product','Import ($)','Supplier #1','Share','Supplier #2','Share','Supplier #3','Share','Notes']);
+  rows.push([INVEST_AI_RU.hHs, INVEST_AI_RU.hProduct, INVEST_AI_RU.hImport, 'Поставщик №1', INVEST_AI_RU.hShare, 'Поставщик №2', INVEST_AI_RU.hShare, 'Поставщик №3', INVEST_AI_RU.hShare, INVEST_AI_RU.hNote]);
   var groupedCountries = TARGET_COUNTRIES.slice().sort(function(a,b){
     var aVal = ctx.entries.reduce(function(sum, entry){ return sum + (Number((((entry.countryMap || {})[a.code] || {}).years || {})[ctx.analysisYear] || 0) || 0); },0);
     var bVal = ctx.entries.reduce(function(sum, entry){ return sum + (Number((((entry.countryMap || {})[b.code] || {}).years || {})[ctx.analysisYear] || 0) || 0); },0);
     return bVal - aVal;
   }).slice(0,5);
   groupedCountries.forEach(function(target){
-    rows.push([target.name,'','','','','','','','','']);
+    rows.push([investAiTranslateCountry(target.name),'','','','','','','','','']);
     ctx.entries.filter(function(entry){
       return Number((((entry.countryMap || {})[target.code] || {}).years || {})[ctx.analysisYear] || 0) > 0;
     }).slice(0,6).forEach(function(entry){
@@ -3353,12 +3497,12 @@ function investAiBuildSuppliersSheet(ctx, styles){
         '—',
         '—',
         '—',
-        'Supplier-level customs data not available in current cache; verify with customs/BL sources'
+        'Данные поставщиков на уровне таможни недоступны; уточните по таможенным/BL-источникам'
       ]);
     });
   });
   if(rows.length === 3){
-    rows.push(['No supplier-level records in current dataset','','','','','','','','','Use importer/company lookup for supplier verification']);
+    rows.push(['Нет записей поставщиков в текущем наборе данных','','','','','','','','','Используйте поиск по импортёрам/компаниям']);
   }
 
   var ws = XLSX.utils.aoa_to_sheet(rows);
@@ -3370,14 +3514,14 @@ function investAiBuildSuppliersSheet(ctx, styles){
     if(rows[r][0] && !rows[r][1] && !rows[r][2]) investAiStyleRow(ws,r,10,styles.group);
     else investAiStyleRow(ws,r,10,(r % 2 === 0 ? styles.alt : styles.body));
   }
-  return { name:'Suppliers', ws:ws };
+  return { name: INVEST_AI_RU.sheetSuppliers, ws:ws };
 }
 
 function investAiBuildInvestmentPrioritySheet(ctx, styles){
   var rows = [];
-  rows.push(['INVESTMENT MATRIX — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','','','']);
+  rows.push(['МАТРИЦА ИНВЕСТПРИОРИТЕТОВ — ' + String(ctx.material || '').toUpperCase(),'','','','','','','','','','']);
   rows.push([]);
-  rows.push(['Pr.','HS','Product','Reg. Demand ($)','UZB Imp. ($)','Top Market','CAGR','Level','Capital','Compet.','Verdict']);
+  rows.push(['Пр.', INVEST_AI_RU.hHs, INVEST_AI_RU.hProduct, INVEST_AI_RU.hRegionalDemand, INVEST_AI_RU.hUzbImports, INVEST_AI_RU.kpiTopMarket, INVEST_AI_RU.hCagr, INVEST_AI_RU.hLevel, INVEST_AI_RU.hCapital, 'Конкур.', 'Вывод']);
   ctx.entries.forEach(function(entry){
     rows.push([
       entry.priority.replace('Priority ',''),
@@ -3385,7 +3529,7 @@ function investAiBuildInvestmentPrioritySheet(ctx, styles){
       entry.displayName,
       investAiFmtUsd(entry.analysisValue || 0),
       investAiFmtUsd(entry.uzbValue || 0),
-      (entry.topImporter && entry.topImporter.name) || '—',
+      investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || ''),
       investAiFmtPct(entry.cagr),
       entry.level,
       entry.capital,
@@ -3393,7 +3537,7 @@ function investAiBuildInvestmentPrioritySheet(ctx, styles){
       entry.verdict
     ]);
   });
-  if(rows.length === 3) rows.push(['D','—','No investment matrix rows available','$0','$0','—','—','—','—','Weak','Needs product mapping']);
+  if(rows.length === 3) rows.push(['D','—','Нет данных для матрицы инвестиций','$0','$0','—','—','—','—','Слабый','Требуется сопоставление продуктов']);
 
   var ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{wch:6},{wch:10},{wch:36},{wch:15},{wch:15},{wch:16},{wch:10},{wch:12},{wch:12},{wch:12},{wch:18}];
@@ -3419,14 +3563,14 @@ function investAiBuildInvestmentPrioritySheet(ctx, styles){
       };
     }
   }
-  return { name:'Investment Priority', ws:ws };
+  return { name: INVEST_AI_RU.sheetPriority, ws:ws };
 }
 
 function investAiBuildImportSubUzSheet(ctx, styles){
   var rows = [];
-  rows.push(['UZBEKISTAN IMPORT SUBSTITUTION — ' + String(ctx.material || '').toUpperCase(),'','','','','','','']);
+  rows.push(['ИМПОРТОЗАМЕЩЕНИЕ УЗБЕКИСТАНА — ' + String(ctx.material || '').toUpperCase(),'','','','','','','']);
   rows.push([]);
-  rows.push(['HS','Product','2021 ($)','2022 ($)','2023 ($)','2024 ($)','CAGR','Potential']);
+  rows.push([INVEST_AI_RU.hHs, INVEST_AI_RU.hProduct, '2021 ($)','2022 ($)','2023 ($)','2024 ($)', INVEST_AI_RU.hCagr, 'Потенциал']);
   ctx.entries.forEach(function(entry){
     var uz = ((entry.countryMap || {}).UZ || {}).years || {};
     rows.push([
@@ -3437,10 +3581,10 @@ function investAiBuildImportSubUzSheet(ctx, styles){
       investAiFmtUsd(uz['2023'] || 0),
       investAiFmtUsd(uz['2024'] || 0),
       investAiFmtPct(investAiCalcCagr(uz)),
-      entry.priority === 'Priority A' ? 'High' : (entry.priority === 'Priority B' ? 'Medium' : 'Selective')
+      entry.priority === 'Priority A' ? 'Высокий' : (entry.priority === 'Priority B' ? 'Средний' : 'Выборочный')
     ]);
   });
-  if(rows.length === 3) rows.push(['—','No Uzbekistan import history found','$0','$0','$0','$0','—','Verify later']);
+  if(rows.length === 3) rows.push(['—','История импорта Узбекистана не найдена','$0','$0','$0','$0','—','Проверить позже']);
 
   var ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{wch:10},{wch:36},{wch:13},{wch:13},{wch:13},{wch:13},{wch:10},{wch:14}];
@@ -3448,30 +3592,30 @@ function investAiBuildImportSubUzSheet(ctx, styles){
   investAiStyleRow(ws,0,8,styles.title);
   investAiStyleRow(ws,2,8,styles.header);
   investAiStyleRowsAlternating(ws,3,rows.length - 1,8,styles);
-  return { name:'Import Sub. UZB', ws:ws };
+  return { name: INVEST_AI_RU.sheetImportSubUz, ws:ws };
 }
 
 function investAiBuildImportSubRegionalSheet(ctx, styles){
   var rows = [];
-  rows.push(['REGIONAL IMPORT SUBSTITUTION — ' + String(ctx.material || '').toUpperCase(),'','','','','']);
+  rows.push(['ИМПОРТОЗАМЕЩЕНИЕ — РЕГИОН — ' + String(ctx.material || '').toUpperCase(),'','','','','']);
   rows.push([]);
-  rows.push(['Country','HS','Product',ctx.analysisYear + ' Import ($)','CAGR','Note']);
+  rows.push([INVEST_AI_RU.hCountry, INVEST_AI_RU.hHs, INVEST_AI_RU.hProduct, ctx.analysisYear + ' ' + INVEST_AI_RU.hImport, INVEST_AI_RU.hCagr, INVEST_AI_RU.hNote]);
   TARGET_COUNTRIES.forEach(function(target){
-    rows.push(['== ' + target.name + ' ===','','','','','']);
+    rows.push(['== ' + investAiTranslateCountry(target.name) + ' ===','','','','','']);
     ctx.entries.filter(function(entry){
       return Number((((entry.countryMap || {})[target.code] || {}).years || {})[ctx.analysisYear] || 0) > 0;
     }).slice(0,10).forEach(function(entry){
       rows.push([
-        target.name,
+        investAiTranslateCountry(target.name),
         entry.hsCode || '—',
         entry.displayName,
         investAiFmtUsd((((entry.countryMap || {})[target.code] || {}).years || {})[ctx.analysisYear] || 0),
         investAiFmtPct(entry.cagr),
-        entry.priority === 'Priority A' ? 'Strong candidate for outreach' : 'Needs validation'
+        entry.priority === 'Priority A' ? 'Сильный кандидат для аутрича' : 'Требует проверки'
       ]);
     });
   });
-  if(rows.length === 3) rows.push(['Regional','—','No regional rows cached','$0','—','Use import analysis first']);
+  if(rows.length === 3) rows.push(['Регион','—','Региональные данные не закэшированы','$0','—','Сначала запустите импорт-анализ']);
 
   var ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{wch:18},{wch:10},{wch:36},{wch:16},{wch:10},{wch:28}];
@@ -3482,27 +3626,27 @@ function investAiBuildImportSubRegionalSheet(ctx, styles){
     if(/^==/.test(String(rows[r][0] || ''))) investAiStyleRow(ws,r,6,styles.group);
     else investAiStyleRow(ws,r,6,(r % 2 === 0 ? styles.alt : styles.body));
   }
-  return { name:'Import Sub. Regional', ws:ws };
+  return { name: INVEST_AI_RU.sheetImportSubRegional, ws:ws };
 }
 
 function investAiBuildMethodologySheet(ctx, styles){
   var today = new Date();
   var rows = [];
-  rows.push(['METHODOLOGY & DATA QUALITY','']);
+  rows.push(['МЕТОДОЛОГИЯ И КАЧЕСТВО ДАННЫХ','']);
   rows.push([]);
-  rows.push(['Data Source','UN Comtrade API / official cached snapshots + AI narrative output']);
-  rows.push(['Periods','2021-2024']);
-  rows.push(['Classification','HS 4/6 digit mapped from Navoi product database']);
-  rows.push(['Cached Snapshots',String(ctx.entries.filter(function(entry){ return entry.hasSnapshot; }).length)]);
-  rows.push(['Products Considered',String(ctx.entries.length)]);
-  rows.push(['Top Market (' + ctx.analysisYear + ')',ctx.topCountry.name + ' — ' + investAiFmtUsd(ctx.topCountryValue)]);
-  rows.push(['Verification',ctx.verificationRows.length ? ctx.verificationRows.map(function(row){ return row[0]; }).slice(0,2).join(' | ') : '△ Requires live trade verification before investor outreach']);
-  rows.push(['Russia Caveat','Russia-related trade visibility may be incomplete due to sanctions effects, rerouting, mirror-data gaps, and classification noise.']);
-  rows.push(['Organization','Navoi Region Investment Department']);
-  rows.push(['Date',today.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})]);
+  rows.push([INVEST_AI_RU.secDataSource,'UN Comtrade API / официальные кэшированные снимки + AI-нарратив']);
+  rows.push([INVEST_AI_RU.secPeriods,'2021–2024']);
+  rows.push([INVEST_AI_RU.secClassification,'ТН ВЭД 4/6 знаков, сопоставлено с базой продуктов Навои']);
+  rows.push(['Кэшированные снимки', String(ctx.entries.filter(function(entry){ return entry.hasSnapshot; }).length)]);
+  rows.push(['Продуктов рассмотрено', String(ctx.entries.length)]);
+  rows.push(['Крупнейший рынок (' + ctx.analysisYear + ')', investAiTranslateCountry(ctx.topCountry.name) + ' — ' + investAiFmtUsd(ctx.topCountryValue)]);
+  rows.push(['Верификация', ctx.verificationRows.length ? ctx.verificationRows.map(function(row){ return row[0]; }).slice(0,2).join(' | ') : '△ Требуется верификация до выхода на инвесторов']);
+  rows.push(['Оговорка по России','Видимость торговли с Россией может быть неполной из-за санкций, переадресации, пробелов в зеркальных данных и классификационного шума.']);
+  rows.push(['Организация','Управление инвестиций Навоийской области']);
+  rows.push(['Дата', today.toLocaleDateString('ru-RU',{year:'numeric',month:'long',day:'numeric'})]);
   rows.push([]);
-  rows.push(['Recommended Next Steps','']);
-  (ctx.nextSteps.length ? ctx.nextSteps : [['Verify HS code against customs practice'],['Refresh UN Comtrade data before investor outreach'],['Validate supplier data from customs or commercial datasets']]).slice(0,6).forEach(function(row){
+  rows.push(['Рекомендуемые следующие шаги','']);
+  (ctx.nextSteps.length ? ctx.nextSteps : [['Проверить ТН ВЭД с таможенной практикой'],['Обновить данные UN Comtrade перед аутричем'],['Проверить данные поставщиков по таможне или коммерческим источникам']]).slice(0,6).forEach(function(row){
     rows.push([row[0],'']);
   });
 
@@ -3513,7 +3657,7 @@ function investAiBuildMethodologySheet(ctx, styles){
   for(var mr=2;mr<=10;mr++) investAiStyleRow(ws,mr,2,(mr % 2 === 0 ? styles.alt : styles.body));
   investAiStyleRow(ws,12,2,styles.section);
   for(var nr=13; nr<rows.length; nr++) investAiStyleRow(ws,nr,2,styles.note);
-  return { name:'Methodology', ws:ws };
+  return { name: INVEST_AI_RU.sheetMethodology, ws:ws };
 }
 
 function buildInvestAiWorkbookData(material, markdown){
