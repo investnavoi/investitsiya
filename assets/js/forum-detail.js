@@ -3075,11 +3075,12 @@ _renderInvestorCompaniesMain = function(){
   if(ic2El) ic2El.innerHTML = vTayyor + ' <span class="kpi-unit">ta</span>';
   var ic3El = document.getElementById('ic-k3');
   if(ic3El) ic3El.innerHTML = vEmailSent + '/' + vHasEmail + ' <span class="kpi-unit">ta</span>';
-  // Apollo/TradeAtlas badge'lari — har doim filtersiz to'liq sonni ko'rsatadi
+  // Apollo/TradeAtlas badge'lari — group-level role detection bilan filtersiz to'liq son
+  // (apolloCount/tradeAtlasCount = importyor-only group'lar olib tashlangan, jadvaldagi soniga to'liq mos)
   var apolloEl2 = document.getElementById('ic-k-apollo');
-  if(apolloEl2) apolloEl2.textContent = _apolloBaseTotal;
+  if(apolloEl2) apolloEl2.textContent = apolloCount;
   var taEl2 = document.getElementById('ic-k-tradeatlas');
-  if(taEl2) taEl2.textContent = _taBaseTotal;
+  if(taEl2) taEl2.textContent = tradeAtlasCount;
   // ═══ MARKAZLASHGAN STATISTIKA — barcha komponentlar shu yerdan o'qiydi ═══
   // SOURCE OF TRUTH: visibleGroups (jadvaldagi haqiqiy kompaniyalar)
   var statsByCountry = Object.create(null);
@@ -3145,14 +3146,14 @@ _renderInvestorCompaniesMain = function(){
     else statsBySource.other++;
   });
   // _icStats — markazlashgan source of truth
-  // Jami = source filter aktiv bo'lsa to'liq eksportyor jami (357), aks holda visible
-  var _jamiUnified = _sourceFilter ? _jamiBaseTotal : visibleGroups.length;
+  // Jami = source filter aktiv bo'lsa group-level total (groupCount), aks holda visible
+  var _jamiUnified = _sourceFilter ? groupCount : visibleGroups.length;
   window._icStats = {
     jami: _jamiUnified,                  // ✓ Jami — barcha joyda bir xil (KPI, sidebar, map, CRM)
     exporterTotalRaw: _exporterTotal,    // co dan hisoblangan raw (orphan synthetic'lar bilan)
     visibleTotal: visibleGroups.length,
-    apollo: _apolloBaseTotal,            // ✓ filtersiz to'liq son
-    tradeatlas: _taBaseTotal,            // ✓ filtersiz to'liq son
+    apollo: apolloCount,                 // ✓ group-level: importyor-only olib tashlangan
+    tradeatlas: tradeAtlasCount,         // ✓ group-level: importyor-only olib tashlangan
     apolloVisible: statsBySource.apollo, // visible (filterlangan) — kerak bo'lsa
     tradeatlasVisible: statsBySource.tradeatlas,
     other: statsBySource.other,
