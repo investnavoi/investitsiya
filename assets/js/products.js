@@ -980,13 +980,59 @@ function renderInvestorProductFilterPicker(){
       html += '</div></div>';
     });
     // ═══ Manual HS kodlari section ═══
-    // Faqat haqiqatan kompaniya mos keladigan HS kodlarni ko'rsatamiz (count > 0)
+    // Jadval bilan AYNAN MOS hisoblash: importyor record va group-importer bekor qilinadi
+    function _pickFirstRecRole(rec){
+      var mode = String(rec.finderMode || rec.role || '').toLowerCase();
+      if(mode === 'exporters' || mode === 'exporter') return 'exporter';
+      if(mode === 'importers' || mode === 'importer') return 'importer';
+      if(Array.isArray(rec._partners) && rec._partners.length){
+        var fp = rec._partners[0];
+        if(fp && fp.role === 'importer') return 'exporter';
+        if(fp && fp.role === 'exporter') return 'importer';
+      }
+      if(Array.isArray(rec._partnerOf) && rec._partnerOf.length){
+        var fr = rec._partnerOf[0];
+        if(fr && fr.role === 'exporter') return 'importer';
+        if(fr && fr.role === 'importer') return 'exporter';
+      }
+      return '';
+    }
+    function _recIsImporter(r){
+      var fm = String(r.finderMode || r.role || '').toLowerCase();
+      if(fm === 'importers' || fm === 'importer') return true;
+      if(fm === 'exporters' || fm === 'exporter') return false;
+      if(Array.isArray(r._partners) && r._partners.length){
+        var pr0 = String((r._partners[0] || {}).role || '').toLowerCase();
+        if(pr0 === 'importer') return false;
+        if(pr0 === 'exporter') return true;
+      }
+      if(Array.isArray(r._partnerOf) && r._partnerOf.length){
+        var po0 = String((r._partnerOf[0] || {}).role || '').toLowerCase();
+        if(po0 === 'exporter') return true;
+        if(po0 === 'importer') return false;
+      }
+      return false;
+    }
+    // Group → first record map (jadval _detectGroupRole bilan bir xil)
+    var _firstRecMap = Object.create(null);
+    investorCompanies.forEach(function(rec){
+      var key = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
+      if(!key) return;
+      if(!_firstRecMap[key]) _firstRecMap[key] = rec;
+    });
     var virtualHsWithCount = virtualHsProducts.map(function(p){
-      var c = 0;
+      var seenGroups = Object.create(null);
       investorCompanies.forEach(function(rec){
-        if(typeof investorCompanyMatchesProductFilter === 'function' && investorCompanyMatchesProductFilter(rec, p)) c++;
+        if(_recIsImporter(rec)) return;
+        var key = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
+        if(!key || seenGroups[key]) return;
+        var firstRec = _firstRecMap[key];
+        if(firstRec && _pickFirstRecRole(firstRec) === 'importer') return;
+        if(typeof investorCompanyMatchesProductFilter === 'function' && investorCompanyMatchesProductFilter(rec, p)){
+          seenGroups[key] = true;
+        }
       });
-      return { product: p, count: c };
+      return { product: p, count: Object.keys(seenGroups).length };
     }).filter(function(x){ return x.count > 0; });
     if(virtualHsWithCount.length){
       html += '<div class="csd-group csd-group-section" data-section="manual_hs">';
