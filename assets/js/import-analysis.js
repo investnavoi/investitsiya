@@ -1599,6 +1599,11 @@ async function runImportAnalysis(forceRefresh, sourceOverride){
     toast('Bu mahsulot uchun HS kod topilmadi','error');
     return;
   }
+  // TOTAL rejimida proxy 2024 uchun bo'sh natija qaytaradi — 2023'ga fallback (eng oxirgi to'liq yil)
+  if(hsCode === 'TOTAL'){
+    selectedYear = '2023';
+    toast('ℹ️ TOTAL rejimi: ma\'lumot 2023-yilga keltirildi (2024 hali yetilmagan)');
+  }
 
   // 1-qadam: Firebase kolleksiyasini yuklab, snapshot bor-yo'qligini tekshiramiz
   var _snapshotToast = toastLoading('⏳ Firebase ma\'lumot bazasi tekshirilmoqda...');
