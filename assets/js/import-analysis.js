@@ -3961,8 +3961,10 @@ async function analyzeInvestmentMaterial(){
     }
 
     renderInvestAiProgress(3, true);
-    if(notice) notice.style.display = 'block';
-    if(shouldMirrorInvestAiToProductPanel(material) && inlineNotice) inlineNotice.style.display = 'block';
+    // Excel notice (yuklab olish tugmasi bilan) faqat UN Comtrade ma'lumoti mavjud bo'lsa ko'rinadi
+    var _hasOfficialData = !!(_investAiTradeContext && _investAiTradeContext.officialDataAvailable);
+    if(notice) notice.style.display = _hasOfficialData ? 'block' : 'none';
+    if(shouldMirrorInvestAiToProductPanel(material) && inlineNotice) inlineNotice.style.display = _hasOfficialData ? 'block' : 'none';
     updateInvestAiOutputMeta(material, new Date().toISOString());
     saveInvestAiHistory(material, _investAiMarkdown, _investAiTradeContext);
     renderInvestAiHistory();
