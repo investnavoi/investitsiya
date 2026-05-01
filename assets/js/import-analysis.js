@@ -1544,11 +1544,29 @@ async function runImportAnalysis(forceRefresh, sourceOverride){
 
   var sel = getImportAnalysisProductSelect();
   var prodId = sel ? sel.value : '';
-  if(!prodId){ toast('Mahsulot tanlang','error'); return; }
+  var prod = null;
+  if(prodId){
+    prod = (DB.products||[]).find(function(p){ return String(p.id)===String(prodId); });
+  }
+  // Manual HS kod input — mahsulot tanlanmagan bo'lsa, manual HS bilan davom etamiz
+  if(!prod){
+    var manualEl = document.getElementById('finder-manual-hs');
+    var manualRaw = manualEl ? String(manualEl.value || '').trim() : '';
+    var manualHs = manualRaw.replace(/\D/g,'');
+    if(manualHs.length >= 2){
+      prod = {
+        id: 'manual-' + manualHs,
+        hs_code: manualHs,
+        name: 'HS ' + manualHs,
+        name_uz: 'HS ' + manualHs + ' (manual)',
+        name_en: 'HS ' + manualHs + ' (manual)',
+        raw_id: '',
+        raw_name: ''
+      };
+    }
+  }
+  if(!prod){ toast('Mahsulot tanlang yoki HS kodni yozing','error'); return; }
   if(!targetCountries.length){ toast('Kamida bitta maqsad davlat tanlang','error'); return; }
-
-  var prod = (DB.products||[]).find(function(p){ return String(p.id)===String(prodId); });
-  if(!prod){ toast('Mahsulot topilmadi','error'); return; }
 
   var resultsEl = document.getElementById('importResults');
   var emptyEl = document.getElementById('importEmpty');
