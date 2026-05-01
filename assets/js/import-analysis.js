@@ -219,12 +219,16 @@ async function fetchComtrade(hsCode, year, targetCountries, source){
       // Prefer comtrade code, then english name variants, then code
       return String((t && (t.comtrade || t.name_en || t.label_en || t.name || t.label || t.code)) || '').trim();
     }).filter(Boolean).join('|');
-    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countriesParam)+'&source='+encodeURIComponent(getImportAnalysisSourceKey(source))+'&flow='+encodeURIComponent(getImportAnalysisTradeFlowCode());
+    var url = COMTRADE_PROXY+'?hs='+encodeURIComponent(hsCode)+'&year='+(year||'2023')+'&countries='+encodeURIComponent(countriesParam)+'&source='+encodeURIComponent(getImportAnalysisSourceKey(source));
+    // Flow param — TOTAL rejimida flow yubormaymiz (proxy default'i ishlatiladi)
+    if(hsCode !== 'TOTAL'){
+      url += '&flow='+encodeURIComponent(getImportAnalysisTradeFlowCode());
+    }
     if(window._apiKeys && window._apiKeys.comtrade){
       url += '&key='+encodeURIComponent(window._apiKeys.comtrade);
     }
-    // Add source countries filter only in exporter mode
-    if(getImportAnalysisFinderMode() === 'exporters'){
+    // Add source countries filter only in exporter mode (manual TOTAL'da o'tkazib yuboramiz)
+    if(getImportAnalysisFinderMode() === 'exporters' && hsCode !== 'TOTAL'){
       try {
         var srcSel = getFinderSourceSelection();
         if(srcSel && srcSel.hasFilter && srcSel.effectiveCountries && srcSel.effectiveCountries.length){
@@ -232,10 +236,11 @@ async function fetchComtrade(hsCode, year, targetCountries, source){
         }
       } catch(selErr){ console.log('sourceSelection xato:', selErr.message); }
     }
+    console.log('[fetchComtrade] FULL URL:', url);
     var resp = await fetch(url);
     if(!resp.ok) throw new Error('Comtrade proxy: '+resp.status);
     var data = await resp.json();
-    console.log('[fetchComtrade] response:', data && data.countries ? data.countries.length+' countries' : 'no countries', 'url:', url.slice(0,120));
+    console.log('[fetchComtrade] response:', data && data.countries ? data.countries.length+' countries' : 'no countries', 'sample:', data && data.countries && data.countries[0]);
     if(data.countries && data.countries.length>0) return data.countries;
   } catch(e){ console.log('Comtrade API xato:', e.message, e.stack); }
   return null;
