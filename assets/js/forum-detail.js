@@ -3075,12 +3075,25 @@ _renderInvestorCompaniesMain = function(){
   if(ic2El) ic2El.innerHTML = vTayyor + ' <span class="kpi-unit">ta</span>';
   var ic3El = document.getElementById('ic-k3');
   if(ic3El) ic3El.innerHTML = vEmailSent + '/' + vHasEmail + ' <span class="kpi-unit">ta</span>';
-  // Apollo/TradeAtlas badge'lari — group-level role detection bilan filtersiz to'liq son
-  // (apolloCount/tradeAtlasCount = importyor-only group'lar olib tashlangan, jadvaldagi soniga to'liq mos)
+  // Apollo/TradeAtlas badge'lari — group-level role bilan, hasGeo SHARTSIZ
+  // (jadvaldagi son bilan mos: source filter qo'llaganda visible == badge)
+  var _apolloFullGroups = Object.create(null);
+  var _taFullGroups = Object.create(null);
+  allCo.forEach(function(rec){
+    var key = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
+    if(!key) return;
+    var role = groupRoles[key];
+    if(role && role.hasImporter && !role.hasExporter) return; // importer-only group
+    var src = String(rec.manba || rec.source || '').toLowerCase().trim();
+    if(src.indexOf('apollo') !== -1 || src === 'csv-import' || src === 'finder') _apolloFullGroups[key] = true;
+    if(src.indexOf('tradeatlas') !== -1 || src.indexOf('trade atlas') !== -1 || src === 'trade' || src === 'ta') _taFullGroups[key] = true;
+  });
+  var _apolloFullTotal = Object.keys(_apolloFullGroups).length;
+  var _taFullTotal = Object.keys(_taFullGroups).length;
   var apolloEl2 = document.getElementById('ic-k-apollo');
-  if(apolloEl2) apolloEl2.textContent = apolloCount;
+  if(apolloEl2) apolloEl2.textContent = _apolloFullTotal;
   var taEl2 = document.getElementById('ic-k-tradeatlas');
-  if(taEl2) taEl2.textContent = tradeAtlasCount;
+  if(taEl2) taEl2.textContent = _taFullTotal;
   // ═══ MARKAZLASHGAN STATISTIKA — barcha komponentlar shu yerdan o'qiydi ═══
   // SOURCE OF TRUTH: visibleGroups (jadvaldagi haqiqiy kompaniyalar)
   var statsByCountry = Object.create(null);
@@ -3152,8 +3165,8 @@ _renderInvestorCompaniesMain = function(){
     jami: _jamiUnified,                  // ✓ Jami — barcha joyda bir xil (KPI, sidebar, map, CRM)
     exporterTotalRaw: _exporterTotal,    // co dan hisoblangan raw (orphan synthetic'lar bilan)
     visibleTotal: visibleGroups.length,
-    apollo: apolloCount,                 // ✓ group-level: importyor-only olib tashlangan
-    tradeatlas: tradeAtlasCount,         // ✓ group-level: importyor-only olib tashlangan
+    apollo: _apolloFullTotal,            // ✓ group-level + hasGeo SHARTSIZ
+    tradeatlas: _taFullTotal,            // ✓ group-level + hasGeo SHARTSIZ
     apolloVisible: statsBySource.apollo, // visible (filterlangan) — kerak bo'lsa
     tradeatlasVisible: statsBySource.tradeatlas,
     other: statsBySource.other,
