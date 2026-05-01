@@ -2252,12 +2252,30 @@ async function saveInvestorSohaEdit(id){
   if(!rec) return;
   var inp = document.getElementById('investor-soha-input-' + id);
   var value = String((inp && inp.value) || '').trim();
-  rec.soha = value;
-  rec.mahsulotNomi = value;
-  if(typeof fbSave === 'function') await fbSave('investorCompanies', rec);
+  // Manual HS guruh — bir xil HS kodli barcha recordlarga tarqatish
+  var editedHs = String(rec.mahsulotHs || rec.hsCode || '').replace(/\D/g,'');
+  var groupRecs = [];
+  if(editedHs){
+    groupRecs = (DB.investorCompanies || []).filter(function(r){
+      var rh = String(r.mahsulotHs || r.hsCode || '').replace(/\D/g,'');
+      return rh && rh === editedHs;
+    });
+  }
+  if(!groupRecs.length) groupRecs = [rec];
+  groupRecs.forEach(function(r){
+    r.soha = value;
+    r.mahsulotNomi = value;
+  });
+  if(typeof fbSave === 'function'){
+    await Promise.all(groupRecs.map(function(r){ return fbSave('investorCompanies', r); }));
+  }
   _investorSohaEditId = '';
   renderInvestorCompanies();
-  toast('✅ Soha yangilandi');
+  if(groupRecs.length > 1){
+    toast('✅ Soha yangilandi — ' + groupRecs.length + ' ta kompaniyaga tarqatildi (HS ' + editedHs + ')');
+  } else {
+    toast('✅ Soha yangilandi');
+  }
 }
 window.saveInvestorSohaEdit = saveInvestorSohaEdit;
 
