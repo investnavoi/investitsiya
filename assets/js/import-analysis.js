@@ -230,15 +230,15 @@ async function fetchComtrade(hsCode, year, targetCountries, source){
     if(window._apiKeys && window._apiKeys.comtrade){
       url += '&key='+encodeURIComponent(window._apiKeys.comtrade);
     }
-    // Add source countries filter only in exporter mode (manual TOTAL'da o'tkazib yuboramiz)
-    if(getImportAnalysisFinderMode() === 'exporters' && hsCode !== 'TOTAL'){
-      try {
-        var srcSel = getFinderSourceSelection();
-        if(srcSel && srcSel.hasFilter && srcSel.effectiveCountries && srcSel.effectiveCountries.length){
-          url += '&sourceCountries='+encodeURIComponent(srcSel.effectiveCountries.join('|'));
-        }
-      } catch(selErr){ console.log('sourceSelection xato:', selErr.message); }
-    }
+    // Partner filter — tanlangan eksportyor davlat(lar) UN Comtrade'da partner sifatida filtrlanadi
+    // Barcha rejimlar (TOTAL, manual HS, mahsulot HS) uchun ishlaydi
+    try {
+      var srcSel = getFinderSourceSelection();
+      if(srcSel && srcSel.hasFilter && srcSel.effectiveCountries && srcSel.effectiveCountries.length){
+        var partnerEncoded = srcSel.effectiveCountries.map(function(n){ return encodeURIComponent(n); }).join('|');
+        url += '&partner='+partnerEncoded;
+      }
+    } catch(selErr){ console.log('sourceSelection xato:', selErr.message); }
     console.log('[fetchComtrade] FULL URL:', url);
     var resp = await fetch(url);
     if(!resp.ok) throw new Error('Comtrade proxy: '+resp.status);
