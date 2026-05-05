@@ -1394,6 +1394,7 @@ function showTradePartnerCountries(){
   filterTradePartnerCountries();
 }
 
+var _tradePartnerOpenGroups = {};
 function filterTradePartnerCountries(){
   var inSearch = document.getElementById('trade-partner-inner-search');
   var extSearch = document.getElementById('trade-partner-search');
@@ -1402,67 +1403,183 @@ function filterTradePartnerCountries(){
   if(!el) return;
 
   var primaryCode = (document.getElementById('trade-country')||{}).value || '';
-  var filtered = (typeof TRADE_COUNTRIES !== 'undefined' ? TRADE_COUNTRIES : []).filter(function(c){
-    if(c.c === primaryCode) return false;
-    if(!q) return true;
+  var allList = (typeof TRADE_COUNTRIES !== 'undefined' ? TRADE_COUNTRIES : []).filter(function(c){
+    return c.c !== primaryCode;
+  });
+  var filtered = q.length > 0 ? allList.filter(function(c){
     var name = c.n.slice(c.n.indexOf(' ')+1).toLowerCase();
     return name.indexOf(q) !== -1 || c.g.toLowerCase().indexOf(q) !== -1 || c.c.indexOf(q) !== -1;
+  }) : allList;
+
+  var groups = {};
+  var groupOrder = [];
+  filtered.forEach(function(c){
+    var cont = _tradeRegionToContinent(c.g);
+    if(!groups[cont]){ groups[cont] = []; groupOrder.push(cont); }
+    groups[cont].push(c);
+  });
+  var preferredOrder = ['Osiyo','Yevropa','Shimoliy Amerika','Janubiy Amerika','Afrika','Okeaniya'];
+  groupOrder.sort(function(a,b){
+    var ai = preferredOrder.indexOf(a), bi = preferredOrder.indexOf(b);
+    if(ai === -1) ai = 99; if(bi === -1) bi = 99;
+    return ai - bi;
+  });
+
+  var totalGroups = {};
+  allList.forEach(function(c){
+    var cont = _tradeRegionToContinent(c.g);
+    totalGroups[cont] = (totalGroups[cont]||0) + 1;
   });
 
   var selectedCode = (document.getElementById('trade-partner-country')||{}).value || '';
 
-  var html = ''+
+  var searchHtml =
     '<div style="padding:10px 14px 6px">'+
       '<div style="position:relative">'+
-        '<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF">'+
+        '<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;display:flex;align-items:center">'+
           '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>'+
         '</span>'+
-        '<input id="trade-partner-inner-search" type="text" placeholder="Hamkor davlat qidirish..." value="'+(q ? q.replace(/"/g,'&quot;') : '')+'" oninput="filterTradePartnerCountries()" autocomplete="off" '+
+        '<input id="trade-partner-inner-search" type="text" placeholder="Importyor davlat qidirish..." value="'+(q ? q.replace(/"/g,'&quot;') : '')+'" oninput="filterTradePartnerCountries()" autocomplete="off" '+
           'style="border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;padding:8px 10px 8px 30px;font-size:.78rem;width:100%;outline:none;color:#14233F;font-family:Inter,sans-serif">'+
       '</div>'+
     '</div>';
 
   if(!filtered.length){
-    html += '<div style="padding:12px;text-align:center;color:#9CA3AF;font-size:.75rem">Topilmadi</div>';
-    el.innerHTML = html;
+    el.innerHTML = searchHtml + '<div style="padding:12px;text-align:center;color:#9CA3AF;font-size:.75rem">Topilmadi</div>';
     var inp1 = document.getElementById('trade-partner-inner-search');
-    if(inp1){ inp1.focus(); }
+    if(inp1){ inp1.focus(); var L = inp1.value.length; try{ inp1.setSelectionRange(L,L); } catch(_e){} }
     return;
   }
 
-  html += '<div style="padding:4px 10px 10px;display:flex;flex-wrap:wrap;gap:4px">';
-  filtered.forEach(function(c){
-    var cleanName = c.n.slice(c.n.indexOf(' ')+1);
-    var sel = (selectedCode === c.c);
-    html += '<div onclick="event.stopPropagation();selectTradePartnerCountry(\''+c.c+'\',\''+cleanName.replace(/'/g,"\\'")+'\')" '+
-      'style="display:inline-flex;align-items:center;gap:3px;padding:4px 9px;cursor:pointer;font-size:.7rem;color:#344054;background:'+(sel?'rgba(16,185,129,.15)':'#F9FAFB')+';border-radius:6px;border:1px solid '+(sel?'rgba(16,185,129,.4)':'#E5E7EB')+';font-weight:500" '+
-      'onmouseenter="this.style.background=\'rgba(16,185,129,.1)\'" onmouseleave="this.style.background=\''+(sel?'rgba(16,185,129,.15)':'#F9FAFB')+'\'">'+cleanName+'</div>';
+  var listHtml = '<div style="padding:4px 14px 10px;display:flex;flex-direction:column;gap:1px">';
+  groupOrder.forEach(function(gName){
+    var arr = groups[gName];
+    var totalInGroup = totalGroups[gName] || arr.length;
+    var isOpen = !!_tradePartnerOpenGroups[gName] || q.length > 0;
+    var hasSelected = arr.some(function(c){ return c.c === selectedCode; });
+    listHtml +=
+      '<div style="border-top:1px solid #F3F4F6">'+
+        '<div onclick="event.stopPropagation();toggleTradePartnerGroup(\''+gName.replace(/'/g,"\\'")+'\')" '+
+          'style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;cursor:pointer;border-radius:8px;transition:background .15s" '+
+          'onmouseenter="this.style.background=\'#F9FAFB\'" onmouseleave="this.style.background=\'transparent\'">'+
+          '<span style="display:flex;align-items:center;gap:10px">'+
+            '<span style="width:15px;height:15px;border-radius:4px;border:1.5px solid '+(hasSelected?'#10b981':'#D1D5DB')+';background:'+(hasSelected?'#10b981':'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
+              (hasSelected ? '<span style="color:#fff;font-size:9px;font-weight:700">✓</span>' : '')+
+            '</span>'+
+            '<span style="font-size:.78rem;font-weight:500;color:#344054">'+gName+'</span>'+
+          '</span>'+
+          '<span style="display:flex;align-items:center;gap:6px">'+
+            '<span style="font-size:.65rem;font-weight:600;background:#ECFDF5;color:#10b981;padding:2px 7px;border-radius:5px;min-width:36px;text-align:center">'+(hasSelected?1:0)+'/'+totalInGroup+'</span>'+
+            '<span style="color:#9CA3AF;transition:transform .2s;transform:rotate('+(isOpen?'90':'0')+'deg);display:flex;align-items:center">'+
+              '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>'+
+            '</span>'+
+          '</span>'+
+        '</div>';
+    if(isOpen){
+      listHtml += '<div style="padding:4px 10px 8px;display:flex;flex-wrap:wrap;gap:.25rem">';
+      arr.forEach(function(c){
+        var cleanName = c.n.slice(c.n.indexOf(' ')+1);
+        var sel = (selectedCode === c.c);
+        listHtml += '<div onclick="event.stopPropagation();selectTradePartnerCountry(\''+c.c+'\',\''+cleanName.replace(/'/g,"\\'")+'\')" '+
+          'style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;cursor:pointer;font-size:.68rem;color:#344054;background:'+(sel?'rgba(16,185,129,.12)':'#F9FAFB')+';border-radius:6px;border:1px solid '+(sel?'rgba(16,185,129,.4)':'#E5E7EB')+';font-weight:500;transition:all .15s" '+
+          'onmouseenter="this.style.background=\'rgba(16,185,129,.08)\'" onmouseleave="this.style.background=\''+(sel?'rgba(16,185,129,.12)':'#F9FAFB')+'\'">'+cleanName+'</div>';
+      });
+      listHtml += '</div>';
+    }
+    listHtml += '</div>';
   });
-  html += '</div>';
-  el.innerHTML = html;
+  listHtml += '</div>';
+  el.innerHTML = searchHtml + listHtml;
   var inp = document.getElementById('trade-partner-inner-search');
   if(inp){ inp.focus(); var len = inp.value.length; try{ inp.setSelectionRange(len, len); }catch(_e){} }
+}
+
+function toggleTradePartnerGroup(name){
+  _tradePartnerOpenGroups[name] = !_tradePartnerOpenGroups[name];
+  filterTradePartnerCountries();
 }
 
 function selectTradePartnerCountry(code, name){
   document.getElementById('trade-partner-country').value = code;
   var label = document.getElementById('trade-partner-label');
-  label.textContent = '🤝 ' + name;
+  label.textContent = '📥 ' + name;
   label.style.color = 'var(--text)';
   var clr = document.getElementById('trade-partner-clear');
   if(clr) clr.style.display = 'inline-flex';
   document.getElementById('trade-partner-list').style.display = 'none';
   document.getElementById('trade-partner-search').style.color = 'transparent';
+  _updateTradeFlowVisibility();
 }
 
 function clearTradePartnerCountry(){
   document.getElementById('trade-partner-country').value = '';
   var label = document.getElementById('trade-partner-label');
-  label.textContent = '🔍 Hamkor davlat (ixtiyoriy)';
+  label.textContent = '🔍 Importyor davlat tanlang (ixtiyoriy)';
   label.style.color = 'var(--text3)';
   var clr = document.getElementById('trade-partner-clear');
   if(clr) clr.style.display = 'none';
   document.getElementById('trade-partner-list').style.display = 'none';
+  _updateTradeFlowVisibility();
+}
+
+// Yo'nalish dropdown — ikki davlat tanlanganda yashirinadi
+// (yo'nalish aniq: Eksportyor → Importyor = har doim X (eksport))
+function _updateTradeFlowVisibility(){
+  var primary = (document.getElementById('trade-country')||{}).value || '';
+  var partner = (document.getElementById('trade-partner-country')||{}).value || '';
+  var flowGroup = document.getElementById('trade-flow-group');
+  var flowSel = document.getElementById('trade-flow');
+  if(!flowGroup || !flowSel) return;
+  if(primary && partner){
+    flowGroup.style.display = 'none';
+    flowSel.value = 'X'; // Eksportyor → Importyor = eksport
+  } else {
+    flowGroup.style.display = '';
+  }
+}
+
+// Davlat kodi orqali toza nom (emoji/bayroqsiz) topish
+function _getTradeCountryNameByCode(code){
+  if(!code) return '';
+  var list = (typeof TRADE_COUNTRIES !== 'undefined') ? TRADE_COUNTRIES : [];
+  for(var i = 0; i < list.length; i++){
+    if(list[i].c === code){
+      var n = String(list[i].n || '');
+      // "🇰🇷 South Korea" → "South Korea" (birinchi probelgacha bayroq olib tashlanadi)
+      var spaceIdx = n.indexOf(' ');
+      return spaceIdx > -1 ? n.slice(spaceIdx + 1) : n;
+    }
+  }
+  return '';
+}
+
+// Eksportyor va importyor davlatlarni almashtirish
+function swapTradeCountries(){
+  var primaryCode = (document.getElementById('trade-country')||{}).value || '';
+  var partnerCode = (document.getElementById('trade-partner-country')||{}).value || '';
+  if(!primaryCode && !partnerCode){
+    if(typeof toast === 'function') toast('Avval davlat tanlang','error');
+    return;
+  }
+  // Toza nomlarni KOD orqali olish (regex emoji'ni kesishda buzilmaydi)
+  var primaryName = _getTradeCountryNameByCode(primaryCode);
+  var partnerName = _getTradeCountryNameByCode(partnerCode);
+
+  if(primaryCode && !partnerCode){
+    // primary -> partner
+    if(typeof selectTradePartnerCountry === 'function') selectTradePartnerCountry(primaryCode, primaryName);
+    if(typeof setTradeCountrySelection === 'function') setTradeCountrySelection('', '');
+  } else if(!primaryCode && partnerCode){
+    // partner -> primary
+    if(typeof setTradeCountrySelection === 'function') setTradeCountrySelection(partnerCode, partnerName);
+    if(typeof clearTradePartnerCountry === 'function') clearTradePartnerCountry();
+  } else {
+    // Ikkalasi bor — joyini almashtiramiz
+    if(typeof setTradeCountrySelection === 'function') setTradeCountrySelection(partnerCode, partnerName);
+    if(typeof selectTradePartnerCountry === 'function') selectTradePartnerCountry(primaryCode, primaryName);
+  }
+  _updateTradeFlowVisibility();
+  if(typeof toast === 'function') toast('🔄 Davlatlar almashtirildi','info');
 }
 
 // Tashqarida bosilganda partner dropdown yopiladi
@@ -1590,10 +1707,11 @@ function setTradeCountrySelection(code, name){
     searchEl.style.color = 'transparent';
   }
   if(labelEl){
-    labelEl.textContent = name||'🔍 Davlat tanlang...';
+    labelEl.textContent = name ? ('📤 ' + name) : '🔍 Eksportyor davlat tanlang...';
     labelEl.style.color = name ? 'var(--text)' : 'var(--text3)';
   }
   if(listEl) listEl.style.display = 'none';
+  if(typeof _updateTradeFlowVisibility === 'function') _updateTradeFlowVisibility();
 }
 
 function buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter){
