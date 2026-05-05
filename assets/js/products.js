@@ -1384,6 +1384,107 @@ function selectTradeCountry(code, name){
   if(typeof onTradeCountryChange === 'function') onTradeCountryChange();
 }
 
+// ═══════ Partner (hamkor davlat) — ikkinchi davlat tanlovi ═══════
+function showTradePartnerCountries(){
+  var el = document.getElementById('trade-partner-list');
+  if(!el) return;
+  el.style.display = 'block';
+  document.getElementById('trade-partner-search').style.color = 'transparent';
+  document.getElementById('trade-partner-label').textContent = '';
+  filterTradePartnerCountries();
+}
+
+function filterTradePartnerCountries(){
+  var inSearch = document.getElementById('trade-partner-inner-search');
+  var extSearch = document.getElementById('trade-partner-search');
+  var q = inSearch ? (inSearch.value||'').toLowerCase().trim() : (extSearch ? (extSearch.value||'').toLowerCase().trim() : '');
+  var el = document.getElementById('trade-partner-list');
+  if(!el) return;
+
+  var primaryCode = (document.getElementById('trade-country')||{}).value || '';
+  var filtered = (typeof TRADE_COUNTRIES !== 'undefined' ? TRADE_COUNTRIES : []).filter(function(c){
+    if(c.c === primaryCode) return false;
+    if(!q) return true;
+    var name = c.n.slice(c.n.indexOf(' ')+1).toLowerCase();
+    return name.indexOf(q) !== -1 || c.g.toLowerCase().indexOf(q) !== -1 || c.c.indexOf(q) !== -1;
+  });
+
+  var selectedCode = (document.getElementById('trade-partner-country')||{}).value || '';
+
+  var html = ''+
+    '<div style="padding:10px 14px 6px">'+
+      '<div style="position:relative">'+
+        '<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF">'+
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>'+
+        '</span>'+
+        '<input id="trade-partner-inner-search" type="text" placeholder="Hamkor davlat qidirish..." value="'+(q ? q.replace(/"/g,'&quot;') : '')+'" oninput="filterTradePartnerCountries()" autocomplete="off" '+
+          'style="border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;padding:8px 10px 8px 30px;font-size:.78rem;width:100%;outline:none;color:#14233F;font-family:Inter,sans-serif">'+
+      '</div>'+
+    '</div>';
+
+  if(!filtered.length){
+    html += '<div style="padding:12px;text-align:center;color:#9CA3AF;font-size:.75rem">Topilmadi</div>';
+    el.innerHTML = html;
+    var inp1 = document.getElementById('trade-partner-inner-search');
+    if(inp1){ inp1.focus(); }
+    return;
+  }
+
+  html += '<div style="padding:4px 10px 10px;display:flex;flex-wrap:wrap;gap:4px">';
+  filtered.forEach(function(c){
+    var cleanName = c.n.slice(c.n.indexOf(' ')+1);
+    var sel = (selectedCode === c.c);
+    html += '<div onclick="event.stopPropagation();selectTradePartnerCountry(\''+c.c+'\',\''+cleanName.replace(/'/g,"\\'")+'\')" '+
+      'style="display:inline-flex;align-items:center;gap:3px;padding:4px 9px;cursor:pointer;font-size:.7rem;color:#344054;background:'+(sel?'rgba(16,185,129,.15)':'#F9FAFB')+';border-radius:6px;border:1px solid '+(sel?'rgba(16,185,129,.4)':'#E5E7EB')+';font-weight:500" '+
+      'onmouseenter="this.style.background=\'rgba(16,185,129,.1)\'" onmouseleave="this.style.background=\''+(sel?'rgba(16,185,129,.15)':'#F9FAFB')+'\'">'+cleanName+'</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+  var inp = document.getElementById('trade-partner-inner-search');
+  if(inp){ inp.focus(); var len = inp.value.length; try{ inp.setSelectionRange(len, len); }catch(_e){} }
+}
+
+function selectTradePartnerCountry(code, name){
+  document.getElementById('trade-partner-country').value = code;
+  var label = document.getElementById('trade-partner-label');
+  label.textContent = '🤝 ' + name;
+  label.style.color = 'var(--text)';
+  var clr = document.getElementById('trade-partner-clear');
+  if(clr) clr.style.display = 'inline-flex';
+  document.getElementById('trade-partner-list').style.display = 'none';
+  document.getElementById('trade-partner-search').style.color = 'transparent';
+}
+
+function clearTradePartnerCountry(){
+  document.getElementById('trade-partner-country').value = '';
+  var label = document.getElementById('trade-partner-label');
+  label.textContent = '🔍 Hamkor davlat (ixtiyoriy)';
+  label.style.color = 'var(--text3)';
+  var clr = document.getElementById('trade-partner-clear');
+  if(clr) clr.style.display = 'none';
+  document.getElementById('trade-partner-list').style.display = 'none';
+}
+
+// Tashqarida bosilganda partner dropdown yopiladi
+document.addEventListener('click', function(e){
+  var wrap = document.getElementById('trade-partner-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    var list = document.getElementById('trade-partner-list');
+    if(list) list.style.display = 'none';
+    var inp = document.getElementById('trade-partner-search');
+    var label = document.getElementById('trade-partner-label');
+    if(inp && label){
+      if(document.getElementById('trade-partner-country').value){
+        label.style.color = 'var(--text)';
+      } else {
+        label.textContent = '🔍 Hamkor davlat (ixtiyoriy)';
+        label.style.color = 'var(--text3)';
+      }
+      inp.style.color = 'transparent';
+    }
+  }
+});
+
 // Click tashqarida yopish
 document.addEventListener('click', function(e){
   var wrap = document.getElementById('trade-country-wrap');
@@ -2020,10 +2121,20 @@ async function loadGlobalTradeData(){
   var hsLevel = document.getElementById('trade-hs-level').value;
   var hsFilter = (document.getElementById('trade-hs-filter').value||'').trim().replace(/\s+/g,'');
   var countryName = document.getElementById('trade-country-search').value;
+  // Hamkor davlat (partner) — bo'sh bo'lsa World (0)
+  var partnerEl = document.getElementById('trade-partner-country');
+  var partnerCode = partnerEl ? (partnerEl.value || '').trim() : '';
+  var partnerLabelEl = document.getElementById('trade-partner-label');
+  var partnerName = '';
+  if(partnerCode && partnerLabelEl){
+    partnerName = String(partnerLabelEl.textContent || '').replace(/^🤝\s*/, '').trim();
+  }
+  // Partner tanlangan bo'lsa — mahsulot bo'yicha breakdown (AG6) majburiy
+  if(partnerCode && hsLevel === 'all'){ hsLevel = '6'; }
   var flowName = flow==='M'?'Import':'Export';
 
-  // Check cache
-  var cacheKey = countryCode+'_'+year+'_'+flow+'_'+hsLevel+'_'+(hsFilter||'all');
+  // Check cache (partner ham kalitga kiritildi)
+  var cacheKey = countryCode+'_'+(partnerCode||'world')+'_'+year+'_'+flow+'_'+hsLevel+'_'+(hsFilter||'all');
   if(_tradeCache[cacheKey]){
     _tradeData = _tradeCache[cacheKey].data||[];
     _tradeSource = _tradeCache[cacheKey].source||'';
@@ -2088,7 +2199,9 @@ async function loadGlobalTradeData(){
     // ═══ SOURCE 1: UN Comtrade (Netlify proxy) ═══
     document.getElementById('tradeLoadingText').textContent = '🌐 UN Comtrade orqali...';
     try {
-      var r1 = await fetch(BASE+'/api/trade?reporter='+encodeURIComponent(countryCode)+'&year='+encodeURIComponent(year)+'&flow='+encodeURIComponent(flow)+'&level='+encodeURIComponent(hsLevel)+(hsFilter?'&hs='+encodeURIComponent(hsFilter):'')+(comtradeKey?'&key='+encodeURIComponent(comtradeKey):''));
+      var _tradeUrl = BASE+'/api/trade?reporter='+encodeURIComponent(countryCode)+'&year='+encodeURIComponent(year)+'&flow='+encodeURIComponent(flow)+'&level='+encodeURIComponent(hsLevel)+(hsFilter?'&hs='+encodeURIComponent(hsFilter):'')+(partnerCode?'&partner='+encodeURIComponent(partnerCode):'')+(comtradeKey?'&key='+encodeURIComponent(comtradeKey):'');
+      console.log('[loadGlobalTradeData] fetch URL:', _tradeUrl);
+      var r1 = await fetch(_tradeUrl);
       if(r1.ok){
         var j1 = await r1.json();
         if((j1.data||[]).length > 0 || Number(j1.total_value||0) > 0){
@@ -2199,7 +2312,11 @@ async function loadGlobalTradeData(){
       if(!_tradeData.length) throw new Error('Bu davlat uchun '+year+'-yil '+flowName+' ma\'lumoti topilmadi');
     }
 
-    renderTradeResults(countryName, flowName, year, hsFilter);
+    // Partner tanlangan bo'lsa, mamlakat nomiga "→ Hamkor" qo'shiladi (faqat ko'rinish uchun)
+    var renderCountryName = partnerCode && partnerName
+      ? countryName + ' ↔ ' + partnerName
+      : countryName;
+    renderTradeResults(renderCountryName, flowName, year, hsFilter);
     saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter);
 
   } catch(e){

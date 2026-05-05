@@ -2698,6 +2698,17 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
             <div id="trade-country-list" onclick="event.stopPropagation()" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:380px;overflow-y:auto;background:#fff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:999;margin-top:2px"></div>
           </div>
         </div>
+        <div class="form-group" style="flex:1;min-width:200px">
+          <label class="form-label">🤝 Hamkor davlat <span style="font-size:.65rem;color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
+          <div style="position:relative" id="trade-partner-wrap">
+            <input class="form-input" id="trade-partner-search" type="text" placeholder="" autocomplete="off"
+              style="font-size:.75rem;color:transparent;caret-color:var(--text);padding-right:30px" oninput="filterTradePartnerCountries()" onfocus="this.style.color='transparent';this.value='';showTradePartnerCountries()" onclick="this.value='';showTradePartnerCountries()">
+            <div id="trade-partner-label" style="position:absolute;top:50%;left:12px;transform:translateY(-50%);font-size:.75rem;color:var(--text3);pointer-events:none">🔍 Hamkor davlat (ixtiyoriy)</div>
+            <input type="hidden" id="trade-partner-country" value="">
+            <button type="button" id="trade-partner-clear" onclick="event.stopPropagation();clearTradePartnerCountry()" style="display:none;position:absolute;top:50%;right:8px;transform:translateY(-50%);background:#EF4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.7rem;cursor:pointer;line-height:1;padding:0" title="Tozalash">×</button>
+            <div id="trade-partner-list" onclick="event.stopPropagation()" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:380px;overflow-y:auto;background:#fff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:999;margin-top:2px"></div>
+          </div>
+        </div>
         <div class="form-group" style="flex:0 0 110px">
           <label class="form-label">📅 Yil</label>
           <select class="form-input" id="trade-year">
