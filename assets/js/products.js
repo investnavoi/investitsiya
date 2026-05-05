@@ -1761,10 +1761,36 @@ function normalizeTradeRows(rows){
 
 function buildNavoiProductRows(){
   var raws = DB.rawMaterials || [];
+  var products = DB.products || [];
   var tradeRows = _tradeData || [];
   var grouped = {};
-  (DB.products||[]).forEach(function(p){
-    var navoiHs = String(p.hs_code||'').replace(/\s+/g,'');
+
+  // Birlashgan moslashtirish hovuzi: xomashyolar (47) + mahsulotlar (455)
+  // Har bir element: { hs_code, name, type: 'raw'|'product', sector, raw_id }
+  var pool = [];
+  raws.forEach(function(r){
+    if(!r || !r.hs_code) return;
+    pool.push({
+      hs_code: String(r.hs_code).replace(/\s+/g,''),
+      name: r.name_uz || r.name_en || '—',
+      type: 'raw',
+      sector: r.main_sector || r.sector || 'Xomashyo',
+      raw_id: r.id
+    });
+  });
+  products.forEach(function(p){
+    if(!p || !p.hs_code) return;
+    pool.push({
+      hs_code: String(p.hs_code).replace(/\s+/g,''),
+      name: p.name_uz || p.name_en || '—',
+      type: 'product',
+      sector: p.main_sector || p.usage || 'Mahsulot',
+      raw_id: p.raw_id
+    });
+  });
+
+  pool.forEach(function(item){
+    var navoiHs = item.hs_code;
     if(!navoiHs) return;
     var navoiHs4 = navoiHs.slice(0,4);
     var matchedTrade = tradeRows.find(function(t){
@@ -1774,26 +1800,28 @@ function buildNavoiProductRows(){
       return tradeHs === navoiHs || tradeHs.indexOf(navoiHs)===0 || navoiHs.indexOf(tradeHs)===0 || (navoiHs4 && tradeHs4 && navoiHs4 === tradeHs4);
     });
     if(!matchedTrade) return;
-    var raw = raws.find(function(r){ return String(r.id) === String(p.raw_id); });
     var tradeHs = String(matchedTrade.hsCode || navoiHs).replace(/\s+/g,'');
     var key = tradeHs || navoiHs;
     if(!grouped[key]){
       grouped[key] = {
         hsCode: tradeHs || navoiHs,
-        description: matchedTrade.description || p.name_uz || p.name_en || '—',
+        description: matchedTrade.description || item.name || '—',
         value: Number(matchedTrade.value||0),
         weight: Number(matchedTrade.weight||0),
         navoiNames: [],
         notes: [],
         tags: [],
+        types: [],
         source: 'Navoi'
       };
     }
-    var navoiName = p.name_uz || p.name_en || '—';
-    var tag = p.main_sector || p.usage || p.price || 'Navoiy mahsuloti';
-    if(grouped[key].navoiNames.indexOf(navoiName) === -1) grouped[key].navoiNames.push(navoiName);
+    if(grouped[key].navoiNames.indexOf(item.name) === -1) grouped[key].navoiNames.push(item.name);
+    var tagPrefix = item.type === 'raw' ? '🪨 ' : '';
+    var tag = tagPrefix + (item.sector || (item.type === 'raw' ? 'Xomashyo' : 'Mahsulot'));
     if(grouped[key].tags.indexOf(tag) === -1) grouped[key].tags.push(tag);
+    if(grouped[key].types.indexOf(item.type) === -1) grouped[key].types.push(item.type);
   });
+
   return Object.keys(grouped).map(function(key){
     var row = grouped[key];
     row.navoiName = row.navoiNames[0] || 'Mavjud';
