@@ -1343,6 +1343,150 @@ async function tradeAtlasRequestJson(payload){
   return data || {};
 }
 
+// ═══ ShipmentResponse[] → Firm aggregat ═══
+// TradeAtlas Swagger v1 spec: /shipments/search xom shipment yozuvlari qaytaradi.
+// Bizga firma kartochkalari kerak — shu sabab biz shu yerda group qilamiz.
+function _aggregateShipmentsToFirms(shipments, mode){
+  var groups = {};
+  var emptyMark = function(v){ return v && String(v).trim() && String(v).trim() !== '.'; };
+  (shipments || []).forEach(function(s){
+    if(!s || typeof s !== 'object') return;
+    var name, country, countryCode, address, cityState, email, tel, web, linkedin, fax, taxId, companyTypeCode, facebook, twitter, instagram;
+    var counterName, counterCountry, counterCountryCode, counterEmail, counterTel, counterWeb, counterLinkedin, counterCity;
+    if(mode === 'importers'){
+      // Importyor firmalarni topamiz (ular natijada ko'rinadi)
+      name = s.importerName; country = s.importerCountry; countryCode = s.importerCountryCode;
+      address = s.importerAddress; cityState = s.importerCityState;
+      email = s.importerEmail; tel = s.importerTel; web = s.importerWeb;
+      linkedin = s.importerLinkedin; fax = s.importerFax; taxId = s.importerTaxId;
+      companyTypeCode = s.importerCompanyTypeCode; facebook = s.importerFacebook;
+      twitter = s.importerTwitter; instagram = s.importerInstagram;
+      // Counterpart eksportyor
+      counterName = s.exporterName; counterCountry = s.exporterCountry; counterCountryCode = s.exporterCountryCode;
+      counterEmail = s.exporterEmail; counterTel = s.exporterTel; counterWeb = s.exporterWeb;
+      counterLinkedin = s.exporterLinkedin; counterCity = s.exporterCityState;
+    } else {
+      name = s.exporterName; country = s.exporterCountry; countryCode = s.exporterCountryCode;
+      address = s.exporterAddress; cityState = s.exporterCityState;
+      email = s.exporterEmail; tel = s.exporterTel; web = s.exporterWeb;
+      linkedin = s.exporterLinkedin; fax = s.exporterFax; taxId = s.exporterTaxId;
+      companyTypeCode = s.exporterCompanyTypeCode; facebook = s.exporterFacebook;
+      twitter = s.exporterTwitter; instagram = s.exporterInstagram;
+      counterName = s.importerName; counterCountry = s.importerCountry; counterCountryCode = s.importerCountryCode;
+      counterEmail = s.importerEmail; counterTel = s.importerTel; counterWeb = s.importerWeb;
+      counterLinkedin = s.importerLinkedin; counterCity = s.importerCityState;
+    }
+    if(!emptyMark(name)) return;
+    var key = String(name).trim().toLowerCase() + '|' + String(countryCode||'').toLowerCase();
+    if(!groups[key]){
+      groups[key] = {
+        firm_name: name, firm_country: country || '', firm_country_code: countryCode || '',
+        firm_address: emptyMark(address) ? address : '', city_state: emptyMark(cityState) ? cityState : '',
+        e_mail: emptyMark(email) ? email : '', tel: emptyMark(tel) ? tel : '',
+        web: emptyMark(web) ? web : '', linkedin: emptyMark(linkedin) ? linkedin : '',
+        fax: emptyMark(fax) ? fax : '', tax_id: emptyMark(taxId) ? taxId : '',
+        company_type_code: companyTypeCode || '', facebook: emptyMark(facebook) ? facebook : '',
+        twitter: emptyMark(twitter) ? twitter : '', instagram: emptyMark(instagram) ? instagram : '',
+        doc_count: 0,
+        total_trade_value_usd: 0, total_fob_usd: 0, total_cif_usd: 0,
+        total_quantity: 0, quantity_unit: '',
+        total_gross_weight: 0, total_net_weight: 0,
+        gross_weight_unit: '', net_weight_unit: '',
+        total_containers: 0, total_packages: 0, total_teus: 0,
+        avg_unit_price_usd: 0,
+        _hsCodesSet: {}, _productsSet: {}, _brandsSet: {}, _originSet: {},
+        last_arrival_date: '',
+        _counterparts: {}
+      };
+    }
+    var g = groups[key];
+    g.doc_count++;
+    var fob = Number(s.usdFob || s.fobValue || 0) || 0;
+    var cif = Number(s.usdCif || s.cifValue || 0) || 0;
+    var qty = Number(s.quantity || 0) || 0;
+    g.total_fob_usd += fob;
+    g.total_cif_usd += cif;
+    g.total_trade_value_usd += (fob || cif);
+    g.total_quantity += qty;
+    if(!g.quantity_unit && s.quantityUnit) g.quantity_unit = s.quantityUnit;
+    g.total_gross_weight += Number(s.grossWeight || 0) || 0;
+    g.total_net_weight += Number(s.netWeight || 0) || 0;
+    if(!g.gross_weight_unit && s.grossWeightUnit) g.gross_weight_unit = s.grossWeightUnit;
+    if(!g.net_weight_unit && s.netWeightUnit) g.net_weight_unit = s.netWeightUnit;
+    g.total_containers += Number(s.containerCount || 0) || 0;
+    g.total_packages += Number(s.packageAmount || 0) || 0;
+    g.total_teus += Number(s.totalTeus || 0) || 0;
+    if(emptyMark(s.hsCode)) g._hsCodesSet[s.hsCode] = true;
+    if(emptyMark(s.productDetails)) g._productsSet[s.productDetails] = true;
+    if(emptyMark(s.brandName)) g._brandsSet[s.brandName] = true;
+    if(emptyMark(s.countryOfOrigin)) g._originSet[s.countryOfOrigin] = true;
+    if(s.arrivalDate && s.arrivalDate > g.last_arrival_date) g.last_arrival_date = s.arrivalDate;
+
+    // Counterpart aggregation
+    if(emptyMark(counterName)){
+      var cpKey = String(counterName).trim().toLowerCase();
+      if(!g._counterparts[cpKey]){
+        g._counterparts[cpKey] = {
+          name: counterName, country: counterCountry || '', countryCode: counterCountryCode || '',
+          email: emptyMark(counterEmail) ? counterEmail : '',
+          tel: emptyMark(counterTel) ? counterTel : '',
+          web: emptyMark(counterWeb) ? counterWeb : '',
+          linkedin: emptyMark(counterLinkedin) ? counterLinkedin : '',
+          cityState: emptyMark(counterCity) ? counterCity : '',
+          docCount: 0, totalQty: 0, totalValue: 0, lastDate: ''
+        };
+      }
+      var cp = g._counterparts[cpKey];
+      cp.docCount++;
+      cp.totalQty += qty;
+      cp.totalValue += (fob || cif);
+      if(s.arrivalDate && s.arrivalDate > cp.lastDate) cp.lastDate = s.arrivalDate;
+    }
+  });
+  // Avg unit price hisoblash + Set → Array
+  return Object.keys(groups).map(function(key){
+    var g = groups[key];
+    var hs_codes = Object.keys(g._hsCodesSet);
+    var product_details = Object.keys(g._productsSet);
+    var brand_names = Object.keys(g._brandsSet);
+    var countries_of_origin = Object.keys(g._originSet);
+    if(g.total_quantity > 0 && g.total_trade_value_usd > 0){
+      g.avg_unit_price_usd = g.total_trade_value_usd / g.total_quantity;
+    }
+    var counterpart_firms = Object.keys(g._counterparts).map(function(k){ return g._counterparts[k]; });
+    var counterpart_countries = [];
+    var counterpart_country_codes = [];
+    var counterpart_companies = [];
+    counterpart_firms.forEach(function(cp){
+      if(cp.country && counterpart_countries.indexOf(cp.country) === -1) counterpart_countries.push(cp.country);
+      if(cp.countryCode && counterpart_country_codes.indexOf(cp.countryCode) === -1) counterpart_country_codes.push(cp.countryCode);
+      if(cp.name && counterpart_companies.indexOf(cp.name) === -1) counterpart_companies.push(cp.name);
+    });
+    return {
+      firm_name: g.firm_name, firm_country: g.firm_country, firm_country_code: g.firm_country_code,
+      firm_address: g.firm_address, city_state: g.city_state,
+      e_mail: g.e_mail, tel: g.tel, web: g.web, linkedin: g.linkedin,
+      fax: g.fax, tax_id: g.tax_id, company_type_code: g.company_type_code,
+      facebook: g.facebook, twitter: g.twitter, instagram: g.instagram,
+      doc_count: g.doc_count,
+      total_trade_value_usd: g.total_trade_value_usd,
+      total_fob_usd: g.total_fob_usd, total_cif_usd: g.total_cif_usd,
+      total_quantity: g.total_quantity, quantity_unit: g.quantity_unit,
+      total_gross_weight: g.total_gross_weight, total_net_weight: g.total_net_weight,
+      gross_weight_unit: g.gross_weight_unit, net_weight_unit: g.net_weight_unit,
+      total_containers: g.total_containers, total_packages: g.total_packages, total_teus: g.total_teus,
+      avg_unit_price_usd: g.avg_unit_price_usd,
+      hs_codes: hs_codes, product_details: product_details,
+      brand_names: brand_names, countries_of_origin: countries_of_origin,
+      counterpart_firms: counterpart_firms,
+      counterpart_countries: counterpart_countries,
+      counterpart_country_codes: counterpart_country_codes,
+      counterpart_companies: counterpart_companies,
+      last_arrival_date: g.last_arrival_date
+    };
+  });
+}
+
 async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   var isFirmNameSearch = !!(prod && prod._firmNameSearch && prod._firmName);
   var hsCode = isFirmNameSearch ? '' : getExactImportHsCode(prod);
@@ -1351,89 +1495,72 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   if(!targetCodes.length) throw new Error('TradeAtlas uchun maqsad davlat kodi topilmadi');
   var sourceCodes = filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
   var dateRange = getImportAnalysisDateRange();
-  var taFlowType = (meta.mode === 'importers') ? 'IMPORT' : 'EXPORT';
-  var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
-  // Source davlatlarni 5 talik chunk'larga bo'lamiz (TradeAtlas API limit)
-  var allCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
-  // TradeAtlas firms/search EXPORTER_COUNTRY_CODE filter faqat 1 davlat qabul qiladi.
-  // Source davlat bo'lsa — har biri uchun alohida call (chunk size 1).
-  // Source bo'sh bo'lsa (butun dunyo) — eski chunked-by-5 mantiq.
-  var chunkSize = sourceCodes.length ? 1 : 5;
-  var sourceChunks = [];
-  for(var i = 0; i < allCountries.length; i += chunkSize){
-    sourceChunks.push(allCountries.slice(i, i + chunkSize));
+  // ═══ Swagger v1 spec'ga ko'ra: shipments/search faqat IMPORT yo'nalishi va countries=target qabul qiladi ═══
+  // Source davlat filter → parameters: [{EXPORTER_COUNTRY_CODE: src}]
+  var allSourceCountries = sourceCodes.length ? sourceCodes.slice() : [''];
+  // Target countries — max 5 ta (Swagger limit)
+  var targetChunks = [];
+  for(var ti = 0; ti < targetCodes.length; ti += 5){
+    targetChunks.push(targetCodes.slice(ti, ti + 5));
   }
-  if(!sourceChunks.length) sourceChunks = [allCountries];
-  console.log('[ShipmentsSearch] Source countries:', allCountries.length, 'chunks:', sourceChunks.length);
-  // Foydalanuvchi tanlagan limit (0 = barchasi). Limit'ga ko'ra page size va maxPages hisoblanadi
+  if(!targetChunks.length) targetChunks = [targetCodes];
+  // size 100..10000 (Swagger limit), default 1000
   var userMaxLimit = Number(window._taMaxLimit) || 0;
-  // TradeAtlas API: shipments/search uchun size minimum 100
-  var pageSize = userMaxLimit > 0 ? Math.max(100, Math.min(250, userMaxLimit)) : 250;
-  var maxPages = userMaxLimit > 0 ? Math.max(1, Math.ceil(userMaxLimit / pageSize)) : 20;
-  if(userMaxLimit > 0) console.log('[ShipmentsSearch] User limit:', userMaxLimit, '→ pages:', maxPages, '× pageSize:', pageSize);
-  var found = [];
+  var size = userMaxLimit > 0 ? Math.max(100, Math.min(10000, userMaxLimit)) : 1000;
+  console.log('[ShipmentsSearch] target chunks:', targetChunks.length, 'sources:', allSourceCountries.length, 'size:', size);
+  var allShipments = [];
   var stopAll = false;
-  // ═══ TradeAtlas firms/search'ga moslashgan payload (target-side countries + EXPORTER_COUNTRY_CODE filter) ═══
-  // shipments/search returnedi turli formatdagi javob — mapper ishlamaydi. firms/search aggregatlangan firmalar qaytaradi.
-  // TradeAtlas "Allowed parameters: EXPORTER_NAME, BRAND_NAME, PRODUCT_DETAILS, HS_CODE, IMPORTER_NAME, EXPORTER_COUNTRY_CODE"
-  for(var chunkIdx = 0; chunkIdx < sourceChunks.length && !stopAll; chunkIdx++){
-    var chunkCountries = sourceChunks[chunkIdx];
-    // Source bo'lsa — EXPORTER_COUNTRY_CODE param sifatida ulanadi (har source davlat uchun alohida iter)
-    var sourceCodeForFilter = (chunkCountries && chunkCountries.length === 1) ? chunkCountries[0] : '';
-    var _params = isFirmNameSearch
-      ? [{ FIRM_NAME: prod._firmName }]
-      : [{ HS_CODE: hsCode }];
-    if(!isFirmNameSearch && sourceCodeForFilter){
-      _params.push({ EXPORTER_COUNTRY_CODE: sourceCodeForFilter });
-    }
-    // countries — TradeAtlas firms/search uchun target (importing) davlatlar
-    // firmType — qaysi tomonni qaytarishini bildiradi (EXPORTER yoki IMPORTER)
-    var payload = {
-      endpoint: 'firms/search',
-      accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
-      countries: targetCodes.length ? targetCodes : chunkCountries,
-      firmFilter: [1,2],
-      firmType: taFirmType,
-      flowType: 'IMPORT',
-      page: 1, parameters: _params, mode: meta.mode,
-      targetCountries: targetCodes, sourceCountries: chunkCountries,
-      hsCode: hsCode, firmName: isFirmNameSearch ? prod._firmName : '',
-      startDate: dateRange.startDate, endDate: dateRange.endDate, size: pageSize
-    };
-    var expectedTotal = 0;
-    for(var page=1; page<=maxPages && !stopAll; page++){
-      payload.page = page;
-      payload.size = pageSize;
-      var data = await tradeAtlasRequestJson(payload);
-      var firms = tradeAtlasNormalizeArray(data);
-      if(!expectedTotal) expectedTotal = Number((data && data.count) || 0) || 0;
-      var beforeCount = found.length;
-      firms.forEach(function(firm){
-        // Shipments mode'da Africa firmalarni qoldiramiz, faqat firms mode'da filtrlanadi
-        if(meta.mode === 'exporters' && (window._taApiMode || 'firms') === 'firms'){
-          var firmCode = tradeAtlasFirmCountryCode(firm);
-          if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
+  for(var srcIdx = 0; srcIdx < allSourceCountries.length && !stopAll; srcIdx++){
+    var srcCode = allSourceCountries[srcIdx];
+    for(var tcIdx = 0; tcIdx < targetChunks.length && !stopAll; tcIdx++){
+      var tChunk = targetChunks[tcIdx];
+      var _params = isFirmNameSearch
+        ? [{ EXPORTER_NAME: prod._firmName }]
+        : [{ HS_CODE: hsCode }];
+      if(srcCode){ _params.push({ EXPORTER_COUNTRY_CODE: srcCode }); }
+      // Swagger ShipmentSearchRequest: countries (req), parameters (req), flowType, size, startDate, endDate, firmFilter
+      var payload = {
+        endpoint: 'shipments/search',
+        accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
+        countries: tChunk,
+        parameters: _params,
+        flowType: 'IMPORT',
+        firmFilter: [1,2],
+        size: size,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate
+      };
+      try {
+        var data = await tradeAtlasRequestJson(payload);
+        var arr = Array.isArray(data) ? data : [];
+        console.log('[ShipmentsSearch] target['+tChunk.join(',')+'] source['+(srcCode||'world')+']:', arr.length, 'shipments');
+        for(var ai = 0; ai < arr.length; ai++) allShipments.push(arr[ai]);
+        if(userMaxLimit > 0 && allShipments.length >= userMaxLimit){
+          allShipments = allShipments.slice(0, userMaxLimit);
+          stopAll = true;
+          break;
         }
-        var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
-        if(!item || !String(item.kompaniya || '').trim()) return;
-        apolloUpsertFinderItem(found, item, meta);
-      });
-      console.log('[ShipmentsSearch] Chunk', (chunkIdx+1)+'/'+sourceChunks.length, '['+chunkCountries.join(',')+']', 'page', page, 'firms:', firms.length, 'total:', found.length);
-      // Foydalanuvchi limit'ga yetdik — barcha chunk va sahifalar to'xtatiladi
-      if(userMaxLimit > 0 && found.length >= userMaxLimit){
-        console.log('[ShipmentsSearch] User limit reached:', found.length, '>=', userMaxLimit);
-        // Aniq limit miqdorigacha qisqartirish
-        if(found.length > userMaxLimit) found = found.slice(0, userMaxLimit);
-        stopAll = true;
-        break;
+      } catch(reqErr){
+        console.warn('[ShipmentsSearch] request error:', reqErr && reqErr.message);
       }
-      if(!firms.length) break;
-      if(found.length === beforeCount && page > 1) break;
-      if(expectedTotal > 0 && firms.length < pageSize) break;
-      if(firms.length < pageSize) break;
     }
   }
-  console.log('[ShipmentsSearch] FINAL firms after all chunks:', found.length);
+  console.log('[ShipmentsSearch] Total raw shipments:', allShipments.length);
+  // Aggregat: shipments → firms (mode bo'yicha eksportyor yoki importyor tomon)
+  var aggregated = _aggregateShipmentsToFirms(allShipments, meta.mode);
+  console.log('[ShipmentsSearch] Aggregated firms:', aggregated.length);
+  // mapTradeAtlasFirmToFinderResult orqali finder result formatiga
+  var found = [];
+  aggregated.forEach(function(firm){
+    if(meta.mode === 'exporters'){
+      var firmCode = tradeAtlasFirmCountryCode(firm);
+      if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
+    }
+    var item = mapTradeAtlasFirmToFinderResult(firm, meta, prod);
+    if(!item || !String(item.kompaniya || '').trim()) return;
+    apolloUpsertFinderItem(found, item, meta);
+  });
+  console.log('[ShipmentsSearch] FINAL firms after mapping:', found.length);
   // ═══ Shipment-level explode: har firma counterpart_firms array bo'yicha alohida rowlarga ajraladi ═══
   // Maqsad: TradeAtlas saytidagi kabi har juftlik (eksportyor + importyor) alohida ko'rinadi
   var exploded = [];
@@ -1496,7 +1623,9 @@ async function _saveTaSnapshot(snapshot){
   }
 }
 
-// Faqat /firms/search orqali kompaniyalarni olish (arzon yol — 1 kredit har firma)
+// ═══ /firms/search orqali kompaniyalarni olish (Swagger v1 spec) ═══
+// Spec'ga ko'ra firms/search aggregat firmalar qaytaradi.
+// Source/target filter: countries=target, parameters=[{EXPORTER_COUNTRY_CODE: src}]
 async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScope){
   var hsCode = getExactImportHsCode(prod);
   if(!hsCode) throw new Error('TradeAtlas uchun mahsulot HS kodi topilmadi');
@@ -1505,26 +1634,81 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
   var sourceCodes = filterTradeAtlasAfricanCodes(((sourceScope && sourceScope.effectiveCountries) || []).map(getTradeAtlasCountryCode).filter(Boolean));
   var dateRange = getImportAnalysisDateRange();
 
-  // Eksportyor tomoni davlatlari: tanlangan source yoki butun dunyo (Afrikasiz)
-  var exporterCountries;
-  if(sourceCodes.length){
-    exporterCountries = sourceCodes.slice();
-  } else {
-    var worldCountries = [];
-    Object.keys(FINDER_SOURCE_REGIONS).forEach(function(cont){
-      if(cont === 'Afrika') return;
-      (FINDER_SOURCE_REGIONS[cont] || []).forEach(function(c){
-        var code = getTradeAtlasCountryCode(c);
-        if(code && worldCountries.indexOf(code) === -1) worldCountries.push(code);
-      });
-    });
-    exporterCountries = worldCountries;
-  }
-  // Importyor tomoni davlatlari: target (UZ va boshqalar)
-  var importerCountries = targetCodes.slice();
+  // Source davlatlar: tanlangan yoki bo'sh (butun dunyo, Swagger ALL ham qabul qiladi)
+  // EXPORTER_COUNTRY_CODE filter faqat 1 davlat — har birini alohida iter
+  var sourcesToIter = sourceCodes.length ? sourceCodes.slice() : [''];
 
-  // Bir tomon (eksport yoki import) uchun firmalarni qidiramiz
   async function _searchOneRole(roleMeta, countries){
+    var found = [];
+    // countries — target tomon (max 5)
+    var chunks = [];
+    for(var i = 0; i < countries.length; i += 5){
+      chunks.push(countries.slice(i, i + 5));
+    }
+    if(!chunks.length) chunks = [[]];
+    var firmType = roleMeta.mode === 'importers' ? 'IMPORTER' : 'EXPORTER';
+    // flowType har doim IMPORT (countries=target perspective)
+    var flowType = 'IMPORT';
+
+    for(var ch = 0; ch < chunks.length; ch++){
+      var chunkCountries = chunks[ch];
+      for(var sIdx = 0; sIdx < sourcesToIter.length; sIdx++){
+        var srcCode = sourcesToIter[sIdx];
+        for(var page = 1; page <= 20; page++){
+          var _params = [{ HS_CODE: hsCode }];
+          if(srcCode){ _params.push({ EXPORTER_COUNTRY_CODE: srcCode }); }
+          var payload = {
+            endpoint: 'firms/search',
+            accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
+            countries: chunkCountries,
+            hsCode: hsCode,
+            mode: roleMeta.mode,
+            page: page,
+            firmType: firmType,
+            flowType: flowType,
+            firmFilter: [1, 2],
+            parameters: _params
+          };
+          if(dateRange && dateRange.startDate) payload.startDate = dateRange.startDate;
+          if(dateRange && dateRange.endDate) payload.endDate = dateRange.endDate;
+          var data;
+          try { data = await tradeAtlasRequestJson(payload); }
+          catch(reqErr){
+            console.warn('[FirmsOnlySearch] req err:', reqErr && reqErr.message);
+            break;
+          }
+          var firms = tradeAtlasNormalizeArray(data);
+          if(!firms.length) break;
+          var beforeCount = found.length;
+          firms.forEach(function(firm){
+            if(roleMeta.mode === 'exporters'){
+              var firmCode = tradeAtlasFirmCountryCode(firm);
+              if(firmCode && isTradeAtlasAfricanCode(firmCode)) return;
+            }
+            var item = mapTradeAtlasFirmToFinderResult(firm, roleMeta, prod);
+            if(!item || !String(item.kompaniya || '').trim()) return;
+            apolloUpsertFinderItem(found, item, roleMeta);
+          });
+          console.log('[FirmsOnlySearch]', roleMeta.mode, 'target['+chunkCountries.join(',')+'] src['+(srcCode||'world')+'] page', page, 'firms:', firms.length, 'total:', found.length);
+          if(found.length === beforeCount && page > 1) break;
+          if(firms.length < 100) break;
+        }
+      }
+    }
+    return found;
+  }
+
+  // Original loop'ni qaytarish uchun yopib qo'yamiz — pastda eski kod bilan moslash
+  var _legacyExitMarker = true;
+  if(_legacyExitMarker){
+    var _foundResults = await _searchOneRole(meta, targetCodes);
+    return _foundResults.filter(finderResultIsRenderable).sort(function(a,b){
+      return (Number(b._tradeAtlasTradeValue || 0) - Number(a._tradeAtlasTradeValue || 0)) || ((b.score || 0) - (a.score || 0));
+    });
+  }
+
+  // ═══ Eski kod (ishlatilmaydi, _legacyExitMarker bilan o'tkazib yuboriladi) ═══
+  async function _searchOneRoleOld(roleMeta, countries){
     var found = [];
     var chunks = [];
     for(var i = 0; i < countries.length; i += 5){
@@ -1538,7 +1722,6 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
       var chunkCountries = chunks[ch];
       for(var page = 1; page <= 20; page++){
         var payload = {
-          // Proxy routing — accountId va endpoint majburiy
           endpoint: 'firms/search',
           accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
           countries: chunkCountries,
