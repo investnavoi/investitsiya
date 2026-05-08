@@ -1355,9 +1355,13 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   var taFirmType = (meta.mode === 'importers') ? 'IMPORTER' : 'EXPORTER';
   // Source davlatlarni 5 talik chunk'larga bo'lamiz (TradeAtlas API limit)
   var allCountries = sourceCodes.length ? sourceCodes.slice() : targetCodes.slice();
+  // TradeAtlas firms/search EXPORTER_COUNTRY_CODE filter faqat 1 davlat qabul qiladi.
+  // Source davlat bo'lsa — har biri uchun alohida call (chunk size 1).
+  // Source bo'sh bo'lsa (butun dunyo) — eski chunked-by-5 mantiq.
+  var chunkSize = sourceCodes.length ? 1 : 5;
   var sourceChunks = [];
-  for(var i = 0; i < allCountries.length; i += 5){
-    sourceChunks.push(allCountries.slice(i, i + 5));
+  for(var i = 0; i < allCountries.length; i += chunkSize){
+    sourceChunks.push(allCountries.slice(i, i + chunkSize));
   }
   if(!sourceChunks.length) sourceChunks = [allCountries];
   console.log('[ShipmentsSearch] Source countries:', allCountries.length, 'chunks:', sourceChunks.length);
@@ -1369,17 +1373,28 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   if(userMaxLimit > 0) console.log('[ShipmentsSearch] User limit:', userMaxLimit, '→ pages:', maxPages, '× pageSize:', pageSize);
   var found = [];
   var stopAll = false;
-  // Har chunk uchun alohida search — birorta davlat qoldirilmasin
+  // ═══ TradeAtlas firms/search'ga moslashgan payload (target-side countries + EXPORTER_COUNTRY_CODE filter) ═══
+  // shipments/search returnedi turli formatdagi javob — mapper ishlamaydi. firms/search aggregatlangan firmalar qaytaradi.
+  // TradeAtlas "Allowed parameters: EXPORTER_NAME, BRAND_NAME, PRODUCT_DETAILS, HS_CODE, IMPORTER_NAME, EXPORTER_COUNTRY_CODE"
   for(var chunkIdx = 0; chunkIdx < sourceChunks.length && !stopAll; chunkIdx++){
     var chunkCountries = sourceChunks[chunkIdx];
+    // Source bo'lsa — EXPORTER_COUNTRY_CODE param sifatida ulanadi (har source davlat uchun alohida iter)
+    var sourceCodeForFilter = (chunkCountries && chunkCountries.length === 1) ? chunkCountries[0] : '';
     var _params = isFirmNameSearch
       ? [{ FIRM_NAME: prod._firmName }]
       : [{ HS_CODE: hsCode }];
+    if(!isFirmNameSearch && sourceCodeForFilter){
+      _params.push({ EXPORTER_COUNTRY_CODE: sourceCodeForFilter });
+    }
+    // countries — TradeAtlas firms/search uchun target (importing) davlatlar
+    // firmType — qaysi tomonni qaytarishini bildiradi (EXPORTER yoki IMPORTER)
     var payload = {
-      // Proxy routing — shipments search endpoint majburiy bo'lmasa, default firms/search'ga tushib qoladi
-      endpoint: 'shipments/search',
+      endpoint: 'firms/search',
       accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
-      countries: chunkCountries, firmFilter: [0,1,2], firmType: taFirmType, flowType: taFlowType,
+      countries: targetCodes.length ? targetCodes : chunkCountries,
+      firmFilter: [1,2],
+      firmType: taFirmType,
+      flowType: 'IMPORT',
       page: 1, parameters: _params, mode: meta.mode,
       targetCountries: targetCodes, sourceCountries: chunkCountries,
       hsCode: hsCode, firmName: isFirmNameSearch ? prod._firmName : '',
