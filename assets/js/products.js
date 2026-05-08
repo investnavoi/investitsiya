@@ -2019,27 +2019,38 @@ function _navoiTaCardHtml(r, idx, modeIsExporter, hs, prod){
   }
   if(r.linkedin) contactBits.push('<a href="'+r.linkedin+'" target="_blank" style="background:#DBEAFE;color:#0A66C2;padding:4px 7px;border-radius:6px;text-decoration:none;font-size:.65rem;font-weight:600">💼 LI</a>');
 
-  // HS + manual badge
-  var hsBadge = '<span style="display:inline-flex;align-items:center;gap:5px;background:#FFF7ED;color:#9A3412;padding:4px 10px;border-radius:8px;font-size:.7rem;font-weight:700;border:1px solid #FED7AA">HS '+hs+' (manual)'+(prod && prod.name_uz ? ' — '+String(prod.name_uz).slice(0,30) : '')+'</span>';
+  // HS badge (Investor stilida — pencil edit yo'q chunki TradeAtlas synthetic prod)
+  var hsBadge = '<span style="display:inline-flex;align-items:center;gap:5px;background:#FFF7ED;color:#9A3412;padding:5px 12px;border-radius:9px;font-size:.72rem;font-weight:700;border:1px solid #FED7AA">HS '+hs+' (manual) — '+(prod && prod.name_uz ? String(prod.name_uz).slice(0,40) : 'TradeAtlas')+'</span>';
 
-  // Status chip'lar (TA, AI, Email, Calendar, Delete) — visual only (Lead topish bosilganda saqlanadi)
-  var statusChips =
-    '<span title="TradeAtlas" style="background:#1E40AF;color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800">TA</span>'+
-    '<span title="AI" style="background:#F97316;color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800">Ai</span>'+
-    '<span title="Email" style="background:#06B6D4;color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem">📨</span>'+
-    '<span title="Calendar" style="background:#94A3B8;color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem">📅</span>'+
-    '<span title="Yuborilmagan" style="background:#FEF3C7;color:#92400E;padding:3px 9px;border-radius:6px;font-size:.6rem;font-weight:700">● Yuborilmagan</span>';
+  // ─── Status row (1 lead = 1 row) — Investor stilida ───
+  // Format: ● Yuborilmagan + TA + Ai + 📨 + 📅 + 🗑
+  function _statusRow(){
+    return '<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap">'+
+      '<span style="background:#FEF3C7;color:#92400E;padding:4px 10px;border-radius:8px;font-size:.65rem;font-weight:700;white-space:nowrap">● Yuborilmagan</span>'+
+      '<span title="TradeAtlas" style="background:linear-gradient(135deg,#1E3A8A,#1E40AF);color:#fff;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800">TA</span>'+
+      '<span title="AI" style="background:linear-gradient(135deg,#F97316,#EA580C);color:#fff;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800">Ai</span>'+
+      '<span title="Email" style="background:#EFF4FF;color:#3B82F6;width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem">📨</span>'+
+      '<span title="Calendar" style="background:#F3F4F6;color:#6B7280;width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem">📅</span>'+
+      '<span title="O\'chirish" style="background:#FEF3F2;color:#EF4444;width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;cursor:not-allowed;opacity:.5">🗑</span>'+
+    '</div>';
+  }
+  // 1 row parent uchun + 1 row har counterpart (BU EKSPORTYORDAN IMPORT QILGAN) uchun
+  var leadCount = 1 + Math.min(counterFirms.length, 4); // ko'pi bilan 1+4=5 row ko'rsatamiz
+  var statusRows = '';
+  for(var sr = 0; sr < leadCount; sr++){
+    statusRows += _statusRow();
+  }
 
-  return '<div id="navoiTaCard'+idx+'" style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:1rem 1.1rem;display:grid;grid-template-columns:46px 1fr auto;gap:1rem;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
+  return '<div id="navoiTaCard'+idx+'" style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:1rem 1.2rem;display:grid;grid-template-columns:48px 1fr 200px auto;gap:1rem;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
     // Avatar
-    '<div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#A78BFA,#7C3AED);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem">'+initials+'</div>'+
-    // Main info
+    '<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#A78BFA,#7C3AED);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem">'+initials+'</div>'+
+    // Col 2: Main info (role badge, name, website, country, counterpart toggle)
     '<div style="min-width:0">'+
-      '<div style="margin-bottom:4px">'+roleHtml+'</div>'+
-      '<div style="font-size:.95rem;font-weight:800;color:#0F172A;line-height:1.25">'+name.replace(/</g,'&lt;')+'</div>'+
-      (website?'<div style="margin-top:2px"><a href="'+(website.indexOf('http')===0?website:'https://'+website)+'" target="_blank" rel="noopener" style="color:#6366F1;font-size:.7rem;text-decoration:none">'+website.replace(/^https?:\/\//,'').slice(0,60)+'</a></div>':'')+
-      '<div style="margin-top:3px;font-size:.7rem;color:#475569;display:flex;align-items:center;gap:5px">'+
-        '<span>'+flag+'</span>'+
+      '<div style="margin-bottom:5px">'+roleHtml+'</div>'+
+      '<div style="font-size:1rem;font-weight:800;color:#0F172A;line-height:1.25">'+name.replace(/</g,'&lt;')+'</div>'+
+      (website?'<div style="margin-top:3px"><a href="'+(website.indexOf('http')===0?website:'https://'+website)+'" target="_blank" rel="noopener" style="color:#6366F1;font-size:.72rem;text-decoration:none;font-weight:600">'+website.replace(/^https?:\/\//,'').slice(0,60)+'</a></div>':'')+
+      '<div style="margin-top:4px;font-size:.72rem;color:#475569;display:flex;align-items:center;gap:5px">'+
+        '<span style="font-size:.85rem">'+flag+'</span>'+
         '<span>'+(country?country.replace(/</g,'&lt;'):'—')+(city && city!=='-' ? ', '+city.replace(/</g,'&lt;') : '')+'</span>'+
       '</div>'+
       infoLine+
@@ -2047,12 +2058,14 @@ function _navoiTaCardHtml(r, idx, modeIsExporter, hs, prod){
       counterListHtml+
       (contactBits.length?'<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+contactBits.join('')+'</div>':'')+
     '</div>'+
-    // Right column: Lead topish + HS + status
-    '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:200px">'+
-      '<button onclick="_navoiTaSaveAndFindLead('+idx+',this)" style="background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:.75rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.35);white-space:nowrap">🔍 Lead topish</button>'+
+    // Col 3: Lead topish + HS badge
+    '<div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px">'+
+      '<button onclick="_navoiTaSaveAndFindLead('+idx+',this)" style="background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:.78rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.35);white-space:nowrap">🔍 Lead topish</button>'+
       '<div>'+hsBadge+'</div>'+
-      '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+statusChips+'</div>'+
-      '<button onclick="_navoiTaSaveOne('+idx+',this)" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.65rem;font-weight:700;cursor:pointer" title="Eksportyor va uning importyor xaridorlarini bazaga saqlash">💾 Eksp+Imp saqlash</button>'+
+    '</div>'+
+    // Col 4: Status rows (har lead uchun 1 row)
+    '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">'+
+      statusRows+
     '</div>'+
   '</div>';
 }
