@@ -1363,7 +1363,8 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
   console.log('[ShipmentsSearch] Source countries:', allCountries.length, 'chunks:', sourceChunks.length);
   // Foydalanuvchi tanlagan limit (0 = barchasi). Limit'ga ko'ra page size va maxPages hisoblanadi
   var userMaxLimit = Number(window._taMaxLimit) || 0;
-  var pageSize = userMaxLimit > 0 ? Math.min(250, userMaxLimit) : 250;
+  // TradeAtlas API: shipments/search uchun size minimum 100
+  var pageSize = userMaxLimit > 0 ? Math.max(100, Math.min(250, userMaxLimit)) : 250;
   var maxPages = userMaxLimit > 0 ? Math.max(1, Math.ceil(userMaxLimit / pageSize)) : 20;
   if(userMaxLimit > 0) console.log('[ShipmentsSearch] User limit:', userMaxLimit, '→ pages:', maxPages, '× pageSize:', pageSize);
   var found = [];
@@ -1375,6 +1376,8 @@ async function tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope){
       ? [{ FIRM_NAME: prod._firmName }]
       : [{ HS_CODE: hsCode }];
     var payload = {
+      // Proxy routing — shipments search endpoint majburiy bo'lmasa, default firms/search'ga tushib qoladi
+      endpoint: 'shipments/search',
       accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
       countries: chunkCountries, firmFilter: [0,1,2], firmType: taFirmType, flowType: taFlowType,
       page: 1, parameters: _params, mode: meta.mode,
@@ -1520,10 +1523,14 @@ async function tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScop
       var chunkCountries = chunks[ch];
       for(var page = 1; page <= 20; page++){
         var payload = {
+          // Proxy routing — accountId va endpoint majburiy
+          endpoint: 'firms/search',
+          accountId: (window.TRADEATLAS_ACCOUNT_ID || (DB.settings && DB.settings.tradeAtlasAccountId) || 'investnavoi.uz'),
           countries: chunkCountries,
           hsCode: hsCode,
           mode: roleMeta.mode,
           page: page,
+          size: 100,
           firmType: firmType,
           flowType: flowType,
           firmFilter: [1, 2],

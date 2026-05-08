@@ -65,14 +65,14 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/admin-login.js" defer></script>
 <script src="assets/js/admin-forms.js" defer></script>
 <script src="assets/js/pipeline-crm.js" defer></script>
-<script src="assets/js/finder.js?v=ta-max-limit-v1" defer></script>
+<script src="assets/js/finder.js?v=ta-firms-endpoint-v4" defer></script>
 <script src="assets/js/finder-world-map.js" defer></script>
 <script src="assets/js/import-analysis.js?v=partner-filter-v17" defer></script>
-<script src="assets/js/products.js" defer></script>
+<script src="assets/js/products.js?v=ta-firms-fallback-v12" defer></script>
 <script src="assets/js/email-modal.js" defer></script>
 <script src="assets/js/investor-companies.js"></script>
 <script src="assets/js/excel-media.js" defer></script>
-<script src="assets/js/forum-detail.js?v=first-rec-role-v6"></script>
+<script src="assets/js/forum-detail.js?v=jts-stats-v8"></script>
 <script src="assets/js/intl-forums.js"></script>
 <script src="assets/js/csv-import.js" defer></script>
 <script src="assets/js/admin-lists.js"></script>
@@ -85,13 +85,39 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <style>
   /* Jahon tashqi savdosi — dropdown ko'rinishi tuzatildi */
   #page-trade .form-card{overflow:visible !important;}
-  #page-trade #trade-country-list{background:#fff !important;border:1px solid #d0d9e8 !important;}
-  #page-trade #trade-country-list > div{color:#14233F !important;}
-  #page-trade #trade-country-list > div[style*="font-weight:700"]{background:#f1f5fb !important;color:#314567 !important;}
-  #page-trade #trade-country-label{color:#14233F !important;}
-  #page-trade #trade-country-search{caret-color:#14233F;}
-  #page-trade #trade-country-search:focus{color:#14233F !important;}
-  #page-trade #trade-country-search:focus + #trade-country-label{display:none;}
+  /* ═══ Form-card ni KPI grid ustida saqlash (kpi-grid'ning isolation:isolate stacking contextiga qarshi) ═══ */
+  #page-trade .form-card:has(#trade-country-wrap),
+  #page-trade .form-card:has(#trade-partner-wrap){position:relative;z-index:9000;}
+  /* Fallback: brauzer :has() qollab-quvvatlamasa, hamma form-card'larga */
+  #page-trade .form-card{position:relative;z-index:9000;}
+  /* KPI grid pastda qoladi */
+  #page-trade #tradeKpis{position:relative;z-index:1;isolation:auto !important;}
+  /* KPI cards'dagi backdrop-filter stacking context yaratmasligi uchun trade sahifasida */
+  #page-trade #tradeKpis > .kpi-card{backdrop-filter:none !important;-webkit-backdrop-filter:none !important;background:rgba(255,255,255,.85) !important;}
+  /* ═══ Eksportyor + Importyor dropdown — har doim eng yuqorida ═══ */
+  #page-trade #trade-country-wrap,
+  #page-trade #trade-partner-wrap{position:relative;z-index:9999;}
+  #page-trade #trade-country-list,
+  #page-trade #trade-partner-list{
+    background:#ffffff !important;
+    border:1px solid #d0d9e8 !important;
+    box-shadow:0 16px 40px rgba(15,23,42,.22) !important;
+    z-index:99999 !important;
+    backdrop-filter:none !important;
+    opacity:1 !important;
+  }
+  #page-trade #trade-country-list > div,
+  #page-trade #trade-partner-list > div{color:#14233F !important;background:transparent;}
+  #page-trade #trade-country-list > div[style*="font-weight:700"],
+  #page-trade #trade-partner-list > div[style*="font-weight:700"]{background:#f1f5fb !important;color:#314567 !important;}
+  #page-trade #trade-country-label,
+  #page-trade #trade-partner-label{color:#14233F !important;}
+  #page-trade #trade-country-search,
+  #page-trade #trade-partner-search{caret-color:#14233F;}
+  #page-trade #trade-country-search:focus,
+  #page-trade #trade-partner-search:focus{color:#14233F !important;}
+  #page-trade #trade-country-search:focus + #trade-country-label,
+  #page-trade #trade-partner-search:focus + #trade-partner-label{display:none;}
   /* Native select dropdown options qora */
   #page-trade select.form-input,
   #page-trade select{color:#14233F !important;background:#fff !important;}
@@ -827,28 +853,37 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
         <option value="year">📅 Yil</option>
       </select>
     </div>
-    <div class="kpi-grid" style="gap:.6rem;margin-bottom:.6rem">
-      <div class="kpi-card c1" data-aos="fade-up" data-aos-delay="50" style="padding:.6rem .8rem;display:flex;flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap">
-        <div onclick="filterInvestorsBySource(null);toggleIcTableCard()" title="Barcha kompaniyalar" style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0">
-          <div class="kpi-icon" style="width:32px;height:32px;font-size:.7rem;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z" fill="currentColor"/></svg></div>
-          <div class="kpi-card-body" style="min-width:0"><div class="kpi-label" style="font-size:.6rem" data-i18n="lbl_total">Jami</div><div class="kpi-val" id="ic-k1" style="font-size:1.2rem">0</div><div class="kpi-trend" style="font-size:.55rem" data-i18n="lbl_company">Kompaniya</div></div>
+    <div class="kpi-grid" style="gap:.6rem;margin-bottom:.6rem;grid-template-columns:1.7fr 1fr 1.1fr 1.1fr">
+      <div class="kpi-card c1" data-aos="fade-up" data-aos-delay="50" style="padding:.6rem .7rem;display:flex;flex-direction:row;align-items:center;gap:6px;flex-wrap:nowrap;justify-content:flex-start">
+        <div onclick="filterInvestorsBySource(null);toggleIcTableCard()" title="Barcha kompaniyalar" style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:0 0 auto;min-width:90px">
+          <div class="kpi-icon" style="width:30px;height:30px;font-size:.7rem;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z" fill="currentColor"/></svg></div>
+          <div class="kpi-card-body" style="min-width:0"><div class="kpi-label" style="font-size:.6rem" data-i18n="lbl_total">Jami</div><div class="kpi-val" id="ic-k1" style="font-size:1.05rem;line-height:1.1">0</div><div class="kpi-trend" style="font-size:.55rem" data-i18n="lbl_company">Kompaniya</div></div>
         </div>
-        <div onclick="filterInvestorsBySource('apollo')" title="Apollo manbasidagi kompaniyalar" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 7px;border-radius:8px;background:rgba(255,230,0,.12);transition:background .15s;flex-shrink:0" onmouseover="this.style.background='rgba(255,230,0,.25)'" onmouseout="this.style.background='rgba(255,230,0,.12)'">
-          <div style="width:28px;height:28px;background:#FFE600;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <img src="assets/apollo.ico" alt="Apollo" style="width:20px;height:20px;object-fit:contain">
+        <div onclick="filterInvestorsBySource('apollo')" title="Apollo manbasidagi kompaniyalar" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:6px 9px;border-radius:9px;background:rgba(255,230,0,.18);transition:background .15s;flex-shrink:0" onmouseover="this.style.background='rgba(255,230,0,.32)'" onmouseout="this.style.background='rgba(255,230,0,.18)'">
+          <div style="width:32px;height:32px;background:#FFE600;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <img src="assets/apollo.ico" alt="Apollo" style="width:22px;height:22px;object-fit:contain">
           </div>
           <div style="min-width:0">
-            <div style="font-size:.55rem;color:var(--text3);font-weight:600;line-height:1">Apollo</div>
-            <div style="font-size:.85rem;font-weight:800;color:var(--text);line-height:1.1"><span id="ic-k-apollo">0</span> <span style="font-size:.55rem;font-weight:600;color:var(--text3)">ta</span></div>
+            <div style="font-size:.62rem;color:var(--text2);font-weight:700;line-height:1">Apollo</div>
+            <div style="font-size:.95rem;font-weight:800;color:var(--text);line-height:1.15"><span id="ic-k-apollo">0</span> <span style="font-size:.6rem;font-weight:600;color:var(--text3)">ta</span></div>
           </div>
         </div>
-        <div onclick="filterInvestorsBySource('tradeatlas')" title="TradeAtlas manbasidagi kompaniyalar" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 7px;border-radius:8px;background:rgba(30,58,138,.10);transition:background .15s;flex-shrink:0" onmouseover="this.style.background='rgba(30,58,138,.20)'" onmouseout="this.style.background='rgba(30,58,138,.10)'">
-          <div style="width:28px;height:28px;background:linear-gradient(135deg,#1E3A8A,#1E40AF);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:3px">
-            <img src="assets/tradeatlas.png" alt="TradeAtlas" style="width:20px;height:20px;border-radius:50%;object-fit:cover" onerror="this.outerHTML='<span style=&quot;color:#fff;font-size:.5rem;font-weight:800;letter-spacing:-.02em&quot;>TA</span>'">
+        <div onclick="filterInvestorsBySource('tradeatlas')" title="TradeAtlas manbasidagi kompaniyalar" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:6px 9px;border-radius:9px;background:rgba(30,58,138,.14);transition:background .15s;flex-shrink:0" onmouseover="this.style.background='rgba(30,58,138,.26)'" onmouseout="this.style.background='rgba(30,58,138,.14)'">
+          <div style="width:32px;height:32px;background:linear-gradient(135deg,#1E3A8A,#1E40AF);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:3px">
+            <img src="assets/tradeatlas.png" alt="TradeAtlas" style="width:22px;height:22px;border-radius:50%;object-fit:cover" onerror="this.outerHTML='<span style=&quot;color:#fff;font-size:.55rem;font-weight:800;letter-spacing:-.02em&quot;>TA</span>'">
           </div>
           <div style="min-width:0">
-            <div style="font-size:.55rem;color:var(--text3);font-weight:600;line-height:1">TradeAtlas</div>
-            <div style="font-size:.85rem;font-weight:800;color:var(--text);line-height:1.1"><span id="ic-k-tradeatlas">0</span> <span style="font-size:.55rem;font-weight:600;color:var(--text3)">ta</span></div>
+            <div style="font-size:.62rem;color:var(--text2);font-weight:700;line-height:1">TradeAtlas</div>
+            <div style="font-size:.95rem;font-weight:800;color:var(--text);line-height:1.15"><span id="ic-k-tradeatlas">0</span> <span style="font-size:.6rem;font-weight:600;color:var(--text3)">ta</span></div>
+          </div>
+        </div>
+        <div onclick="filterInvestorsBySource('jts')" title="Jahon Tashqi Savdosi bo'limidan saqlangan kompaniyalar" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:6px 9px;border-radius:9px;background:rgba(16,185,129,.16);transition:background .15s;flex-shrink:0" onmouseover="this.style.background='rgba(16,185,129,.30)'" onmouseout="this.style.background='rgba(16,185,129,.16)'">
+          <div style="width:32px;height:32px;background:linear-gradient(135deg,#10b981,#059669);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 12h19M12 2.5c2.4 2.7 3.8 6 3.8 9.5s-1.4 6.8-3.8 9.5c-2.4-2.7-3.8-6-3.8-9.5s1.4-6.8 3.8-9.5z" stroke="currentColor" stroke-width="1.7"/></svg>
+          </div>
+          <div style="min-width:0">
+            <div style="font-size:.62rem;color:var(--text2);font-weight:700;line-height:1">Jahon Savdosi</div>
+            <div style="font-size:.95rem;font-weight:800;color:var(--text);line-height:1.15"><span id="ic-k-jts">0</span> <span style="font-size:.6rem;font-weight:600;color:var(--text3)">ta</span></div>
           </div>
         </div>
       </div>
@@ -2690,12 +2725,12 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end">
         <div class="form-group" style="flex:1;min-width:200px">
           <label class="form-label">📤 Eksportyor</label>
-          <div style="position:relative" id="trade-country-wrap">
+          <div style="position:relative;z-index:9999" id="trade-country-wrap">
             <input class="form-input" id="trade-country-search" type="text" placeholder="" autocomplete="off"
               style="font-size:.75rem;color:transparent;caret-color:var(--text)" oninput="filterTradeCountries()" onfocus="this.style.color='transparent';this.value='';showTradeCountries()" onclick="this.value='';showTradeCountries()">
             <div id="trade-country-label" style="position:absolute;top:50%;left:12px;transform:translateY(-50%);font-size:.75rem;color:var(--text3);pointer-events:none">🔍 Eksportyor davlat tanlang...</div>
             <input type="hidden" id="trade-country" value="">
-            <div id="trade-country-list" onclick="event.stopPropagation()" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:380px;overflow-y:auto;background:#fff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:999;margin-top:2px"></div>
+            <div id="trade-country-list" onclick="event.stopPropagation()" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:380px;overflow-y:auto;background:#ffffff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18);z-index:99999;margin-top:2px;backdrop-filter:none"></div>
           </div>
         </div>
         <div class="form-group" id="trade-swap-group" style="flex:0 0 auto;display:flex;align-items:flex-end;padding-bottom:2px">
@@ -2703,13 +2738,13 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
         </div>
         <div class="form-group" style="flex:1;min-width:200px">
           <label class="form-label">📥 Importyor <span style="font-size:.65rem;color:var(--text3);font-weight:400">(ixtiyoriy)</span></label>
-          <div style="position:relative" id="trade-partner-wrap">
+          <div style="position:relative;z-index:9999" id="trade-partner-wrap">
             <input class="form-input" id="trade-partner-search" type="text" placeholder="" autocomplete="off"
               style="font-size:.75rem;color:transparent;caret-color:var(--text);padding-right:30px" oninput="filterTradePartnerCountries()" onfocus="this.style.color='transparent';this.value='';showTradePartnerCountries()" onclick="this.value='';showTradePartnerCountries()">
             <div id="trade-partner-label" style="position:absolute;top:50%;left:12px;transform:translateY(-50%);font-size:.75rem;color:var(--text3);pointer-events:none">🔍 Importyor davlat tanlang (ixtiyoriy)</div>
             <input type="hidden" id="trade-partner-country" value="">
             <button type="button" id="trade-partner-clear" onclick="event.stopPropagation();clearTradePartnerCountry()" style="display:none;position:absolute;top:50%;right:8px;transform:translateY(-50%);background:#EF4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.7rem;cursor:pointer;line-height:1;padding:0" title="Tozalash">×</button>
-            <div id="trade-partner-list" onclick="event.stopPropagation()" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:380px;overflow-y:auto;background:#fff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:999;margin-top:2px"></div>
+            <div id="trade-partner-list" onclick="event.stopPropagation()" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:380px;overflow-y:auto;background:#ffffff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18);z-index:99999;margin-top:2px;backdrop-filter:none"></div>
           </div>
         </div>
         <div class="form-group" style="flex:0 0 110px">

@@ -2369,7 +2369,10 @@ window.filterInvestorsBySource = function(source){
     if(typeof toast === 'function') toast('Filter olib tashlandi — barcha kompaniyalar', 'info');
   } else {
     window._investorSourceFilter = source;
-    var label = source === 'apollo' ? 'Apollo' : (source === 'tradeatlas' ? 'TradeAtlas' : source);
+    var label = source === 'apollo' ? 'Apollo'
+      : source === 'tradeatlas' ? 'TradeAtlas'
+      : source === 'jts' ? 'Jahon Tashqi Savdosi'
+      : source;
     if(typeof toast === 'function') toast('Filter: faqat ' + label + ' manbasidagi kompaniyalar', 'info');
   }
   // Jadvalga scroll qilib o'tamiz (faqat aniq filter qo'llaganda — Jami bosilganda toggleIcTableCard o'zi qiladi)
@@ -2469,7 +2472,12 @@ _renderInvestorCompaniesMain = function(){
     if(!_sourceFilter) return true;
     var src = String(rec.manba || rec.source || '').toLowerCase();
     if(_sourceFilter === 'apollo') return src.indexOf('apollo') !== -1;
-    if(_sourceFilter === 'tradeatlas') return src.indexOf('tradeatlas') !== -1 || src === 'trade';
+    if(_sourceFilter === 'jts') return src.indexOf('jahontashqisavdosi') !== -1 || src === 'jts';
+    if(_sourceFilter === 'tradeatlas'){
+      // Faqat finder bo'limidagi TradeAtlas — Jahon Tashqi Savdosi alohida
+      if(src.indexOf('jahontashqisavdosi') !== -1 || src === 'jts') return false;
+      return src.indexOf('tradeatlas') !== -1 || src === 'trade';
+    }
     return true;
   }
   // Record importyor ekanligini aniqlash — finderMode + _partners + _partnerOf'dan
@@ -2523,6 +2531,7 @@ _renderInvestorCompaniesMain = function(){
   var allGroupMap = Object.create(null);
   var apolloGroups = Object.create(null);
   var tradeAtlasGroups = Object.create(null);
+  var jtsGroups = Object.create(null); // Jahon Tashqi Savdosi
   var groupRoles = Object.create(null); // key -> { hasExporter, hasImporter }
   var tayyor = 0, emailSent = 0, hasEmail = 0;
   var emailSentGroups = Object.create(null);
@@ -2558,7 +2567,10 @@ _renderInvestorCompaniesMain = function(){
     var geoCode = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec, {}) : '';
     var hasGeo = !!geoCode;
     if(src.indexOf('apollo') !== -1 && hasGeo) apolloGroups[key] = true;
-    if((src.indexOf('tradeatlas') !== -1 || src === 'trade') && hasGeo) tradeAtlasGroups[key] = true;
+    // Jahon Tashqi Savdosi — Trade sahifa modali orqali saqlangan kompaniyalar
+    if((src.indexOf('jahontashqisavdosi') !== -1 || src === 'jts') && hasGeo) jtsGroups[key] = true;
+    // TradeAtlas — Finder bo'limidan saqlangan (jahon savdosi emas)
+    else if((src.indexOf('tradeatlas') !== -1 || src === 'trade') && hasGeo) tradeAtlasGroups[key] = true;
     if(rec.holat === 'Tayyor') tayyor++;
     if(rec.emailSent) emailSentGroups[key] = true;
     if(rec.email) hasEmailGroups[key] = true;
@@ -2574,6 +2586,7 @@ _renderInvestorCompaniesMain = function(){
       // Importyor — apollo/TA count'lardan ham olib tashlash
       delete apolloGroups[key];
       delete tradeAtlasGroups[key];
+      delete jtsGroups[key];
     } else {
       allGroupMap[key] = true;
       if(role.hasExporter) _exporterCount++;
@@ -2587,6 +2600,7 @@ _renderInvestorCompaniesMain = function(){
   var groupCount = Object.keys(allGroupMap).length;
   var apolloCount = Object.keys(apolloGroups).length;
   var tradeAtlasCount = Object.keys(tradeAtlasGroups).length;
+  var jtsCount = Object.keys(jtsGroups).length;
   document.getElementById('ic-k1').innerHTML = groupCount + ' <span class="kpi-unit">ta</span>';
   document.getElementById('ic-k2').innerHTML = tayyor + ' <span class="kpi-unit">ta</span>';
   document.getElementById('ic-k3').innerHTML = emailSent + '/' + hasEmail + ' <span class="kpi-unit">ta</span>';
@@ -2595,6 +2609,8 @@ _renderInvestorCompaniesMain = function(){
   if(apolloEl) apolloEl.textContent = apolloCount;
   var taEl = document.getElementById('ic-k-tradeatlas');
   if(taEl) taEl.textContent = tradeAtlasCount;
+  var jtsEl = document.getElementById('ic-k-jts');
+  if(jtsEl) jtsEl.textContent = jtsCount;
   // Sidebar badge — agar avvalgi visible count mavjud bo'lsa, undan foydalanish
   // Aks holda groupCount (override pastda visibleGroups bilan ishlaydi)
   var _badgeInitVal = (window._icCounts && typeof window._icCounts.jami === 'number') ? window._icCounts.jami : groupCount;
@@ -3130,25 +3146,32 @@ _renderInvestorCompaniesMain = function(){
   });
   var _apolloFullGroups = Object.create(null);
   var _taFullGroups = Object.create(null);
+  var _jtsFullGroups = Object.create(null);
   Object.keys(_firstRecByGroup).forEach(function(key){
     var role = _firstRecRole(_firstRecByGroup[key]);
     if(role === 'importer') return; // jadvaldagi line 2761 filter bilan bir xil
     var recs = _allRecsByGroup[key] || [];
-    var hasApollo = false, hasTa = false;
+    var hasApollo = false, hasTa = false, hasJts = false;
     recs.forEach(function(r){
       var src = String(r.manba || r.source || '').toLowerCase().trim();
       if(src.indexOf('apollo') !== -1 || src === 'csv-import' || src === 'finder') hasApollo = true;
-      if(src.indexOf('tradeatlas') !== -1 || src.indexOf('trade atlas') !== -1 || src === 'trade' || src === 'ta') hasTa = true;
+      // Jahon Tashqi Savdosi alohida hisoblanadi (TradeAtlas counter'dan ajratilgan)
+      if(src.indexOf('jahontashqisavdosi') !== -1 || src === 'jts'){ hasJts = true; }
+      else if(src.indexOf('tradeatlas') !== -1 || src.indexOf('trade atlas') !== -1 || src === 'trade' || src === 'ta'){ hasTa = true; }
     });
     if(hasApollo) _apolloFullGroups[key] = true;
     if(hasTa) _taFullGroups[key] = true;
+    if(hasJts) _jtsFullGroups[key] = true;
   });
   var _apolloFullTotal = Object.keys(_apolloFullGroups).length;
   var _taFullTotal = Object.keys(_taFullGroups).length;
+  var _jtsFullTotal = Object.keys(_jtsFullGroups).length;
   var apolloEl2 = document.getElementById('ic-k-apollo');
   if(apolloEl2) apolloEl2.textContent = _apolloFullTotal;
   var taEl2 = document.getElementById('ic-k-tradeatlas');
   if(taEl2) taEl2.textContent = _taFullTotal;
+  var jtsEl2 = document.getElementById('ic-k-jts');
+  if(jtsEl2) jtsEl2.textContent = _jtsFullTotal;
   // ═══ MARKAZLASHGAN STATISTIKA — barcha komponentlar shu yerdan o'qiydi ═══
   // SOURCE OF TRUTH: visibleGroups (jadvaldagi haqiqiy kompaniyalar)
   var statsByCountry = Object.create(null);
@@ -3565,30 +3588,30 @@ _renderInvestorCompaniesMain = function(){
       if(recIdx === 0){
         html += '<td rowspan="'+recs.length+'" style="vertical-align:middle">'+sohaCell+'</td>';
       }
-      /* Status badge va Action buttons — faqat birinchi qator (recIdx === 0)ga rowspan bilan */
-      if(recIdx === 0){
-        var _parentRec = recs[0];
-        html += '<td rowspan="'+recs.length+'" style="vertical-align:middle">'+getEmailStatusBadge(_parentRec)+'</td>';
-        var _abtn = 'width:30px;height:30px;border-radius:7px;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s ease;flex-shrink:0;';
-        var _srcBadge = '';
-        var _srcRaw = String(_parentRec.manba || _parentRec.source || companyRec.manba || companyRec.source || '').toLowerCase();
-        var _isApolloSource = _srcRaw.indexOf('apollo') !== -1 || _srcRaw === 'csv-import' || _srcRaw === 'csv import' || _srcRaw === 'finder';
-        if(_isApolloSource){
-          _srcBadge = '<span title="Apollo" style="width:26px;height:26px;border-radius:7px;background:#FFE600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px"><img src="assets/apollo.ico" alt="Apollo" style="width:18px;height:18px;display:block"></span>';
-        } else if(_srcRaw.indexOf('tradeatlas') !== -1 || _srcRaw === 'trade'){
-          _srcBadge = '<span title="TradeAtlas" style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#1E3A8A,#1E40AF);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;flex-shrink:0;margin-right:4px;letter-spacing:-.02em">TA</span>';
-        }
-        html += '<td rowspan="'+recs.length+'" style="vertical-align:middle">' +
-          '<div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap">' +
-          _srcBadge +
-          (isAdmin
-            ? '<button style="'+_abtn+'background:transparent;padding:0" onclick="openInvestorAiWorkspace(\''+_parentRec.id+'\')" title="AI xat va tahlil"><svg width="26" height="26" viewBox="0 0 24 24"><defs><radialGradient id="aiGrad'+_parentRec.id+'" cx="50%" cy="40%" r="65%"><stop offset="0%" stop-color="#FFB554"/><stop offset="100%" stop-color="#F57C00"/></radialGradient></defs><circle cx="12" cy="12" r="11" fill="url(#aiGrad'+_parentRec.id+')"/><text x="12" y="16" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="11" fill="#fff">Ai</text></svg></button>' +
-              (_parentRec.email ? '<button style="'+_abtn+'background:#EFF4FF;color:#3B82F6" onclick="openEmailModal(\''+_parentRec.id+'\')" title="Xabar yuborish" onmouseover="this.style.background=\'#3B82F6\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#EFF4FF\';this.style.color=\'#3B82F6\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 20.5H7c-3 0-5-1.5-5-5v-7c0-3.5 2-5 5-5h10c3 0 5 1.5 5 5v7c0 3.5-2 5-5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 9l-3.13 2.5c-1.03.82-2.72.82-3.75 0L7 9" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
-              (_parentRec.email ? '<button style="'+_abtn+'background:'+(_parentRec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+';color:'+(_parentRec.emailSchedule?.active?'#059669':'#6B7280')+'" onclick="openScheduleModal(\''+_parentRec.id+'\')" title="Email rejalashtirish" onmouseover="this.style.background=\''+(_parentRec.emailSchedule?.active?'#059669':'#6B7280')+'\';this.style.color=\'#fff\'" onmouseout="this.style.background=\''+(_parentRec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+'\';this.style.color=\''+(_parentRec.emailSchedule?.active?'#059669':'#6B7280')+'\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.69 13.7h.01M15.69 16.7h.01M11.99 13.7h.02M11.99 16.7h.02M8.29 13.7h.02M8.29 16.7h.02" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
-              '<button style="'+_abtn+'background:#FEF3F2;color:#EF4444" onclick="deleteRecord(\'investorCompanies\',\''+_parentRec.id+'\')" title="O\'chirish" onmouseover="this.style.background=\'#EF4444\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#FEF3F2\';this.style.color=\'#EF4444\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 5.98c-3.33-.33-6.68-.5-10.02-.5-1.98 0-3.96.1-5.94.3L3 5.98M8.5 4.97l.22-1.31C8.88 2.71 9 2 10.69 2h2.62c1.69 0 1.82.75 1.97 1.67l.22 1.3M18.85 9.14l-.65 10.07C18.09 20.78 18 22 15.21 22H8.79C6 22 5.91 20.78 5.8 19.21L5.15 9.14M10.33 16.5h3.33M9.5 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
-            : '') +
-          '</div></td>';
+      /* Status badge va Action buttons — HAR LEAD UCHUN ALOHIDA (per-record, rowspan olib tashlandi) */
+      html += '<td style="vertical-align:middle">'+getEmailStatusBadge(rec)+'</td>';
+      var _abtn = 'width:30px;height:30px;border-radius:7px;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s ease;flex-shrink:0;';
+      var _srcBadge = '';
+      var _srcRaw = String(rec.manba || rec.source || companyRec.manba || companyRec.source || '').toLowerCase();
+      var _isApolloSource = _srcRaw.indexOf('apollo') !== -1 || _srcRaw === 'csv-import' || _srcRaw === 'csv import' || _srcRaw === 'finder';
+      var _isJtsSource = _srcRaw.indexOf('jahontashqisavdosi') !== -1 || _srcRaw === 'jts';
+      if(_isApolloSource){
+        _srcBadge = '<span title="Apollo" style="width:26px;height:26px;border-radius:7px;background:#FFE600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px"><img src="assets/apollo.ico" alt="Apollo" style="width:18px;height:18px;display:block"></span>';
+      } else if(_isJtsSource){
+        _srcBadge = '<span title="Jahon Tashqi Savdosi" style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 12h19M12 2.5c2.4 2.7 3.8 6 3.8 9.5s-1.4 6.8-3.8 9.5c-2.4-2.7-3.8-6-3.8-9.5s1.4-6.8 3.8-9.5z" stroke="currentColor" stroke-width="1.6"/></svg></span>';
+      } else if(_srcRaw.indexOf('tradeatlas') !== -1 || _srcRaw === 'trade'){
+        _srcBadge = '<span title="TradeAtlas" style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#1E3A8A,#1E40AF);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;flex-shrink:0;margin-right:4px;letter-spacing:-.02em">TA</span>';
       }
+      html += '<td style="vertical-align:middle">' +
+        '<div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap">' +
+        _srcBadge +
+        (isAdmin
+          ? '<button style="'+_abtn+'background:transparent;padding:0" onclick="openInvestorAiWorkspace(\''+rec.id+'\')" title="AI xat va tahlil"><svg width="26" height="26" viewBox="0 0 24 24"><defs><radialGradient id="aiGrad'+rec.id+'" cx="50%" cy="40%" r="65%"><stop offset="0%" stop-color="#FFB554"/><stop offset="100%" stop-color="#F57C00"/></radialGradient></defs><circle cx="12" cy="12" r="11" fill="url(#aiGrad'+rec.id+')"/><text x="12" y="16" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="11" fill="#fff">Ai</text></svg></button>' +
+            (rec.email ? '<button style="'+_abtn+'background:#EFF4FF;color:#3B82F6" onclick="openEmailModal(\''+rec.id+'\')" title="Xabar yuborish" onmouseover="this.style.background=\'#3B82F6\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#EFF4FF\';this.style.color=\'#3B82F6\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 20.5H7c-3 0-5-1.5-5-5v-7c0-3.5 2-5 5-5h10c3 0 5 1.5 5 5v7c0 3.5-2 5-5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 9l-3.13 2.5c-1.03.82-2.72.82-3.75 0L7 9" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
+            (rec.email ? '<button style="'+_abtn+'background:'+(rec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+';color:'+(rec.emailSchedule?.active?'#059669':'#6B7280')+'" onclick="openScheduleModal(\''+rec.id+'\')" title="Email rejalashtirish" onmouseover="this.style.background=\''+(rec.emailSchedule?.active?'#059669':'#6B7280')+'\';this.style.color=\'#fff\'" onmouseout="this.style.background=\''+(rec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+'\';this.style.color=\''+(rec.emailSchedule?.active?'#059669':'#6B7280')+'\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.69 13.7h.01M15.69 16.7h.01M11.99 13.7h.02M11.99 16.7h.02M8.29 13.7h.02M8.29 16.7h.02" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
+            '<button style="'+_abtn+'background:#FEF3F2;color:#EF4444" onclick="deleteRecord(\'investorCompanies\',\''+rec.id+'\')" title="O\'chirish" onmouseover="this.style.background=\'#EF4444\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#FEF3F2\';this.style.color=\'#EF4444\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 5.98c-3.33-.33-6.68-.5-10.02-.5-1.98 0-3.96.1-5.94.3L3 5.98M8.5 4.97l.22-1.31C8.88 2.71 9 2 10.69 2h2.62c1.69 0 1.82.75 1.97 1.67l.22 1.3M18.85 9.14l-.65 10.07C18.09 20.78 18 22 15.21 22H8.79C6 22 5.91 20.78 5.8 19.21L5.15 9.14M10.33 16.5h3.33M9.5 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
+          : '') +
+        '</div></td>';
       html += '</tr>';
     });
 

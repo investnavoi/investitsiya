@@ -1553,6 +1553,749 @@ function _getTradeCountryNameByCode(code){
   return '';
 }
 
+// ═══════════════════════════════════════════════════════════════
+// UN M49 davlat kodi → Finder English nomi (TradeAtlas integratsiyasi uchun)
+// TRADE_COUNTRIES (UN code) → FINDER_SOURCE_REGIONS (English) ko'prik
+// ═══════════════════════════════════════════════════════════════
+var UN_CODE_TO_FINDER_NAME = {
+  '860':'Uzbekistan','398':'Kazakhstan','417':'Kyrgyzstan','762':'Tajikistan','795':'Turkmenistan',
+  '643':'Russia','031':'Azerbaijan','268':'Georgia','051':'Armenia','112':'Belarus','804':'Ukraine','498':'Moldova',
+  '156':'China','392':'Japan','410':'South Korea','408':'North Korea','496':'Mongolia','158':'China','344':'China',
+  '360':'Indonesia','458':'Malaysia','764':'Thailand','704':'Vietnam','608':'Philippines','702':'Singapore','104':'Myanmar','116':'Cambodia','418':'Laos',
+  '356':'India','586':'Pakistan','050':'Bangladesh','144':'Sri Lanka','524':'Nepal','004':'Afghanistan','064':'Bhutan','462':'Maldives',
+  '792':'Turkey','364':'Iran','368':'Iraq','682':'Saudi Arabia','784':'United Arab Emirates','634':'Qatar','414':'Kuwait','512':'Oman','048':'Bahrain','400':'Jordan','422':'Lebanon','760':'Syria','376':'Israel','887':'Yemen','196':'Cyprus',
+  '276':'Germany','250':'France','826':'United Kingdom','380':'Italy','724':'Spain','528':'Netherlands','056':'Belgium','040':'Austria','756':'Switzerland','372':'Ireland',
+  '752':'Sweden','578':'Norway','208':'Denmark','246':'Finland','352':'Iceland','233':'Estonia','428':'Latvia','440':'Lithuania',
+  '616':'Poland','203':'Czech Republic','348':'Hungary','642':'Romania','100':'Bulgaria','703':'Slovakia','705':'Slovenia','191':'Croatia','688':'Serbia','070':'Bosnia and Herzegovina','807':'North Macedonia','008':'Albania','499':'Montenegro',
+  '620':'Portugal','300':'Greece',
+  '842':'United States','124':'Canada','484':'Mexico',
+  '192':'Cuba','214':'Dominican Republic','332':'Haiti','388':'Jamaica','320':'Guatemala','188':'Costa Rica','591':'Panama',
+  '076':'Brazil','032':'Argentina','152':'Chile','170':'Colombia','604':'Peru','862':'Venezuela','218':'Ecuador','068':'Bolivia','600':'Paraguay','858':'Uruguay',
+  '818':'Egypt','504':'Morocco','012':'Algeria','788':'Tunisia','434':'Libya','736':'Sudan',
+  '566':'Nigeria','288':'Ghana','384':'Ivory Coast','686':'Senegal','466':'Mali',
+  '404':'Kenya','834':'Tanzania','231':'Ethiopia','800':'Uganda','646':'Rwanda','508':'Mozambique',
+  '180':'DR Congo','120':'Cameroon','178':'Congo',
+  '710':'South Africa','024':'Angola','516':'Namibia','072':'Botswana','716':'Zimbabwe','894':'Zambia',
+  '036':'Australia','554':'New Zealand','598':'Papua New Guinea','242':'Fiji'
+};
+
+function _unCodeToFinderName(code){
+  if(!code) return '';
+  var raw = String(code);
+  while(raw.length < 3) raw = '0' + raw;
+  return UN_CODE_TO_FINDER_NAME[raw] || UN_CODE_TO_FINDER_NAME[String(code)] || '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Navoiy mahsulot row click → TradeAtlas inline modal (Trade sahifasi)
+// Trade sahifasidagi tanlangan eksportyor/importyor davlatlardan foydalanadi
+// Finder bo'limiga o'tmaydi — modal o'sha yerda ishlaydi
+// ═══════════════════════════════════════════════════════════════
+async function openTradeAtlasFromNavoi(hsCode, productName){
+  var hs = String(hsCode||'').replace(/\D/g,'');
+  if(!hs){
+    if(typeof toast === 'function') toast('⚠️ HS kod topilmadi','error');
+    return;
+  }
+  // ═══ Toggle: agar shu HS uchun panel ochiq bo'lsa, yopamiz ═══
+  var existingPanel = document.querySelector('tr.navoi-ta-inline-row');
+  if(existingPanel){
+    var openHs = existingPanel.dataset.hs || '';
+    existingPanel.remove();
+    // Agar boshqa HS bosilgan bo'lsa, yangi panel ochamiz; aks holda shunchaki yopiladi
+    if(openHs === hs) return;
+  }
+  var exporterCode = (document.getElementById('trade-country')||{}).value || '';
+  var importerCode = (document.getElementById('trade-partner-country')||{}).value || '';
+  var exporterName = _unCodeToFinderName(exporterCode);
+  var importerName = _unCodeToFinderName(importerCode);
+
+  if(!exporterCode && !importerCode){
+    if(typeof toast === 'function') toast('⚠️ Avval Eksportyor yoki Importyor davlatni tanlang','error');
+    return;
+  }
+  if(exporterCode && !exporterName){
+    if(typeof toast === 'function') toast('⚠️ Eksportyor davlat TradeAtlas xaritasida topilmadi','error');
+    return;
+  }
+  if(importerCode && !importerName){
+    if(typeof toast === 'function') toast('⚠️ Importyor davlat TradeAtlas xaritasida topilmadi','error');
+    return;
+  }
+
+  // ═══ Rejim ═══
+  var mode = exporterName ? 'exporters' : 'importers';
+  var meta = (typeof getFinderModeMeta === 'function') ? getFinderModeMeta(mode) : { mode:mode, resultWord:(mode==='exporters'?'eksportyorlari':'importyorlari') };
+
+  // Synthetic prod (manual HS) — Finder funksiyalariga uzatiladi
+  var prod = {
+    id: 'navoi-trade-' + hs,
+    hs_code: hs,
+    name: 'HS ' + hs + (productName ? (' — ' + productName) : ''),
+    name_uz: 'HS ' + hs + (productName ? (' — ' + productName) : ''),
+    name_en: productName || ('HS ' + hs)
+  };
+
+  // Target/source ro'yxatlari (English names)
+  var targetCountries = importerName ? [importerName] : ((typeof FINDER_ALWAYS_TARGET_COUNTRIES !== 'undefined') ? FINDER_ALWAYS_TARGET_COUNTRIES.slice() : []);
+  var sourceEffective = exporterName ? [exporterName] : [];
+  var sourceScope = {
+    continents: [],
+    countries: sourceEffective.slice(),
+    effectiveCountries: sourceEffective.slice(),
+    hasFilter: !!sourceEffective.length,
+    summary: sourceEffective.join(', '),
+    promptText: '',
+    keywordHint: sourceEffective[0] || ''
+  };
+
+  // ═══ Modal yaratish (Trade sahifa uchun) ═══
+  _navoiTaShowModal(prod, hs, exporterName, importerName, productName);
+
+  try {
+    // Cache pre-check
+    if(typeof ensureCollectionLoaded === 'function'){
+      try { await ensureCollectionLoaded('taFirmSnapshots'); } catch(_e){}
+    }
+    // ═══ Trade sahifasidagi YIL selektoridan sana oraligi (Finder year emas) ═══
+    var tradeYearEl = document.getElementById('trade-year');
+    var tradeYear = String((tradeYearEl && tradeYearEl.value) || '').trim();
+    var dateRange;
+    if(tradeYear && /^\d{4}$/.test(tradeYear)){
+      dateRange = { startDate: tradeYear + '-01-01', endDate: tradeYear + '-12-31' };
+    } else {
+      // Trade year tanlanmagan — Import analysis fallback
+      dateRange = (typeof getImportAnalysisDateRange === 'function') ? getImportAnalysisDateRange() : { startDate:'', endDate:'' };
+    }
+    // Finder funksiyalari Trade year'ni ko'rishi uchun #finder-year ham vaqtincha sinxronlashtiramiz
+    var finderYearEl = document.getElementById('finder-year');
+    var _origFinderYear = finderYearEl ? finderYearEl.value : null;
+    if(finderYearEl && tradeYear && /^\d{4}$/.test(tradeYear)){
+      finderYearEl.value = tradeYear;
+    }
+    console.log('[NavoiTA] Date range:', dateRange.startDate, '→', dateRange.endDate, '(Trade year:', tradeYear || 'none', ')');
+    var targetCodes = targetCountries.map(getTradeAtlasCountryCode).filter(Boolean);
+    var sourceCodes = (typeof filterTradeAtlasAfricanCodes === 'function')
+      ? filterTradeAtlasAfricanCodes(sourceEffective.map(getTradeAtlasCountryCode).filter(Boolean))
+      : sourceEffective.map(getTradeAtlasCountryCode).filter(Boolean);
+    var snapIdFirms = (typeof _buildTaSnapshotId === 'function') ? _buildTaSnapshotId(prod, hs, targetCodes, sourceCodes, dateRange, 'firms') : '';
+    var snapIdShipments = (typeof _buildTaSnapshotId === 'function') ? _buildTaSnapshotId(prod, hs, targetCodes, sourceCodes, dateRange, 'shipments') : '';
+    var cacheFlags = {
+      firms: !!(typeof _getTaSnapshot === 'function' && _getTaSnapshot(snapIdFirms)),
+      shipments: !!(typeof _getTaSnapshot === 'function' && _getTaSnapshot(snapIdShipments))
+    };
+
+    _navoiTaSetStatus('⚙️ Sozlash modal ochiladi...');
+    var taPreRes = await showTradeAtlasPreSearchConfirm(prod, meta, targetCountries, sourceScope, cacheFlags);
+    if(!taPreRes || !taPreRes.confirmed){
+      _navoiTaCloseModal();
+      if(typeof toast === 'function') toast('ℹ️ TradeAtlas qidiruvi bekor qilindi','info');
+      return;
+    }
+    var apiMode = taPreRes.apiMode || 'firms';
+    var forceRefresh = !!taPreRes.forceRefresh;
+    window._taApiMode = apiMode;
+    window._taMaxLimit = Number(taPreRes.maxLimit) || 0;
+    var snapId = apiMode === 'shipments' ? snapIdShipments : snapIdFirms;
+    var cachedSnapshot = forceRefresh ? null : ((typeof _getTaSnapshot === 'function') ? _getTaSnapshot(snapId) : null);
+
+    var label = exporterName && importerName ? (exporterName + ' → ' + importerName)
+              : (exporterName ? (exporterName + ' (dunyoga)') : ('dunyodan → ' + importerName));
+    _navoiTaSetStatus('🔍 TradeAtlas: HS '+hs+' | '+label+' ('+(apiMode==='shipments'?'shipments':'firms')+')...');
+
+    var results;
+    var actualApiMode = apiMode; // user'ning original tanlovi
+    if(cachedSnapshot && Array.isArray(cachedSnapshot.results) && cachedSnapshot.results.length){
+      results = cachedSnapshot.results.slice();
+      _navoiTaSetStatus('💾 Firebase keshidan tiklandi: ' + results.length + ' kompaniya (kreditsiz)');
+      if(typeof toast === 'function') toast('💾 Saqlangan natija: ' + results.length + ' (kreditsiz)', 'success');
+    } else if(apiMode === 'shipments'){
+      // Shipments mode — proxy ba'zan 404 qaytaradi, shu sabab firms fallback ishlaydi
+      try {
+        results = await tradeAtlasFinderSearch(prod, meta, targetCountries, sourceScope);
+      } catch(shipErr){
+        console.warn('[NavoiTA] Shipments search failed:', shipErr && shipErr.message);
+        results = [];
+      }
+      // Agar shipments mode 0 natija qaytarsa — firms mode'ga avtomatik o'tamiz
+      if(!Array.isArray(results) || !results.length){
+        _navoiTaSetStatus('⚠️ Shipments rejimida natija yo\'q. Firmalar rejimiga o\'tilmoqda...');
+        if(typeof toast === 'function') toast('⚠️ Shipments rejimi natija qaytarmadi — Firmalar rejimida sinab ko\'ramiz','info');
+        try {
+          results = await tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScope);
+          actualApiMode = 'firms';
+          if(Array.isArray(results) && results.length){
+            // Yangi snapId firms uchun
+            snapId = snapIdFirms;
+          }
+        } catch(firmsErr){
+          console.warn('[NavoiTA] Firms fallback failed:', firmsErr && firmsErr.message);
+          results = [];
+        }
+      }
+    } else {
+      results = await tradeAtlasFirmsOnlySearch(prod, meta, targetCountries, sourceScope);
+    }
+    apiMode = actualApiMode;
+    if(!Array.isArray(results) || !results.length){
+      _navoiTaSetStatus('');
+      var emptyHs = hs;
+      var emptyFlow = (exporterName && importerName) ? (exporterName + ' → ' + importerName)
+                    : (exporterName ? exporterName : importerName);
+      var emptyHints = '<ul style="margin:.6rem 0 0;padding:0 0 0 1.1rem;text-align:left;color:#475569;font-size:.78rem;line-height:1.65">' +
+        '<li>HS kod yetarlicha keng emas — <b>4 raqamga qisqartirib</b> ko\'ring (masalan '+emptyHs.slice(0,4)+'XX)</li>' +
+        '<li>Importyor davlatni <b>olib tashlang</b> — yana boshqasini sinab ko\'ring</li>' +
+        '<li>Year selektorini boshqa yilga (2023, 2022) o\'zgartiring</li>' +
+        (apiMode === 'firms'
+          ? '<li><b>📦 Shipmentlar (aniq)</b> rejimida sinab ko\'ring — natija boshqacha bo\'lishi mumkin</li>'
+          : '<li><b>🏢 Firmalar (arzon)</b> rejimida sinab ko\'ring</li>') +
+        '</ul>';
+      _navoiTaSetBody(
+        '<div style="padding:2rem;text-align:center;color:#475569;font-size:.85rem">' +
+          '<div style="font-size:2rem;margin-bottom:.5rem">⚠️</div>' +
+          '<div style="font-weight:700;color:#0f172a;margin-bottom:.3rem">Natija topilmadi</div>' +
+          '<div style="font-size:.78rem;color:#64748b;margin-bottom:1rem">HS '+emptyHs+' · '+emptyFlow.replace(/</g,'&lt;')+' · '+(apiMode==='shipments'?'shipmentlar':'firmalar')+' · '+(dateRange.startDate.slice(0,4))+'</div>' +
+          '<div style="background:#f8fafc;border-radius:10px;padding:.8rem 1rem;display:inline-block;max-width:480px">' +
+            '<div style="font-weight:700;color:#0f172a;font-size:.78rem;margin-bottom:.3rem">💡 Bu nima degani?</div>' +
+            '<div style="color:#64748b;font-size:.74rem;line-height:1.55">TradeAtlas bazasida ushbu HS kod, davlat va yil kombinatsiyasi bo\'yicha kompaniya yozuvlari yo\'q. Bu xatolik emas — shu mahsulot oqimi shu davlatlar o\'rtasida hujjatlanmagan bo\'lishi mumkin.</div>' +
+            emptyHints +
+          '</div>' +
+        '</div>'
+      );
+      return;
+    }
+
+    // ═══ Yangi natija — Firebase keshiga saqlash ═══
+    // Format finder.js'dagi `_saveTaSnapshot` chaqirig'i bilan moslashtirilgan
+    if(!cachedSnapshot && typeof _saveTaSnapshot === 'function' && Array.isArray(results) && results.length){
+      var snapshotPayload = {
+        id: snapId,
+        productId: String(prod.id || ''),
+        productName: String(prod.name_en || prod.name_uz || prod.name || 'HS '+hs),
+        hsCode: hs,
+        targetCodes: (targetCodes || []).slice().sort(),
+        sourceCodes: (sourceCodes || []).slice().sort(),
+        startDate: (dateRange && dateRange.startDate) || '',
+        endDate: (dateRange && dateRange.endDate) || '',
+        apiMode: apiMode,
+        results: results.slice(),
+        cachedAt: new Date().toISOString()
+      };
+      console.log('[NavoiTA] Saving snapshot to Firebase:', snapshotPayload.id, 'firms:', results.length);
+      try {
+        await _saveTaSnapshot(snapshotPayload);
+        if(typeof toast === 'function') toast('💾 '+results.length+' kompaniya Firebase keshiga saqlandi','success');
+      } catch(saveErr){
+        console.warn('[NavoiTA] Snapshot save fail:', saveErr && saveErr.message);
+        if(typeof toast === 'function') toast('⚠️ Kesh saqlash xatosi: '+(saveErr && saveErr.message || 'noma\'lum'),'error');
+      }
+    }
+
+    _navoiTaRenderResults(results, prod, meta, hs, exporterName, importerName);
+  } catch(err){
+    console.error('openTradeAtlasFromNavoi error:', err);
+    _navoiTaSetStatus('');
+    _navoiTaSetBody('<div style="padding:2rem;text-align:center;color:#dc2626;font-size:.85rem">❌ Xato: '+(err && err.message ? String(err.message).replace(/</g,'&lt;') : 'noma\'lum')+'</div>');
+  } finally {
+    // Finder year selektorini tiklash (boshqa komponentlarga ta'sir qilmasligi uchun)
+    try {
+      var _fye = document.getElementById('finder-year');
+      if(_fye && typeof _origFinderYear !== 'undefined' && _origFinderYear !== null){
+        _fye.value = _origFinderYear;
+      }
+    } catch(_re){}
+  }
+}
+window.openTradeAtlasFromNavoi = openTradeAtlasFromNavoi;
+
+// ─── Inline expandable row (modal o'rniga) ─────────────────────
+// Mahsulot qatori OSTIDA colspan TR yaratamiz, click qaytsa yopiladi
+function _navoiTaShowModal(prod, hs, exporterName, importerName, productName){
+  // Bu nom backward-compat uchun saqlanadi — endi inline ochiladi
+  return _navoiTaShowInline(prod, hs, exporterName, importerName, productName);
+}
+function _navoiTaShowInline(prod, hs, exporterName, importerName, productName){
+  // Avvalgi inline panellarni yopib qo'yamiz
+  document.querySelectorAll('tr.navoi-ta-inline-row').forEach(function(r){ r.remove(); });
+  // Click qilingan qatorni topamiz (HS kod orqali)
+  var tb = document.getElementById('trade-tbody');
+  if(!tb) return;
+  // tr ichidan onclick'da hs ma'lumoti bilan moslashadiganini topamiz
+  var targetRow = null;
+  var rows = tb.querySelectorAll('tr');
+  for(var i = 0; i < rows.length; i++){
+    var oc = rows[i].getAttribute('onclick') || '';
+    if(oc.indexOf("openTradeAtlasFromNavoi('"+hs+"'") !== -1){
+      targetRow = rows[i];
+      break;
+    }
+  }
+  if(!targetRow){
+    // Fallback: birinchi qator pastiga
+    targetRow = tb.firstElementChild;
+  }
+  // Yangi inline row
+  var inlineTr = document.createElement('tr');
+  inlineTr.className = 'navoi-ta-inline-row';
+  inlineTr.id = 'navoiTaInlineRow';
+  inlineTr.dataset.hs = hs;
+  var flow = exporterName && importerName
+    ? ('🚢 ' + exporterName + ' → ' + importerName)
+    : (exporterName ? ('🚢 ' + exporterName + ' (dunyoga)') : ('🌍 dunyodan → ' + (importerName||'—')));
+  var titleProduct = productName ? (' — ' + String(productName).slice(0,60).replace(/</g,'&lt;')) : '';
+  inlineTr.innerHTML =
+    '<td colspan="7" style="padding:0;background:#f8fafc;border-top:2px solid #0ea5e9;border-bottom:2px solid #0ea5e9">'+
+      '<div style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:.85rem 1.2rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">📊 TradeAtlas — HS '+hs+'</div>'+
+          '<div style="font-size:.95rem;font-weight:700;line-height:1.3">'+flow+titleProduct+'</div>'+
+          '<div id="navoiTaStatus" style="margin-top:.3rem;font-size:.7rem;color:#cbd5e1"></div>'+
+        '</div>'+
+        '<button onclick="_navoiTaCloseModal()" type="button" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:1rem;font-weight:700;flex-shrink:0">✕</button>'+
+      '</div>'+
+      '<div id="navoiTaBody" style="background:#fff">'+
+        '<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:.85rem"><div style="display:inline-block;width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#0ea5e9;border-radius:50%;animation:spin 1s linear infinite"></div><div style="margin-top:.6rem">Tayyorlanmoqda...</div></div>'+
+      '</div>'+
+      '<div id="navoiTaFooter" style="padding:.7rem 1.2rem;border-top:1px solid #e2e8f0;background:#f8fafc;display:none;justify-content:space-between;align-items:center;gap:1rem"></div>'+
+    '</td>';
+  // Click qilingan qator OSTIGA qo'shamiz
+  if(targetRow.nextSibling){
+    targetRow.parentNode.insertBefore(inlineTr, targetRow.nextSibling);
+  } else {
+    targetRow.parentNode.appendChild(inlineTr);
+  }
+  // Spinner CSS bir marta inject
+  if(!document.getElementById('navoiTaSpinKf')){
+    var st = document.createElement('style');
+    st.id = 'navoiTaSpinKf';
+    st.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(st);
+  }
+  // Skroll qilib yangi panelga olib boramiz
+  setTimeout(function(){
+    try { inlineTr.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(_e){}
+  }, 80);
+}
+function _navoiTaCloseModal(){
+  // Inline rowni o'chirish (backward-compat: modal nomi saqlangan)
+  document.querySelectorAll('tr.navoi-ta-inline-row').forEach(function(r){ r.remove(); });
+  var legacy = document.getElementById('navoiTaModal');
+  if(legacy) legacy.remove();
+}
+function _navoiTaSetStatus(text){
+  var el = document.getElementById('navoiTaStatus');
+  if(el) el.textContent = text || '';
+}
+function _navoiTaSetBody(html){
+  var el = document.getElementById('navoiTaBody');
+  if(el) el.innerHTML = html;
+}
+
+// ─── Natijalar — Investor card stilida (xuddi forum-detail.js'dagi kabi) ─────
+function _navoiTaRenderResults(results, prod, meta, hs, exporterName, importerName){
+  // Tartiblash: trade value bo'yicha kamayuvchi
+  var rows = results.slice().sort(function(a,b){
+    return (Number(b._tradeAtlasTradeValue||0) - Number(a._tradeAtlasTradeValue||0));
+  });
+  window._navoiTaLastResults = rows;
+  window._navoiTaLastProd = prod;
+  window._navoiTaLastMeta = meta;
+  window._navoiTaLastHs = hs;
+
+  var totalValue = rows.reduce(function(s,r){ return s + Number(r._tradeAtlasTradeValue||0); }, 0);
+  var totalQty = rows.reduce(function(s,r){ return s + Number(r._tradeAtlasQuantity||0); }, 0);
+  var totalDocs = rows.reduce(function(s,r){ return s + Number(r._tradeAtlasDocCount||0); }, 0);
+  var fmtUsd = (typeof formatTradeAtlasUsd === 'function') ? formatTradeAtlasUsd : function(v){return '$'+Number(v||0).toLocaleString();};
+  var modeIsExporter = (meta && meta.mode === 'exporters');
+
+  var html = '<div style="padding:.8rem 1.4rem .4rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;background:#f8fafc;border-bottom:1px solid #e2e8f0">'+
+    _navoiTaKpi('Kompaniyalar', String(rows.length), '#0ea5e9')+
+    _navoiTaKpi('Jami qiymat', fmtUsd(totalValue), '#10b981')+
+    _navoiTaKpi('Jami hujjatlar', String(totalDocs), '#f59e0b')+
+    _navoiTaKpi('Jami hajm', totalQty ? Math.round(totalQty).toLocaleString()+' kg' : '—', '#6366f1')+
+  '</div>';
+
+  html += '<div style="padding:.8rem 1rem;display:flex;flex-direction:column;gap:.7rem;background:#fafbfc">';
+  rows.forEach(function(r, i){
+    html += _navoiTaCardHtml(r, i, modeIsExporter, hs, prod);
+  });
+  html += '</div>';
+
+  _navoiTaSetBody(html);
+  _navoiTaSetStatus('✅ '+rows.length+' kompaniya topildi');
+
+  // Footer: hammasini saqlash + yopish
+  var footer = document.getElementById('navoiTaFooter');
+  if(footer){
+    footer.style.display = 'flex';
+    // Counterpart firmlar sonini hisoblash
+    var totalCounterparts = rows.reduce(function(s, r){
+      return s + (Array.isArray(r._tradeAtlasCounterpartFirms) ? r._tradeAtlasCounterpartFirms.length : 0);
+    }, 0);
+    var saveLabel = totalCounterparts
+      ? '💾 Hammasini saqlash ('+rows.length+' eksportyor + ~'+totalCounterparts+' importyor)'
+      : '💾 Hammasini saqlash ('+rows.length+')';
+    footer.innerHTML =
+      '<div style="font-size:.7rem;color:#64748b">💡 Eksportyor + uning importyor xaridorlari investor bazasiga saqlanadi</div>'+
+      '<div style="display:flex;gap:.6rem">'+
+        '<button id="navoiTaSaveAllBtn" type="button" style="background:#10b981;color:#fff;border:none;border-radius:10px;padding:.55rem 1rem;font-weight:700;cursor:pointer;font-size:.8rem">'+saveLabel+'</button>'+
+        '<button id="navoiTaCloseBtn2" type="button" style="background:#fff;color:#475569;border:1.5px solid #e2e8f0;border-radius:10px;padding:.55rem 1rem;font-weight:600;cursor:pointer;font-size:.8rem">Yopish</button>'+
+      '</div>';
+    document.getElementById('navoiTaCloseBtn2').onclick = _navoiTaCloseModal;
+    document.getElementById('navoiTaSaveAllBtn').onclick = function(){ _navoiTaSaveAll(this); };
+  }
+}
+
+// ─── Bitta kompaniya kartochkasi (Investor stilida) ──────────────
+function _navoiTaCardHtml(r, idx, modeIsExporter, hs, prod){
+  var name = String(r.kompaniya || '—');
+  var country = String(r.davlat || '');
+  var city = String(r.shahar || '').trim();
+  var website = String(r.website || '').trim();
+  var initials = name.split(/\s+/).filter(Boolean).slice(0,2).map(function(w){return w.charAt(0).toUpperCase();}).join('') || 'TA';
+  var flag = (typeof _COUNTRY_FLAG_MAP !== 'undefined' && country && _COUNTRY_FLAG_MAP[country]) ? _COUNTRY_FLAG_MAP[country] : '🌍';
+  var roleHtml = modeIsExporter
+    ? '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;background:linear-gradient(135deg,#059669,#047857);color:#fff;font-size:.6rem;font-weight:800;letter-spacing:.05em;box-shadow:0 2px 4px rgba(5,150,105,.25)">📤 EKSPORTYOR</div>'
+    : '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;background:linear-gradient(135deg,#7C3AED,#6D28D9);color:#fff;font-size:.6rem;font-weight:800;letter-spacing:.05em;box-shadow:0 2px 4px rgba(124,58,237,.25)">📥 IMPORTYOR</div>';
+
+  // Counterpart (xaridor importyor) firmlar
+  var counterFirms = Array.isArray(r._tradeAtlasCounterpartFirms) ? r._tradeAtlasCounterpartFirms : [];
+  var counterToggleHtml = '';
+  var counterListHtml = '';
+  if(counterFirms.length){
+    counterToggleHtml = '<div onclick="_navoiTaToggleCounter('+idx+',this)" style="cursor:pointer;color:#7C3AED;font-size:.7rem;font-weight:700;margin-top:6px;display:inline-flex;align-items:center;gap:4px">'+
+      '<span class="navoi-ta-arrow" style="display:inline-block;transition:transform .15s">▶</span>'+
+      '<span>'+counterFirms.length+' ta '+(modeIsExporter?'importyor':'eksportyor')+'</span>'+
+    '</div>';
+    counterListHtml = '<div id="navoiTaCounter'+idx+'" style="display:none;margin-top:6px;padding:8px;background:#FAF5FF;border-left:3px solid #7C3AED;border-radius:6px">'+
+      '<div style="font-size:.6rem;color:#6B21A8;font-weight:700;letter-spacing:.04em;margin-bottom:4px;text-transform:uppercase">▼ BU '+(modeIsExporter?'EKSPORTYORDAN IMPORT':'IMPORTYORGA EKSPORT')+' QILGAN KOMPANIYALAR</div>';
+    counterFirms.slice(0,10).forEach(function(cp){
+      var cpName = String((cp && cp.name) || '—');
+      var cpCountry = String((cp && cp.country) || '');
+      var cpFlag = (typeof _COUNTRY_FLAG_MAP !== 'undefined' && cpCountry && _COUNTRY_FLAG_MAP[cpCountry]) ? _COUNTRY_FLAG_MAP[cpCountry] : '';
+      var qty = Number((cp && cp.totalQty) || 0);
+      var qtyTxt = qty >= 1e6 ? (qty/1e6).toFixed(1)+'M kg' : qty >= 1e3 ? (qty/1e3).toFixed(1)+'K kg' : (qty?Math.round(qty)+' kg':'');
+      var val = Number((cp && cp.totalValue) || 0);
+      var valTxt = val >= 1e6 ? '$'+(val/1e6).toFixed(1)+'M' : val >= 1e3 ? '$'+(val/1e3).toFixed(0)+'K' : (val?'$'+val:'');
+      var dt = (cp && cp.lastDate) ? String(cp.lastDate).slice(0,10) : '';
+      var meta = [qtyTxt,valTxt,dt?'📅 '+dt:''].filter(Boolean).join(' · ');
+      counterListHtml += '<div style="font-size:.7rem;color:#5B21B6;line-height:1.45;padding:5px 6px;border-radius:5px">'+
+        '<b style="color:#7C3AED">'+(modeIsExporter?'Importyor':'Eksportyor')+'</b> '+
+        '<b>'+cpName.replace(/</g,'&lt;')+'</b>'+(cpFlag?' '+cpFlag:'')+(cpCountry?' '+cpCountry.replace(/</g,'&lt;'):'')+
+        (meta?'<div style="color:#9CA3AF;font-size:.62rem;margin-top:2px;margin-left:4px">· '+meta+'</div>':'')+
+      '</div>';
+    });
+    if(counterFirms.length > 10){
+      counterListHtml += '<div style="font-size:.62rem;color:#9CA3AF;text-align:center;padding:4px;font-style:italic">+'+(counterFirms.length-10)+' ta yana</div>';
+    }
+    counterListHtml += '</div>';
+  }
+
+  // Trade qiymat va hajm chip'lari
+  var tradeValue = Number(r._tradeAtlasTradeValue||0);
+  var tradeQty = Number(r._tradeAtlasQuantity||0);
+  var tradeDate = String(r._tradeAtlasLastArrivalDate||'').slice(0,10);
+  var infoBits = [];
+  if(tradeQty){
+    var qtyT = tradeQty>=1e6?(tradeQty/1e6).toFixed(1)+'M':tradeQty>=1e3?(tradeQty/1e3).toFixed(1)+'K':String(Math.round(tradeQty));
+    infoBits.push('<span style="background:rgba(5,150,105,.1);color:#059669;padding:2px 8px;border-radius:6px;font-weight:700">📦 '+qtyT+' kg</span>');
+  }
+  if(tradeValue){
+    var valT = tradeValue>=1e6?'$'+(tradeValue/1e6).toFixed(1)+'M':tradeValue>=1e3?'$'+(tradeValue/1e3).toFixed(0)+'K':'$'+Math.round(tradeValue);
+    infoBits.push('<span style="background:rgba(34,197,94,.1);color:#16A34A;padding:2px 8px;border-radius:6px;font-weight:700">💰 '+valT+'</span>');
+  }
+  if(tradeDate){
+    infoBits.push('<span style="background:rgba(99,102,241,.08);color:#4338CA;padding:2px 8px;border-radius:6px;font-weight:600;font-size:.62rem">📅 '+tradeDate+'</span>');
+  }
+  var infoLine = infoBits.length ? '<div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem">'+infoBits.join('')+'</div>' : '';
+
+  // Aloqa chip'lari
+  var contactBits = [];
+  if(r.email) contactBits.push('<a href="mailto:'+r.email+'" title="'+r.email.replace(/"/g,'&quot;')+'" style="background:#E0F2FE;color:#0369A1;padding:4px 7px;border-radius:6px;text-decoration:none;font-size:.65rem;font-weight:600">📧 Email</a>');
+  if(r.telefon) contactBits.push('<a href="tel:'+r.telefon+'" style="background:#D1FAE5;color:#047857;padding:4px 7px;border-radius:6px;text-decoration:none;font-size:.65rem;font-weight:600">📞 Tel</a>');
+  if(website){
+    var safeWeb = website.indexOf('http')===0?website:'https://'+website;
+    contactBits.push('<a href="'+safeWeb+'" target="_blank" rel="noopener" style="color:#6366F1;text-decoration:none;font-size:.7rem;font-weight:600">🌐 '+website.replace(/^https?:\/\//,'').replace(/^www\./,'').slice(0,40)+'</a>');
+  }
+  if(r.linkedin) contactBits.push('<a href="'+r.linkedin+'" target="_blank" style="background:#DBEAFE;color:#0A66C2;padding:4px 7px;border-radius:6px;text-decoration:none;font-size:.65rem;font-weight:600">💼 LI</a>');
+
+  // HS + manual badge
+  var hsBadge = '<span style="display:inline-flex;align-items:center;gap:5px;background:#FFF7ED;color:#9A3412;padding:4px 10px;border-radius:8px;font-size:.7rem;font-weight:700;border:1px solid #FED7AA">HS '+hs+' (manual)'+(prod && prod.name_uz ? ' — '+String(prod.name_uz).slice(0,30) : '')+'</span>';
+
+  // Status chip'lar (TA, AI, Email, Calendar, Delete) — visual only (Lead topish bosilganda saqlanadi)
+  var statusChips =
+    '<span title="TradeAtlas" style="background:#1E40AF;color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800">TA</span>'+
+    '<span title="AI" style="background:#F97316;color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800">Ai</span>'+
+    '<span title="Email" style="background:#06B6D4;color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem">📨</span>'+
+    '<span title="Calendar" style="background:#94A3B8;color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem">📅</span>'+
+    '<span title="Yuborilmagan" style="background:#FEF3C7;color:#92400E;padding:3px 9px;border-radius:6px;font-size:.6rem;font-weight:700">● Yuborilmagan</span>';
+
+  return '<div id="navoiTaCard'+idx+'" style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:1rem 1.1rem;display:grid;grid-template-columns:46px 1fr auto;gap:1rem;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
+    // Avatar
+    '<div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#A78BFA,#7C3AED);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem">'+initials+'</div>'+
+    // Main info
+    '<div style="min-width:0">'+
+      '<div style="margin-bottom:4px">'+roleHtml+'</div>'+
+      '<div style="font-size:.95rem;font-weight:800;color:#0F172A;line-height:1.25">'+name.replace(/</g,'&lt;')+'</div>'+
+      (website?'<div style="margin-top:2px"><a href="'+(website.indexOf('http')===0?website:'https://'+website)+'" target="_blank" rel="noopener" style="color:#6366F1;font-size:.7rem;text-decoration:none">'+website.replace(/^https?:\/\//,'').slice(0,60)+'</a></div>':'')+
+      '<div style="margin-top:3px;font-size:.7rem;color:#475569;display:flex;align-items:center;gap:5px">'+
+        '<span>'+flag+'</span>'+
+        '<span>'+(country?country.replace(/</g,'&lt;'):'—')+(city && city!=='-' ? ', '+city.replace(/</g,'&lt;') : '')+'</span>'+
+      '</div>'+
+      infoLine+
+      counterToggleHtml+
+      counterListHtml+
+      (contactBits.length?'<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+contactBits.join('')+'</div>':'')+
+    '</div>'+
+    // Right column: Lead topish + HS + status
+    '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:200px">'+
+      '<button onclick="_navoiTaSaveAndFindLead('+idx+',this)" style="background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:.75rem;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.35);white-space:nowrap">🔍 Lead topish</button>'+
+      '<div>'+hsBadge+'</div>'+
+      '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+statusChips+'</div>'+
+      '<button onclick="_navoiTaSaveOne('+idx+',this)" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.65rem;font-weight:700;cursor:pointer" title="Eksportyor va uning importyor xaridorlarini bazaga saqlash">💾 Eksp+Imp saqlash</button>'+
+    '</div>'+
+  '</div>';
+}
+
+window._navoiTaToggleCounter = function(idx, el){
+  var box = document.getElementById('navoiTaCounter'+idx);
+  if(!box) return;
+  var arrow = el && el.querySelector ? el.querySelector('.navoi-ta-arrow') : null;
+  if(box.style.display === 'none' || !box.style.display){
+    box.style.display = 'block';
+    if(arrow) arrow.style.transform = 'rotate(90deg)';
+  } else {
+    box.style.display = 'none';
+    if(arrow) arrow.style.transform = 'rotate(0deg)';
+  }
+};
+
+// ─── Lead topish: kompaniyani saqlab keyin findContactsForInvestorRecord ──
+window._navoiTaSaveAndFindLead = async function(idx, btn){
+  var rows = window._navoiTaLastResults || [];
+  var item = rows[idx];
+  if(!item){ if(typeof toast==='function') toast('⚠️ Item topilmadi','error'); return; }
+  // Avval saqlash (yoki mavjud bo'lsa qaytadan ishlatish)
+  var rec = _navoiTaSaveToInvestorCompanies(item, window._navoiTaLastProd, window._navoiTaLastMeta, true);
+  if(!rec){
+    if(typeof toast==='function') toast('⚠️ Kompaniya saqlash muvaffaqiyatsiz','error');
+    return;
+  }
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Lead izlash...'; btn.style.opacity = '.7'; }
+  if(typeof window.findContactsForInvestorRecord === 'function'){
+    try {
+      await window.findContactsForInvestorRecord(rec.id, btn);
+      if(btn){ btn.textContent = '✅ Lead topildi'; btn.style.background = '#10b981'; }
+    } catch(e){
+      console.error('Lead topish xato:', e);
+      if(btn){ btn.disabled = false; btn.textContent = '🔍 Lead topish'; btn.style.opacity = '1'; }
+      if(typeof toast === 'function') toast('❌ Lead topish xato: '+(e && e.message || ''),'error');
+    }
+  } else {
+    if(typeof toast === 'function') toast('⚠️ Lead topish funksiyasi mavjud emas','error');
+    if(btn){ btn.disabled = false; btn.textContent = '🔍 Lead topish'; btn.style.opacity = '1'; }
+  }
+};
+function _navoiTaKpi(label, value, color){
+  return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:.5rem .7rem">'+
+    '<div style="font-size:.55rem;text-transform:uppercase;color:#94a3b8;letter-spacing:.05em;font-weight:700">'+label+'</div>'+
+    '<div style="font-size:1rem;font-weight:800;color:'+color+';margin-top:2px">'+value+'</div>'+
+  '</div>';
+}
+
+// ─── Saqlash (Eksportyor + Importyor counterparts ham) ─────────
+function _navoiTaSaveOne(idx, btn){
+  var rows = window._navoiTaLastResults || [];
+  var item = rows[idx];
+  if(!item){ if(typeof toast==='function') toast('⚠️ Item topilmadi','error'); return; }
+  var stats = _navoiTaSavePairWithPartners(item, window._navoiTaLastProd, window._navoiTaLastMeta);
+  if(stats.parentSaved || stats.partnersAdded){
+    if(btn){
+      btn.textContent = '✅ Saqlandi ('+(stats.parentSaved?'1':'0')+'+'+stats.partnersAdded+')';
+      btn.style.background = '#94a3b8';
+      btn.disabled = true;
+    }
+    if(typeof toast === 'function'){
+      var msg = '✅ Saqlandi: '+(item.kompaniya||'') + (stats.partnersAdded?(' + '+stats.partnersAdded+' ta importyor'):'');
+      toast(msg,'success');
+    }
+  } else {
+    if(typeof toast === 'function') toast('ℹ️ Allaqachon bazada bor: '+(item.kompaniya||''),'info');
+  }
+}
+function _navoiTaSaveAll(btn){
+  var rows = window._navoiTaLastResults || [];
+  if(!rows.length){ if(typeof toast==='function') toast('⚠️ Saqlash uchun natija yo\'q','error'); return; }
+  var addedParents = 0;
+  var addedPartners = 0;
+  rows.forEach(function(r){
+    var s = _navoiTaSavePairWithPartners(r, window._navoiTaLastProd, window._navoiTaLastMeta);
+    if(s.parentSaved) addedParents++;
+    addedPartners += s.partnersAdded;
+  });
+  var total = addedParents + addedPartners;
+  if(btn){ btn.textContent = '✅ '+total+' ta saqlandi'; btn.style.background = '#94a3b8'; btn.disabled = true; }
+  if(typeof toast === 'function'){
+    toast('✅ '+addedParents+' ta eksportyor + '+addedPartners+' ta importyor (jami '+total+') investor bazasiga saqlandi','success');
+  }
+}
+
+// ═══ Parent (eksportyor/importyor) + uning counterpart firmalari (importyor/eksportyor) ═══
+function _navoiTaSavePairWithPartners(item, prod, meta){
+  var stats = { parentSaved: false, partnersAdded: 0 };
+  if(!item || !String(item.kompaniya||'').trim()) return stats;
+  // Parent saqlash
+  var parentRec = _navoiTaSaveToInvestorCompanies(item, prod, meta, true);
+  if(!parentRec) return stats;
+  // Yangimi yoki eskimi — _navoiTaSaveToInvestorCompanies push qildi yoki existing qaytardi
+  // Yangiligini aniqlash: createdAt < 1s oldin bo'lsa yangi saqlangan
+  var nowMs = Date.now();
+  var createdMs = parentRec.createdAt ? Date.parse(parentRec.createdAt) : 0;
+  stats.parentSaved = (createdMs && nowMs - createdMs < 5000); // <5s = yangi
+
+  // Counterpart firmalar (BU EKSPORTYORDAN IMPORT QILGAN KOMPANIYALAR)
+  var counterFirms = Array.isArray(item._tradeAtlasCounterpartFirms) ? item._tradeAtlasCounterpartFirms : [];
+  if(!counterFirms.length) return stats;
+
+  var modeIsExporter = (meta && meta.mode === 'exporters') || (item.finderMode || '').toLowerCase().indexOf('exporter') !== -1;
+  var partnerRole = modeIsExporter ? 'importer' : 'exporter';
+  var parentRole = modeIsExporter ? 'exporter' : 'importer';
+
+  if(!Array.isArray(parentRec._partners)) parentRec._partners = [];
+  var parentChanged = false;
+
+  counterFirms.forEach(function(cp){
+    if(!cp || !String(cp.name||'').trim()) return;
+    // Counterpart record sifatida saqlash
+    var partnerSyntheticItem = {
+      kompaniya: cp.name,
+      davlat: cp.country || '',
+      shahar: cp.cityState || '',
+      website: cp.web || '',
+      email: cp.email || '',
+      telefon: cp.tel || '',
+      linkedin: cp.linkedin || '',
+      soha: item.soha || '',
+      manba: 'TradeAtlas',
+      finderMode: partnerRole + 's',
+      score: item.score || 70,
+      _tradeAtlasTradeValue: cp.totalValue || 0,
+      _tradeAtlasQuantity: cp.totalQty || 0,
+      _tradeAtlasDocCount: cp.docCount || 0,
+      _tradeAtlasCountryCode: cp.countryCode || ''
+    };
+    var partnerRec = _navoiTaSaveToInvestorCompanies(partnerSyntheticItem, prod, { mode: partnerRole+'s' }, true);
+    if(!partnerRec) return;
+    var partnerKey = String(cp.name).trim().toLowerCase();
+
+    // Yangi saqlanganmi?
+    var pCreated = partnerRec.createdAt ? Date.parse(partnerRec.createdAt) : 0;
+    var partnerIsNew = (pCreated && nowMs - pCreated < 5000);
+    if(partnerIsNew) stats.partnersAdded++;
+
+    // _partnerOf — counterpart record parent bilan bog'lanadi
+    if(!Array.isArray(partnerRec._partnerOf)) partnerRec._partnerOf = [];
+    var parentLinkKey = String(parentRec.kompaniya||'').trim().toLowerCase();
+    var existingLink = partnerRec._partnerOf.find(function(p){
+      return String(p.kompaniya||'').trim().toLowerCase() === parentLinkKey;
+    });
+    if(!existingLink){
+      partnerRec._partnerOf.push({
+        kompaniya: parentRec.kompaniya,
+        davlat: parentRec.davlat || '',
+        role: parentRole,
+        totalValue: cp.totalValue || 0,
+        totalQty: cp.totalQty || 0,
+        docCount: cp.docCount || 0,
+        lastDate: cp.lastDate || ''
+      });
+      if(typeof fbSave === 'function'){
+        try { fbSave('investorCompanies', partnerRec); } catch(_e){}
+      }
+    }
+
+    // Parent's _partners array
+    var existingPartner = parentRec._partners.find(function(p){
+      return String(p.kompaniya||'').trim().toLowerCase() === partnerKey;
+    });
+    if(!existingPartner){
+      parentRec._partners.push({
+        kompaniya: cp.name,
+        davlat: cp.country || '',
+        countryCode: cp.countryCode || '',
+        cityState: cp.cityState || '',
+        email: cp.email || '',
+        tel: cp.tel || '',
+        web: cp.web || '',
+        role: partnerRole,
+        totalValue: cp.totalValue || 0,
+        totalQty: cp.totalQty || 0,
+        docCount: cp.docCount || 0,
+        lastDate: cp.lastDate || ''
+      });
+      parentChanged = true;
+    }
+  });
+
+  if(parentChanged && typeof fbSave === 'function'){
+    try { fbSave('investorCompanies', parentRec); } catch(_e){}
+  }
+  return stats;
+}
+
+function _navoiTaSaveToInvestorCompanies(item, prod, meta, returnRec){
+  if(!item || !String(item.kompaniya||'').trim()) return returnRec ? null : false;
+  if(!DB.investorCompanies) DB.investorCompanies = [];
+  // Mavjudligini tekshirish
+  var key = String(item.kompaniya).trim().toLowerCase();
+  var existing = DB.investorCompanies.find(function(r){
+    return String(r.kompaniya||'').trim().toLowerCase() === key;
+  });
+  if(existing){
+    return returnRec ? existing : false; // duplicate (Lead topish uchun mavjud rec qaytaramiz)
+  }
+  var rec = {
+    id: 'inv_jts_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    kompaniya: item.kompaniya || '',
+    rahbar: item.rahbar || '',
+    lavozim: item.lavozim || '',
+    email: item.email || '',
+    telefon: item.telefon || '',
+    davlat: item.davlat || '',
+    shahar: item.shahar || '',
+    soha: item.soha || '',
+    linkedin: item.linkedin || '',
+    website: item.website || '',
+    description: item.description || '',
+    keywords: item.keywords || '',
+    daromad: item.daromad || '',
+    score: item.score || 0,
+    // Jahon Tashqi Savdosi bo'limidan saqlangan — alohida statistika va badge uchun
+    manba: 'JahonTashqiSavdosi',
+    _sourceBase: 'TradeAtlas', // asl ma'lumot manbai (TradeAtlas API)
+    finderMode: item.finderMode || (meta && meta.mode) || 'exporters',
+    mahsulotNomi: (prod && (prod.name_uz || prod.name_en || prod.name)) || '',
+    productId: (prod && prod.id) || '',
+    mahsulotHs: (prod && prod.hs_code) || '',
+    contacts: Array.isArray(item.contacts) ? item.contacts : [],
+    _tradeAtlasTradeValue: item._tradeAtlasTradeValue || 0,
+    _tradeAtlasQuantity: item._tradeAtlasQuantity || 0,
+    _tradeAtlasDocCount: item._tradeAtlasDocCount || 0,
+    _tradeAtlasCountryCode: item._tradeAtlasCountryCode || '',
+    _tradeAtlasHsCodes: item._tradeAtlasHsCodes || [],
+    _tradeAtlasCounterpartCountries: item._tradeAtlasCounterpartCountries || [],
+    createdAt: new Date().toISOString()
+  };
+  DB.investorCompanies.push(rec);
+  if(typeof fbSave === 'function'){
+    try { fbSave('investorCompanies', rec); } catch(_e){ console.warn('fbSave fail:', _e && _e.message); }
+  }
+  return returnRec ? rec : true;
+}
+window._navoiTaSaveOne = _navoiTaSaveOne;
+window._navoiTaSaveAll = _navoiTaSaveAll;
+window._navoiTaCloseModal = _navoiTaCloseModal;
+
 // Eksportyor va importyor davlatlarni almashtirish
 function swapTradeCountries(){
   var primaryCode = (document.getElementById('trade-country')||{}).value || '';
@@ -1714,10 +2457,13 @@ function setTradeCountrySelection(code, name){
   if(typeof _updateTradeFlowVisibility === 'function') _updateTradeFlowVisibility();
 }
 
-function buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter){
-  return ['trade',countryCode||'na',year||'na',flow||'M',hsLevel||'4',hsFilter||'all']
-    .join('_')
-    .replace(/[^a-zA-Z0-9_-]/g,'_');
+function buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter, partnerCode){
+  // Partner kalitga kiritildi — har eksportyor↔importyor juftligi alohida saqlanadi
+  // Eski snapshot id'lar bilan moslash uchun: partner bo'sh bo'lsa, eski format saqlanadi
+  var partner = String(partnerCode||'').trim();
+  var parts = ['trade',countryCode||'na',year||'na',flow||'M',hsLevel||'4',hsFilter||'all'];
+  if(partner) parts.push('p'+partner);
+  return parts.join('_').replace(/[^a-zA-Z0-9_-]/g,'_');
 }
 
 function normalizeTradeRows(rows){
@@ -2075,7 +2821,13 @@ function renderTradeListView(countryName, flowName, year){
         badgeHtml += '<span style="display:inline-block;background:#e2e8f0;color:#0f172a;padding:2px 8px;border-radius:999px;font-size:.55rem;font-weight:700;margin:2px 4px 2px 0">+'+((r.navoiNames||[]).length-4)+' ta</span>';
       }
       var descExtra = r.note ? '<div style="font-size:.58rem;color:var(--text3);margin-top:2px">'+(r.note||'—')+'</div>' : '';
-      return '<tr style="background:rgba(5,150,105,.04)">'+
+      var safeHs = String(r.hsCode||'').replace(/[^0-9]/g,'');
+      var safeName = String(r.description||'').replace(/'/g,"\\'").replace(/"/g,'&quot;').slice(0,80);
+      var clickHint = safeHs ? ('TradeAtlas qidiruv: HS '+safeHs+' (Eksportyor/Importyor davlatlari bo\'yicha)') : 'HS kod yo\'q';
+      var rowAttrs = safeHs
+        ? ' style="background:rgba(5,150,105,.04);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'rgba(5,150,105,.12)\'" onmouseout="this.style.background=\'rgba(5,150,105,.04)\'" onclick="openTradeAtlasFromNavoi(\''+safeHs+'\',\''+safeName+'\')" title="'+clickHint.replace(/"/g,'&quot;')+'"'
+        : ' style="background:rgba(5,150,105,.04)"';
+      return '<tr'+rowAttrs+'>'+
         '<td>'+(i+1)+'</td>'+
         '<td style="font-family:monospace;font-size:.7rem;font-weight:700">'+(r.hsCode||'—')+'</td>'+
         '<td style="font-size:.7rem"><b>'+(r.description||'—')+'</b>'+descExtra+'</td>'+
@@ -2114,9 +2866,25 @@ function renderTradeListView(countryName, flowName, year){
       return p.hs_code && r.hsCode && (p.hs_code.indexOf(r.hsCode)===0 || r.hsCode.indexOf(String(p.hs_code).replace(/\s/g,'').slice(0,4))===0);
     });
     var matchBadge = match ?
-      '<span style="background:#059669;color:#fff;padding:2px 6px;border-radius:4px;font-size:.55rem;font-weight:700;cursor:pointer" onclick="showPage(\'products\')" title="'+match.name_en+'">✅ '+match.name_en.slice(0,20)+'</span>' :
+      '<span style="background:#059669;color:#fff;padding:2px 6px;border-radius:4px;font-size:.55rem;font-weight:700;cursor:pointer" onclick="event.stopPropagation();showPage(\'products\')" title="'+match.name_en+'">✅ '+match.name_en.slice(0,20)+'</span>' :
       '<span style="color:var(--text3);font-size:.55rem">—</span>';
-    return '<tr'+(match?' style="background:rgba(5,150,105,.04)"':'')+'>'+
+    // ═══ TradeAtlas click handler — har row bosilganda HS kod va tanlangan davlatlar bilan qidirish ═══
+    var safeHs = String(r.hsCode||'').replace(/[^0-9]/g,'');
+    var safeName = String(r.description||'').replace(/'/g,"\\'").replace(/"/g,'&quot;').slice(0,80);
+    var clickAttrs = '';
+    var rowBgBase = match ? 'rgba(5,150,105,.04)' : '';
+    var rowBgHover = match ? 'rgba(5,150,105,.12)' : 'rgba(99,102,241,.06)';
+    if(safeHs){
+      var clickHint = 'TradeAtlas qidiruv: HS '+safeHs+' (Eksportyor/Importyor davlatlari bo\'yicha)';
+      clickAttrs = ' style="cursor:pointer;transition:background .15s'+(rowBgBase?(';background:'+rowBgBase):'')+'"' +
+        ' onmouseover="this.style.background=\''+rowBgHover+'\'"' +
+        ' onmouseout="this.style.background=\''+(rowBgBase||'')+'\'"' +
+        ' onclick="openTradeAtlasFromNavoi(\''+safeHs+'\',\''+safeName+'\')"' +
+        ' title="'+clickHint.replace(/"/g,'&quot;')+'"';
+    } else if(match){
+      clickAttrs = ' style="background:'+rowBgBase+'"';
+    }
+    return '<tr'+clickAttrs+'>'+
       '<td>'+(i+1)+'</td>'+
       '<td style="font-family:monospace;font-size:.7rem;font-weight:700">'+(r.hsCode||'—')+'</td>'+
       '<td style="font-size:.7rem">'+translateHS(r.hsCode,r.description)+'</td>'+
@@ -2136,8 +2904,8 @@ function setTradeViewMode(mode){
   renderTradeListView(countryName, flow==='M'?'Import':'Export', year);
 }
 
-function getTradeSnapshot(countryCode, year, flow, hsLevel, hsFilter){
-  var id = buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter);
+function getTradeSnapshot(countryCode, year, flow, hsLevel, hsFilter, partnerCode){
+  var id = buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter, partnerCode);
   return (DB.tradeSnapshots||[]).find(function(item){ return String(item.id)===String(id); }) || null;
 }
 
@@ -2145,6 +2913,12 @@ function restoreTradeSnapshot(snapshot, quiet){
   var snapshotRows = getTradeSnapshotRows(snapshot);
   if(!snapshot || !snapshotRows.length) return false;
   setTradeCountrySelection(snapshot.countryCode||'', snapshot.countryName||'');
+  // Partner davlatni ham qaytaramiz (agar saqlangan bo'lsa)
+  if(snapshot.partnerCode && typeof selectTradePartnerCountry === 'function'){
+    try { selectTradePartnerCountry(snapshot.partnerCode, snapshot.partnerName || ''); } catch(_e){}
+  } else if(typeof clearTradePartnerCountry === 'function' && !snapshot.partnerCode){
+    try { clearTradePartnerCountry(); } catch(_e){}
+  }
   var emptyEl = document.getElementById('tradeEmpty');
   var loadingEl = document.getElementById('tradeLoading');
   if(emptyEl) emptyEl.style.display = 'none';
@@ -2185,18 +2959,31 @@ function restoreTradeSnapshot(snapshot, quiet){
   if(restoredTotal > 0 && restoredTotal < Math.max(restoredMax, restoredSum)){
     _tradeMeta.totalValue = null;
   }
-  renderTradeResults(snapshot.countryName||'', (snapshot.flow==='X'?'Export':'Import'), snapshot.year||'', snapshot.hsFilter||'');
+  // Render uchun partner mavjud bo'lsa, ↔ ko'rsatamiz
+  var renderName = snapshot.partnerCode && snapshot.partnerName
+    ? (snapshot.countryName||'') + ' ↔ ' + snapshot.partnerName
+    : (snapshot.countryName||'');
+  renderTradeResults(renderName, (snapshot.flow==='X'?'Export':'Import'), snapshot.year||'', snapshot.hsFilter||'');
   if(snapshot.version !== TRADE_SNAPSHOT_VERSION){
-    saveTradeSnapshot(snapshot.countryName||'', snapshot.year||'', snapshot.flow||'M', snapshot.hsLevel||'4', snapshot.hsFilter||'');
+    saveTradeSnapshot(snapshot.countryName||'', snapshot.year||'', snapshot.flow||'M', snapshot.hsLevel||'4', snapshot.hsFilter||'', snapshot.partnerCode||'', snapshot.partnerName||'');
   }
-  if(!quiet) toast('💾 Firebase cache ochildi: '+(snapshot.countryName||'')+' '+(snapshot.year||''));
+  if(!quiet) toast('💾 Firebase keshidan ochildi: '+(snapshot.countryName||'')+(snapshot.partnerName?' ↔ '+snapshot.partnerName:'')+' '+(snapshot.year||''));
   return true;
 }
 
-function saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter){
+function saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter, partnerCode, partnerName){
   if(!_tradeData.length) return;
   if((_tradeSource||'').indexOf('UN Comtrade')===-1) return;
   var countryCode = document.getElementById('trade-country').value||'';
+  // Agar partner argumentlar uzatilmagan bo'lsa, DOM'dan o'qib olamiz (backward compat)
+  if(typeof partnerCode === 'undefined'){
+    var _pe = document.getElementById('trade-partner-country');
+    partnerCode = _pe ? (_pe.value || '').trim() : '';
+  }
+  if(typeof partnerName === 'undefined'){
+    var _pl = document.getElementById('trade-partner-label');
+    partnerName = _pl ? String(_pl.textContent || '').replace(/^🤝\s*/, '').trim() : '';
+  }
   var allRows = _tradeData.map(function(r){
     return {h:r.hsCode||'', d:r.description||'', v:Number(r.value||0)||0, w:Number(r.weight||0)||0};
   });
@@ -2204,7 +2991,7 @@ function saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter){
   for(var i=0;i<allRows.length;i+=TRADE_SNAPSHOT_CHUNK_SIZE){
     chunkedRows.push(allRows.slice(i, i+TRADE_SNAPSHOT_CHUNK_SIZE));
   }
-  var snapshotId = buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter);
+  var snapshotId = buildTradeSnapshotId(countryCode, year, flow, hsLevel, hsFilter, partnerCode);
   var previous = (DB.tradeSnapshots||[]).find(function(item){ return String(item.id)===String(snapshotId); });
   var previousChunkCount = Number(previous && previous.chunkCount || 0);
   var snapshot = {
@@ -2212,6 +2999,8 @@ function saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter){
     version: TRADE_SNAPSHOT_VERSION,
     countryCode: countryCode,
     countryName: countryName||'',
+    partnerCode: partnerCode||'',
+    partnerName: partnerName||'',
     year: String(year||''),
     flow: String(flow||'M'),
     hsLevel: String(hsLevel||'4'),
@@ -2289,7 +3078,16 @@ async function loadGlobalTradeData(){
     return;
   }
 
-  var savedSnapshot = getTradeSnapshot(countryCode, year, flow, hsLevel, hsFilter);
+  // Firebase keshini ochishdan oldin tradeSnapshots / chunks yuklangan bo'lsin
+  if(typeof ensureCollectionLoaded === 'function'){
+    try {
+      await Promise.all([
+        ensureCollectionLoaded('tradeSnapshots'),
+        ensureCollectionLoaded('tradeSnapshotChunks')
+      ]);
+    } catch(_e){ /* silent */ }
+  }
+  var savedSnapshot = getTradeSnapshot(countryCode, year, flow, hsLevel, hsFilter, partnerCode);
   if(savedSnapshot){
     restoreTradeSnapshot(savedSnapshot, false);
     return;
@@ -2463,7 +3261,7 @@ async function loadGlobalTradeData(){
       ? countryName + ' ↔ ' + partnerName
       : countryName;
     renderTradeResults(renderCountryName, flowName, year, hsFilter);
-    saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter);
+    saveTradeSnapshot(countryName, year, flow, hsLevel, hsFilter, partnerCode, partnerName);
 
   } catch(e){
     document.getElementById('tradeLoading').style.display = 'none';
