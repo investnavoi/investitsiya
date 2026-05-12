@@ -2183,6 +2183,23 @@ window.findContactsForInvestorRecord = async function(recordId, btnEl){
   }
   var meta = { mode: String(rec.finderMode || 'exporters').toLowerCase() };
   var foundSource = '';
+  // Apollo natijasi haqiqiy ekanini tekshirish (kompaniya nomi yoki placeholder bo'lmasin)
+  function _hasUsefulLead(itm){
+    var email = String((itm && itm.email) || '').trim();
+    var rahbar = String((itm && itm.rahbar) || '').trim();
+    var kompLower = String((itm && itm.kompaniya) || '').toLowerCase().trim();
+    var emailOk = email && !/^[.\-–—_\s]+$/.test(email) && email.indexOf('@') !== -1;
+    var rahbarLower = rahbar.toLowerCase();
+    var rahbarOk = rahbar && !/^[.\-–—_\s]+$/.test(rahbar) && rahbarLower !== kompLower
+      && rahbarLower.indexOf('apollo') === -1 && rahbarLower.indexOf('tradeatlas') === -1;
+    // contacts[] ichida ham email/name borligini tekshirish
+    var contactsOk = Array.isArray(itm && itm.contacts) && itm.contacts.some(function(c){
+      var ce = String((c && c.email) || '').trim();
+      var cn = String((c && c.name) || '').trim();
+      return (ce && ce.indexOf('@') !== -1) || (cn && cn.toLowerCase() !== kompLower);
+    });
+    return emailOk || rahbarOk || contactsOk;
+  }
   try {
     // ═══ 1-bosqich: Apollo orqali qidirish ═══
     var apolloKey = (typeof getApolloApiKey === 'function') ? getApolloApiKey() : '';
@@ -2190,10 +2207,15 @@ window.findContactsForInvestorRecord = async function(recordId, btnEl){
       if(btnEl) btnEl.textContent = '🟡 Apollo qidirmoqda...';
       try {
         await apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta);
-        if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
+        console.log('[Apollo result]', { rahbar: item.rahbar, email: item.email, contactsCount: (item.contacts||[]).length });
+        if(_hasUsefulLead(item)){
           foundSource = 'Apollo';
         } else {
-          console.log('[findContactsForInvestorRecord] Apollo: hech narsa topilmadi → Google AI fallback');
+          console.log('[findContactsForInvestorRecord] Apollo natija yo\'q yoki placeholder → Google AI fallback');
+          // Apollo placeholder qiymatlarni tozalash (Gemini'ga halaqit bermasin)
+          if(item.rahbar && (item.rahbar.toLowerCase() === String(item.kompaniya||'').toLowerCase() || /^[.\-–—_\s]+$/.test(item.rahbar))){
+            item.rahbar = '';
+          }
         }
       } catch(apolloErr){
         console.warn('[findContactsForInvestorRecord] Apollo error:', apolloErr && apolloErr.message);
@@ -2206,7 +2228,8 @@ window.findContactsForInvestorRecord = async function(recordId, btnEl){
       if(typeof geminiEnrichTradeAtlasItem === 'function'){
         if(btnEl) btnEl.textContent = '✨ Google AI qidirmoqda...';
         await geminiEnrichTradeAtlasItem(item, prod, meta);
-        if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
+        console.log('[Gemini result]', { rahbar: item.rahbar, email: item.email });
+        if(_hasUsefulLead(item)){
           foundSource = 'Google AI';
         }
       } else if(!apolloKey){
