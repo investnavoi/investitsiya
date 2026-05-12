@@ -2102,6 +2102,19 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
     else if(employeeCount >= 10) score += 5;
     // 4. Daromad bo'lsa (yirik kompaniya signali)
     if(orgRevenue > 1000000) score += 5;
+    // 5. Case-sensitive prefix match — user kiritgan nom katta yoki kichik harf bo'lishini hisobga olamiz
+    // "INFINITY CO LTD." (UPPERCASE) → "INFINITY Co., Ltd." > "Infinity & Co Ltd"
+    var rawName = String((o && o.name) || '');
+    var rawKomp = String(item.kompaniya || '');
+    if(rawName && rawKomp){
+      var firstWordKomp = rawKomp.split(/[\s,.&]+/)[0] || '';
+      var firstWordOrg = rawName.split(/[\s,.&]+/)[0] || '';
+      // Birinchi so'z aynan o'xshash (case bilan)
+      if(firstWordKomp && firstWordOrg && firstWordKomp === firstWordOrg) score += 30;
+      // Yoki Apollo'da '&' belgisi bo'lmasa (boutique-style emas)
+      if(rawName.indexOf('&') === -1 && rawKomp.indexOf('&') === -1) score += 5;
+      else if(rawName.indexOf('&') !== -1 && rawKomp.indexOf('&') === -1) score -= 10; // Apollo'da & bor, user input'da yo'q — boshqa
+    }
     scoredOrgs.push({ org: o, score: score, employees: employeeCount, country: oCountryKey });
     if(score > bestScore){ bestScore = score; bestOrg = o; }
   });
