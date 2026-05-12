@@ -2021,30 +2021,46 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   }
   var domain = getDomain(item.website);
 
-  // 1-qadam: Apollo organization search — kompaniya nomi + davlat filtri
-  // User talab qildi: davlat hard filter sifatida (Korea→faqat Korea kompaniyalar)
-  var orgReq = {
-    search_type: 'organization',
-    page: 1,
-    per_page: 15,
-    api_key: apolloKey,
-    q_organization_name: item.kompaniya
-  };
-  if(domain){ orgReq.organization_domains = [domain]; }
-  // Davlat HARD filter — Apollo organization_locations
-  if(item.davlat && String(item.davlat).trim()){
-    orgReq.organization_locations = [String(item.davlat).trim()];
+  // 1-qadam: Apollo organization search — 2 ta strategiya: davlat bilan + davlatsiz
+  // Apollo dashboard'i davlatsiz qidiradi, shu sabab biz ham qidirib eng yaxshi natijani olamiz
+  function _buildOrgReq(useCountry){
+    var req = {
+      search_type: 'organization',
+      page: 1,
+      per_page: 15,
+      api_key: apolloKey,
+      q_organization_name: item.kompaniya
+    };
+    if(domain){ req.organization_domains = [domain]; }
+    if(useCountry && item.davlat && String(item.davlat).trim()){
+      req.organization_locations = [String(item.davlat).trim()];
+    }
+    return req;
   }
-  var orgData;
-  try { orgData = await apolloRequestJson(orgReq); } catch(_e){ return item; }
-  var orgs = normalizeApolloArray(orgData, ['organizations','accounts','companies']);
-  // Agar davlat filtersi bilan 0 natija bo'lsa — bu davlatda bu kompaniya Apollo'da yo'q
-  // Bu holatda Apollo natija bermaydi (Gemini ishga tushadi)
+  var orgs = [];
+  // 1.a — davlat bilan
+  try {
+    var orgDataCountry = await apolloRequestJson(_buildOrgReq(true));
+    var orgsCountry = normalizeApolloArray(orgDataCountry, ['organizations','accounts','companies']);
+    orgs = orgs.concat(orgsCountry);
+    console.log('[Apollo org] davlat=' + (item.davlat||'?') + ': ' + orgsCountry.length + ' candidates');
+  } catch(_e){}
+  // 1.b — davlatsiz (Apollo UI behavior — to'liq dunyo)
+  if(item.davlat){
+    try {
+      var orgDataAll = await apolloRequestJson(_buildOrgReq(false));
+      var orgsAll = normalizeApolloArray(orgDataAll, ['organizations','accounts','companies']);
+      // Dublikatlarsiz qo'shish
+      var seenIds = {};
+      orgs.forEach(function(o){ if(o && o.id) seenIds[o.id] = true; });
+      orgsAll.forEach(function(o){ if(o && o.id && !seenIds[o.id]){ seenIds[o.id] = true; orgs.push(o); } });
+      console.log('[Apollo org] davlatsiz qidiruv: ' + orgsAll.length + ' candidates → total: ' + orgs.length);
+    } catch(_e){}
+  }
   if(!orgs.length){
-    console.log('[Apollo org] Davlat filtersi (' + (item.davlat||'?') + ') bilan natija yo\'q — Apollo Gemini fallback');
+    console.log('[Apollo org] Hech qanday natija — Gemini fallback');
     return item;
   }
-  console.log('[Apollo org]', orgs.length, 'candidates after country filter [' + (item.davlat||'?') + ']');
   // Eng yaxshi mos kelishi: name match (kuchli prioritet) + davlat (bonus only)
   var _kompKey = apolloNormalizeText(item.kompaniya || '');
   var _davlatKey = apolloNormalizeText(item.davlat || '');
