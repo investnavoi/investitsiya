@@ -3371,7 +3371,7 @@ function apolloNeedContactCoverage(found, perCountry){
 async function apolloRequestJson(payload){
   var body = Object.assign({}, payload);
   if(body.search_type === 'people'){ body.action = 'people_search'; delete body.search_type; }
-  else if(body.search_type === 'organizations'){ body.action = 'organization_search'; delete body.search_type; }
+  else if(body.search_type === 'organizations' || body.search_type === 'organization'){ body.action = 'organization_search'; delete body.search_type; }
   else if(body.search_type === 'people_enrichment'){ body.action = 'people_enrichment'; delete body.search_type; }
   else if(body.search_type === 'bulk_people_enrichment'){ body.action = 'bulk_people_enrichment'; delete body.search_type; }
   else if(body.search_type === 'org_enrichment'){ body.action = 'org_enrichment'; delete body.search_type; }
