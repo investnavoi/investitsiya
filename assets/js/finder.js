@@ -2064,6 +2064,13 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   var orgId = String((org && org.id) || '').trim();
   console.log('[Apollo org] picked:', org && org.name, '(country:', org && (org.country || org.primary_country), 'score:', bestScore, ') from', orgs.length, 'candidates:', orgs.map(function(o){ return (o.name||'') + ' [' + (o.country||o.primary_country||'?') + ']'; }).join(' | '));
   if(!orgId) return item;
+  // ═══ Quality guard: agar eng yuqori score 60 dan kichik bo'lsa — bu noto'g'ri match ═══
+  // Faqat partial-word match (commonWords * 5) bo'lsa, kompaniya boshqa ekanini bildiradi
+  // Apollo'da real exact match bo'lmasa, qaytarmaymiz (Gemini fallback ishlaydi)
+  if(bestScore < 60){
+    console.warn('[Apollo org] Mos kompaniya topilmadi (best score:', bestScore, ' — exact name match yo\'q). Gemini fallback uchun chiqamiz.');
+    return item; // Bu Apollo natijasi ishonchsiz — Gemini sinab ko'rsin
+  }
 
   // Apollo ma'lumotlari bilan item'ni boyitish
   item._orgId = orgId;
