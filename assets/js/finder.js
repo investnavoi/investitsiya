@@ -2119,10 +2119,22 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
     if(b.score !== a.score) return b.score - a.score;
     return (b.employees||0) - (a.employees||0);
   });
+  // Window'ga saqlash — console'da `_lastApolloOrgs` deb yozib ko'rish mumkin
+  window._lastApolloOrgs = orgs;
+  window._lastApolloScoredOrgs = scoredOrgs;
+  window._lastApolloPicked = org;
   console.log('[Apollo org] picked:', org && org.name, '(country:', org && (org.country || org.primary_country), 'score:', bestScore, ', emp:', (org && (org.estimated_num_employees||0))+')');
-  console.log('[Apollo org] TOP 10:', scoredOrgs.slice(0,10).map(function(s,i){
-    return (i+1)+'. '+(s.org.name||'?')+' ['+(s.country||'?')+'] score='+s.score+' emp='+s.employees;
-  }).join('\n  '));
+  console.log('[Apollo org] TOP 10 → console\'da `_lastApolloScoredOrgs` yozib ko\'ring');
+  console.table((scoredOrgs.slice(0,10) || []).map(function(s,i){
+    return {
+      rank: i+1,
+      name: (s.org && s.org.name) || '',
+      country: s.country || '',
+      score: s.score,
+      employees: s.employees,
+      id: (s.org && s.org.id) || ''
+    };
+  }));
   if(!orgId) return item;
   // ═══ Quality guard: agar eng yuqori score 60 dan kichik bo'lsa — bu noto'g'ri match ═══
   // Faqat partial-word match (commonWords * 5) bo'lsa, kompaniya boshqa ekanini bildiradi
