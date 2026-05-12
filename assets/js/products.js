@@ -2034,8 +2034,13 @@ function _navoiTaCardHtml(r, idx, modeIsExporter, hs, prod){
       '<span title="O\'chirish" style="background:#FEF3F2;color:#EF4444;width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;cursor:not-allowed;opacity:.5">🗑</span>'+
     '</div>';
   }
-  // 1 row parent uchun + 1 row har counterpart (BU EKSPORTYORDAN IMPORT QILGAN) uchun
-  var leadCount = 1 + Math.min(counterFirms.length, 4); // ko'pi bilan 1+4=5 row ko'rsatamiz
+  // Status row soni — lead kontaktlar soniga qarab
+  // - Lead yo'q: 1 row (placeholder, Lead topish kerak)
+  // - N ta lead bor: N row (har lead alohida status)
+  var contactLeads = Array.isArray(r.contacts) ? r.contacts.filter(function(c){
+    return c && (String(c.email||'').trim() || String(c.name||'').trim());
+  }) : [];
+  var leadCount = Math.max(1, contactLeads.length);
   var statusRows = '';
   for(var sr = 0; sr < leadCount; sr++){
     statusRows += _statusRow();
