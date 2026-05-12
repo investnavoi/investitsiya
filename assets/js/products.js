@@ -2264,10 +2264,20 @@ function _navoiTaSavePairWithPartners(item, prod, meta){
 function _navoiTaSaveToInvestorCompanies(item, prod, meta, returnRec){
   if(!item || !String(item.kompaniya||'').trim()) return returnRec ? null : false;
   if(!DB.investorCompanies) DB.investorCompanies = [];
-  // Mavjudligini tekshirish
-  var key = String(item.kompaniya).trim().toLowerCase();
+  // ═══ Dedup: Investor table'dagi grouping bilan moslash ═══
+  // Co/Ltd/Corp/Inc suffix'lari va davlat bo'yicha guruhlaydi — turli formatda yozilgan
+  // kompaniya nomlari ham bitta record sifatida tan olinadi
+  var groupKey = '';
+  if(typeof getInvestorCompanyGroupKey === 'function'){
+    groupKey = getInvestorCompanyGroupKey({ kompaniya: item.kompaniya, davlat: item.davlat||'' });
+  } else {
+    groupKey = String(item.kompaniya).trim().toLowerCase();
+  }
   var existing = DB.investorCompanies.find(function(r){
-    return String(r.kompaniya||'').trim().toLowerCase() === key;
+    if(typeof getInvestorCompanyGroupKey === 'function'){
+      return getInvestorCompanyGroupKey(r) === groupKey;
+    }
+    return String(r.kompaniya||'').trim().toLowerCase() === groupKey;
   });
   if(existing){
     return returnRec ? existing : false; // duplicate (Lead topish uchun mavjud rec qaytaramiz)

@@ -3548,6 +3548,25 @@ _renderInvestorCompaniesMain = function(){
       _groupBg = (groupIdx % 2 === 0) ? '#f8fafd' : '#ffffff';
     }
     var _groupHoverBg = '#eef2ff';
+    // ═══ Dedup: bir guruh ichida bir xil (email, rahbar) bolgan recordlardan faqat 1 tasini ko'rsatamiz ═══
+    // Maqsad: TradeAtlas'dan saqlangan duplicate recordlar bir xil status row sifatida chiqmasligi
+    var _seenLeadKeys = Object.create(null);
+    var _dedupedRecs = recs.filter(function(rec){
+      var email = String(rec.email || '').trim().toLowerCase();
+      var rahbar = String(rec.rahbar || '').trim().toLowerCase();
+      // Email va rahbar ikkalasi bo'sh bo'lsa — bu placeholder record, bir guruhda 1 ta yetarli
+      if(!email && !rahbar){
+        if(_seenLeadKeys['__empty__']) return false;
+        _seenLeadKeys['__empty__'] = true;
+        return true;
+      }
+      // Email + rahbar kombinatsiyasi unique bo'lishi shart
+      var leadKey = email + '|' + rahbar;
+      if(_seenLeadKeys[leadKey]) return false;
+      _seenLeadKeys[leadKey] = true;
+      return true;
+    });
+    recs = _dedupedRecs;
     recs.forEach(function(rec, recIdx){
       var isAiOpen = !!_investorAiOpen && String(_investorAiTargetId || '') === String(rec.id);
       var contact = {
