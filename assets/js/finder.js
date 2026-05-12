@@ -2021,21 +2021,54 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   }
   var domain = getDomain(item.website);
 
-  // 1-qadam: Apollo organization search — kompaniya nomi bo'yicha
+  // 1-qadam: Apollo organization search — kompaniya nomi va davlat bo'yicha
   var orgReq = {
     search_type: 'organization',
     page: 1,
-    per_page: 3,
+    per_page: 10,
     api_key: apolloKey,
     q_organization_name: item.kompaniya
   };
   if(domain){ orgReq.organization_domains = [domain]; }
+  // Davlat filter — Apollo organization_locations 'Country' formatida qabul qiladi
+  if(item.davlat && String(item.davlat).trim()){
+    orgReq.organization_locations = [String(item.davlat).trim()];
+  }
   var orgData;
   try { orgData = await apolloRequestJson(orgReq); } catch(_e){ return item; }
   var orgs = normalizeApolloArray(orgData, ['organizations','accounts','companies']);
-  if(!orgs.length) return item;
-  var org = orgs[0];
+  if(!orgs.length){
+    // Fallback: davlat filtersiz qaytadan urinish
+    if(orgReq.organization_locations){
+      try {
+        delete orgReq.organization_locations;
+        var orgData2 = await apolloRequestJson(orgReq);
+        orgs = normalizeApolloArray(orgData2, ['organizations','accounts','companies']);
+      } catch(_e){}
+    }
+    if(!orgs.length) return item;
+  }
+  // Eng yaxshi mos kelishi: nomi va davlat o'xshashligi bo'yicha
+  var _kompKey = apolloNormalizeText(item.kompaniya || '');
+  var _davlatKey = apolloNormalizeText(item.davlat || '');
+  var bestOrg = orgs[0];
+  var bestScore = -1;
+  orgs.forEach(function(o){
+    var oNameKey = apolloNormalizeText((o && o.name) || '');
+    var oCountryKey = apolloNormalizeText((o && (o.country || o.primary_country)) || '');
+    var score = 0;
+    // Nom o'xshashlik — exact match yuqori, prefix/contains pastroq
+    if(oNameKey === _kompKey) score += 100;
+    else if(oNameKey.indexOf(_kompKey) === 0) score += 50;
+    else if(oNameKey.indexOf(_kompKey) !== -1 || _kompKey.indexOf(oNameKey) !== -1) score += 20;
+    // Davlat o'xshashlik
+    if(_davlatKey && oCountryKey === _davlatKey) score += 40;
+    else if(_davlatKey && oCountryKey.indexOf(_davlatKey) !== -1) score += 15;
+    if(score > bestScore){ bestScore = score; bestOrg = o; }
+  });
+  var org = bestOrg;
   var orgId = String((org && org.id) || '').trim();
+  console.log('[Apollo org] picked:', org && org.name, '(country:', org && (org.country || org.primary_country), 'score:', bestScore, ') from', orgs.length);
   if(!orgId) return item;
 
   // Apollo ma'lumotlari bilan item'ni boyitish
@@ -2048,12 +2081,12 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   item.tpilyil = item.tpilyil || org.founded_year || '';
   item.description = item.description || org.short_description || '';
 
-  // 2-qadam: People search — decision makers
-  var titles = ['CEO','Founder','Owner','President','Managing Director','Sales Director','Export Manager','Procurement Manager','Purchasing Manager'];
+  // 2-qadam: People search — avval decision makers, keyin kengroq qidirish
+  var titles = ['CEO','Founder','Owner','President','Managing Director','Sales Director','Export Manager','Procurement Manager','Purchasing Manager','Director','Manager','VP','Vice President','Head'];
   var peopleReq = {
     search_type: 'people',
     page: 1,
-    per_page: 5,
+    per_page: 25,
     api_key: apolloKey,
     organization_ids: [orgId],
     person_titles: titles
@@ -2061,6 +2094,21 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   var peopleData;
   try { peopleData = await apolloRequestJson(peopleReq); } catch(_e){ return item; }
   var persons = normalizeApolloArray(peopleData, ['people','contacts']);
+  // Fallback: titles bilan 0 odam topilsa, title filter'siz qaytadan
+  if(!persons.length){
+    console.log('[Apollo people] titles bilan 0 → title filter olib tashlaymiz');
+    try {
+      var fallbackData = await apolloRequestJson({
+        search_type: 'people',
+        page: 1,
+        per_page: 25,
+        api_key: apolloKey,
+        organization_ids: [orgId]
+      });
+      persons = normalizeApolloArray(fallbackData, ['people','contacts']);
+    } catch(_e){ console.warn('[Apollo people] fallback err:', _e && _e.message); }
+  }
+  console.log('[Apollo people]', persons.length, 'persons for org', orgId);
   if(!persons.length) return item;
   var allContacts = persons.map(function(p){ return apolloPersonToContact(p, p.organization || org); }).filter(Boolean);
   var direct = allContacts.filter(finderContactHasEmail);
