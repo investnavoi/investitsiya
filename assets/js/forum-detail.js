@@ -2184,15 +2184,34 @@ window.findContactsForInvestorRecord = async function(recordId, btnEl){
   var meta = { mode: String(rec.finderMode || 'exporters').toLowerCase() };
   var foundSource = '';
   try {
-    // Faqat Gemini orqali qidirish (Apollo subscription tugagan)
-    if(typeof geminiEnrichTradeAtlasItem === 'function'){
-      if(btnEl) btnEl.textContent = '✨ Gemini qidirmoqda...';
-      await geminiEnrichTradeAtlasItem(item, prod, meta);
-      if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
-        foundSource = 'Gemini';
+    // ═══ 1-bosqich: Apollo orqali qidirish ═══
+    var apolloKey = (typeof getApolloApiKey === 'function') ? getApolloApiKey() : '';
+    if(apolloKey && typeof apolloEnrichTradeAtlasItem === 'function'){
+      if(btnEl) btnEl.textContent = '🟡 Apollo qidirmoqda...';
+      try {
+        await apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta);
+        if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
+          foundSource = 'Apollo';
+        } else {
+          console.log('[findContactsForInvestorRecord] Apollo: hech narsa topilmadi → Google AI fallback');
+        }
+      } catch(apolloErr){
+        console.warn('[findContactsForInvestorRecord] Apollo error:', apolloErr && apolloErr.message);
       }
-    } else {
-      throw new Error('Gemini funksiyasi mavjud emas');
+    } else if(!apolloKey){
+      console.log('[findContactsForInvestorRecord] Apollo API key yo\'q → to\'g\'ridan Google AI');
+    }
+    // ═══ 2-bosqich: Apollo natija bermasa — Google AI (Gemini) fallback ═══
+    if(!foundSource){
+      if(typeof geminiEnrichTradeAtlasItem === 'function'){
+        if(btnEl) btnEl.textContent = '✨ Google AI qidirmoqda...';
+        await geminiEnrichTradeAtlasItem(item, prod, meta);
+        if(String(item.email || '').trim() || String(item.rahbar || '').trim()){
+          foundSource = 'Google AI';
+        }
+      } else if(!apolloKey){
+        throw new Error('Apollo API key va Google AI funksiyalari mavjud emas');
+      }
     }
   } catch(e){
     console.error('[findContactsForInvestorRecord] error:', e && e.message);
@@ -2208,9 +2227,16 @@ window.findContactsForInvestorRecord = async function(recordId, btnEl){
     if(item.website && !rec.website) rec.website = item.website;
     if(item.shahar && !rec.shahar) rec.shahar = item.shahar;
     if(item.soha && !rec.soha) rec.soha = item.soha;
+    // Apollo bir nechta kontakt qaytarsa — barchasini saqlash
+    if(Array.isArray(item.contacts) && item.contacts.length){
+      rec.contacts = item.contacts.slice();
+    }
+    // Manba'ni belgilash (kontakt qaerdan kelgani)
+    rec.leadFoundVia = foundSource;
     if(typeof fbSave === 'function') fbSave('investorCompanies', rec);
     if(typeof toast === 'function'){
-      toast('✅ Lead topildi: ✨ Gemini — ' + rec.kompaniya, 'success');
+      var sourceLabel = foundSource === 'Apollo' ? '🟡 Apollo' : '✨ Google AI';
+      toast('✅ Lead topildi: ' + sourceLabel + ' — ' + rec.kompaniya, 'success');
     }
     if(typeof renderInvestorCompanies === 'function') renderInvestorCompanies();
   } else {
