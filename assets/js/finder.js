@@ -2061,30 +2061,49 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
     console.log('[Apollo org] Hech qanday natija — Gemini fallback');
     return item;
   }
-  // Eng yaxshi mos kelishi: name match (kuchli prioritet) + davlat (bonus only)
+  // Eng yaxshi mos kelishi: name match + davlat + xodimlar soni + headcount (Apollo confidence)
   var _kompKey = apolloNormalizeText(item.kompaniya || '');
   var _davlatKey = apolloNormalizeText(item.davlat || '');
   var bestOrg = orgs[0];
   var bestScore = -1;
+  var scoredOrgs = [];
   orgs.forEach(function(o){
     var oNameKey = apolloNormalizeText((o && o.name) || '');
     var oCountryKey = apolloNormalizeText((o && (o.country || o.primary_country || (o.primary_location && o.primary_location.country))) || '');
+    var employeeCount = Number((o && (o.estimated_num_employees || o.num_employees)) || 0) || 0;
+    var orgRevenue = Number((o && (o.organization_revenue || o.annual_revenue)) || 0) || 0;
     var score = 0;
-    // Nom o'xshashlik — exact match dominant
-    if(oNameKey === _kompKey) score += 200;          // Exact match → kuchli prioritet
+    // 1. Nom o'xshashlik — exact match dominant
+    if(oNameKey === _kompKey) score += 200;
     else if(oNameKey.indexOf(_kompKey) === 0) score += 80;
     else if(_kompKey.indexOf(oNameKey) === 0) score += 70;
     else if(oNameKey.indexOf(_kompKey) !== -1 || _kompKey.indexOf(oNameKey) !== -1) score += 30;
-    // So'z bo'yicha taqqoslash (har bir umumiy so'z uchun bonus)
+    // So'z bo'yicha taqqoslash
     var kompWords = _kompKey.split(' ').filter(function(w){ return w.length > 1; });
     var oWords = oNameKey.split(' ');
     var commonWords = kompWords.filter(function(w){ return oWords.indexOf(w) !== -1; }).length;
     score += commonWords * 5;
-    // Davlat — bonus only (hard filter emas)
+    // 2. Davlat bonus
     if(_davlatKey && oCountryKey === _davlatKey) score += 25;
     else if(_davlatKey && oCountryKey && (oCountryKey.indexOf(_davlatKey) !== -1 || _davlatKey.indexOf(oCountryKey) !== -1)) score += 10;
+    // 3. Xodimlar soni — kattaroq kompaniya odatda "asosiy" hisoblanadi
+    // (10+ xodim: +5, 50+: +10, 200+: +15, 1000+: +20)
+    if(employeeCount >= 1000) score += 20;
+    else if(employeeCount >= 200) score += 15;
+    else if(employeeCount >= 50) score += 10;
+    else if(employeeCount >= 10) score += 5;
+    // 4. Daromad bo'lsa (yirik kompaniya signali)
+    if(orgRevenue > 1000000) score += 5;
+    scoredOrgs.push({ org: o, score: score, employees: employeeCount, country: oCountryKey });
     if(score > bestScore){ bestScore = score; bestOrg = o; }
   });
+  // Tie-breaking: agar bir nechta orgda eng yuqori score teng bo'lsa, ko'proq xodimi bori g'olib
+  var topScoreOrgs = scoredOrgs.filter(function(s){ return s.score === bestScore; });
+  if(topScoreOrgs.length > 1){
+    topScoreOrgs.sort(function(a,b){ return b.employees - a.employees; });
+    bestOrg = topScoreOrgs[0].org;
+    console.log('[Apollo org] Tie-break by employees:', topScoreOrgs.map(function(s){ return s.org.name + ' (' + s.employees + ' emp)'; }).join(' | '));
+  }
   var org = bestOrg;
   var orgId = String((org && org.id) || '').trim();
   console.log('[Apollo org] picked:', org && org.name, '(country:', org && (org.country || org.primary_country), 'score:', bestScore, ') from', orgs.length, 'candidates:', orgs.map(function(o){ return (o.name||'') + ' [' + (o.country||o.primary_country||'?') + ']'; }).join(' | '));
@@ -2145,13 +2164,13 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   if(hintOnly.length){
     var topCandidates = hintOnly.slice(0, 5); // top 5 priority kandidatlar
     var enrichPromises = topCandidates.map(function(candidate){
+      // Faqat person.id orqali enrich qilamiz — organization_name yo'q,
+      // Apollo aniq shu personni qaytaradi (org_match'ni o'zgartirmaslik uchun)
       return apolloRequestJson({
         search_type: 'people_enrichment',
         api_key: apolloKey,
         id: candidate.personId || '',
-        reveal_personal_emails: true,
-        organization_name: item.kompaniya,
-        organization_domain: domain
+        reveal_personal_emails: true
       }).then(function(enrichData){
         var enrichedPerson = enrichData && enrichData.person;
         if(!enrichedPerson) return null;
