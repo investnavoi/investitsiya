@@ -2066,25 +2066,53 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   var direct = allContacts.filter(finderContactHasEmail);
   var hintOnly = allContacts.filter(function(c){ return !finderContactHasEmail(c) && c.hasEmailHint; });
 
-  // 3-qadam: Email unlock (people_enrichment) agar direct yo'q bo'lsa
-  if(!direct.length && hintOnly.length){
-    var candidate = hintOnly[0];
-    try {
-      var enrichData = await apolloRequestJson({
+  // 3-qadam: Email + to'liq ism unlock (people_enrichment) — top 5 kandidat uchun parallel
+  // Apollo /people/match endpoint id orqali aniq ma'lumotni qaytaradi (full name + email + tel)
+  if(hintOnly.length){
+    var topCandidates = hintOnly.slice(0, 5); // top 5 priority kandidatlar
+    var enrichPromises = topCandidates.map(function(candidate){
+      return apolloRequestJson({
         search_type: 'people_enrichment',
         api_key: apolloKey,
         id: candidate.personId || '',
-        first_name: (candidate.name || '').split(' ')[0] || '',
-        last_name: (candidate.name || '').split(' ').slice(1).join(' ') || '',
+        reveal_personal_emails: true,
         organization_name: item.kompaniya,
         organization_domain: domain
-      });
-      var enrichedPerson = enrichData && enrichData.person;
-      if(enrichedPerson){
+      }).then(function(enrichData){
+        var enrichedPerson = enrichData && enrichData.person;
+        if(!enrichedPerson) return null;
         var enriched = apolloPersonToContact(enrichedPerson, enrichedPerson.organization || org);
-        if(finderContactHasEmail(enriched)) direct.push(enriched);
+        // Apollo to'liq ism qaytarsa (obfuscated emas) — ishlatamiz
+        if(enrichedPerson.last_name && !enrichedPerson.last_name_obfuscated){
+          enriched.name = String((enrichedPerson.first_name||'')+' '+(enrichedPerson.last_name||'')).trim();
+        }
+        return enriched;
+      }).catch(function(_e){
+        console.warn('[Apollo enrich] person error:', candidate.personId, _e && _e.message);
+        return null;
+      });
+    });
+    var enrichedList;
+    try { enrichedList = await Promise.all(enrichPromises); }
+    catch(_e){ enrichedList = []; }
+    (enrichedList || []).forEach(function(enriched){
+      if(!enriched) return;
+      // Email bor bo'lsa — direct'ga; yo'q bo'lsa, lekin to'liq ism kelgan bo'lsa hintOnly'ni yangilaymiz
+      if(finderContactHasEmail(enriched)){
+        // Eski hintOnly entry'ni almashtirish (personId bo'yicha)
+        var idx = direct.findIndex(function(d){ return d.personId === enriched.personId; });
+        if(idx < 0) direct.push(enriched);
+      } else if(enriched.name){
+        // To'liq ism keldi, lekin email yo'q — hintOnly'da yangilaymiz
+        var hIdx = hintOnly.findIndex(function(h){ return h.personId === enriched.personId; });
+        if(hIdx >= 0 && enriched.name && enriched.name.indexOf('*') === -1){
+          hintOnly[hIdx].name = enriched.name;
+          hintOnly[hIdx].title = enriched.title || hintOnly[hIdx].title;
+          hintOnly[hIdx].linkedin = enriched.linkedin || hintOnly[hIdx].linkedin;
+        }
       }
-    } catch(_e){}
+    });
+    console.log('[Apollo enrich] direct emails after unlock:', direct.length, 'hintOnly:', hintOnly.length);
   }
 
   var finalContacts = direct.concat(allContacts.filter(function(c){ return !finderContactHasEmail(c) && !direct.some(function(d){ return d.personId === c.personId; }); }));
@@ -2619,9 +2647,17 @@ function apolloScoreContact(contact){
 
 function apolloPersonToContact(person, org){
   var phones = apolloExtractPhoneList(person);
+  // To'liq ism prioritet: name field > first+last unredacted > first+obfuscated
+  var fullName = String((person && person.name) || '').trim();
+  if(!fullName){
+    var fn = String((person && person.first_name) || '').trim();
+    var ln = String((person && person.last_name) || '').trim();
+    var lnObf = String((person && person.last_name_obfuscated) || '').trim();
+    fullName = (fn + ' ' + (ln || lnObf)).trim();
+  }
   var contact = {
     personId: String((person && person.id) || '').trim(),
-    name: (((person && person.first_name) || '') + ' ' + ((person && (person.last_name || person.last_name_obfuscated)) || '')).trim(),
+    name: fullName,
     title: String((person && person.title) || '').trim(),
     email: String((person && person.email) || '').trim(),
     telefon: String(phones[0] || '').trim(),
