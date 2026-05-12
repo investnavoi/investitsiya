@@ -2021,40 +2021,48 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   }
   var domain = getDomain(item.website);
 
-  // 1-qadam: Apollo organization search — 2 ta strategiya: davlat bilan + davlatsiz
-  // Apollo dashboard'i davlatsiz qidiradi, shu sabab biz ham qidirib eng yaxshi natijani olamiz
-  function _buildOrgReq(useCountry){
+  // 1-qadam: Apollo organization search — Apollo dashboard'idek katta korpus
+  // Apollo UI search top 50+ natija ko'rsatadi, biz ham keng qidiramiz
+  function _buildOrgReq(opts){
     var req = {
       search_type: 'organization',
       page: 1,
-      per_page: 15,
+      per_page: 100, // Apollo dashboard'idek keng
       api_key: apolloKey,
-      q_organization_name: item.kompaniya
+      q_organization_name: opts.query
     };
-    if(domain){ req.organization_domains = [domain]; }
-    if(useCountry && item.davlat && String(item.davlat).trim()){
-      req.organization_locations = [String(item.davlat).trim()];
-    }
+    if(opts.domain){ req.organization_domains = [opts.domain]; }
+    if(opts.country){ req.organization_locations = [opts.country]; }
     return req;
   }
   var orgs = [];
-  // 1.a — davlat bilan
+  var seenIds = {};
+  function _mergeOrgs(arr){
+    (arr || []).forEach(function(o){ if(o && o.id && !seenIds[o.id]){ seenIds[o.id] = true; orgs.push(o); } });
+  }
+  // Strategy 1: original name + davlat
   try {
-    var orgDataCountry = await apolloRequestJson(_buildOrgReq(true));
-    var orgsCountry = normalizeApolloArray(orgDataCountry, ['organizations','accounts','companies']);
-    orgs = orgs.concat(orgsCountry);
-    console.log('[Apollo org] davlat=' + (item.davlat||'?') + ': ' + orgsCountry.length + ' candidates');
+    var d1 = await apolloRequestJson(_buildOrgReq({ query: item.kompaniya, domain: domain, country: item.davlat }));
+    _mergeOrgs(normalizeApolloArray(d1, ['organizations','accounts','companies']));
+    console.log('[Apollo org] s1 (name+davlat): total candidates so far:', orgs.length);
   } catch(_e){}
-  // 1.b — davlatsiz (Apollo UI behavior — to'liq dunyo)
-  if(item.davlat){
+  // Strategy 2: original name without country
+  try {
+    var d2 = await apolloRequestJson(_buildOrgReq({ query: item.kompaniya, domain: domain }));
+    _mergeOrgs(normalizeApolloArray(d2, ['organizations','accounts','companies']));
+    console.log('[Apollo org] s2 (name only): total candidates so far:', orgs.length);
+  } catch(_e){}
+  // Strategy 3: cleaned name (remove suffixes like "CO LTD.", "Ltd.", "Inc")
+  var cleanedName = String(item.kompaniya || '')
+    .replace(/[,.]/g,' ')
+    .replace(/\b(co|company|corp|corporation|ltd|llc|inc|group|holding|holdings|limited|plc|sa|ag|gmbh|pte|pty)\b/gi,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  if(cleanedName && cleanedName.toLowerCase() !== String(item.kompaniya||'').toLowerCase().trim()){
     try {
-      var orgDataAll = await apolloRequestJson(_buildOrgReq(false));
-      var orgsAll = normalizeApolloArray(orgDataAll, ['organizations','accounts','companies']);
-      // Dublikatlarsiz qo'shish
-      var seenIds = {};
-      orgs.forEach(function(o){ if(o && o.id) seenIds[o.id] = true; });
-      orgsAll.forEach(function(o){ if(o && o.id && !seenIds[o.id]){ seenIds[o.id] = true; orgs.push(o); } });
-      console.log('[Apollo org] davlatsiz qidiruv: ' + orgsAll.length + ' candidates → total: ' + orgs.length);
+      var d3 = await apolloRequestJson(_buildOrgReq({ query: cleanedName }));
+      _mergeOrgs(normalizeApolloArray(d3, ['organizations','accounts','companies']));
+      console.log('[Apollo org] s3 (cleaned "'+cleanedName+'"): total candidates so far:', orgs.length);
     } catch(_e){}
   }
   if(!orgs.length){
@@ -2106,7 +2114,15 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   }
   var org = bestOrg;
   var orgId = String((org && org.id) || '').trim();
-  console.log('[Apollo org] picked:', org && org.name, '(country:', org && (org.country || org.primary_country), 'score:', bestScore, ') from', orgs.length, 'candidates:', orgs.map(function(o){ return (o.name||'') + ' [' + (o.country||o.primary_country||'?') + ']'; }).join(' | '));
+  // Top 10 ni log qilish (debugging uchun)
+  scoredOrgs.sort(function(a,b){
+    if(b.score !== a.score) return b.score - a.score;
+    return (b.employees||0) - (a.employees||0);
+  });
+  console.log('[Apollo org] picked:', org && org.name, '(country:', org && (org.country || org.primary_country), 'score:', bestScore, ', emp:', (org && (org.estimated_num_employees||0))+')');
+  console.log('[Apollo org] TOP 10:', scoredOrgs.slice(0,10).map(function(s,i){
+    return (i+1)+'. '+(s.org.name||'?')+' ['+(s.country||'?')+'] score='+s.score+' emp='+s.employees;
+  }).join('\n  '));
   if(!orgId) return item;
   // ═══ Quality guard: agar eng yuqori score 60 dan kichik bo'lsa — bu noto'g'ri match ═══
   // Faqat partial-word match (commonWords * 5) bo'lsa, kompaniya boshqa ekanini bildiradi
