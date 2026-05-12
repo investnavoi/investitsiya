@@ -2021,54 +2021,48 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   }
   var domain = getDomain(item.website);
 
-  // 1-qadam: Apollo organization search — kompaniya nomi va davlat bo'yicha
+  // 1-qadam: Apollo organization search — kompaniya nomi bo'yicha (davlat HARD FILTER emas)
+  // Apollo'da kompaniyaning davlati DB'dagidan farq qilishi mumkin (Korea vs Japan, etc.) — shuning uchun
+  // davlatni faqat scoring uchun ishlatamiz, hard filter sifatida emas.
   var orgReq = {
     search_type: 'organization',
     page: 1,
-    per_page: 10,
+    per_page: 15,
     api_key: apolloKey,
     q_organization_name: item.kompaniya
   };
   if(domain){ orgReq.organization_domains = [domain]; }
-  // Davlat filter — Apollo organization_locations 'Country' formatida qabul qiladi
-  if(item.davlat && String(item.davlat).trim()){
-    orgReq.organization_locations = [String(item.davlat).trim()];
-  }
   var orgData;
   try { orgData = await apolloRequestJson(orgReq); } catch(_e){ return item; }
   var orgs = normalizeApolloArray(orgData, ['organizations','accounts','companies']);
-  if(!orgs.length){
-    // Fallback: davlat filtersiz qaytadan urinish
-    if(orgReq.organization_locations){
-      try {
-        delete orgReq.organization_locations;
-        var orgData2 = await apolloRequestJson(orgReq);
-        orgs = normalizeApolloArray(orgData2, ['organizations','accounts','companies']);
-      } catch(_e){}
-    }
-    if(!orgs.length) return item;
-  }
-  // Eng yaxshi mos kelishi: nomi va davlat o'xshashligi bo'yicha
+  if(!orgs.length) return item;
+  // Eng yaxshi mos kelishi: name match (kuchli prioritet) + davlat (bonus only)
   var _kompKey = apolloNormalizeText(item.kompaniya || '');
   var _davlatKey = apolloNormalizeText(item.davlat || '');
   var bestOrg = orgs[0];
   var bestScore = -1;
   orgs.forEach(function(o){
     var oNameKey = apolloNormalizeText((o && o.name) || '');
-    var oCountryKey = apolloNormalizeText((o && (o.country || o.primary_country)) || '');
+    var oCountryKey = apolloNormalizeText((o && (o.country || o.primary_country || (o.primary_location && o.primary_location.country))) || '');
     var score = 0;
-    // Nom o'xshashlik — exact match yuqori, prefix/contains pastroq
-    if(oNameKey === _kompKey) score += 100;
-    else if(oNameKey.indexOf(_kompKey) === 0) score += 50;
-    else if(oNameKey.indexOf(_kompKey) !== -1 || _kompKey.indexOf(oNameKey) !== -1) score += 20;
-    // Davlat o'xshashlik
-    if(_davlatKey && oCountryKey === _davlatKey) score += 40;
-    else if(_davlatKey && oCountryKey.indexOf(_davlatKey) !== -1) score += 15;
+    // Nom o'xshashlik — exact match dominant
+    if(oNameKey === _kompKey) score += 200;          // Exact match → kuchli prioritet
+    else if(oNameKey.indexOf(_kompKey) === 0) score += 80;
+    else if(_kompKey.indexOf(oNameKey) === 0) score += 70;
+    else if(oNameKey.indexOf(_kompKey) !== -1 || _kompKey.indexOf(oNameKey) !== -1) score += 30;
+    // So'z bo'yicha taqqoslash (har bir umumiy so'z uchun bonus)
+    var kompWords = _kompKey.split(' ').filter(function(w){ return w.length > 1; });
+    var oWords = oNameKey.split(' ');
+    var commonWords = kompWords.filter(function(w){ return oWords.indexOf(w) !== -1; }).length;
+    score += commonWords * 5;
+    // Davlat — bonus only (hard filter emas)
+    if(_davlatKey && oCountryKey === _davlatKey) score += 25;
+    else if(_davlatKey && oCountryKey && (oCountryKey.indexOf(_davlatKey) !== -1 || _davlatKey.indexOf(oCountryKey) !== -1)) score += 10;
     if(score > bestScore){ bestScore = score; bestOrg = o; }
   });
   var org = bestOrg;
   var orgId = String((org && org.id) || '').trim();
-  console.log('[Apollo org] picked:', org && org.name, '(country:', org && (org.country || org.primary_country), 'score:', bestScore, ') from', orgs.length);
+  console.log('[Apollo org] picked:', org && org.name, '(country:', org && (org.country || org.primary_country), 'score:', bestScore, ') from', orgs.length, 'candidates:', orgs.map(function(o){ return (o.name||'') + ' [' + (o.country||o.primary_country||'?') + ']'; }).join(' | '));
   if(!orgId) return item;
 
   // Apollo ma'lumotlari bilan item'ni boyitish
