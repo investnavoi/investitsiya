@@ -3606,8 +3606,9 @@ _renderInvestorCompaniesMain = function(){
         || (contact.telefon && !_isPlaceholderPhone);
       // Faqat birinchi qator (parent)ga "—" qo'yiladi — har kompaniyada 1 ta dash
       if(!_hasVisibleContact && recIdx === 0) contactHtml += '<span style="color:var(--ta-gray-300)">—</span>';
-      // "Lead topish" tugmasi — faqat birinchi qator (parent)ga, har 1 kompaniyaga 1 ta tugma
-      var _isTaRec = String(rec.manba || '').toLowerCase().indexOf('tradeatlas') !== -1;
+      // "Lead topish" tugmasi — TradeAtlas va Jahon Tashqi Savdosi recordlar uchun
+      var _manbaLower = String(rec.manba || '').toLowerCase();
+      var _isTaRec = _manbaLower.indexOf('tradeatlas') !== -1 || _manbaLower.indexOf('jahontashqisavdosi') !== -1 || _manbaLower === 'jts';
       if(_isTaRec && recIdx === 0){
         contactHtml += '<div style="margin-top:8px;display:block"><button type="button" onclick="event.stopPropagation();findContactsForInvestorRecord(\''+rec.id+'\',this)" style="background:linear-gradient(135deg,#7C3AED,#465fff);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:.72rem;font-weight:700;cursor:pointer;display:inline-block;box-shadow:0 3px 8px rgba(124,58,237,.4);white-space:nowrap" title="Gemini orqali lead va email topish">🔍 Lead topish</button></div>';
       }
