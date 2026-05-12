@@ -2241,27 +2241,84 @@ window.findContactsForInvestorRecord = async function(recordId, btnEl){
     if(typeof toast === 'function') toast('Xatolik: ' + (e && e.message || ''), 'error');
   }
   if(foundSource){
+    console.log('[findContactsForInvestorRecord] BEFORE update — rec:', { id: rec.id, kompaniya: rec.kompaniya, rahbar: rec.rahbar, email: rec.email });
     // Topilgan ma'lumotlarni record'ga yozamiz va saqlaymiz
-    if(item.email) rec.email = item.email;
-    if(item.rahbar) rec.rahbar = item.rahbar;
-    if(item.lavozim) rec.lavozim = item.lavozim;
-    if(item.telefon) rec.telefon = item.telefon;
-    if(item.linkedin) rec.linkedin = item.linkedin;
-    if(item.website && !rec.website) rec.website = item.website;
-    if(item.shahar && !rec.shahar) rec.shahar = item.shahar;
-    if(item.soha && !rec.soha) rec.soha = item.soha;
-    // Apollo bir nechta kontakt qaytarsa — barchasini saqlash
+    if(item.email) rec.email = String(item.email);
+    if(item.rahbar) rec.rahbar = String(item.rahbar);
+    if(item.lavozim) rec.lavozim = String(item.lavozim);
+    if(item.telefon) rec.telefon = String(item.telefon);
+    if(item.linkedin) rec.linkedin = String(item.linkedin);
+    if(item.website && !rec.website) rec.website = String(item.website);
+    if(item.shahar && !rec.shahar) rec.shahar = String(item.shahar);
+    if(item.soha && !rec.soha) rec.soha = String(item.soha);
+    // Apollo contacts[] — barchasini saqlash
     if(Array.isArray(item.contacts) && item.contacts.length){
       rec.contacts = item.contacts.slice();
     }
-    // Manba'ni belgilash (kontakt qaerdan kelgani)
     rec.leadFoundVia = foundSource;
+    console.log('[findContactsForInvestorRecord] AFTER update — rec:', { id: rec.id, rahbar: rec.rahbar, email: rec.email, lavozim: rec.lavozim, contactsCount: (rec.contacts||[]).length });
+
+    // ═══ Apollo bir nechta lead qaytargan bo'lsa — har birini alohida record qilib qo'shamiz ═══
+    // Shunday qilib har lead Investor jadvalida alohida row sifatida ko'rinadi (status, email, AI yozish va h.k.)
+    if(foundSource === 'Apollo' && Array.isArray(item.contacts) && item.contacts.length > 1){
+      var existingLeadKeys = {};
+      (DB.investorCompanies || []).forEach(function(r){
+        if(String(r.kompaniya||'').trim().toLowerCase() === String(rec.kompaniya||'').trim().toLowerCase()){
+          var k = String(r.email||'').trim().toLowerCase() + '|' + String(r.rahbar||'').trim().toLowerCase();
+          existingLeadKeys[k] = true;
+        }
+      });
+      var nowIso = new Date().toISOString();
+      // 0-index lead allaqachon parent rec'ga yozildi, qolganini alohida record qilamiz
+      item.contacts.slice(1).forEach(function(ct, idx){
+        if(!ct) return;
+        var ctName = String(ct.name||'').trim();
+        var ctEmail = String(ct.email||'').trim();
+        if(!ctName && !ctEmail) return;
+        var leadKey = ctEmail.toLowerCase() + '|' + ctName.toLowerCase();
+        if(existingLeadKeys[leadKey]) return;
+        existingLeadKeys[leadKey] = true;
+        var leadRec = {
+          id: 'inv_lead_' + rec.id + '_' + (idx+1) + '_' + Math.random().toString(36).slice(2,6),
+          kompaniya: rec.kompaniya,
+          rahbar: ctName,
+          lavozim: String(ct.title||'').trim(),
+          email: ctEmail,
+          telefon: String(ct.telefon||'').trim(),
+          linkedin: String(ct.linkedin||'').trim(),
+          website: rec.website || '',
+          davlat: rec.davlat || '',
+          shahar: rec.shahar || '',
+          soha: rec.soha || '',
+          manba: rec.manba || 'TradeAtlas',
+          finderMode: rec.finderMode || 'exporters',
+          mahsulotNomi: rec.mahsulotNomi || '',
+          productId: rec.productId || '',
+          mahsulotHs: rec.mahsulotHs || '',
+          score: rec.score || 70,
+          leadFoundVia: foundSource,
+          _leadOfParent: rec.id,
+          createdAt: nowIso
+        };
+        DB.investorCompanies.push(leadRec);
+        if(typeof fbSave === 'function'){ try { fbSave('investorCompanies', leadRec); } catch(_e){} }
+      });
+      console.log('[findContactsForInvestorRecord] Added', item.contacts.length - 1, 'secondary lead records');
+    }
+
     if(typeof fbSave === 'function') fbSave('investorCompanies', rec);
     if(typeof toast === 'function'){
       var sourceLabel = foundSource === 'Apollo' ? '🟡 Apollo' : '✨ Google AI';
-      toast('✅ Lead topildi: ' + sourceLabel + ' — ' + rec.kompaniya, 'success');
+      var extraLeads = (foundSource === 'Apollo' && Array.isArray(item.contacts)) ? (item.contacts.length - 1) : 0;
+      var leadCountTxt = extraLeads > 0 ? (' (1+' + extraLeads + ' lead)') : '';
+      toast('✅ Lead topildi: ' + sourceLabel + ' — ' + rec.kompaniya + leadCountTxt, 'success');
     }
-    if(typeof renderInvestorCompanies === 'function') renderInvestorCompanies();
+    // Forced immediate re-render (debouncer'siz)
+    if(typeof _renderInvestorCompaniesMain === 'function'){
+      try { _renderInvestorCompaniesMain(); } catch(_e){ console.warn('Render error:', _e && _e.message); }
+    } else if(typeof renderInvestorCompanies === 'function'){
+      renderInvestorCompanies();
+    }
   } else {
     if(typeof toast === 'function') toast('⚠️ Lead topilmadi: ' + rec.kompaniya, 'error');
     if(btnEl){
