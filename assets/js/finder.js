@@ -1853,39 +1853,39 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
   var sectorHint = (prod && (prod.name_en || prod.name_uz)) || '';
   var roleHint = meta && meta.mode === 'importers' ? 'importer (buyer)' : 'exporter (seller)';
   // Prompt — FAQAT real, publicly verifiable kontaktlar. Yolg'on/generatsiya qilingan ma'lumot YO'Q.
-  var prompt = 'You are a B2B contact research assistant. Find ONLY real, publicly verifiable contact info. Return ONLY valid JSON.\n\n'+
+  var prompt = 'You are a B2B contact research assistant with web search capability. Use Google Search to find this company\'s official website, then extract contact information from their Contact/About pages. Return ONLY valid JSON.\n\n'+
     'Company: ' + compName + '\n' +
     'Country: ' + (country || 'unknown') + '\n' +
-    (website ? 'Website: ' + website + '\n' : '') +
+    (website ? 'Known website: ' + website + '\n' : '') +
     'Industry: ' + sectorHint + '\n' +
     'Role: ' + roleHint + '\n\n' +
+    'TASK:\n' +
+    '1. Search Google for "' + compName + '" + country + "contact" or "' + compName + '" + "email"\n' +
+    '2. Find the company\'s OFFICIAL website (homepage, Contact Us, About page)\n' +
+    '3. Extract EVERY publicly listed contact: emails, phones, key people names, addresses\n' +
+    '4. Return everything you find from the actual website — info@, sales@, ceo@, etc. are ALL valid if listed on official site\n\n' +
+    'WHAT TO RETURN:\n' +
+    '- Real named people (CEO, Sales Director, Export Manager) IF their names appear on the website or LinkedIn\n' +
+    '- Department-level emails (sales@, export@, info@) — these are LEGITIMATE business contacts, INCLUDE them\n' +
+    '- General company contacts (phone, address, info email) — INCLUDE\n' +
+    '- Office locations, branches — INCLUDE in city/address fields\n\n' +
     'STRICT RULES:\n' +
-    '1. ONLY include contacts of REAL PEOPLE you actually know about (verifiable from corporate website, official press, LinkedIn, news articles).\n' +
-    '2. Every contact MUST have a real full name (first name + last name) of an actual person.\n' +
-    '3. NEVER generate role-based fake contacts like "Sales Department", "Sales Manager", "info@", "sales@", "contact@".\n' +
-    '4. NEVER invent emails, phone numbers, or names. NO guessing.\n' +
-    '5. If you don\'t actually know a real person who works there — return {"found": false, "contacts": []}.\n' +
-    '6. Quality over quantity — better to return ZERO contacts than fake ones.\n' +
-    '7. company_email/company_phone — only if PUBLICLY known (from official website), otherwise leave empty.\n\n' +
+    '1. NEVER invent emails, names, or phone numbers. Only what you actually find on official sources.\n' +
+    '2. If website lists "Contact: sales@company.com" — use it as company_email (it IS the right contact).\n' +
+    '3. Person contacts (name+email) preferred, but company-level (sales@) is acceptable.\n' +
+    '4. If you find NOTHING from the company website → return {"found": false}.\n\n' +
     'Return JSON:\n' +
     '{\n' +
     '  "found": true/false,\n' +
     '  "contacts": [\n' +
-    '    {\n' +
-    '      "name": "Real Full Name (first + last)",\n' +
-    '      "title": "Real job title",\n' +
-    '      "email": "real-email@company-domain.com",\n' +
-    '      "telefon": "+real phone",\n' +
-    '      "linkedin": "https://linkedin.com/in/..."\n' +
-    '    }\n' +
+    '    { "name": "Full Name", "title": "Job Title", "email": "email@co.com", "telefon": "+phone", "linkedin": "..." }\n' +
     '  ],\n' +
-    '  "company_email": "real info email if publicly known",\n' +
-    '  "company_phone": "real phone if publicly known",\n' +
-    '  "company_website": "real official site",\n' +
+    '  "company_email": "sales@co.com or info@co.com — the MAIN contact email from website",\n' +
+    '  "company_phone": "+phone from website",\n' +
+    '  "company_website": "https://official.com",\n' +
     '  "industry": "sector",\n' +
     '  "city": "headquarter city"\n' +
-    '}\n\n' +
-    'If you cannot find verified real people — return {"found": false, "contacts": []}.';
+    '}';
   try {
     // Google Search grounding orqali real web qidiruv (LinkedIn, sayt sahifalari)
     // Tools bilan responseMimeType birga ishlamaydi — JSON parse manually qilamiz
@@ -1955,13 +1955,16 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
       if(fakeEmailPrefixes.indexOf(emPrefix) !== -1) return false;
       return true;
     }
-    // Item'ni boyitish (faqat valid email va kontakt)
-    if(!item.email && data.company_email && emailRe.test(String(data.company_email).trim())){
-      item.email = String(data.company_email).trim();
+    // Item'ni boyitish — Gemini company_email/phone ham qabul (sales@, info@ — legitimate business contacts)
+    var companyEmail = String(data.company_email || '').trim();
+    var companyPhone = String(data.company_phone || '').trim();
+    var companyWebsite = String(data.company_website || '').trim();
+    if(!item.email && companyEmail && emailRe.test(companyEmail)){
+      item.email = companyEmail;
     }
-    if(!item.telefon && data.company_phone) item.telefon = String(data.company_phone).trim();
-    if(!item.website && data.company_website && urlRe.test(String(data.company_website).trim())){
-      item.website = String(data.company_website).trim();
+    if(!item.telefon && companyPhone) item.telefon = companyPhone;
+    if(!item.website && companyWebsite && urlRe.test(companyWebsite)){
+      item.website = companyWebsite;
     }
     if(!item.shahar && data.city) item.shahar = String(data.city).trim();
     if(!item.soha && data.industry) item.soha = String(data.industry).trim();
@@ -1999,8 +2002,23 @@ async function geminiEnrichTradeAtlasItem(item, prod, meta){
         apolloApplyCompanyContacts(item);
       }
     }
-    // Fallback YO'Q — agar Gemini real kontakt qaytarmasa, hech narsa qo'shmaymiz.
-    // Yolg'on rol-asosli ma'lumot (sales@, info@) ishlatilmaydi.
+    // ═══ Fallback: aniq odam topilmagan bo'lsa, lekin company_email mavjud bo'lsa — uni lead sifatida qo'shamiz ═══
+    // Real biznesda info@/sales@/export@ rasmiy kontakt sifatida ishlatiladi (rad qilish mantiqsiz)
+    if(!item.email && companyEmail && emailRe.test(companyEmail)){
+      item.email = companyEmail;
+      if(!item.rahbar) item.rahbar = compName + ' (Sales/Info)';
+      if(!item.lavozim) item.lavozim = 'General Contact';
+      if(!Array.isArray(item.contacts)) item.contacts = [];
+      item.contacts.push({
+        name: compName + ' (Sales/Info)',
+        title: 'General Contact',
+        email: companyEmail,
+        telefon: companyPhone,
+        website: companyWebsite || item.website || '',
+        source: 'Gemini (website)',
+        _placeholder: false
+      });
+    }
     item._geminiEnriched = true;
     return item;
   } catch(e){
