@@ -195,7 +195,6 @@ async function matchQuestionnaire(text, filename, botDiv) {
   if (m) return m;
 
   /* 2. AI klassifikatsiya (o'zbek tarjimasi yoki boshqa til bo'lsa) */
-  if (botDiv) updateChatMsg(botDiv, '🤖 AI yordamida so\'rovnoma aniqlanmoqda...');
   return await _aiClassify(text, filename);
 }
 
@@ -206,7 +205,6 @@ async function fillQuestionnaireWithAI(file, extractedText, botDiv) {
   var ext = file.name.split('.').pop().toLowerCase();
 
   /* Bosqich 1: Savollarni ajrating */
-  if (botDiv) updateChatMsg(botDiv, '📋 Savollar ro\'yxati aniqlanmoqda...');
 
   var qListPrompt =
     'From the questionnaire below, extract every question or blank field that needs to be answered.\n' +
@@ -227,8 +225,7 @@ async function fillQuestionnaireWithAI(file, extractedText, botDiv) {
   }
 
   /* Bosqich 2: Har savol uchun AI javob (web search) */
-  if (botDiv) updateChatMsg(botDiv,
-    '🔎 ' + questions.length + ' ta savolga internet orqali javob qidirilmoqda...');
+  if (botDiv) updateChatMsg(botDiv, '🧠 So\'rovnoma to\'ldirilmoqda...');
 
   var systemCtx = (typeof NAVOIY_CONTEXT !== 'undefined') ? NAVOIY_CONTEXT :
     'You are an expert on Navoi region, Uzbekistan investment environment. ' +
@@ -400,7 +397,7 @@ async function handleChatFileUpload(e) {
   /* Foydalanuvchi xabari */
   addChatMsg('📎 ' + file.name + ' (' + sizeKB + ' KB)', 'user');
 
-  var botDiv = addChatMsg('📄 Fayl o\'qilmoqda...', 'bot typing');
+  var botDiv = addChatMsg('⏳', 'bot typing');
   var sendBtn = document.getElementById('chatSendBtn');
   var attachBtn = document.getElementById('chatAttachBtn');
   if (sendBtn) sendBtn.disabled = true;
@@ -408,11 +405,9 @@ async function handleChatFileUpload(e) {
 
   try {
     /* 1. Matn ajratish */
-    updateChatMsg(botDiv, '📄 Fayl matni tahlil qilinmoqda...');
     var text = await extractFileText(file);
 
     /* 2. So'rovnomani aniqlash */
-    updateChatMsg(botDiv, '🔍 So\'rovnoma turi aniqlanmoqda...');
     var match = await matchQuestionnaire(text, file.name, botDiv);
 
     if (match) {
@@ -420,15 +415,13 @@ async function handleChatFileUpload(e) {
       botDiv.classList.remove('typing');
       var icon = match.ext === 'pdf' ? '📄' : match.ext === 'xlsx' ? '📊' : '📝';
       updateChatMsg(botDiv,
-        '✅ **' + match.name + '** so\'rovnomasini tanidim!\n\n' +
-        'Bu so\'rovnomaga tayyor to\'ldirilgan javob faylimiz mavjud.\n\n' +
-        icon + ' **[To\'ldirilgan javob faylini yuklab olish](' + match.file + ')**\n\n' +
-        '_Faylda Navoiy viloyati bo\'yicha rasmiy ma\'lumotlar bilan to\'ldirilgan javoblar mavjud._'
+        icon + ' **[' + file.name.replace(/\.(docx|xlsx|pdf)$/i, '') + ' — to\'ldirilgan](' + match.file + ')**\n\n' +
+        'So\'rovnomani to\'ldirdim, yuklab olishingiz mumkin.'
       );
 
     } else {
       /* ── Yangi so'rovnoma — AI to'ldiradi ── */
-      updateChatMsg(botDiv, '📋 Yangi so\'rovnoma aniqlandi. AI orqali to\'ldirilmoqda...');
+      updateChatMsg(botDiv, '🧠 So\'rovnoma to\'ldirilmoqda...');
 
       var filledBlob = null;
       var fillErr = null;
