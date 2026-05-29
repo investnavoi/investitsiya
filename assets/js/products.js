@@ -3248,6 +3248,40 @@ async function loadGlobalTradeData(){
 
     document.getElementById('tradeBar').style.width = '40%';
 
+    // ═══ SOURCE 1b: Comtrade Vercel proxy — YIL FALLBACK ═══
+    // So'ralgan yilda (ko'pincha 2024) ma'lumot bo'lmasa, ishonchli Vercel proxy
+    // orqali oldingi yillarni sinab ko'ramiz. Bu CORS proxy'lardan ko'ra ancha
+    // ishonchli (xomashyo tahlilida tasdiqlangan).
+    if(!json){
+      var _vbFallbackYears = ['2023','2022','2021','2020'].filter(function(y){ return y !== String(year); });
+      for(var _vbi = 0; _vbi < _vbFallbackYears.length && !json; _vbi++){
+        var _vby = _vbFallbackYears[_vbi];
+        document.getElementById('tradeLoadingText').textContent = '🌐 UN Comtrade ('+_vby+'-yil)...';
+        try {
+          var _vbUrl = BASE+'/api/trade?reporter='+encodeURIComponent(countryCode)+'&year='+encodeURIComponent(_vby)+'&flow='+encodeURIComponent(flow)+'&level='+encodeURIComponent(hsLevel)+(hsFilter?'&hs='+encodeURIComponent(hsFilter):'')+(partnerCode?'&partner='+encodeURIComponent(partnerCode):'')+(comtradeKey?'&key='+encodeURIComponent(comtradeKey):'');
+          var _vbr = await fetch(_vbUrl);
+          if(_vbr.ok){
+            var _vbj = await _vbr.json();
+            if((_vbj.data||[]).length > 0 || Number(_vbj.total_value||0) > 0){
+              json = _vbj;
+              dataSource = 'UN Comtrade';
+              year = _vby;
+              _tradeMeta = {
+                totalValue:Number(_vbj.total_value||0)||null,
+                isPartial:!!_vbj.is_partial,
+                hsFilter:_vbj.hs_filter||hsFilter,
+                requestedLevel:_vbj.requested_level||hsLevel,
+                requestedCmdCode:_vbj.requested_cmd_code||'',
+                maxRecords:Number(_vbj.max_records||0)||0,
+                yearFallback:true
+              };
+              console.log('[Comtrade yil fallback] '+(_vbj.data||[]).length+' ta yozuv (yil='+_vby+')');
+            }
+          }
+        } catch(_vbe){ console.log('[Comtrade yil fallback] '+_vby+' xato:', _vbe && _vbe.message); }
+      }
+    }
+
     // ═══ SOURCE 2: WTO API (Netlify proxy) ═══
     if(!json){
       document.getElementById('tradeLoadingText').textContent = '🌐 WTO API orqali...';
