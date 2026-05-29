@@ -3294,52 +3294,110 @@ async function loadGlobalTradeData(){
         var _directBase = comtradeKey
           ? 'https://comtradeapi.un.org/data/v1/get/C/A/HS'
           : 'https://comtradeapi.un.org/public/v1/preview/C/A/HS';
-        var _dp = 'reporterCode='+encodeURIComponent(countryCode)
-          +'&period='+encodeURIComponent(year)
-          +'&flowCode='+encodeURIComponent(flow)
-          +'&cmdCode='+encodeURIComponent(_cmdCode4)
-          +'&partnerCode='+encodeURIComponent(partnerCode||'0')
-          +'&maxRecords=500&includeDesc=true';
-        if(comtradeKey) _dp += '&subscription-key='+encodeURIComponent(comtradeKey);
-        var r4 = await fetch(_directBase+'?'+_dp);
-        if(r4.ok){
-          var j4 = await r4.json();
-          if((j4.data||[]).length > 0){
-            json = j4; dataSource = 'UN Comtrade';
-            _tradeMeta = {totalValue:Number(j4.total_value||0)||null,isPartial:false,
-              hsFilter:hsFilter,requestedLevel:hsLevel,requestedCmdCode:_cmdCode4,maxRecords:500};
-          } else console.log('Direct Comtrade: data bo\'sh');
-        } else console.log('Direct Comtrade error:', r4.status);
+        // Hamkor bilan, keyin hamkorsiz (0=World) sinab ko'rish
+        var _s4partners = partnerCode ? [partnerCode, '0'] : ['0'];
+        for(var _s4pi = 0; _s4pi < _s4partners.length && !json; _s4pi++){
+          try {
+            var _dp = 'reporterCode='+encodeURIComponent(countryCode)
+              +'&period='+encodeURIComponent(year)
+              +'&flowCode='+encodeURIComponent(flow)
+              +'&cmdCode='+encodeURIComponent(_cmdCode4)
+              +'&partnerCode='+encodeURIComponent(_s4partners[_s4pi])
+              +'&maxRecords=500&includeDesc=true';
+            if(comtradeKey) _dp += '&subscription-key='+encodeURIComponent(comtradeKey);
+            var r4 = await fetch(_directBase+'?'+_dp);
+            if(r4.ok){
+              var j4 = await r4.json();
+              if((j4.data||[]).length > 0){
+                json = j4; dataSource = 'UN Comtrade';
+                _tradeMeta = {totalValue:Number(j4.total_value||0)||null,isPartial:false,
+                  hsFilter:hsFilter,requestedLevel:hsLevel,requestedCmdCode:_cmdCode4,maxRecords:500};
+              }
+            }
+          } catch(_s4e){}
+        }
       } catch(e){ console.log('Direct Comtrade fetch error:', e.message); }
     }
 
     document.getElementById('tradeBar').style.width = '85%';
 
     // ═══ YIL FALLBACK: so'ralgan yilda ma'lumot bo'lmasa oldingi yillarni sinab ko'rish ═══
-    if(!json && parseInt(year) >= 2023){
+    if(!json){
       document.getElementById('tradeLoadingText').textContent = '🌐 Oldingi yillar sinab ko\'rilmoqda...';
-      var _fallbackYears = ['2023','2022','2021'].filter(function(y){ return y !== year; });
+      var _fallbackYears = ['2024','2023','2022','2021','2020'].filter(function(y){ return y !== String(year); });
       for(var _fi = 0; _fi < _fallbackYears.length && !json; _fi++){
         var _fy = _fallbackYears[_fi];
-        try {
-          var _fr = await fetch('https://comtradeapi.un.org/public/v1/preview/C/A/HS?'
-            +'reporterCode='+encodeURIComponent(countryCode)
-            +'&period='+_fy
-            +'&flowCode='+encodeURIComponent(flow)
-            +'&cmdCode=AG2&partnerCode='+encodeURIComponent(partnerCode||'0')
-            +'&maxRecords=500&includeDesc=true');
-          if(_fr.ok){
-            var _fj = await _fr.json();
-            if((_fj.data||[]).length > 0){
-              json = _fj; dataSource = 'UN Comtrade';
-              year = _fy; // render uchun yilni yangilaymiz
-              _tradeMeta = {totalValue:Number(_fj.total_value||0)||null,isPartial:false,
-                hsFilter:hsFilter,requestedLevel:'2',requestedCmdCode:'AG2',maxRecords:500,
-                yearFallback:true};
+        // Hamkor bilan va hamkorsiz (World) ikkisini ham sinab ko'rish
+        var _fbPartners = partnerCode ? [partnerCode, '0'] : ['0'];
+        for(var _fpi = 0; _fpi < _fbPartners.length && !json; _fpi++){
+          try {
+            var _fr = await fetch('https://comtradeapi.un.org/public/v1/preview/C/A/HS?'
+              +'reporterCode='+encodeURIComponent(countryCode)
+              +'&period='+_fy
+              +'&flowCode='+encodeURIComponent(flow)
+              +'&cmdCode=AG2&partnerCode='+encodeURIComponent(_fbPartners[_fpi])
+              +'&maxRecords=500&includeDesc=true');
+            if(_fr.ok){
+              var _fj = await _fr.json();
+              if((_fj.data||[]).length > 0){
+                json = _fj; dataSource = 'UN Comtrade';
+                year = _fy;
+                _tradeMeta = {totalValue:Number(_fj.total_value||0)||null,isPartial:false,
+                  hsFilter:hsFilter,requestedLevel:'2',requestedCmdCode:'AG2',maxRecords:500,
+                  yearFallback:true};
+              }
             }
-          }
-        } catch(_fe){ /* silent */ }
+          } catch(_fe){ /* silent */ }
+        }
       }
+    }
+
+    // ═══ SOURCE 5: WITS bevosita (World Bank — CORS yoqilgan, API key talab etilmaydi) ═══
+    if(!json){
+      document.getElementById('tradeLoadingText').textContent = '🌐 WITS (World Bank) bevosita...';
+      var _wISOM={'860':'UZB','398':'KAZ','417':'KGZ','762':'TJK','795':'TKM','643':'RUS','031':'AZE','268':'GEO','051':'ARM','112':'BLR','804':'UKR','498':'MDA','156':'CHN','392':'JPN','410':'KOR','496':'MNG','158':'TWN','344':'HKG','360':'IDN','458':'MYS','764':'THA','704':'VNM','608':'PHL','702':'SGP','104':'MMR','116':'KHM','356':'IND','586':'PAK','050':'BGD','144':'LKA','004':'AFG','524':'NPL','792':'TUR','364':'IRN','368':'IRQ','682':'SAU','784':'ARE','634':'QAT','414':'KWT','512':'OMN','048':'BHR','400':'JOR','887':'YEM','276':'DEU','250':'FRA','826':'GBR','380':'ITA','724':'ESP','528':'NLD','056':'BEL','040':'AUT','756':'CHE','372':'IRL','752':'SWE','578':'NOR','208':'DNK','246':'FIN','616':'POL','203':'CZE','348':'HUN','642':'ROU','688':'SRB','842':'USA','124':'CAN','484':'MEX','076':'BRA','032':'ARG','152':'CHL','170':'COL','604':'PER','818':'EGY','504':'MAR','012':'DZA','788':'TUN','566':'NGA','710':'ZAF','404':'KEN','834':'TZA','036':'AUS','554':'NZL'};
+      try {
+        var _wISO = _wISOM[String(countryCode)] || String(countryCode);
+        var _wDir = flow === 'X' ? 'exports' : 'imports';
+        var _wBaseYear = parseInt(year) || 2023;
+        // WITS ~2 yil kechikadi: joriy yildan 1 va 2 yil orqaga, keyin sabit yillar
+        var _wYrs = [String(_wBaseYear-1),String(_wBaseYear-2),'2022','2021','2020'].filter(function(y,i,a){ return parseInt(y)>=2018 && a.indexOf(y)===i; });
+        for(var _wi = 0; _wi < _wYrs.length && !json; _wi++){
+          var _wy = _wYrs[_wi];
+          try {
+            var _wU = 'https://wits.worldbank.org/API/V1/wits/country/'+_wISO+'/tradestats/tradedirection/'+_wDir+'/startyear/'+_wy+'/endyear/'+_wy+'/partner/WLD/indicator/TXVALUE?format=JSON';
+            var _wR = await fetch(_wU);
+            if(_wR.ok){
+              var _wJ = await _wR.json();
+              var _wRows = [];
+              try {
+                var _ts = (_wJ&&_wJ.wits_TradeStats&&_wJ.wits_TradeStats.tradestats&&_wJ.wits_TradeStats.tradestats.WITS_Trade_Summary)
+                        || (_wJ&&_wJ.tradestats&&_wJ.tradestats.WITS_Trade_Summary)
+                        || (_wJ&&_wJ.WITS_Trade_Summary);
+                if(_ts){
+                  var _wCtrs = Array.isArray(_ts.country)?_ts.country:[_ts.country].filter(Boolean);
+                  _wCtrs.forEach(function(_ctr){
+                    var _cms = Array.isArray(_ctr.commodity)?_ctr.commodity:[_ctr.commodity].filter(Boolean);
+                    _cms.forEach(function(_cm){
+                      var _cv = parseFloat(_cm.TradeValue||_cm.tradevalue||_cm.value||0);
+                      if(_cv>0) _wRows.push({cmdCode:String(_cm.productcode||_cm.ProductCode||'').padStart(2,'0'),cmdDesc:_cm.description||_cm.ProductDescription||'',primaryValue:_cv*1000,netWgt:0,period:_wy,partnerDesc:'World',flowCode:flow});
+                    });
+                  });
+                }
+              } catch(_pe){}
+              if(!_wRows.length && Array.isArray(_wJ)){
+                _wRows = _wJ.filter(function(r){ return parseFloat(r.TradeValue||r.tradevalue||0)>0; })
+                  .map(function(r){ return {cmdCode:String(r.productcode||r.ProductCode||'').padStart(2,'0'),cmdDesc:r.description||r.ProductDescription||'',primaryValue:parseFloat(r.TradeValue||r.tradevalue||0)*1000,netWgt:0,period:_wy,partnerDesc:'World',flowCode:flow}; });
+              }
+              if(_wRows.length > 0){
+                json = {data:_wRows}; dataSource = 'WITS (World Bank)'; year = _wy;
+                _tradeMeta = {totalValue:null,isPartial:false,hsFilter:null,requestedLevel:'2',requestedCmdCode:'AG2',maxRecords:_wRows.length,yearFallback:true};
+                console.log('[WITS bevosita] '+_wRows.length+' ta yozuv ('+_wy+')');
+              }
+            }
+          } catch(_we){ console.log('[WITS] '+_wy+' xato: '+(_we&&_we.message||_we)); }
+        }
+      } catch(e){ console.log('[WITS bevosita] umumiy xato:', e.message); }
     }
 
     if(!json) throw new Error('Barcha API\'lardan ma\'lumot topilmadi (Comtrade, WTO, WITS)');
