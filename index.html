@@ -3939,6 +3939,11 @@ setTimeout(function(){
   <div class="chat-msgs" id="chatMsgs">
     <div class="chat-msg bot">Assalomu alaykum! 👋 Men Navoiy viloyati investitsiya yordamchisiman. Navoiy haqida, investitsiya imkoniyatlari, foydali qazilmalar, sanoat va boshqa savollaringizga javob beraman.<br><br>📎 <b>So'rovnoma yuborish:</b> Fayl qo'shish tugmasi orqali investor so'rovnomasini yuboring — men uni aniqlab, tayyor javob faylini qaytaraman.</div>
   </div>
+  <div class="chat-attach-preview" id="chatAttachPreview" style="display:none">
+    <span id="chatAttachPreviewName"></span>
+    <span id="chatAttachPreviewSize"></span>
+    <button class="chat-attach-cancel" onclick="cancelStagedFile()" title="Bekor qilish">✕</button>
+  </div>
   <div class="chat-input-wrap">
     <input type="file" id="chatFileInput" accept=".docx,.xlsx,.pdf" style="display:none">
     <button class="chat-attach" id="chatAttachBtn" onclick="document.getElementById('chatFileInput').click()" title="So'rovnoma fayl yuklash (.docx, .xlsx, .pdf)">📎</button>

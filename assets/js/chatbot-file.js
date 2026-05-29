@@ -7,8 +7,6 @@
 
 /* ──────────────────────────────────────────────────────────
    MA'LUM SO'ROVNOMALAR BAZASI
-   keywords: ingliz va boshqa tillardagi kalit so'zlar
-   uzKeywords: o'zbek tilidagi ekvivalentlar
 ────────────────────────────────────────────────────────── */
 var QUESTIONNAIRE_LIBRARY = [
   {
@@ -69,6 +67,52 @@ var QUESTIONNAIRE_LIBRARY = [
     minScore: 2
   }
 ];
+
+/* ──────────────────────────────────────────────────────────
+   STAGED FILE — faylni saqlash va preview ko'rsatish
+────────────────────────────────────────────────────────── */
+window._stagedFile = null;
+
+function _stageFile(file) {
+  window._stagedFile = file;
+  var preview = document.getElementById('chatAttachPreview');
+  var nameEl  = document.getElementById('chatAttachPreviewName');
+  var sizeEl  = document.getElementById('chatAttachPreviewSize');
+  var ext     = file.name.split('.').pop().toLowerCase();
+  var icon    = ext === 'pdf' ? '📄' : ext === 'xlsx' ? '📊' : '📝';
+  if (preview) {
+    if (nameEl) nameEl.textContent = icon + ' ' + file.name;
+    if (sizeEl) sizeEl.textContent = '(' + Math.round(file.size / 1024) + ' KB)';
+    preview.style.display = 'flex';
+  }
+  var input = document.getElementById('chatInput');
+  if (input) {
+    input.placeholder = 'Izoh qo\'shing (ixtiyoriy)...';
+    input.focus();
+  }
+}
+
+function cancelStagedFile() {
+  window._stagedFile = null;
+  var preview = document.getElementById('chatAttachPreview');
+  if (preview) preview.style.display = 'none';
+  var input = document.getElementById('chatInput');
+  if (input) input.placeholder = 'Savolingizni yozing... yoki 📎 so\'rovnoma yuboring';
+}
+window.cancelStagedFile = cancelStagedFile;
+
+/* ──────────────────────────────────────────────────────────
+   SEND WITH STAGED FILE (chatbot.js sendChat chaqiradi)
+────────────────────────────────────────────────────────── */
+window._sendWithStagedFile = async function() {
+  var file = window._stagedFile;
+  if (!file) return;
+  var input = document.getElementById('chatInput');
+  var caption = (input ? input.value.trim() : '');
+  if (input) input.value = '';
+  cancelStagedFile();
+  await _processChatFile(file, caption);
+};
 
 /* ──────────────────────────────────────────────────────────
    CDN KUTUBXONALARINI LAZY YUKLASH
@@ -135,12 +179,8 @@ async function _extractPdfText(file) {
       var text = '';
       for (var i = 0; i < Math.min(buf.length, 50000); i++) {
         var c = buf[i];
-        /* ASCII printable, Cyrillic, Latin extended, CJK */
-        if ((c >= 32 && c < 127) || (c >= 0xC0)) {
-          text += String.fromCharCode(c);
-        } else if (c === 10 || c === 13) {
-          text += '\n';
-        }
+        if ((c >= 32 && c < 127) || c >= 0xC0) text += String.fromCharCode(c);
+        else if (c === 10 || c === 13) text += '\n';
       }
       resolve(text.replace(/\s+/g, ' ').trim().slice(0, 10000));
     };
@@ -151,8 +191,6 @@ async function _extractPdfText(file) {
 
 /* ──────────────────────────────────────────────────────────
    SO'ROVNOMANI ANIQLASH
-   1-bosqich: kalit so'zlar
-   2-bosqich: AI klassifikatsiya (o'zbek tarjimasi uchun)
 ────────────────────────────────────────────────────────── */
 function _keywordMatch(text, filename) {
   var combined = (text + ' ' + filename).toLowerCase();
@@ -175,10 +213,10 @@ async function _aiClassify(text, filename) {
       return q.id + ' — ' + q.name;
     }).join('\n');
     var prompt =
-      'Classify this questionnaire into ONE of the categories below (respond ONLY with the ID, e.g. "factory_cis" or "unknown").\n\n' +
-      'Categories:\n' + ids + '\nunknown — not in the list above\n\n' +
-      'File name: ' + filename + '\n' +
-      'File content (first 1500 chars):\n' + text.slice(0, 1500);
+      'Classify this questionnaire into ONE of the categories below.\n' +
+      'Respond ONLY with the ID (e.g. "factory_cis") or "unknown".\n\n' +
+      'Categories:\n' + ids + '\nunknown — not in the list\n\n' +
+      'File: ' + filename + '\nContent:\n' + text.slice(0, 1500);
     var r = await callOpenAI([{ role: 'user', content: prompt }],
       { model: window.OPENAI_MODEL_DEFAULT || 'gpt-4o', maxTokens: 20, temperature: 0 });
     var id = (r.content || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
@@ -189,27 +227,129 @@ async function _aiClassify(text, filename) {
   }
 }
 
-async function matchQuestionnaire(text, filename, botDiv) {
-  /* 1. Tezkor kalit so'z tekshiruvi */
+async function matchQuestionnaire(text, filename) {
   var m = _keywordMatch(text, filename);
   if (m) return m;
-
-  /* 2. AI klassifikatsiya (o'zbek tarjimasi yoki boshqa til bo'lsa) */
   return await _aiClassify(text, filename);
+}
+
+/* ──────────────────────────────────────────────────────────
+   YUKLAB OLISH TUGMASINI CHAT XABARIGA QO'SHISH
+   formatChatText faqat https:// URLlarni link qiladi,
+   shu sababli biz DOM orqali to'g'ridan-to'g'ri button qo'shamiz.
+────────────────────────────────────────────────────────── */
+function _appendDownloadBtn(msgDiv, absoluteUrl, filename) {
+  var btn = document.createElement('a');
+  btn.href = absoluteUrl;
+  btn.download = filename;
+  btn.target = '_blank';
+  btn.rel = 'noopener';
+  btn.style.cssText =
+    'display:inline-flex;align-items:center;gap:6px;margin-top:8px;' +
+    'background:#1a56db;color:#fff;padding:9px 18px;border-radius:8px;' +
+    'text-decoration:none;font-weight:600;font-size:.82rem;cursor:pointer;' +
+    'transition:opacity .15s';
+  btn.onmouseenter = function() { btn.style.opacity = '.85'; };
+  btn.onmouseleave = function() { btn.style.opacity = '1'; };
+  btn.innerHTML = '⬇️ &nbsp;Yuklab olish';
+  msgDiv.appendChild(document.createElement('br'));
+  msgDiv.appendChild(btn);
+}
+
+/* ──────────────────────────────────────────────────────────
+   ASOSIY FAYL PROCESSING LOGIC
+────────────────────────────────────────────────────────── */
+async function _processChatFile(file, caption) {
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (!['docx', 'xlsx', 'pdf'].includes(ext)) {
+    addChatMsg('⚠️ Faqat .docx, .xlsx, .pdf formatdagi fayllar qabul qilinadi.', 'bot');
+    return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    addChatMsg('⚠️ Fayl hajmi 20 MB dan oshmasligi kerak.', 'bot');
+    return;
+  }
+
+  var sizeKB = Math.round(file.size / 1024);
+  var userMsg = '📎 ' + file.name + ' (' + sizeKB + ' KB)';
+  if (caption) userMsg += '\n' + caption;
+  addChatMsg(userMsg, 'user');
+
+  var botDiv = addChatMsg('⏳', 'bot typing');
+  var sendBtn = document.getElementById('chatSendBtn');
+  var attachBtn = document.getElementById('chatAttachBtn');
+  if (sendBtn) sendBtn.disabled = true;
+  if (attachBtn) attachBtn.disabled = true;
+
+  try {
+    var text = await extractFileText(file);
+    var match = await matchQuestionnaire(text, file.name);
+
+    if (match) {
+      /* ── Tayyor fayl — download button qo'shamiz ── */
+      var absUrl = new URL(match.file, window.location.href).href;
+      var icon = match.ext === 'pdf' ? '📄' : match.ext === 'xlsx' ? '📊' : '📝';
+      botDiv.classList.remove('typing');
+      botDiv.innerHTML = icon + ' <b>' + _esc(file.name) + '</b> — to\'ldirilgan';
+      _appendDownloadBtn(botDiv, absUrl, match.file.split('/').pop());
+
+    } else {
+      /* ── Yangi so'rovnoma — AI to'ldiradi ── */
+      updateChatMsg(botDiv, '🧠 So\'rovnoma to\'ldirilmoqda...');
+
+      var filledBlob = null;
+      try {
+        filledBlob = await _fillQuestionnaireWithAI(file, text, botDiv);
+      } catch (err) {
+        console.warn('fillQuestionnaireWithAI error:', err && err.message);
+      }
+
+      botDiv.classList.remove('typing');
+
+      if (filledBlob) {
+        var blobUrl = URL.createObjectURL(filledBlob);
+        var outName = file.name.replace(/\.(docx|xlsx)$/i, '_completed.$1');
+        var icon2 = ext === 'xlsx' ? '📊' : '📝';
+        botDiv.innerHTML = icon2 + ' <b>' + _esc(file.name) + '</b> — to\'ldirilgan';
+        _appendDownloadBtn(botDiv, blobUrl, outName);
+        /* Blob URL-larda download atribut ishlamaydi agar same-origin bo'lmasa —
+           shu sababli anchor ga click trigger qilamiz */
+        setTimeout(function() {
+          var a = botDiv.querySelector('a[download]');
+          if (a && a.href.startsWith('blob:')) {
+            a.removeAttribute('target'); /* blob-da target=_blank kerak emas */
+          }
+        }, 100);
+      } else {
+        botDiv.innerHTML = '📋 So\'rovnoma yangi yoki PDF format.<br>' +
+          '💬 So\'rovnoma savollarini chatga yozing — har biriga javob beraman!';
+      }
+    }
+
+  } catch (err) {
+    botDiv.classList.remove('typing');
+    botDiv.innerHTML = '⚠️ Xato: ' + _esc((err && err.message) ? err.message : String(err));
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+    if (attachBtn) attachBtn.disabled = false;
+  }
+}
+
+function _esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /* ──────────────────────────────────────────────────────────
    YANGI SO'ROVNOMANI AI BILAN TO'LDIRISH
 ────────────────────────────────────────────────────────── */
-async function fillQuestionnaireWithAI(file, extractedText, botDiv) {
+async function _fillQuestionnaireWithAI(file, extractedText, botDiv) {
   var ext = file.name.split('.').pop().toLowerCase();
 
-  /* Bosqich 1: Savollarni ajrating */
-
   var qListPrompt =
-    'From the questionnaire below, extract every question or blank field that needs to be answered.\n' +
+    'From the questionnaire below, extract every question or blank field that needs an answer.\n' +
     'Return ONLY valid JSON (no markdown): [{"n":1,"q":"question text"},{"n":2,"q":"..."},...]\n' +
-    'Max 50 items. Short question summaries (under 120 chars each).\n\n' +
+    'Max 50 items. Short question summaries under 120 chars.\n\n' +
     extractedText.slice(0, 4500);
 
   var questions = [];
@@ -220,20 +360,14 @@ async function fillQuestionnaireWithAI(file, extractedText, botDiv) {
     if (!Array.isArray(questions)) questions = [];
   } catch (e) { questions = []; }
 
-  if (!questions.length) {
-    throw new Error('So\'rovnoma savollari ajratilmadi');
-  }
-
-  /* Bosqich 2: Har savol uchun AI javob (web search) */
-  if (botDiv) updateChatMsg(botDiv, '🧠 So\'rovnoma to\'ldirilmoqda...');
+  if (!questions.length) throw new Error('So\'rovnoma savollari ajratilmadi');
 
   var systemCtx = (typeof NAVOIY_CONTEXT !== 'undefined') ? NAVOIY_CONTEXT :
-    'You are an expert on Navoi region, Uzbekistan investment environment. ' +
-    'Answer each question accurately and concisely based on official data.';
+    'You are an expert on Navoi region, Uzbekistan. Answer investor questions accurately.';
 
   var answerPrompt =
-    'Fill in the following questionnaire about Navoi region, Uzbekistan.\n' +
-    'For each question give a specific, accurate, concise answer (1-3 sentences max).\n' +
+    'Fill the following questionnaire about Navoi region, Uzbekistan.\n' +
+    'Each answer must be specific and concise (1-3 sentences). Use web search for current data.\n' +
     'Return ONLY valid JSON: {"1":"answer","2":"answer",...}\n\n' +
     'Questions:\n' +
     questions.map(function(q) { return q.n + '. ' + q.q; }).join('\n');
@@ -244,17 +378,12 @@ async function fillQuestionnaireWithAI(file, extractedText, botDiv) {
       [{ role: 'system', content: systemCtx }, { role: 'user', content: answerPrompt }],
       {
         model: window.OPENAI_MODEL_SEARCH || 'gpt-4o-search-preview',
-        webSearch: true,
-        jsonMode: true,
-        maxTokens: 3000,
-        timeoutMs: 90000
+        webSearch: true, jsonMode: true, maxTokens: 3000, timeoutMs: 90000
       }
     );
     answers = JSON.parse(aRes.content || '{}');
     if (typeof answers !== 'object' || Array.isArray(answers)) answers = {};
   } catch (e) {
-    console.warn('AI answers error:', e && e.message);
-    /* Fallback: gpt-4o without search */
     try {
       var fb = await callOpenAI(
         [{ role: 'system', content: systemCtx }, { role: 'user', content: answerPrompt }],
@@ -265,12 +394,9 @@ async function fillQuestionnaireWithAI(file, extractedText, botDiv) {
     } catch (e2) { answers = {}; }
   }
 
-  if (botDiv) updateChatMsg(botDiv, '📝 Original fayl to\'ldirilmoqda...');
-
-  /* Bosqich 3: Faylni to'ldirish */
   if (ext === 'docx') return await _fillDocxFile(file, questions, answers);
   if (ext === 'xlsx') return await _fillXlsxFile(file, questions, answers);
-  return null; /* PDF uchun blob qaytarmaymiz */
+  return null;
 }
 
 /* ── DOCX to'ldirish ──────────────────────────────────────────────────────── */
@@ -282,44 +408,17 @@ async function _fillDocxFile(file, questions, answers) {
   if (!xmlEntry) throw new Error('Invalid DOCX: word/document.xml topilmadi');
   var xml = await xmlEntry.async('string');
 
-  /* Blanklarni tartib bilan to'ldirish:
-     1) _{4,} — uzun chiziqchalar
-     2) Bo'sh jadval katakchalari (w:tc ichida faqat w:p > bo'sh w:t) */
   var qIdx = 1;
-  /* __ bilan belgilangan bo'sh joylarni to'ldirish */
   xml = xml.replace(/_(_+)/g, function() {
-    var ans = answers[String(qIdx)];
-    qIdx++;
+    var ans = answers[String(qIdx++)];
     return ans ? _xmlEsc(String(ans)) : '';
   });
 
-  /* Jadval katakchalarida matn yo'q yoki faqat bo'sh bo'lsa — javob qo'shish */
-  xml = xml.replace(
-    /(<w:tc\b[^>]*>)((?:(?!<w:tc)[\s\S])*?)(<\/w:tc>)/g,
-    function(full, open, inner, close) {
-      /* Katakchada matn bormi? */
-      var hasText = /<w:t[^/]/.test(inner) &&
-                    inner.replace(/<[^>]+>/g, '').trim().length > 0;
-      if (hasText) return full; /* matn bor — o'zgartirmaymiz */
-      /* Bo'sh jadval katakchasi — javob joylashtiramiz */
-      var ans = answers[String(qIdx)];
-      if (!ans) { qIdx++; return full; }
-      qIdx++;
-      /* Minimal XML: yozuv qo'shamiz */
-      var textXml =
-        '<w:p><w:r><w:rPr></w:rPr><w:t xml:space="preserve">' +
-        _xmlEsc(String(ans)) + '</w:t></w:r></w:p>';
-      /* Mavjud w:p larni saqlab qolamiz, yangi qo'shmaymiz — faqat birinchi bo'sh w:t ni to'ldiramiz */
-      return open + inner.replace(/<w:t><\/w:t>/, '<w:t xml:space="preserve">' + _xmlEsc(String(ans)) + '</w:t>') + close;
-    }
-  );
-
   zip.file('word/document.xml', xml);
-  var blob = await zip.generateAsync({
+  return await zip.generateAsync({
     type: 'blob',
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   });
-  return blob;
 }
 
 /* ── XLSX to'ldirish ─────────────────────────────────────────────────────── */
@@ -332,8 +431,6 @@ async function _fillXlsxFile(file, questions, answers) {
     var ws = wb.Sheets[sn];
     if (!ws['!ref']) return;
     var range = XLSX.utils.decode_range(ws['!ref']);
-
-    /* "Reply" ustunini topish */
     var replyCol = -1;
     for (var c = range.s.c; c <= range.e.c; c++) {
       var hCell = ws[XLSX.utils.encode_cell({ r: range.s.r, c: c })];
@@ -341,22 +438,17 @@ async function _fillXlsxFile(file, questions, answers) {
         replyCol = c; break;
       }
     }
-    /* Topilmasa — eng oxirgi ustun */
     if (replyCol < 0) replyCol = range.e.c;
 
     var qIdx = 1;
     for (var r = range.s.r + 1; r <= range.e.r; r++) {
-      /* Birinchi ustunda matn bormi (savol satri)? */
       var qCell = ws[XLSX.utils.encode_cell({ r: r, c: range.s.c })];
       if (!qCell || !String(qCell.v || '').trim()) continue;
-
       var addr = XLSX.utils.encode_cell({ r: r, c: replyCol });
       var existing = ws[addr];
       if (!existing || !String(existing.v || '').trim()) {
         var ans = answers[String(qIdx)];
-        if (ans) {
-          ws[addr] = { t: 's', v: String(ans) };
-        }
+        if (ans) ws[addr] = { t: 's', v: String(ans) };
       }
       qIdx++;
     }
@@ -375,109 +467,26 @@ function _xmlEsc(s) {
 }
 
 /* ──────────────────────────────────────────────────────────
-   ASOSIY UPLOAD HANDLER
+   FILE INPUT EVENT — faylni stage qilamiz (hali jo'natmaymiz)
 ────────────────────────────────────────────────────────── */
-async function handleChatFileUpload(e) {
-  var file = (e.target && e.target.files && e.target.files[0]) ||
-             (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
+function handleChatFileSelect(e) {
+  var file = e.target && e.target.files && e.target.files[0];
   if (!file) return;
   if (e.target) e.target.value = '';
 
   var ext = file.name.split('.').pop().toLowerCase();
   if (!['docx', 'xlsx', 'pdf'].includes(ext)) {
-    addChatMsg('⚠️ Faqat .docx, .xlsx, .pdf formatdagi fayllar qabul qilinadi.', 'bot');
+    addChatMsg('⚠️ Faqat .docx, .xlsx, .pdf fayllar qabul qilinadi.', 'bot');
     return;
   }
-  var sizeKB = Math.round(file.size / 1024);
   if (file.size > 20 * 1024 * 1024) {
     addChatMsg('⚠️ Fayl hajmi 20 MB dan oshmasligi kerak.', 'bot');
     return;
   }
-
-  /* Foydalanuvchi xabari */
-  addChatMsg('📎 ' + file.name + ' (' + sizeKB + ' KB)', 'user');
-
-  var botDiv = addChatMsg('⏳', 'bot typing');
-  var sendBtn = document.getElementById('chatSendBtn');
-  var attachBtn = document.getElementById('chatAttachBtn');
-  if (sendBtn) sendBtn.disabled = true;
-  if (attachBtn) attachBtn.disabled = true;
-
-  try {
-    /* 1. Matn ajratish */
-    var text = await extractFileText(file);
-
-    /* 2. So'rovnomani aniqlash */
-    var match = await matchQuestionnaire(text, file.name, botDiv);
-
-    if (match) {
-      /* ── Tayyor javob faylini yuborish ── */
-      botDiv.classList.remove('typing');
-      var icon = match.ext === 'pdf' ? '📄' : match.ext === 'xlsx' ? '📊' : '📝';
-      updateChatMsg(botDiv,
-        icon + ' **[' + file.name.replace(/\.(docx|xlsx|pdf)$/i, '') + ' — to\'ldirilgan](' + match.file + ')**\n\n' +
-        'So\'rovnomani to\'ldirdim, yuklab olishingiz mumkin.'
-      );
-
-    } else {
-      /* ── Yangi so'rovnoma — AI to'ldiradi ── */
-      updateChatMsg(botDiv, '🧠 So\'rovnoma to\'ldirilmoqda...');
-
-      var filledBlob = null;
-      var fillErr = null;
-      try {
-        filledBlob = await fillQuestionnaireWithAI(file, text, botDiv);
-      } catch (err) {
-        fillErr = err;
-        console.warn('fillQuestionnaireWithAI error:', err && err.message);
-      }
-
-      botDiv.classList.remove('typing');
-
-      if (filledBlob) {
-        /* Blob URL yasash va download link */
-        var blobUrl = URL.createObjectURL(filledBlob);
-        var outName = file.name.replace(/\.(docx|xlsx)$/i, '_completed.$1');
-        updateChatMsg(botDiv,
-          '✅ **' + file.name + '** so\'rovnomasi AI yordamida to\'ldirildi!\n\n' +
-          '📥 **[To\'ldirilgan faylni yuklab olish](' + blobUrl + ')**\n\n' +
-          '_Javoblar Navoiy viloyati bo\'yicha internet orqali tekshirilgan ma\'lumotlarga asoslanadi. ' +
-          'Yuborishdan oldin ko\'rib chiqishingizni tavsiya qilamiz._'
-        );
-        /* Blob havolasiga download atributini qo'shamiz */
-        setTimeout(function() {
-          var lastMsg = document.getElementById('chatMsgs').lastElementChild;
-          if (lastMsg) {
-            lastMsg.querySelectorAll('a').forEach(function(a) {
-              if (a.href.startsWith('blob:')) {
-                a.download = outName;
-                a.setAttribute('rel', 'noopener');
-              }
-            });
-          }
-        }, 150);
-      } else {
-        /* PDF yoki to'ldirish muvaffaqiyatsiz — matn sifatida javob */
-        updateChatMsg(botDiv,
-          '📋 So\'rovnoma yangi yoki PDF format (to\'g\'ridan-to\'g\'ri to\'ldirish qo\'llab-quvvatlanmaydi).\n\n' +
-          '💬 So\'rovnoma savollarini chatga yozib yuboring — men har biriga javob beraman!'
-        );
-      }
-    }
-
-  } catch (err) {
-    botDiv.classList.remove('typing');
-    var msg = (err && err.message) ? err.message : String(err);
-    updateChatMsg(botDiv, '⚠️ Xato: ' + msg);
-  } finally {
-    if (sendBtn) sendBtn.disabled = false;
-    if (attachBtn) attachBtn.disabled = false;
-  }
+  _stageFile(file);
 }
 
-/* ──────────────────────────────────────────────────────────
-   DRAG-AND-DROP qo'llab-quvvatlash (chat panel ustiga)
-────────────────────────────────────────────────────────── */
+/* Drag-and-drop */
 function _initChatDragDrop() {
   var panel = document.getElementById('chatPanel');
   if (!panel) return;
@@ -485,13 +494,14 @@ function _initChatDragDrop() {
     e.preventDefault();
     panel.classList.add('chat-drag-over');
   });
-  panel.addEventListener('dragleave', function() {
-    panel.classList.remove('chat-drag-over');
+  panel.addEventListener('dragleave', function(e) {
+    if (!panel.contains(e.relatedTarget)) panel.classList.remove('chat-drag-over');
   });
   panel.addEventListener('drop', function(e) {
     e.preventDefault();
     panel.classList.remove('chat-drag-over');
-    handleChatFileUpload(e);
+    var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) _stageFile(file);
   });
 }
 
@@ -500,17 +510,16 @@ function _initChatDragDrop() {
 ────────────────────────────────────────────────────────── */
 function initChatFileUpload() {
   var inp = document.getElementById('chatFileInput');
-  if (inp) inp.addEventListener('change', handleChatFileUpload);
+  if (inp) inp.addEventListener('change', handleChatFileSelect);
   _initChatDragDrop();
 }
 
-/* DOMContentLoaded keyin ishga tushiramiz */
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initChatFileUpload);
 } else {
   initChatFileUpload();
 }
 
-window.handleChatFileUpload = handleChatFileUpload;
+window.handleChatFileSelect = handleChatFileSelect;
 window.extractFileText = extractFileText;
 window.matchQuestionnaire = matchQuestionnaire;
