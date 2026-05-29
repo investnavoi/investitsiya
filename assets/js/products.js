@@ -3283,7 +3283,64 @@ async function loadGlobalTradeData(){
       } catch(e){ console.log('WITS fetch error:', e.message); }
     }
 
+    document.getElementById('tradeBar').style.width = '75%';
+
+    // ═══ SOURCE 4: Bevosita Comtrade (browser IP — proxy quotasini aylanib o'tadi) ═══
+    if(!json){
+      document.getElementById('tradeLoadingText').textContent = '🌐 Comtrade (bevosita)...';
+      try {
+        var _cmdCode4 = hsFilter ? String(hsFilter).split(',')[0].trim().replace(/\D/g,'').slice(0,6)||'AG2'
+                      : (hsLevel==='6'?'AG6':hsLevel==='4'?'AG4':'AG2');
+        var _directBase = comtradeKey
+          ? 'https://comtradeapi.un.org/data/v1/get/C/A/HS'
+          : 'https://comtradeapi.un.org/public/v1/preview/C/A/HS';
+        var _dp = 'reporterCode='+encodeURIComponent(countryCode)
+          +'&period='+encodeURIComponent(year)
+          +'&flowCode='+encodeURIComponent(flow)
+          +'&cmdCode='+encodeURIComponent(_cmdCode4)
+          +'&partnerCode='+encodeURIComponent(partnerCode||'0')
+          +'&maxRecords=500&includeDesc=true';
+        if(comtradeKey) _dp += '&subscription-key='+encodeURIComponent(comtradeKey);
+        var r4 = await fetch(_directBase+'?'+_dp);
+        if(r4.ok){
+          var j4 = await r4.json();
+          if((j4.data||[]).length > 0){
+            json = j4; dataSource = 'UN Comtrade';
+            _tradeMeta = {totalValue:Number(j4.total_value||0)||null,isPartial:false,
+              hsFilter:hsFilter,requestedLevel:hsLevel,requestedCmdCode:_cmdCode4,maxRecords:500};
+          } else console.log('Direct Comtrade: data bo\'sh');
+        } else console.log('Direct Comtrade error:', r4.status);
+      } catch(e){ console.log('Direct Comtrade fetch error:', e.message); }
+    }
+
     document.getElementById('tradeBar').style.width = '85%';
+
+    // ═══ YIL FALLBACK: so'ralgan yilda ma'lumot bo'lmasa oldingi yillarni sinab ko'rish ═══
+    if(!json && parseInt(year) >= 2023){
+      document.getElementById('tradeLoadingText').textContent = '🌐 Oldingi yillar sinab ko\'rilmoqda...';
+      var _fallbackYears = ['2023','2022','2021'].filter(function(y){ return y !== year; });
+      for(var _fi = 0; _fi < _fallbackYears.length && !json; _fi++){
+        var _fy = _fallbackYears[_fi];
+        try {
+          var _fr = await fetch('https://comtradeapi.un.org/public/v1/preview/C/A/HS?'
+            +'reporterCode='+encodeURIComponent(countryCode)
+            +'&period='+_fy
+            +'&flowCode='+encodeURIComponent(flow)
+            +'&cmdCode=AG2&partnerCode='+encodeURIComponent(partnerCode||'0')
+            +'&maxRecords=500&includeDesc=true');
+          if(_fr.ok){
+            var _fj = await _fr.json();
+            if((_fj.data||[]).length > 0){
+              json = _fj; dataSource = 'UN Comtrade';
+              year = _fy; // render uchun yilni yangilaymiz
+              _tradeMeta = {totalValue:Number(_fj.total_value||0)||null,isPartial:false,
+                hsFilter:hsFilter,requestedLevel:'2',requestedCmdCode:'AG2',maxRecords:500,
+                yearFallback:true};
+            }
+          }
+        } catch(_fe){ /* silent */ }
+      }
+    }
 
     if(!json) throw new Error('Barcha API\'lardan ma\'lumot topilmadi (Comtrade, WTO, WITS)');
 
