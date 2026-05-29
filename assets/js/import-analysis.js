@@ -3466,23 +3466,22 @@ async function investAiBatchTranslateProductsRu(entries){
     pending.push({ hs:hs, en:String(e.displayName || e.name_en || e.hsCode || '').trim() });
   });
   if(!pending.length) return;
-  // Limit batch size to ~50 entries per Gemini call
+  // Limit batch size to ~50 entries per OpenAI call
   var BATCH = 50;
   for(var i=0; i<pending.length; i+=BATCH){
     var chunk = pending.slice(i, i + BATCH);
     var prompt = 'Translate each English HS-code product description into a SHORT Russian commercial-style name (2-6 words). Return STRICT JSON: an object mapping HS code (string) to Russian translation. No commentary, no markdown.\n\nInput (JSON array):\n' + JSON.stringify(chunk);
     try {
-      if(typeof callGemini !== 'function') break;
-      var resp = await callGemini({
-        contents:[{ parts:[{ text: prompt }] }],
-        generationConfig:{ temperature: 0.2, responseMimeType: 'application/json' }
-      });
-      var raw = (typeof geminiText === 'function') ? geminiText(resp) : '';
+      if(typeof callOpenAI !== 'function') break;
+      var resp = await callOpenAI([
+        { role:'system', content:'You are a precise EN→RU translator for trade/customs product names. Output only valid JSON.' },
+        { role:'user', content: prompt }
+      ], { temperature: 0.2, jsonMode: true, maxTokens: 2048 });
+      var raw = (resp && resp.content) || '';
       if(!raw) continue;
-      var parsed = (typeof safeParseJSON === 'function') ? safeParseJSON(raw) : null;
-      if(!parsed || typeof parsed !== 'object') {
-        try { parsed = JSON.parse(raw); } catch(_p){ parsed = null; }
-      }
+      var parsed = null;
+      try { parsed = (typeof safeParseOpenAIJson === 'function') ? safeParseOpenAIJson(raw) : JSON.parse(raw); }
+      catch(_p){ parsed = null; }
       if(!parsed || typeof parsed !== 'object') continue;
       Object.keys(parsed).forEach(function(k){
         var hsK = String(k).replace(/\D/g,'');
