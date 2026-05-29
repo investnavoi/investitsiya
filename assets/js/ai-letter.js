@@ -142,6 +142,92 @@ function getAiCompanyProductInfo(comp){
   };
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   13-davlat import jami (2021-2024) — kompaniya qidiruvi bo'limidagi
+   importSnapshots'dan o'qiladi. Email ¶1 da ushbu 2 raqam ishlatiladi:
+     • O'zbekistonning 4-yillik jami import hajmi
+     • Qolgan 12 davlatning 4-yillik jami import hajmi
+   ═══════════════════════════════════════════════════════════════ */
+function getCompanyProductImportTotals(productInfo, comp){
+  try {
+    if(!productInfo) return null;
+    var snapshots = (typeof DB !== 'undefined' && DB.importSnapshots) || [];
+    if(!snapshots.length) return null;
+    var pid = String(productInfo.productId || '').trim();
+    var hs6 = String(productInfo.hsCode || '').replace(/\D/g,'').slice(0,6);
+    var hs4 = hs6.slice(0,4);
+    var hs2 = hs6.slice(0,2);
+
+    /* Avval productId bo'yicha aniq mos, keyin HS6, keyin HS4, keyin HS2 bo'yicha izlaymiz.
+       Eng so'nggi snapshot (updatedAt) ustun keladi. */
+    var matches = snapshots.filter(function(s){
+      if(!s || !s.countries || !s.countries.length) return false;
+      if(pid && String(s.productId||'') === pid) return true;
+      var sHs = String(s.hsCode||'').replace(/\D/g,'').slice(0,6);
+      if(hs6 && sHs && sHs === hs6) return true;
+      if(hs4 && sHs && sHs.slice(0,4) === hs4) return true;
+      return false;
+    });
+    if(!matches.length && hs2){
+      matches = snapshots.filter(function(s){
+        if(!s || !s.countries || !s.countries.length) return false;
+        var sHs = String(s.hsCode||'').replace(/\D/g,'').slice(0,2);
+        return sHs && sHs === hs2;
+      });
+    }
+    if(!matches.length) return null;
+
+    matches.sort(function(a,b){ return String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')); });
+    var snap = matches[0];
+
+    var uzbekistanUsd = 0;
+    var otherTwelveUsd = 0;
+    var otherCountries = [];
+    var allCountries = snap.countries || [];
+
+    allCountries.forEach(function(c){
+      var usd = Number(c.u||0) || 0;
+      var code = String(c.c||'').toUpperCase();
+      if(code === 'UZ'){
+        uzbekistanUsd += usd;
+      } else {
+        otherTwelveUsd += usd;
+        if(usd > 0) otherCountries.push({name: c.n || code, usd: usd});
+      }
+    });
+
+    if(uzbekistanUsd <= 0 && otherTwelveUsd <= 0) return null;
+
+    /* Top 3 boshqa davlatlarni ham qaytaramiz, prompt'da kontekst uchun foydali. */
+    otherCountries.sort(function(a,b){ return b.usd - a.usd; });
+    var topOthers = otherCountries.slice(0,3);
+
+    return {
+      uzbekistanUsd: uzbekistanUsd,
+      otherTwelveUsd: otherTwelveUsd,
+      combinedUsd: uzbekistanUsd + otherTwelveUsd,
+      topOthers: topOthers,
+      productName: snap.productName || productInfo.displayName || '',
+      hsCode: snap.hsCode || productInfo.hsCode || '',
+      source: snap.source || 'UN Comtrade',
+      period: '2021-2024',
+      countryCount: allCountries.length
+    };
+  } catch(e){
+    console.warn('[getCompanyProductImportTotals] xato:', e && e.message);
+    return null;
+  }
+}
+
+/* USD raqamini "$48.2M" / "$1.4B" kabi qisqa shaklga aylantirish (email ichida). */
+function _formatImportUsdShort(usd){
+  var n = Number(usd||0) || 0;
+  if(n >= 1e9) return '$' + (n/1e9).toFixed(2).replace(/\.?0+$/,'') + 'B';
+  if(n >= 1e6) return '$' + (n/1e6).toFixed(1).replace(/\.0$/,'') + 'M';
+  if(n >= 1e3) return '$' + (n/1e3).toFixed(0) + 'K';
+  return '$' + Math.round(n);
+}
+
 // Barcha davlatlar uchun rasmiy mehnat haqi ma'lumotlari (USD/oy, manufacturing avg)
 // Manba: World Bank, ILOSTAT, OECD, national statistics offices (2023-2024)
 var WAGE_FALLBACK_USD = {
@@ -3000,10 +3086,39 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   var taxHolidayYearsForSubject = _fezM >= 10 ? 10 : _fezM >= 5 ? 7 : _fezM >= 3 ? 5 : 3;
 
   var _noCountry = !!(analysis && analysis._noCountry);
+
+  /* 13-davlat import totallarini (2021-2024) snapshotdan o'qib olish.
+     Bu raqamlar ¶1 da bozor talab hajmini ko'rsatish uchun ishlatiladi. */
+  var _importTotals = getCompanyProductImportTotals(productInfo, comp);
+  var importTotalsBlock = '';
+  if(_importTotals && (_importTotals.uzbekistanUsd > 0 || _importTotals.otherTwelveUsd > 0)){
+    var _uzShort = _formatImportUsdShort(_importTotals.uzbekistanUsd);
+    var _otShort = _formatImportUsdShort(_importTotals.otherTwelveUsd);
+    var _allShort = _formatImportUsdShort(_importTotals.combinedUsd);
+    var _topOthersStr = (_importTotals.topOthers || []).map(function(o){
+      return o.name + ' (' + _formatImportUsdShort(o.usd) + ')';
+    }).join(', ');
+    importTotalsBlock =
+      '13-MARKET IMPORT TOTALS for ' + (_importTotals.productName || productLabel) +
+      ' (HS ' + (_importTotals.hsCode || 'n/a') + '), period ' + _importTotals.period +
+      ' (source: ' + _importTotals.source + ') — THESE TWO FIGURES ARE MANDATORY IN ¶1:\n' +
+      '• Uzbekistan total imports 2021–2024: ' + _uzShort +
+      ' (USD ' + Math.round(_importTotals.uzbekistanUsd).toLocaleString('en-US') + ')\n' +
+      '• Other 12 regional markets combined total imports 2021–2024: ' + _otShort +
+      ' (USD ' + Math.round(_importTotals.otherTwelveUsd).toLocaleString('en-US') + ')\n' +
+      '• Combined 13-market total 2021–2024: ' + _allShort + '\n' +
+      (_topOthersStr ? '• Top 3 within the other 12: ' + _topOthersStr + '\n' : '') +
+      'RULE: ¶1 of the email MUST cite BOTH the Uzbekistan figure (' + _uzShort + ') AND the other-12 ' +
+      'figure (' + _otShort + ') explicitly, with the 2021–2024 period and the UN Comtrade source. ' +
+      'These two numbers are the entire reason this product matters for Navoi — they quantify the ' +
+      'addressable regional demand. Do NOT round them away, do NOT skip either one.';
+  }
+
   var dataBlock =
     'VERIFIED DATA (the ONLY numbers you are allowed to cite — do not invent any other figure or year):\n\n' +
     'COVERAGE RULE: Every bullet point in this data block MUST appear somewhere in the email body. ' +
     'Do not skip any metric. Use all of them.\n\n' +
+    (importTotalsBlock ? importTotalsBlock + '\n\n' : '') +
     fezBlock +
     '\n\n' +
     (_noCountry
@@ -3054,10 +3169,19 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       [sector]") is required and expected. Then a blank line, then ¶1.\n' +
     '  ¶1 — NAVOI SUPPLY-AND-DEMAND REALITY for this specific product. This paragraph is the entire ' +
     '       reason you are writing — it must answer "how big is the market gap, and why Navoi?" with ' +
-    '       NUMBERS, not adjectives. THIS PARAGRAPH MUST CONTAIN AT LEAST 3 QUANTITATIVE FIGURES from ' +
-    '       the intelligence block: (i) current Navoi/Uzbekistan supply in tons/units/m²/$, (ii) ' +
-    '       Uzbek import volume OR 13-country regional demand in tons AND USD, (iii) the unmet-demand ' +
-    '       gap a new facility would absorb in tons/year AND $/year. Banned phrasing: "rich deposits", ' +
+    '       NUMBERS, not adjectives. \n' +
+    '       MANDATORY TWO-FIGURE RULE: If a "13-MARKET IMPORT TOTALS" block is present in the VERIFIED ' +
+    '       DATA above, ¶1 MUST cite BOTH the "Uzbekistan total imports 2021–2024" figure AND the ' +
+    '       "Other 12 regional markets combined total imports 2021–2024" figure, explicitly, with the ' +
+    '       period and source. These two numbers are the quantitative core of ¶1 — they show the ' +
+    '       recipient how big the addressable market is. Cite them as cumulative 2021–2024 totals ' +
+    '       (e.g. "Uzbekistan imported [$X] of [product] in 2021–2024, while the other twelve regional ' +
+    '       markets combined imported [$Y] over the same period (UN Comtrade)"). Round them no further ' +
+    '       than the data block already does — do not say "around $50M" if the block says "$48.2M".\n' +
+    '       In addition, ¶1 SHOULD also contain figures for: (i) current Navoi/Uzbekistan supply ' +
+    '       (tons/units/m²/$), (ii) the unmet-demand gap a new facility would absorb, when available ' +
+    '       from the COMPANY & RECIPIENT INTELLIGENCE block. Total numerical figures in ¶1 must be ' +
+    '       3 or more. Banned phrasing: "rich deposits", ' +
     '       "advanced infrastructure", "viable location", "feasible to target", "promising market", ' +
     '       "significant potential" — these are adjectives, not facts. Required phrasing uses figures ' +
     '       with sources. Three valid structures (choose the one your intelligence supports):\n' +
@@ -3155,7 +3279,13 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     must be rewritten using the SUPPLY/DEMAND/GAP data from the intelligence block. Banned ' +
     '     in ¶1: "rich deposits", "advanced infrastructure", "viable location", "feasible to target", ' +
     '     "promising market", "significant potential", "strategic location" — these are adjectives ' +
-    '     dressed as facts. Replace them with figures.\n\n' +
+    '     dressed as facts. Replace them with figures.\n' +
+    ' 18. TWO IMPORT TOTALS MANDATORY: If the VERIFIED DATA contains a "13-MARKET IMPORT TOTALS" ' +
+    '     block, ¶1 MUST cite both the Uzbekistan 2021–2024 total AND the other-12-markets 2021–2024 ' +
+    '     total verbatim from the data block, with the period and "UN Comtrade" source. Skipping ' +
+    '     either of these two figures is a hard fail — the entire ¶1 is invalid and must be ' +
+    '     rewritten. These two numbers quantify the addressable regional demand and are the reason ' +
+    '     the recipient should care about this product in Navoi.\n\n' +
     'EXAMPLES — calibrate your voice from these (DO NOT copy the wording):\n' +
     '  Weak (AI-sounding, full of clichés):\n' +
     '    "I hope this email finds you well. I am writing to introduce the Navoi Free Economic Zone, ' +
