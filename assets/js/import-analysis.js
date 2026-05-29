@@ -4470,6 +4470,15 @@ async function collectInvestAiTradeContext(material){
       var perYearResults = await Promise.all(YEARS_TO_FETCH.map(function(yr){
         return fetchComtrade(hsCode, yr).catch(function(){ return null; });
       }));
+      // Diagnostika — har yil RU importi (proxy yilni hisobga olyaptimi tekshirish)
+      try {
+        var _dbg = YEARS_TO_FETCH.map(function(yr, yi){
+          var rows = perYearResults[yi] || [];
+          var ru = rows.find(function(r){ return String(r.code||r.c||'').toUpperCase()==='RU'; });
+          return yr + '=' + (ru ? Number(ru.import_usd||ru.u||0) : 'null') + '(' + rows.length + ')';
+        });
+        console.log('[fetchOneHs '+hsCode+'] RU per-year:', _dbg.join(' | '));
+      } catch(_de){}
       var liveCountries = mergeYearRows(perYearResults);
       if(liveCountries.length){
         liveByHs[hsCode] = liveCountries;
