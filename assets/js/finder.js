@@ -4544,6 +4544,9 @@ async function runCompanyFinder(source){
             if(top100Results.length >= TOP100_CAP) return;
             var name = org.name || '';
             if(!name || name.length > 120) return;
+            // Mahsulotga moslik filtri — aks holda har mahsulotga bir xil yirik
+            // konglomeratlar (Cemex, Holcim...) chiqadi. Faqat mahsulotga mos org'lar.
+            if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
             // Dedupe
             var key = name.toLowerCase().replace(/[^a-z0-9]/g,'');
             if(top100Results.some(function(r){return r.kompaniya.toLowerCase().replace(/[^a-z0-9]/g,'')===key;})) return;
@@ -4585,6 +4588,7 @@ async function runCompanyFinder(source){
               if(top100Results.length >= TOP100_CAP) return;
               var name = org.name || '';
               if(!name || name.length > 120) return;
+              if(!isOrgRelevantToProduct(org, preferredKeywords, prod)) return;
               var key = name.toLowerCase().replace(/[^a-z0-9]/g,'');
               if(top100Results.some(function(r){return r.kompaniya.toLowerCase().replace(/[^a-z0-9]/g,'')===key;})) return;
               var revenue = org.organization_revenue_printed || org.annual_revenue_printed || org.estimated_annual_revenue || '';
