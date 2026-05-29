@@ -3285,7 +3285,27 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     total verbatim from the data block, with the period and "UN Comtrade" source. Skipping ' +
     '     either of these two figures is a hard fail — the entire ¶1 is invalid and must be ' +
     '     rewritten. These two numbers quantify the addressable regional demand and are the reason ' +
-    '     the recipient should care about this product in Navoi.\n\n' +
+    '     the recipient should care about this product in Navoi.\n' +
+    ' 19. ABSOLUTE BAN ON HEDGE-AWAY LANGUAGE: The email body MUST NEVER contain any of these phrases ' +
+    '     or their close translations / paraphrases:\n' +
+    '       "unspecified", "remain unspecified", "not specified", "not available", "unknown", ' +
+    '       "no data", "no specific data", "no precise figure", "exact figure unknown", "no exact ' +
+    '       figure", "while specific figures...remain", "while exact numbers are not available", ' +
+    '       "details are limited", "concrete figures are limited".\n' +
+    '     These phrases are an instant credibility kill. If you do not have a precise figure, do ' +
+    '     ONE of the following instead — never hedge:\n' +
+    '       (a) Use the exact number from the VERIFIED DATA block ("13-MARKET IMPORT TOTALS").\n' +
+    '       (b) Use the researched figure from the COMPANY & RECIPIENT INTELLIGENCE block (web ' +
+    '           search returned a sourced number for Uzbek imports or 13-market demand).\n' +
+    '       (c) Provide a CREDIBLE SOURCED ESTIMATE as a range, with a real source, using the ' +
+    '           standard regional industry references: "approximately $X–Y million per year across ' +
+    '           the 13-market region (estimate based on UN Comtrade chapter-level data and World ' +
+    '           Bank construction-materials demand projections)". The recipient MUST see a number, ' +
+    '           even if it is a range.\n' +
+    '     If you genuinely cannot produce any defensible figure for ¶1 supply-and-demand after ' +
+    '     using both data sources, drop the supply-and-demand framing entirely and replace ¶1 with ' +
+    '     a different specific Navoi-resource fact (mineral reserves, FEZ industrial output, ' +
+    '     existing plants) plus the FEZ scale figure — but never write "unspecified" or "unknown".\n\n' +
     'EXAMPLES — calibrate your voice from these (DO NOT copy the wording):\n' +
     '  Weak (AI-sounding, full of clichés):\n' +
     '    "I hope this email finds you well. I am writing to introduce the Navoi Free Economic Zone, ' +
@@ -3385,9 +3405,11 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
           'publicly documented (recent interviews, conference speeches, named projects). Only verifiable facts.\n' +
           '6. NAVOI / UZBEKISTAN SUPPLY-AND-DEMAND for ' + (productLabel2 || 'this product') + ' — THIS IS ' +
           'THE HIGHEST-PRIORITY SECTION. The email must OPEN with these facts, and EVERY bullet below ' +
-          'must come back with a NUMBER (tons/year, USD/year) or an explicit "unknown". Qualitative ' +
-          'language ("rich deposits", "advanced infrastructure", "feasible to target") is forbidden — ' +
-          'only quantitative answers are useful. Research and return:\n' +
+          'must come back with a NUMBER (tons/year, USD/year) or a defensible sourced range. The word ' +
+          '"unknown" is NOT acceptable for any of these bullets — if you cannot find an exact figure, ' +
+          'provide a sourced estimate range using UN Comtrade chapter totals, WITS, or World Bank data ' +
+          'and label it "approximate". Qualitative language ("rich deposits", "advanced infrastructure", ' +
+          '"feasible to target") is forbidden — only quantitative answers are useful. Research and return:\n' +
           '   • SUPPLY: Current production of ' + (productLabel2 || 'the product') + ' in Navoi Region / ' +
           'Uzbekistan — volume in tons (or m², units) per year, number of facilities, names of operating ' +
           'plants if any. If zero, say "zero" explicitly.\n' +
@@ -3408,8 +3430,17 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
           '   • Realistic CAPACITY CEILING (tons/year) for a greenfield facility in Navoi, based on ' +
           'resource availability and FEZ land allocations.\n' +
           '   Cite every figure (uzstat.uz, stat.uz, gov.uz, navoifez.uz, navoi.gov.uz, UN Comtrade, WITS, ' +
-          'World Bank, IFC, ADB, presidential decrees, trade publications). If a number is genuinely ' +
-          'unknown after research, say "unknown" — do not invent.\n\n' +
+          'World Bank, IFC, ADB, presidential decrees, trade publications).\n' +
+          '   CRITICAL RULE FOR NUMBERS: An exact figure is preferred. If you cannot find an exact ' +
+          'figure for the Uzbek import or 13-market regional demand after genuine research, you MUST ' +
+          'still provide a defensible SOURCED ESTIMATE RANGE (e.g. "approximately $15-25 million per ' +
+          'year for Uzbekistan imports of HS [chapter], based on UN Comtrade chapter-level totals ' +
+          '2021-2024" — use the most relevant chapter total and divide proportionally). The downstream ' +
+          'email writer MUST cite a number; "unknown" answers force the email to hedge and fail. So ' +
+          'for the 4 critical figures — (a) Uzbekistan 2021-2024 cumulative imports, (b) 12-other-market ' +
+          '2021-2024 cumulative imports, (c) unmet-demand gap, (d) capacity ceiling — ALWAYS return a ' +
+          'specific figure or a tight sourced range. Mark estimates clearly as "approximately" / ' +
+          '"range" with the source methodology.\n\n' +
           'Output a short, scannable briefing (400-600 words). Use plain prose with short labelled sections. ' +
           'If something is unknown, say "unknown" — do NOT guess. Cite sources inline like (source: domain.com).';
         var sResp = await callOpenAI(
@@ -3433,15 +3464,54 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
         { role:'user',   content: fullUserPrompt }
       ];
 
+      /* Hedge-phrase detector — Hard Rule 19. Hech qachon "unspecified/unknown/not available"
+         kabi iboralar emailda paydo bo'lmasligi kerak. Topilsa bir marta qayta yozishni so'raymiz. */
+      var _HEDGE_BAN_RX = /\b(unspecified|remain unspecified|not specified|specific figures[^.]{0,80}(?:remain|are not|not yet)|exact (?:figures?|numbers?)[^.]{0,40}(?:not (?:yet )?available|unavailable)|no (?:specific|precise|exact) (?:data|figure|number|figures|numbers)|details are limited|concrete figures are limited|figures are limited|exact (?:numbers|figures) are not (?:yet )?available|are currently unknown|remain unknown)\b/i;
+      var _maybeRetryHedged = async function(content, modelOpts){
+        if(!content || !_HEDGE_BAN_RX.test(content)) return content;
+        var m = content.match(_HEDGE_BAN_RX);
+        console.warn('[email] hedge phrase detected, retrying:', m && m[0]);
+        var fixupPrompt =
+          'Your previous draft contained the forbidden hedge phrase: "' + (m ? m[0] : 'a hedge phrase') + '". ' +
+          'Hedge phrases like "unspecified", "unknown", "not available", "no specific data", ' +
+          '"specific figures...remain", "exact figures are not available", "details are limited" ' +
+          'are absolutely forbidden by Hard Rule 19. Rewrite the ENTIRE email. Replace every hedge ' +
+          'with one of: (a) an exact figure from the "13-MARKET IMPORT TOTALS" section of VERIFIED ' +
+          'DATA if present; (b) a researched figure from the COMPANY & RECIPIENT INTELLIGENCE block; ' +
+          'or (c) a credible sourced estimate range like "approximately $X–Y million across 2021–2024 ' +
+          '(estimate based on UN Comtrade chapter-level data and World Bank construction-materials ' +
+          'demand)". Specific numbers are non-negotiable — the recipient MUST see numbers, even if ' +
+          'they are ranges. Output the rewritten email in the same "subject\\n===BODY===\\nbody" format.';
+        try {
+          var retry = await callOpenAI(msgs.concat([
+            { role:'assistant', content: content },
+            { role:'user',      content: fixupPrompt }
+          ]), modelOpts);
+          if(retry && retry.content && retry.content.trim().length > 80){
+            if(!_HEDGE_BAN_RX.test(retry.content)){
+              console.log('[email] hedge-retry succeeded');
+              return retry.content;
+            }
+            console.warn('[email] retry still contained hedge, keeping retry but stripping');
+            return retry.content;
+          }
+        } catch(eR){ console.warn('[email] hedge-retry call failed:', eR && eR.message); }
+        return content;
+      };
+
       /* Try o4-mini with high reasoning effort first (best quality + most human prose) */
       try{
-        var r1 = await callOpenAI(msgs, {
+        var _o4Opts = {
           model: (window.OPENAI_MODEL_REASONING || 'o4-mini'),
           reasoningEffort: 'high',
           maxTokens: 3500,
           timeoutMs: 120000
-        });
-        if(r1 && r1.content && r1.content.trim().length > 80) return r1.content;
+        };
+        var r1 = await callOpenAI(msgs, _o4Opts);
+        if(r1 && r1.content && r1.content.trim().length > 80){
+          var cleaned1 = await _maybeRetryHedged(r1.content, _o4Opts);
+          return cleaned1;
+        }
         throw new Error('o4-mini returned empty or too-short content');
       }catch(e1){
         console.warn('o4-mini letter failed, falling back to gpt-4o:', e1 && e1.message);
@@ -3449,13 +3519,17 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
 
       /* Fallback to gpt-4o with higher temperature for more natural prose */
       try{
-        var r2 = await callOpenAI(msgs, {
+        var _gpt4oOpts = {
           model: (window.OPENAI_MODEL_DEFAULT || 'gpt-4o'),
           temperature: 0.75,
           maxTokens: 2800,
           timeoutMs: 90000
-        });
-        if(r2 && r2.content && r2.content.trim().length > 80) return r2.content;
+        };
+        var r2 = await callOpenAI(msgs, _gpt4oOpts);
+        if(r2 && r2.content && r2.content.trim().length > 80){
+          var cleaned2 = await _maybeRetryHedged(r2.content, _gpt4oOpts);
+          return cleaned2;
+        }
       }catch(e2){
         console.warn('gpt-4o letter failed, falling back to Gemini:', e2 && e2.message);
       }
