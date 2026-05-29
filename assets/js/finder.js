@@ -4638,41 +4638,65 @@ async function runCompanyFinder(source){
           var directEmail = allContacts.filter(finderContactHasEmail);
           var hintEmail = allContacts.filter(function(c){ return !finderContactHasEmail(c) && c.hasEmailHint; });
 
-          // Agar direct email yo'q bo'lsa, hint'dan birini enrichment orqali unlock qilamiz
-          if(!directEmail.length && hintEmail.length){
+          // Hint'dagi kontaktlarni enrichment orqali unlock qilamiz — 1-lead VA 2-lead
+          // uchun ham email/telefon olishga harakat qilamiz (top 2 hint candidate).
+          if(hintEmail.length){
             document.getElementById('finderProgressText').textContent = '🔓 '+tpItem.kompaniya+' — email unlock qilinmoqda...';
-            var candidate = hintEmail[0];
-            try {
-              var enrichData = await apolloRequestJson({
+            var _tpDomain = (function(){
+              try { var u = String(tpItem.website || '').trim(); if(!u) return ''; if(!/^https?:\/\//i.test(u)) u = 'https://' + u; return new URL(u).hostname.replace(/^www\./,''); } catch(_e){ return ''; }
+            })();
+            var enrichTargets = hintEmail.slice(0, 2); // 1-lead + 2-lead uchun
+            var enrichResults = await Promise.all(enrichTargets.map(function(candidate){
+              return apolloRequestJson({
                 search_type: 'people_enrichment',
                 api_key: apolloKeyTop,
                 id: candidate.personId || '',
                 first_name: (candidate.name || '').split(' ')[0] || '',
                 last_name: (candidate.name || '').split(' ').slice(1).join(' ') || '',
                 organization_name: tpItem.kompaniya || '',
-                organization_domain: (function(){
-                  try { var u = String(tpItem.website || '').trim(); if(!u) return ''; if(!/^https?:\/\//i.test(u)) u = 'https://' + u; return new URL(u).hostname.replace(/^www\./,''); } catch(_e){ return ''; }
-                })()
+                organization_domain: _tpDomain,
+                reveal_personal_emails: true
+              }).then(function(enrichData){
+                var ep = enrichData && enrichData.person;
+                if(!ep) return null;
+                var enriched = apolloPersonToContact(ep, ep.organization || {});
+                // To'liq ism keldi (obfuscated emas) — ishlatamiz
+                if(ep.last_name && !ep.last_name_obfuscated){
+                  enriched.name = String((ep.first_name||'')+' '+(ep.last_name||'')).trim();
+                }
+                return enriched;
+              }).catch(function(_e){
+                console.log('Enrich error for '+tpItem.kompaniya+':', _e && _e.message);
+                return null;
               });
-              var enrichedPerson = enrichData && enrichData.person;
-              if(enrichedPerson){
-                var enriched = apolloPersonToContact(enrichedPerson, enrichedPerson.organization || {});
-                if(finderContactHasEmail(enriched)) directEmail.push(enriched);
+            }));
+            enrichResults.forEach(function(enriched){
+              if(!enriched) return;
+              if(finderContactHasEmail(enriched)){
+                if(!directEmail.some(function(d){ return d.personId === enriched.personId; })) directEmail.push(enriched);
+              } else if(enriched.name && enriched.name.indexOf('*') === -1){
+                // To'liq ism keldi, lekin email yo'q — hintEmail'dagi entry'ni yangilaymiz
+                var hIdx = hintEmail.findIndex(function(h){ return h.personId === enriched.personId; });
+                if(hIdx >= 0){
+                  hintEmail[hIdx].name = enriched.name;
+                  hintEmail[hIdx].telefon = enriched.telefon || hintEmail[hIdx].telefon;
+                  hintEmail[hIdx].title = enriched.title || hintEmail[hIdx].title;
+                  hintEmail[hIdx].linkedin = enriched.linkedin || hintEmail[hIdx].linkedin;
+                }
               }
-            } catch(_enrichErr){
-              console.log('Enrich error for '+tpItem.kompaniya+':', _enrichErr && _enrichErr.message);
-            }
+            });
           }
 
           var finalContacts = directEmail.concat(
             allContacts.filter(function(c){ return !finderContactHasEmail(c) && !directEmail.some(function(d){ return d.personId === c.personId; }); })
           );
-          // Top natijalari uchun oddiy contact biriktirish — 1 ta email bor lead yetarli
+          // 1-lead + 2-lead biriktirish — 2-lead uchun email/telefoni borni afzal ko'ramiz
           if(finalContacts.length){
             tpItem._contactCandidates = finalContacts;
-            var emailLead = finalContacts.filter(finderContactHasEmail)[0];
+            var emailLead = finalContacts.filter(finderContactHasEmail)[0] || finalContacts[0];
             if(emailLead){
-              var secondary = finalContacts.filter(function(c){ return c !== emailLead; })[0];
+              var others = finalContacts.filter(function(c){ return c !== emailLead; });
+              var secondary = others.filter(function(c){ return finderContactHasEmail(c) || finderContactHasPhone(c); })[0] || others[0];
               tpItem.contacts = secondary ? [emailLead, secondary] : [emailLead];
               tpItem.rahbar = emailLead.name || tpItem.rahbar;
               tpItem.lavozim = emailLead.title || tpItem.lavozim;
