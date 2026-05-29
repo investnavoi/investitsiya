@@ -757,7 +757,8 @@ function populateProductSelects(){
   // ═══ Custom collapsible dropdown uchun ═══
   var dd = document.getElementById('finder-dropdown');
   if(dd){
-    var html = '';
+    var html = '<div class="csd-filter-wrap"><input type="text" class="csd-filter-input" id="finder-dropdown-filter" placeholder="Mahsulot qidiring..." autocomplete="off" oninput="filterFinderDropdown(this.value)" onclick="event.stopPropagation()"></div>';
+    html += '<div class="csd-filter-empty">Mahsulot topilmadi</div>';
     ['build','azot','other'].forEach(function(section){
       var sectionRaws = getSectionRawMaterials(section);
       var sectionProds = getSectionProducts(section);
@@ -846,7 +847,60 @@ function renderFinderProductPicker(){
 
 function toggleFinderDropdown(){
   var dd = document.getElementById('finder-dropdown');
-  if(dd) dd.classList.toggle('open');
+  if(!dd) return;
+  var willOpen = !dd.classList.contains('open');
+  dd.classList.toggle('open');
+  if(willOpen){
+    // Qidiruvni tozalab, fokus qo'yamiz
+    var inp = document.getElementById('finder-dropdown-filter');
+    if(inp){ inp.value = ''; filterFinderDropdown(''); inp.focus(); }
+  }
+}
+
+function filterFinderDropdown(query){
+  var dd = document.getElementById('finder-dropdown');
+  if(!dd) return;
+  var q = (query || '').trim().toLowerCase();
+  var emptyMsg = dd.querySelector('.csd-filter-empty');
+
+  if(!q){
+    // Hammani ko'rsatamiz, guruhlarni asl holatiga qaytaramiz (style inline ni o'chiramiz)
+    dd.querySelectorAll('.csd-item[data-pid]').forEach(function(el){ el.style.display = ''; });
+    dd.querySelectorAll('.csd-group').forEach(function(el){ el.style.display = ''; });
+    dd.querySelectorAll('.csd-group-items').forEach(function(el){ el.style.display = ''; });
+    if(emptyMsg) emptyMsg.classList.remove('visible');
+    return;
+  }
+
+  var anyMatch = false;
+  dd.querySelectorAll('.csd-group-section').forEach(function(secGroup){
+    var secHas = false;
+    secGroup.querySelectorAll('.csd-group-raw').forEach(function(rawGroup){
+      var rawHas = false;
+      rawGroup.querySelectorAll('.csd-item[data-pid]').forEach(function(item){
+        var txt = (item.textContent || item.innerText || '').toLowerCase();
+        if(txt.indexOf(q) !== -1){ item.style.display = ''; rawHas = true; }
+        else { item.style.display = 'none'; }
+      });
+      if(rawHas){
+        rawGroup.style.display = '';
+        var ri = rawGroup.querySelector('.csd-group-items');
+        if(ri) ri.style.display = 'block';
+        secHas = true; anyMatch = true;
+      } else {
+        rawGroup.style.display = 'none';
+      }
+    });
+    if(secHas){
+      secGroup.style.display = '';
+      var si = secGroup.querySelector('.csd-section-items');
+      if(si) si.style.display = 'block';
+    } else {
+      secGroup.style.display = 'none';
+    }
+  });
+
+  if(emptyMsg){ if(anyMatch) emptyMsg.classList.remove('visible'); else emptyMsg.classList.add('visible'); }
 }
 
 function toggleCsdGroup(head){
