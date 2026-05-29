@@ -3285,9 +3285,26 @@ async function loadGlobalTradeData(){
 
     document.getElementById('tradeBar').style.width = '75%';
 
-    // ═══ SOURCE 4: Bevosita Comtrade (browser IP — proxy quotasini aylanib o'tadi) ═══
+    // CORS bypass yordamchisi: Comtrade va WITS browser'dan CORS bilan bloklanadi.
+    // Public CORS proxy'lar orqali so'rovlarni server tomonida amalga oshiramiz.
+    var _proxyFetch = async function(_url){
+      var _proxies = [
+        'https://corsproxy.io/?',
+        'https://api.allorigins.win/raw?url=',
+        'https://api.codetabs.com/v1/proxy?quest='
+      ];
+      for(var _pi = 0; _pi < _proxies.length; _pi++){
+        try {
+          var _resp = await fetch(_proxies[_pi] + encodeURIComponent(_url));
+          if(_resp.ok) return _resp;
+        } catch(_pe){ /* keyingisi */ }
+      }
+      return null;
+    };
+
+    // ═══ SOURCE 4: Comtrade — CORS proxy orqali (browser CORS'ni aylanib o'tadi) ═══
     if(!json){
-      document.getElementById('tradeLoadingText').textContent = '🌐 Comtrade (bevosita)...';
+      document.getElementById('tradeLoadingText').textContent = '🌐 Comtrade (umumiy CORS proxy)...';
       try {
         var _cmdCode4 = hsFilter ? String(hsFilter).split(',')[0].trim().replace(/\D/g,'').slice(0,6)||'AG2'
                       : (hsLevel==='6'?'AG6':hsLevel==='4'?'AG4':'AG2');
@@ -3305,18 +3322,19 @@ async function loadGlobalTradeData(){
               +'&partnerCode='+encodeURIComponent(_s4partners[_s4pi])
               +'&maxRecords=500&includeDesc=true';
             if(comtradeKey) _dp += '&subscription-key='+encodeURIComponent(comtradeKey);
-            var r4 = await fetch(_directBase+'?'+_dp);
-            if(r4.ok){
+            var r4 = await _proxyFetch(_directBase+'?'+_dp);
+            if(r4 && r4.ok){
               var j4 = await r4.json();
               if((j4.data||[]).length > 0){
                 json = j4; dataSource = 'UN Comtrade';
                 _tradeMeta = {totalValue:Number(j4.total_value||0)||null,isPartial:false,
                   hsFilter:hsFilter,requestedLevel:hsLevel,requestedCmdCode:_cmdCode4,maxRecords:500};
+                console.log('[Comtrade CORS proxy] '+(j4.data||[]).length+' ta yozuv (partner='+_s4partners[_s4pi]+', year='+year+')');
               }
             }
-          } catch(_s4e){}
+          } catch(_s4e){ console.log('[Comtrade CORS proxy] '+_s4partners[_s4pi]+' xato:', _s4e && _s4e.message); }
         }
-      } catch(e){ console.log('Direct Comtrade fetch error:', e.message); }
+      } catch(e){ console.log('[Comtrade CORS proxy] umumiy xato:', e.message); }
     }
 
     document.getElementById('tradeBar').style.width = '85%';
@@ -3331,13 +3349,14 @@ async function loadGlobalTradeData(){
         var _fbPartners = partnerCode ? [partnerCode, '0'] : ['0'];
         for(var _fpi = 0; _fpi < _fbPartners.length && !json; _fpi++){
           try {
-            var _fr = await fetch('https://comtradeapi.un.org/public/v1/preview/C/A/HS?'
+            var _fbU = 'https://comtradeapi.un.org/public/v1/preview/C/A/HS?'
               +'reporterCode='+encodeURIComponent(countryCode)
               +'&period='+_fy
               +'&flowCode='+encodeURIComponent(flow)
               +'&cmdCode=AG2&partnerCode='+encodeURIComponent(_fbPartners[_fpi])
-              +'&maxRecords=500&includeDesc=true');
-            if(_fr.ok){
+              +'&maxRecords=500&includeDesc=true';
+            var _fr = await _proxyFetch(_fbU);
+            if(_fr && _fr.ok){
               var _fj = await _fr.json();
               if((_fj.data||[]).length > 0){
                 json = _fj; dataSource = 'UN Comtrade';
@@ -3345,6 +3364,7 @@ async function loadGlobalTradeData(){
                 _tradeMeta = {totalValue:Number(_fj.total_value||0)||null,isPartial:false,
                   hsFilter:hsFilter,requestedLevel:'2',requestedCmdCode:'AG2',maxRecords:500,
                   yearFallback:true};
+                console.log('[Yil fallback] '+_fj.data.length+' ta yozuv (yil='+_fy+', partner='+_fbPartners[_fpi]+')');
               }
             }
           } catch(_fe){ /* silent */ }
@@ -3352,22 +3372,22 @@ async function loadGlobalTradeData(){
       }
     }
 
-    // ═══ SOURCE 5: WITS bevosita (World Bank — CORS yoqilgan, API key talab etilmaydi) ═══
+    // ═══ SOURCE 5: WITS — CORS proxy orqali (World Bank, API key talab etilmaydi) ═══
     if(!json){
-      document.getElementById('tradeLoadingText').textContent = '🌐 WITS (World Bank) bevosita...';
+      document.getElementById('tradeLoadingText').textContent = '🌐 WITS (World Bank, CORS proxy)...';
       var _wISOM={'860':'UZB','398':'KAZ','417':'KGZ','762':'TJK','795':'TKM','643':'RUS','031':'AZE','268':'GEO','051':'ARM','112':'BLR','804':'UKR','498':'MDA','156':'CHN','392':'JPN','410':'KOR','496':'MNG','158':'TWN','344':'HKG','360':'IDN','458':'MYS','764':'THA','704':'VNM','608':'PHL','702':'SGP','104':'MMR','116':'KHM','356':'IND','586':'PAK','050':'BGD','144':'LKA','004':'AFG','524':'NPL','792':'TUR','364':'IRN','368':'IRQ','682':'SAU','784':'ARE','634':'QAT','414':'KWT','512':'OMN','048':'BHR','400':'JOR','887':'YEM','276':'DEU','250':'FRA','826':'GBR','380':'ITA','724':'ESP','528':'NLD','056':'BEL','040':'AUT','756':'CHE','372':'IRL','752':'SWE','578':'NOR','208':'DNK','246':'FIN','616':'POL','203':'CZE','348':'HUN','642':'ROU','688':'SRB','842':'USA','124':'CAN','484':'MEX','076':'BRA','032':'ARG','152':'CHL','170':'COL','604':'PER','818':'EGY','504':'MAR','012':'DZA','788':'TUN','566':'NGA','710':'ZAF','404':'KEN','834':'TZA','036':'AUS','554':'NZL'};
       try {
         var _wISO = _wISOM[String(countryCode)] || String(countryCode);
         var _wDir = flow === 'X' ? 'exports' : 'imports';
         var _wBaseYear = parseInt(year) || 2023;
-        // WITS ~2 yil kechikadi: joriy yildan 1 va 2 yil orqaga, keyin sabit yillar
+        // WITS ~2 yil kechikadi
         var _wYrs = [String(_wBaseYear-1),String(_wBaseYear-2),'2022','2021','2020'].filter(function(y,i,a){ return parseInt(y)>=2018 && a.indexOf(y)===i; });
         for(var _wi = 0; _wi < _wYrs.length && !json; _wi++){
           var _wy = _wYrs[_wi];
           try {
             var _wU = 'https://wits.worldbank.org/API/V1/wits/country/'+_wISO+'/tradestats/tradedirection/'+_wDir+'/startyear/'+_wy+'/endyear/'+_wy+'/partner/WLD/indicator/TXVALUE?format=JSON';
-            var _wR = await fetch(_wU);
-            if(_wR.ok){
+            var _wR = await _proxyFetch(_wU);
+            if(_wR && _wR.ok){
               var _wJ = await _wR.json();
               var _wRows = [];
               try {
@@ -3392,12 +3412,12 @@ async function loadGlobalTradeData(){
               if(_wRows.length > 0){
                 json = {data:_wRows}; dataSource = 'WITS (World Bank)'; year = _wy;
                 _tradeMeta = {totalValue:null,isPartial:false,hsFilter:null,requestedLevel:'2',requestedCmdCode:'AG2',maxRecords:_wRows.length,yearFallback:true};
-                console.log('[WITS bevosita] '+_wRows.length+' ta yozuv ('+_wy+')');
+                console.log('[WITS CORS proxy] '+_wRows.length+' ta yozuv ('+_wy+')');
               }
             }
           } catch(_we){ console.log('[WITS] '+_wy+' xato: '+(_we&&_we.message||_we)); }
         }
-      } catch(e){ console.log('[WITS bevosita] umumiy xato:', e.message); }
+      } catch(e){ console.log('[WITS CORS proxy] umumiy xato:', e.message); }
     }
 
     if(!json) throw new Error('Barcha API\'lardan ma\'lumot topilmadi (Comtrade, WTO, WITS)');
