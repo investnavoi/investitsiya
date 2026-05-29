@@ -497,7 +497,11 @@ function syncProductRawAiPanelState(section){
     var outputCard = document.getElementById('productRawAiOutputCard');
     var notice = document.getElementById('productRawAiExcelNotice');
     if(outputCard) outputCard.style.display = 'block';
-    if(notice) notice.style.display = _investAiBusy ? 'none' : 'block';
+    // Excel "yuklab olish" notice — UN Comtrade ma'lumoti mavjud bo'lsa ko'rsatamiz.
+    // (Avval _investAiBusy ga bog'liq edi, lekin bu funksiya saqlashdan oldin —
+    // busy hali true bo'lganda — chaqirilgani uchun notice yashirin qolardi.)
+    var _hasOfficial = !!(_investAiTradeContext && _investAiTradeContext.officialDataAvailable);
+    if(notice) notice.style.display = _hasOfficial ? 'block' : 'none';
     return;
   }
   var historyIdx = findInvestAiHistoryIndexForRaw(raw);
