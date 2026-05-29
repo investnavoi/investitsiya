@@ -92,8 +92,8 @@ LOGISTIKA
 
 HUKUMAT
 - Navoiy viloyati hokimi: Normat Tursunov (joriy holatni web search bilan tekshir)
-- Investitsiyalar bo'yicha hokim o'rinbosari: E. I. Gafforov
-- Aloqa: investment@navoi.gov.uz | +998 79 221 22 22
+- Investitsiyalar, sanoat va savdo bo'limi boshlig'i: E. I. Gafforov
+- Aloqa: info@navoi.uz | +998 79 229 62 23
 
 ═══ MAN ETILGAN HARAKATLAR ═══
 - Soxta statistika yoki dekret raqami o'ylab chiqarma
