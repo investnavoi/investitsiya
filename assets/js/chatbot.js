@@ -261,6 +261,12 @@ function removeTyping(){
 }
 
 async function sendChat(){
+  /* ── Staged file? chatbot-file.js handles it ── */
+  if(window._stagedFile && typeof window._sendWithStagedFile === 'function'){
+    await window._sendWithStagedFile();
+    return;
+  }
+
   var input = document.getElementById('chatInput');
   if(!input) return;
   var msg = input.value.trim();
