@@ -4733,27 +4733,24 @@ async function analyzeInvestmentMaterial(){
       '- If data is missing, say it is missing.\n\n' +
       'Official UN Comtrade context:\n' + ctxJson;
 
-    // OpenAI (ChatGPT) orqali tahlil — Gemini/Gemma o'rniga.
-    // callOpenAIStream() assets/js/openai.js da aniqlangan; kalit Firebase apiKeys
-    // collection'idan window._apiKeys.openai sifatida yuklanadi.
-    if(typeof callOpenAIStream !== 'function'){
-      throw new Error('OpenAI moduli yuklanmadi (openai.js). Sahifani yangilang.');
+    // Gemini orqali tahlil — barcha GEMINI_MODELS navbat bilan sinaladi (gemma + gemini).
+    // callGeminiStream() assets/js/gemini.js da aniqlangan; kalit Firebase apiKeys
+    // collection'idan window._apiKeys.gemini / gemini2 sifatida yuklanadi.
+    if(typeof callGeminiStream !== 'function'){
+      throw new Error('Gemini moduli yuklanmadi (gemini.js). Sahifani yangilang.');
     }
-    if(typeof getOpenAIKey === 'function' && !getOpenAIKey()){
-      throw new Error('OpenAI API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
+    if(typeof getAllGeminiKeys === 'function' && !getAllGeminiKeys().length){
+      throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
     }
 
-    var openAiMessages = [
+    var geminiMessages = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: contextText }
     ];
 
     try {
-      await callOpenAIStream(openAiMessages, {
-        model: (typeof OPENAI_MODEL_DEFAULT !== 'undefined') ? OPENAI_MODEL_DEFAULT : 'gpt-4o',
+      await callGeminiStream(geminiMessages, {
         temperature: 0.2,
-        // 4096 token ≈ 3000 so'z — to'liq hisobot uchun yetarli, lekin 8192'dan
-        // 2x tezroq yakunlanadi (oldin Phase 3 juda uzoq cho'zilardi)
         maxTokens: 4096
       }, function(textDelta){
         _investAiMarkdown += textDelta;
@@ -4766,12 +4763,15 @@ async function analyzeInvestmentMaterial(){
         }
       });
     } catch(e){
-      console.warn('[analyze-material openai] xato:', e && e.message);
-      throw new Error('OpenAI tahlil xatosi: ' + (e && e.message ? e.message : 'noma\'lum xato'));
+      console.warn('[analyze-material gemini] xato:', e && e.message);
+      // Stream o'rtada uzilib qisman matn yig'ilgan bo'lsa — uni saqlaymiz (outer catch)
+      if(!_investAiMarkdown || _investAiMarkdown.trim().length < 80){
+        throw new Error('Gemini tahlil xatosi: ' + (e && e.message ? e.message : 'noma\'lum xato'));
+      }
     }
 
     if(!_investAiMarkdown.trim()){
-      throw new Error('OpenAI bo\'sh javob qaytardi. Qayta urinib ko\'ring.');
+      throw new Error('Gemini bo\'sh javob qaytardi. Qayta urinib ko\'ring.');
     }
 
     renderInvestAiProgress(3, true);

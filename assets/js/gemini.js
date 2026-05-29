@@ -86,6 +86,113 @@ async function callGemini(body, _retryCount, _keyIdx){
   throw new Error('Gemini API xato. 15 soniya kutib qayta urinib ko\'ring.');
 }
 
+// Streaming variant — barcha GEMINI_MODELS ni navbat bilan sinaydi, ishlaganida
+// real-time matn oqimini onChunk(textDelta, full) orqali qaytaradi.
+// messages = [{role:'system'|'user', content:'...'}] (OpenAI uslubida — moslashuvchanlik uchun)
+async function callGeminiStream(messages, opts, onChunk){
+  opts = opts || {};
+  var keys = getAllGeminiKeys();
+  if(!keys.length) throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
+
+  // system + user contentlarni Gemini formatiga aylantiramiz
+  var systemText = '';
+  var userParts = [];
+  (messages || []).forEach(function(m){
+    if(!m) return;
+    if(m.role === 'system'){ systemText += (systemText ? '\n\n' : '') + String(m.content || ''); }
+    else { userParts.push(String(m.content || '')); }
+  });
+  var body = {
+    contents: [{ role: 'user', parts: [{ text: userParts.join('\n\n') }] }],
+    generationConfig: {
+      temperature: Number.isFinite(Number(opts.temperature)) ? Number(opts.temperature) : 0.7,
+      maxOutputTokens: Math.min(Math.max(Number(opts.maxTokens) || 4096, 256), 8192)
+    }
+  };
+  // System instruction (Gemma uni qo'llamaydi — pastda olib tashlanadi)
+  if(systemText) body.systemInstruction = { parts: [{ text: systemText }] };
+
+  var lastErr = null;
+  for(var ki = 0; ki < keys.length; ki++){
+    var key = keys[ki];
+    for(var m = 0; m < GEMINI_MODELS.length; m++){
+      var modelName = GEMINI_MODELS[m];
+      // Gemma modellar systemInstruction'ni qo'llamaydi — clone qilib system'ni user'ga qo'shamiz
+      var bodyToSend = body;
+      if(modelName.indexOf('gemma') !== -1){
+        bodyToSend = JSON.parse(JSON.stringify(body));
+        if(bodyToSend.systemInstruction){
+          var sysT = (bodyToSend.systemInstruction.parts && bodyToSend.systemInstruction.parts[0] && bodyToSend.systemInstruction.parts[0].text) || '';
+          delete bodyToSend.systemInstruction;
+          if(sysT && bodyToSend.contents && bodyToSend.contents[0]){
+            bodyToSend.contents[0].parts[0].text = sysT + '\n\n' + bodyToSend.contents[0].parts[0].text;
+          }
+        }
+      }
+      // Idle/overall timeout — stream osilib qolmasin
+      var ctrl = new AbortController();
+      var overallTimer = setTimeout(function(){ try{ctrl.abort();}catch(_e){} }, Number(opts.timeoutMs) || 180000);
+      var idleTimer = null;
+      var resetIdle = function(){ if(idleTimer) clearTimeout(idleTimer); idleTimer = setTimeout(function(){ try{ctrl.abort();}catch(_e){} }, Number(opts.idleTimeoutMs) || 45000); };
+      try {
+        var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':streamGenerateContent?alt=sse&key=' + encodeURIComponent(key);
+        var resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(bodyToSend), signal: ctrl.signal });
+        if(!resp.ok){
+          var errTxt = await resp.text().catch(function(){return '';});
+          lastErr = new Error(modelName + ' → ' + resp.status + ': ' + errTxt.slice(0,150));
+          console.log('[callGeminiStream] '+modelName+' status '+resp.status);
+          clearTimeout(overallTimer); if(idleTimer) clearTimeout(idleTimer);
+          continue; // keyingi modelni sinaymiz
+        }
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder();
+        var full = '';
+        var buf = '';
+        resetIdle();
+        while(true){
+          var chunk = await reader.read();
+          if(chunk.done) break;
+          resetIdle();
+          buf += decoder.decode(chunk.value, { stream: true });
+          var lines = buf.split('\n');
+          buf = lines.pop();
+          for(var li = 0; li < lines.length; li++){
+            var line = lines[li].trim();
+            if(!line.startsWith('data:')) continue;
+            var dataStr = line.slice(5).trim();
+            if(!dataStr) continue;
+            try {
+              var payload = JSON.parse(dataStr);
+              var parts = (((payload.candidates || [])[0] || {}).content || {}).parts || [];
+              var delta = parts.map(function(p){ return (p && p.text) || ''; }).join('');
+              if(delta){ full += delta; if(typeof onChunk === 'function') onChunk(delta, full); }
+            } catch(_pe){ /* malformed chunk — skip */ }
+          }
+        }
+        clearTimeout(overallTimer); if(idleTimer) clearTimeout(idleTimer);
+        if(full && full.trim()){
+          console.log('[callGeminiStream] OK model: '+modelName+' (key #'+(ki+1)+')');
+          return { content: full, model: modelName };
+        }
+        // bo'sh javob — keyingi modelni sinaymiz
+        lastErr = new Error(modelName + ' bo\'sh javob qaytardi');
+      } catch(e){
+        clearTimeout(overallTimer); if(idleTimer) clearTimeout(idleTimer);
+        // Abort bo'lib qisman matn yig'ilgan bo'lsa — uni qaytaramiz
+        if(e && e.name === 'AbortError'){
+          lastErr = new Error(modelName + ' timeout');
+          console.log('[callGeminiStream] '+modelName+' timeout');
+        } else {
+          lastErr = e;
+          console.log('[callGeminiStream] '+modelName+' xato:', e && e.message);
+        }
+        continue;
+      }
+    }
+  }
+  throw new Error('Barcha Gemini modellari ishlamadi: ' + (lastErr && lastErr.message ? lastErr.message : 'noma\'lum xato'));
+}
+
 // Safe JSON parser — handles Gemini's messy responses
 function safeParseJSON(raw){
   if(!raw) throw new Error('Bo\'sh javob');
