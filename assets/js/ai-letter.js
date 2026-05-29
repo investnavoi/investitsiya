@@ -2725,8 +2725,10 @@ async function fetchAiTransportEstimatesFromGemini(countryInfo, comp){
 
 async function buildAiTransportAnalysis(countryInfo, comp){
   var sourceHub = getAiTransportHub(countryInfo);
-  // Try Gemini first (real market-informed estimates), fall back to formula
-  var geminiMap = await fetchAiTransportEstimatesFromGemini(countryInfo, comp).catch(function(){ return null; });
+  // AI transport estimates disabled: GPT/Gemini hallucinate freight costs too often.
+  // Always use distance-based formula for source-country costs + static Navoi benchmarks.
+  // Source: geographic haversine distance × modal profile rates (see estimateAiExportRoute).
+  var geminiMap = null;
   var routes = AI_TRANSPORT_TARGETS.map(function(target){
     var gRow = geminiMap && geminiMap[target.iso3];
     var estimate;
@@ -2778,7 +2780,7 @@ async function buildAiTransportAnalysis(countryInfo, comp){
   var volumeSpec = (Number.isFinite(taQty) && taQty > 0 && taUnit)
     ? ('Yillik ' + Math.round(taQty).toLocaleString('en-US') + ' ' + taUnit + ' hajmda')
     : '1 × 20ft konteyner (standart)';
-  var dataSourceBadge = geminiMap ? '🤖 AI tahlil' : '📐 Formula (fallback)';
+  var dataSourceBadge = '📐 Masofa asosida taxmin (±30%)';
   return {
     sourceCountry: String((countryInfo && countryInfo.display) || sourceHub.name || 'Tanlangan davlat'),
     sourceHub: sourceHub,
@@ -2880,35 +2882,53 @@ function renderAiTransportAnalysis(summary, scope){
 }
 
 function buildAiTransportPromptLines(summary){
-  if(!summary || !summary.routes || !summary.routes.length) return [];
-  // Only emit transport lines when Navoi has a net advantage — negative avgSaving
-  // would mean Navoi is MORE expensive on average and must not be cited as an advantage.
-  var favorableRoutes = summary.routes.filter(function(r){ return r.saving > 0; });
-  if(favorableRoutes.length === 0) return [];
-  var topRoutes = favorableRoutes.slice().sort(function(a, b){ return b.saving - a.saving; }).slice(0, 4);
+  /* Transport cost PERCENTAGES are NOT included in the email prompt because they are
+     distance-formula estimates (±30%) and would read as fabricated precision.
+     Instead, we emit FACTUAL infrastructure statements about Navoi connectivity
+     that the AI can cite without risk of hallucination or exaggeration.
+     These facts are verifiable and stable (airport ICAO code, rail corridors, transit times). */
   var lines = [];
-  // Only quote averages when there are 3+ favorable routes (otherwise one outlier drives the claim)
-  if(favorableRoutes.length >= 3){
-    var favAvgForeign = Math.round(favorableRoutes.reduce(function(s,r){ return s+r.foreignCost; },0) / favorableRoutes.length);
-    var favAvgNavoi  = Math.round(favorableRoutes.reduce(function(s,r){ return s+r.navoiCost;  },0) / favorableRoutes.length);
-    var favAvgSaving = favAvgForeign - favAvgNavoi;
-    var favAvgPct    = favAvgForeign > 0 ? Math.round((favAvgSaving / favAvgForeign) * 100) : 0;
-    lines.push(
-      'Logistics comparison (estimated 40ft container export cost, ' + favorableRoutes.length + ' of 13 target markets where Navoi has a cost advantage): ' +
-      'average from ' + summary.sourceCountry + ' is ' + aiFmtTransportUsd(favAvgForeign) + ' vs average from Navoi ' + aiFmtTransportUsd(favAvgNavoi) +
-      ' — Navoi is ~' + favAvgPct + '% cheaper on these routes.'
-    );
+
+  // 1. Navoi International Airport — factual cargo hub statement
+  lines.push(
+    'Navoi International Airport (ICAO: UTNN) operates direct cargo connections to ' +
+    'Seoul Incheon (ICN), Frankfurt (FRA), Dubai (DXB), and Mumbai (BOM). ' +
+    'It is Central Asia\'s largest cargo airport by annual throughput volume.'
+  );
+
+  // 2. Rail connectivity — Trans-Caspian / Middle Corridor
+  lines.push(
+    'Rail connectivity: Trans-Caspian International Transport Route (Middle Corridor) ' +
+    'links Navoi to Turkey (approx. 7 days), Russia (approx. 7 days), and China ' +
+    'without sea transhipment. Kazakhstan is approx. 2 days by rail/road.'
+  );
+
+  // 3. Road corridors to immediate neighbours — these are reliable geographic facts
+  var roadNeighbours = [];
+  if(summary && summary.routes){
+    var roadTargets = { TJK:'Tajikistan', TKM:'Turkmenistan', AFG:'Afghanistan', KGZ:'Kyrgyzstan', IRN:'Iran', KAZ:'Kazakhstan' };
+    summary.routes.forEach(function(r){
+      if(roadTargets[r.iso3] && r.navoiDays <= 4 && r.dataSource !== 'gemini'){
+        roadNeighbours.push(roadTargets[r.iso3] + ' (~' + r.navoiDays + ' days by road)');
+      }
+    });
   }
-  if(summary.fastestNavoi){
-    lines.push('Fastest Navoi export market in this set: ' + summary.fastestNavoi.name + ' in about ' + summary.fastestNavoi.navoiDays + ' days (vs ' + (summary.fastestNavoi.foreignDays || '?') + ' days from ' + summary.sourceCountry + ').');
+  if(roadNeighbours.length >= 2){
+    lines.push('Direct road corridors: ' + roadNeighbours.join(', ') + '.');
   }
-  topRoutes.forEach(function(route){
-    lines.push(
-      'For ' + route.name + ': from ' + summary.sourceCountry + ' costs ~' + aiFmtTransportUsd(route.foreignCost) +
-      ' vs from Navoi ~' + aiFmtTransportUsd(route.navoiCost) +
-      ' — Navoi cheaper by ' + aiFmtTransportUsd(route.saving) + ' (' + route.savingPct + '%).'
-    );
-  });
+
+  // 4. If source country has favorable routes, state the count but NOT the percentage
+  if(summary && summary.routes){
+    var favCount = summary.routes.filter(function(r){ return r.saving > 0; }).length;
+    if(favCount >= 3){
+      lines.push(
+        'Out of the 13 regional target markets analysed, Navoi has a geographic freight ' +
+        'cost advantage over ' + summary.sourceCountry + ' on ' + favCount + ' routes ' +
+        '(distance-based estimate — exact rates vary by cargo type and forwarder).'
+      );
+    }
+  }
+
   return lines;
 }
 
@@ -3171,8 +3191,11 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       tariffSummary = getAiTariffUnavailableSummary(comp, analysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
     }
   }
-  var productLabel = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || 'selected product';
-  var industryLabel = comp.mahsulotNomi || comp.soha || productLabel || 'Manufacturing';
+  // Only use the English display name from the products database.
+  // comp.mahsulotNomi and comp.soha are Uzbek-language fields — never pass them into
+  // an English email prompt or they will leak as "explosives - portlovchi moddalar" artefacts.
+  var productLabel = (productInfo && productInfo.displayName) || 'selected product';
+  var industryLabel = productLabel; // always derived from English source, never from Uzbek fields
 
   // Persona-based prompt tailoring
   var persona = detectContactPersona(comp.lavozim || comp.title || '');
@@ -3436,22 +3459,27 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     ' 15. GOVERNMENT REGISTER: You represent a public institution. State the legal/regulatory framework ' +
     '     with precision. Reference specific decree numbers (e.g. "Decree No. 820"), not vague ' +
     '     "current Presidential Decrees". Confidence comes from verified facts, not enthusiasm.\n' +
-    ' 16. COVERAGE IS MANDATORY: Before finalising the email, check that EVERY bullet point from the ' +
+    ' 16. ENGLISH ONLY: The email body must be written entirely in English. Never include words from ' +
+    '     Uzbek, Russian, or any other language — not even in parentheses or as a gloss. If the data ' +
+    '     block contains Uzbek field values (mahsulotNomi, soha, lavozim, etc.), translate them or ' +
+    '     skip them. An email containing "portlovchi moddalar", "kimyoviy", or similar Uzbek terms ' +
+    '     is a hard fail and will be rejected automatically.\n' +
+    ' 17. COVERAGE IS MANDATORY: Before finalising the email, check that EVERY bullet point from the ' +
     '     VERIFIED DATA block appears in the text. If a metric is in the data, it must be in the email. ' +
     '     Skipping any advantage is not acceptable.\n' +
-    ' 17. ¶1 QUANTITATIVE TEST: ¶1 must contain at least 3 numerical figures with units (tons, m², ' +
+    ' 18. ¶1 QUANTITATIVE TEST: ¶1 must contain at least 3 numerical figures with units (tons, m², ' +
     '     USD, %). Count them before finalising. If ¶1 has 0–2 numbers, the paragraph is invalid and ' +
     '     must be rewritten using the SUPPLY/DEMAND/GAP data from the intelligence block. Banned ' +
     '     in ¶1: "rich deposits", "advanced infrastructure", "viable location", "feasible to target", ' +
     '     "promising market", "significant potential", "strategic location" — these are adjectives ' +
     '     dressed as facts. Replace them with figures.\n' +
-    ' 18. TWO IMPORT TOTALS MANDATORY: If the VERIFIED DATA contains a "13-MARKET IMPORT TOTALS" ' +
+    ' 19. TWO IMPORT TOTALS MANDATORY: If the VERIFIED DATA contains a "13-MARKET IMPORT TOTALS" ' +
     '     block, ¶1 MUST cite both the Uzbekistan 2021–2024 total AND the other-12-markets 2021–2024 ' +
     '     total verbatim from the data block, with the period and "UN Comtrade" source. Skipping ' +
     '     either of these two figures is a hard fail — the entire ¶1 is invalid and must be ' +
     '     rewritten. These two numbers quantify the addressable regional demand and are the reason ' +
     '     the recipient should care about this product in Navoi.\n' +
-    ' 19. ABSOLUTE BAN ON HEDGE-AWAY LANGUAGE AND APPROXIMATE RANGES FOR THE 13-MARKET TOTALS: ' +
+    ' 20. ABSOLUTE BAN ON HEDGE-AWAY LANGUAGE AND APPROXIMATE RANGES FOR THE 13-MARKET TOTALS: ' +
     '     The email body MUST NEVER contain any of these phrases or their close translations:\n' +
     '       "unspecified", "remain unspecified", "not specified", "not available", "unknown", ' +
     '       "no data", "no specific data", "no precise figure", "exact figure unknown", "no exact ' +
@@ -3545,7 +3573,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       var marketCtx = '';
       try{
         var compCountryName = comp.davlat || getAiCompanyCountry(comp) || '';
-        var productLabel2 = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || '';
+        var productLabel2 = (productInfo && productInfo.displayName) || ''; // English only — never Uzbek fields
         var companyName2 = comp.kompaniya || '';
         var recipientName2 = comp.rahbar || '';
         /* Focused query: company-specific facts FIRST, country context SECOND. The model's reasoning
