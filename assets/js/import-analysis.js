@@ -3091,7 +3091,10 @@ function investAiBuildWorkbookContext(material, markdown){
   var analysisYear = investAiPickAnalysisYear(entries);
   entries.forEach(function(entry){
     entry.analysisValue = Number((entry.totalsByYear || {})[analysisYear] || 0) || 0;
-    entry.uzbValue = Number((((entry.countryMap || {}).UZ || {}).years || {})[analysisYear] || 0) || 0;
+    // O'zbekiston importi — analysisYear bo'sh bo'lsa, mavjud eng so'nggi yilga
+    // qaytamiz (UZ ko'pincha so'ralgan yil uchun Comtrade'ga ma'lumot bermaydi).
+    var _uzYears = (((entry.countryMap || {}).UZ || {}).years) || {};
+    entry.uzbValue = Number(_uzYears[analysisYear] || _uzYears['2024'] || _uzYears['2023'] || _uzYears['2022'] || _uzYears['2021'] || 0) || 0;
     entry.cagr = investAiCalcCagr(entry.totalsByYear);
     var countries = Object.keys(entry.countryMap || {}).map(function(code){
       return {
@@ -3106,6 +3109,11 @@ function investAiBuildWorkbookContext(material, markdown){
     entry.competitiveness = investAiInferCompetitiveness(entry);
     entry.verdict = investAiInferVerdict(entry.priority, entry);
   });
+  // Diagnostika — UZ ma'lumoti snapshot'da bormi tekshirish uchun
+  if(entries[0]){
+    var _dbgUz = ((entries[0].countryMap || {}).UZ || {});
+    console.log('[invest-ai uzbValue debug]', { analysisYear: analysisYear, countryCodes: Object.keys(entries[0].countryMap || {}), uzYears: _dbgUz.years, uzbValue: entries[0].uzbValue });
+  }
 
   entries.sort(function(a,b){ return (b.analysisValue || 0) - (a.analysisValue || 0); });
 
