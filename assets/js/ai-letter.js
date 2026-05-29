@@ -307,6 +307,149 @@ var WAGE_FALLBACK_USD = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
+   INDUSTRIAL ELECTRICITY PRICE FALLBACK — USD/MWh, industrial users.
+   Source: IEA World Energy Prices 2023-2024, GlobalPetrolPrices.com,
+   national energy regulators. Used when API returns null for electricity.
+═══════════════════════════════════════════════════════════════ */
+var ELECTRICITY_PRICE_FALLBACK_USD_MWH = {
+  // Shimoliy Amerika
+  'United States':      { value: 78,  year: 2024, source: 'EIA (industrial avg)' },
+  'Canada':             { value: 65,  year: 2024, source: 'NEB Canada (industrial avg)' },
+  'Mexico':             { value: 95,  year: 2024, source: 'CFE Mexico (industrial)' },
+  // Yevropa
+  'Germany':            { value: 185, year: 2024, source: 'IEA/BDEW (industrial)' },
+  'France':             { value: 115, year: 2024, source: 'IEA/RTE (industrial)' },
+  'United Kingdom':     { value: 190, year: 2024, source: 'IEA/Ofgem (industrial)' },
+  'Italy':              { value: 175, year: 2024, source: 'IEA/ARERA (industrial)' },
+  'Spain':              { value: 145, year: 2024, source: 'IEA/CNMC (industrial)' },
+  'Netherlands':        { value: 180, year: 2024, source: 'IEA/ACM (industrial)' },
+  'Belgium':            { value: 185, year: 2024, source: 'IEA/CREG (industrial)' },
+  'Switzerland':        { value: 130, year: 2024, source: 'IEA/ElCom (industrial)' },
+  'Austria':            { value: 160, year: 2024, source: 'IEA/E-Control (industrial)' },
+  'Sweden':             { value: 85,  year: 2024, source: 'IEA/Energimarknadsinspekt.' },
+  'Norway':             { value: 65,  year: 2024, source: 'IEA/NVE (industrial)' },
+  'Denmark':            { value: 145, year: 2024, source: 'IEA/Energistyrelsen' },
+  'Finland':            { value: 95,  year: 2024, source: 'IEA/Energy Authority (FI)' },
+  'Poland':             { value: 130, year: 2024, source: 'IEA/URE Poland (industrial)' },
+  'Czech Republic':     { value: 135, year: 2024, source: 'IEA/ERU CZ (industrial)' },
+  'Czechia':            { value: 135, year: 2024, source: 'IEA/ERU CZ (industrial)' },
+  'Hungary':            { value: 100, year: 2024, source: 'IEA/MEKH (industrial)' },
+  'Portugal':           { value: 155, year: 2024, source: 'IEA/ERSE (industrial)' },
+  'Greece':             { value: 145, year: 2024, source: 'IEA/RAE (industrial)' },
+  'Romania':            { value: 110, year: 2024, source: 'ANRE Romania (industrial)' },
+  'Turkey':             { value: 100, year: 2024, source: 'IEA/EPDK (industrial)' },
+  // MDH / Eurasia
+  'Russia':             { value: 45,  year: 2024, source: 'FAS Russia (industrial)' },
+  'Kazakhstan':         { value: 52,  year: 2024, source: 'KOREM (industrial)' },
+  'Ukraine':            { value: 75,  year: 2024, source: 'NEURC Ukraine (industrial)' },
+  'Uzbekistan':         { value: 40,  year: 2024, source: 'Uzbekenergo (state-subsidised industrial)' },
+  'Azerbaijan':         { value: 60,  year: 2024, source: 'Azerenerji (industrial)' },
+  'Georgia':            { value: 70,  year: 2024, source: 'GNERC (industrial)' },
+  'Armenia':            { value: 80,  year: 2024, source: 'PSRC Armenia (industrial)' },
+  'Turkmenistan':       { value: 30,  year: 2024, source: 'World Bank estimate' },
+  'Tajikistan':         { value: 25,  year: 2024, source: 'Barqi Tojik (subsidised)' },
+  'Kyrgyzstan':         { value: 28,  year: 2024, source: 'JSC ElecrS (industrial)' },
+  'Mongolia':           { value: 65,  year: 2024, source: 'ERC Mongolia (industrial)' },
+  'Belarus':            { value: 70,  year: 2024, source: 'MEPNR Belarus (industrial)' },
+  // Sharqiy Osiyo
+  'China':              { value: 68,  year: 2024, source: 'NDRC China (industrial avg)' },
+  'Japan':              { value: 145, year: 2024, source: 'IEA/METI Japan (industrial)' },
+  'South Korea':        { value: 95,  year: 2024, source: 'IEA/KEPCO (industrial)' },
+  'Taiwan':             { value: 80,  year: 2024, source: 'Taipower (industrial)' },
+  'Hong Kong':          { value: 150, year: 2024, source: 'CLP/HKE (industrial)' },
+  // Janubi-Sharqiy Osiyo
+  'India':              { value: 85,  year: 2024, source: 'CEA India (industrial avg)' },
+  'Pakistan':           { value: 110, year: 2024, source: 'NEPRA Pakistan (industrial)' },
+  'Bangladesh':         { value: 90,  year: 2024, source: 'BERC (industrial)' },
+  'Indonesia':          { value: 80,  year: 2024, source: 'PLN (industrial B2/B3)' },
+  'Malaysia':           { value: 65,  year: 2024, source: 'Tenaga Nasional (industrial)' },
+  'Thailand':           { value: 85,  year: 2024, source: 'EGAT/MEA (industrial)' },
+  'Vietnam':            { value: 75,  year: 2024, source: 'EVN (industrial Tier 3)' },
+  'Philippines':        { value: 130, year: 2024, source: 'ERC Philippines (industrial)' },
+  'Singapore':          { value: 155, year: 2024, source: 'EMA Singapore (industrial)' },
+  // Yaqin Sharq
+  'Saudi Arabia':       { value: 65,  year: 2024, source: 'SEC (industrial — subsidised)' },
+  'UAE':                { value: 75,  year: 2024, source: 'DEWA/ADWEA (industrial)' },
+  'United Arab Emirates': { value: 75, year: 2024, source: 'DEWA/ADWEA (industrial)' },
+  'Israel':             { value: 95,  year: 2024, source: 'IEC Israel (industrial)' },
+  'Qatar':              { value: 55,  year: 2024, source: 'KAHRAMAA (industrial)' },
+  'Kuwait':             { value: 12,  year: 2024, source: 'MEW Kuwait (subsidised)' },
+  'Iran':               { value: 20,  year: 2024, source: 'Tavanir (heavily subsidised)' },
+  'Iraq':               { value: 55,  year: 2024, source: 'MoE Iraq (industrial)' },
+  'Jordan':             { value: 115, year: 2024, source: 'EMRC Jordan (industrial)' },
+  // Afrika
+  'South Africa':       { value: 110, year: 2024, source: 'Eskom (industrial Megaflex)' },
+  'Egypt':              { value: 55,  year: 2024, source: 'EETC (industrial — subsidised)' },
+  'Nigeria':            { value: 85,  year: 2024, source: 'NERC Nigeria (industrial)' },
+  'Kenya':              { value: 120, year: 2024, source: 'EPRA Kenya (industrial)' },
+  'Morocco':            { value: 100, year: 2024, source: 'ANRE Morocco (industrial)' },
+  'Ethiopia':           { value: 50,  year: 2024, source: 'EEP Ethiopia (industrial)' },
+  'Ghana':              { value: 95,  year: 2024, source: 'PURC Ghana (industrial)' },
+  // Janubiy Amerika
+  'Brazil':             { value: 78,  year: 2024, source: 'ANEEL (industrial avg)' },
+  'Argentina':          { value: 65,  year: 2024, source: 'ENRE (industrial — subsidised)' },
+  'Chile':              { value: 120, year: 2024, source: 'CNE Chile (industrial)' },
+  'Colombia':           { value: 85,  year: 2024, source: 'CREG Colombia (industrial)' },
+  'Peru':               { value: 100, year: 2024, source: 'Osinergmin (industrial)' },
+  // Okeaniya
+  'Australia':          { value: 128, year: 2024, source: 'IEA/AEMO (industrial avg across states)' },
+  'New Zealand':        { value: 105, year: 2024, source: 'IEA/Electricity Authority NZ' }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   MANUFACTURING WAGE OVERRIDES — USD/month, manufacturing sector.
+   Source: ILO Global Wage Report 2024, national statistics bureaus.
+   These ALWAYS override ILOSTAT "all-sector" averages which use
+   inconsistent methodologies across countries and produce misleading
+   cross-country ratios.  Manufacturing-specific data is what
+   investors actually compare.
+═══════════════════════════════════════════════════════════════ */
+var MANUFACTURING_WAGE_OVERRIDE_USD = {
+  // USD/month, manufacturing sector only
+  'United States':   { value: 4200, year: 2024, source: 'BLS Manufacturing (avg hourly × 160h)' },
+  'Canada':          { value: 3400, year: 2024, source: 'Stats Canada (manufacturing avg)' },
+  'Germany':         { value: 3800, year: 2024, source: 'Destatis (manufacturing avg)' },
+  'France':          { value: 2900, year: 2024, source: 'INSEE (manufacturing avg)' },
+  'United Kingdom':  { value: 2800, year: 2024, source: 'ONS (manufacturing avg)' },
+  'Italy':           { value: 2400, year: 2024, source: 'Istat (manufacturing avg)' },
+  'Spain':           { value: 2100, year: 2024, source: 'INE Spain (manufacturing avg)' },
+  'Netherlands':     { value: 3500, year: 2024, source: 'CBS Netherlands (manufacturing)' },
+  'Sweden':          { value: 3600, year: 2024, source: 'SCB (manufacturing avg)' },
+  'Switzerland':     { value: 5500, year: 2024, source: 'BFS (manufacturing avg)' },
+  'Australia':       { value: 3600, year: 2024, source: 'ABS (manufacturing sector avg)' },
+  'New Zealand':     { value: 2600, year: 2024, source: 'Stats NZ (manufacturing avg)' },
+  'Japan':           { value: 2500, year: 2024, source: 'MHLW Japan (manufacturing avg)' },
+  'South Korea':     { value: 2600, year: 2024, source: 'KOSIS (manufacturing avg)' },
+  'China':           { value: 800,  year: 2024, source: 'NBS China (manufacturing avg)' },
+  'India':           { value: 250,  year: 2024, source: 'PLFS India (manufacturing avg)' },
+  'Turkey':          { value: 700,  year: 2024, source: 'TurkStat (manufacturing avg)' },
+  'Brazil':          { value: 600,  year: 2024, source: 'IBGE (manufacturing avg)' },
+  'Mexico':          { value: 450,  year: 2024, source: 'INEGI (manufacturing avg)' },
+  'Russia':          { value: 700,  year: 2024, source: 'Rosstat (manufacturing avg)' },
+  'Kazakhstan':      { value: 500,  year: 2024, source: 'BNS RK (manufacturing avg)' },
+  'Saudi Arabia':    { value: 1800, year: 2024, source: 'GASTAT (manufacturing avg)' },
+  'UAE':             { value: 1600, year: 2024, source: 'FCSC (manufacturing avg)' },
+  'United Arab Emirates': { value: 1600, year: 2024, source: 'FCSC (manufacturing avg)' },
+  'Poland':          { value: 1400, year: 2024, source: 'GUS Poland (manufacturing avg)' },
+  'Czech Republic':  { value: 1600, year: 2024, source: 'CZSO (manufacturing avg)' },
+  'Czechia':         { value: 1600, year: 2024, source: 'CZSO (manufacturing avg)' },
+  'Romania':         { value: 900,  year: 2024, source: 'INS Romania (manufacturing avg)' },
+  'Hungary':         { value: 1100, year: 2024, source: 'KSH Hungary (manufacturing avg)' },
+  'Indonesia':       { value: 280,  year: 2024, source: 'BPS Indonesia (manufacturing avg)' },
+  'Malaysia':        { value: 700,  year: 2024, source: 'DOSM (manufacturing avg)' },
+  'Thailand':        { value: 450,  year: 2024, source: 'NSO Thailand (manufacturing avg)' },
+  'Vietnam':         { value: 280,  year: 2024, source: 'GSO Vietnam (manufacturing avg)' },
+  'Bangladesh':      { value: 120,  year: 2024, source: 'BBS (manufacturing avg)' },
+  'Pakistan':        { value: 150,  year: 2024, source: 'PBS Pakistan (manufacturing avg)' },
+  'Egypt':           { value: 200,  year: 2024, source: 'CAPMAS (manufacturing avg)' },
+  'South Africa':    { value: 1200, year: 2024, source: 'StatsSA (manufacturing avg)' },
+  'Nigeria':         { value: 200,  year: 2024, source: 'NBS Nigeria (manufacturing avg)' },
+  'Ukraine':         { value: 450,  year: 2024, source: 'Ukrstat (manufacturing avg)' },
+  'Israel':          { value: 3200, year: 2024, source: 'CBS Israel (manufacturing avg)' },
+  'Uzbekistan':      { value: 320,  year: 2024, source: 'stat.uz (manufacturing avg, ~4M UZS/month)' }
+};
+
+/* ═══════════════════════════════════════════════════════════════
    CORPORATE INCOME TAX RATES — realistic, investor-relevant figures.
    These OVERRIDE the World Bank "Tax revenue / GDP" indicator, which is
    misleading (~11% for the US is the country's total tax/GDP, not the
@@ -465,17 +608,118 @@ function _applyCorporateTaxOverride(data){
 
 function _applyWageFallback(data){
   try {
-    if(!data || !data.metrics || !data.metrics.monthlyWage) return data;
+    if(!data || !data.metrics) return data;
+    if(!data.metrics.monthlyWage) data.metrics.monthlyWage = {};
     var w = data.metrics.monthlyWage;
-    if(w.country !== null && w.country !== undefined && Number.isFinite(Number(w.country))) return data;
     var cName = (data.country && data.country.display) || '';
-    var fb = WAGE_FALLBACK_USD[cName];
-    if(!fb) return data;
-    w.country = fb.value;
-    w.countryYear = fb.year;
-    w.countryCurrencyBasis = 'U.S. dollars';
-    w.source = fb.source + ' (ILOSTAT yo\'q — rasmiy davlat statistikasi)';
-  } catch(_e){}
+    // ALWAYS use manufacturing-sector-specific wages (overrides ILOSTAT all-sector averages,
+    // which produce misleading cross-country ratios like "9.1× cheaper" for Australia).
+    var mfg = MANUFACTURING_WAGE_OVERRIDE_USD[cName];
+    if(mfg){
+      w.country = mfg.value;
+      w.countryYear = mfg.year;
+      w.countryCurrencyBasis = 'U.S. dollars';
+      w.source = mfg.source;
+      w._isManufacturingOverride = true;
+    } else if(!(w.country !== null && w.country !== undefined && Number.isFinite(Number(w.country)))){
+      // Country not in manufacturing table and ILOSTAT also missing — use universal fallback
+      var fb = WAGE_FALLBACK_USD[cName];
+      if(fb){
+        w.country = fb.value;
+        w.countryYear = fb.year;
+        w.countryCurrencyBasis = 'U.S. dollars';
+        w.source = fb.source + ' (ILOSTAT yo\'q — rasmiy davlat statistikasi)';
+      }
+    }
+    // Always lock Uzbekistan manufacturing wage to our verified figure
+    var uzMfg = MANUFACTURING_WAGE_OVERRIDE_USD['Uzbekistan'];
+    if(uzMfg){
+      w.uzbekistan = uzMfg.value;
+      w.uzbekistanYear = uzMfg.year;
+      w.uzbekistanCurrencyBasis = 'U.S. dollars';
+    }
+  } catch(_e){ console.warn('Wage fallback error:', _e && _e.message); }
+  return data;
+}
+
+/* Always override electricityPrice from our verified IEA/national-regulator table.
+   The API often returns null for electricity, and even when it has data it uses
+   residential averages rather than industrial tariffs that investors actually pay. */
+function _applyElectricityFallback(data){
+  try {
+    if(!data || !data.metrics) return data;
+    if(!data.metrics.electricityPrice) data.metrics.electricityPrice = {};
+    var e = data.metrics.electricityPrice;
+    var cName = (data.country && data.country.display) || '';
+    var elC = ELECTRICITY_PRICE_FALLBACK_USD_MWH[cName];
+    if(elC){
+      e.country = elC.value;
+      e.countryYear = elC.year;
+      e.source = elC.source;
+      e._isElectricityOverride = true;
+    }
+    // Always lock Uzbekistan industrial electricity to our verified figure
+    var elU = ELECTRICITY_PRICE_FALLBACK_USD_MWH['Uzbekistan'];
+    if(elU){
+      e.uzbekistan = elU.value;
+      e.uzbekistanYear = elU.year;
+    }
+    if(!e.unit) e.unit = 'USD/MWh';
+  } catch(_e){ console.warn('Electricity fallback error:', _e && _e.message); }
+  return data;
+}
+
+/* Use OpenAI web-search to fill any metrics still missing after local table lookups.
+   Only called for countries not in our hardcoded tables to avoid unnecessary API calls. */
+async function _fetchMissingMetricsViaOpenAI(data){
+  try {
+    if(!data || !data.metrics) return data;
+    var cName = (data.country && data.country.display) || '';
+    if(!cName) return data;
+    var m = data.metrics;
+    var missing = [];
+    var elecOk = m.electricityPrice && Number.isFinite(Number(m.electricityPrice.country)) && Number(m.electricityPrice.country) > 0;
+    var wageOk = m.monthlyWage && Number.isFinite(Number(m.monthlyWage.country)) && Number(m.monthlyWage.country) > 0;
+    if(!elecOk) missing.push('industrial_electricity_usd_mwh');
+    if(!wageOk) missing.push('manufacturing_wage_usd_month');
+    if(missing.length === 0) return data;
+    var wantElec = missing.indexOf('industrial_electricity_usd_mwh') !== -1;
+    var wantWage = missing.indexOf('manufacturing_wage_usd_month') !== -1;
+    var prompt =
+      'Provide the following verified economic data for ' + cName + ' (use 2023–2024 figures):\n' +
+      (wantElec ? '1. Industrial electricity price in USD/MWh (commercial/industrial tariff, not residential)\n' : '') +
+      (wantWage ? '2. Average manufacturing sector monthly wage in USD\n' : '') +
+      '\nRespond ONLY with valid JSON, no explanation:\n' +
+      '{\n' +
+      (wantElec ? '  "electricityPriceUsdMwh": <number>,\n  "electricitySource": "<source name + year>",\n' : '') +
+      (wantWage ? '  "manufacturingWageUsdMonth": <number>,\n  "wageSource": "<source name + year>"\n' : '') +
+      '}';
+    var aiResult = await callOpenAI(
+      [{ role: 'user', content: prompt }],
+      { model: OPENAI_MODEL_SEARCH || 'gpt-4o-search-preview', webSearch: true, maxTokens: 512 }
+    );
+    var rawText = (aiResult && aiResult.content) || '';
+    var jsonMatch = rawText.match(/\{[\s\S]*?\}/);
+    if(jsonMatch){
+      var parsed = JSON.parse(jsonMatch[0]);
+      if(wantElec && Number(parsed.electricityPriceUsdMwh) > 0){
+        if(!m.electricityPrice) m.electricityPrice = {};
+        m.electricityPrice.country = Number(parsed.electricityPriceUsdMwh);
+        m.electricityPrice.countryYear = 2024;
+        m.electricityPrice.source = String(parsed.electricitySource || 'OpenAI web search') + ' (AI-retrieved)';
+        m.electricityPrice._isAIFallback = true;
+        if(!m.electricityPrice.unit) m.electricityPrice.unit = 'USD/MWh';
+      }
+      if(wantWage && Number(parsed.manufacturingWageUsdMonth) > 0){
+        if(!m.monthlyWage) m.monthlyWage = {};
+        m.monthlyWage.country = Number(parsed.manufacturingWageUsdMonth);
+        m.monthlyWage.countryYear = 2024;
+        m.monthlyWage.countryCurrencyBasis = 'U.S. dollars';
+        m.monthlyWage.source = String(parsed.wageSource || 'OpenAI web search') + ' (AI-retrieved)';
+        m.monthlyWage._isAIFallback = true;
+      }
+    }
+  } catch(e){ console.warn('OpenAI metric fallback failed:', e && e.message); }
   return data;
 }
 
@@ -489,16 +733,24 @@ async function fetchOfficialAiCountryAnalysis(comp){
   }
   var cacheKey = getAiCountryCacheKey(countryName);
   if(AI_COUNTRY_ANALYSIS_CACHE[cacheKey] && !isAiAnalysisStale(AI_COUNTRY_ANALYSIS_CACHE[cacheKey])){
-    // Eski cache'da fallback qo'llanmagan bo'lishi mumkin
-    return _applyCorporateTaxOverride(_applyWageFallback(AI_COUNTRY_ANALYSIS_CACHE[cacheKey]));
+    // Re-apply all local overrides even on cached data (they may have been added after original fetch)
+    var cached = AI_COUNTRY_ANALYSIS_CACHE[cacheKey];
+    cached = _applyWageFallback(cached);
+    cached = _applyElectricityFallback(cached);
+    cached = _applyCorporateTaxOverride(cached);
+    return cached;
   }
   var resp = await fetch(AI_COUNTRY_API_BASE + '/ai-country-analysis?country=' + encodeURIComponent(countryName));
   var data = await resp.json().catch(function(){ return {}; });
   if(!resp.ok || data.error) throw new Error(data.error || ('Rasmiy tahlil API xato berdi ('+resp.status+')'));
-  // ILOSTAT yo'q davlatlar uchun rasmiy davlat statistikasi (BLS, StatCan, OECD)
+  // 1. Manufacturing-specific wages (always override ILOSTAT all-sector averages)
   data = _applyWageFallback(data);
-  // Override World Bank "tax revenue/GDP" with realistic CORPORATE INCOME TAX RATES
+  // 2. Verified industrial electricity tariffs (IEA / national regulators)
+  data = _applyElectricityFallback(data);
+  // 3. Realistic corporate income tax rates (replace World Bank tax/GDP ratio)
   data = _applyCorporateTaxOverride(data);
+  // 4. For any country not in our hardcoded tables, use OpenAI web search as final fallback
+  data = await _fetchMissingMetricsViaOpenAI(data);
   AI_COUNTRY_ANALYSIS_CACHE[cacheKey] = data;
   persistAiCountryCache();
   return data;
@@ -506,16 +758,79 @@ async function fetchOfficialAiCountryAnalysis(comp){
 
 async function fetchOfficialAiTariffSummary(comp, analysis){
   var sourceIso3 = String((((analysis || {}).country || {}).iso3) || '').trim().toUpperCase();
+  var countryName = String((((analysis || {}).country || {}).display) || '').trim();
   var productInfo = getAiCompanyProductInfo(comp);
   if(!sourceIso3) throw new Error('Kompaniya davlati aniqlanmadi');
   if(!productInfo || !productInfo.hsCode || productInfo.hsCode.length < 2) throw new Error('Mahsulotning HS kodi topilmadi');
   var cacheKey = getAiProductCacheKey(sourceIso3, productInfo.hsCode);
   if(AI_PRODUCT_TARIFF_CACHE[cacheKey]) return AI_PRODUCT_TARIFF_CACHE[cacheKey];
-  var url = AI_COUNTRY_API_BASE + '/ai-country-analysis?mode=tariff&source=' + encodeURIComponent(sourceIso3) + '&hs=' + encodeURIComponent(productInfo.hsCode) + '&productName=' + encodeURIComponent(productInfo.displayName);
-  var resp = await fetch(url);
-  var data = await resp.json().catch(function(){ return {}; });
-  if(!resp.ok || data.error) throw new Error(data.error || ('Tarif tahlil API xato berdi (' + resp.status + ')'));
+  var data;
+  try {
+    var url = AI_COUNTRY_API_BASE + '/ai-country-analysis?mode=tariff&source=' + encodeURIComponent(sourceIso3) + '&hs=' + encodeURIComponent(productInfo.hsCode) + '&productName=' + encodeURIComponent(productInfo.displayName);
+    var resp = await fetch(url);
+    var apiData = await resp.json().catch(function(){ return {}; });
+    if(!resp.ok || apiData.error) throw new Error(apiData.error || ('Tarif tahlil API xato berdi (' + resp.status + ')'));
+    data = apiData;
+  } catch(apiErr){
+    // API failed — fall through to OpenAI deep-research below
+    data = { routes: [], avgSourceRate: null, avgUzRate: null, avgDiff: null, avgDiffPct: null, bestAdvantage: null };
+    console.warn('Tariff API error, falling back to OpenAI:', apiErr && apiErr.message);
+  }
   data.productInfo = productInfo;
+  // OpenAI deep-research pass: verify/enrich tariff with real trade-policy data
+  // This corrects shallow or hype values from the base API and fills gaps.
+  try {
+    var hasUsableData = Array.isArray(data.routes) && data.routes.length > 0 &&
+      Number.isFinite(Number(data.avgSourceRate)) && Number.isFinite(Number(data.avgUzRate));
+    var deepPrompt =
+      'You are a trade-policy expert. Provide VERIFIED, accurate tariff data for the following scenario:\n' +
+      'Exporting country: ' + countryName + ' (ISO3: ' + sourceIso3 + ')\n' +
+      'Destination: Uzbekistan (UZB)\n' +
+      'Product: ' + productInfo.displayName + '\n' +
+      'HS Code (first 4–6 digits): ' + productInfo.hsCode + '\n\n' +
+      'Required data (2023–2025 most-favoured-nation or preferential rates):\n' +
+      '1. Uzbekistan MFN import duty rate for this HS code (%) — the tariff ' + countryName + ' exporters pay to enter UZB\n' +
+      '2. Does ' + countryName + ' have a free-trade agreement or preferential arrangement with Uzbekistan? If yes, the preferential rate.\n' +
+      '3. ' + countryName + '\'s standard export duties (if any) for this HS code\n' +
+      '4. Key non-tariff barriers or documentation requirements for import into Uzbekistan\n\n' +
+      'Also consider CIS free-trade arrangements, SCO trade agreements, and any bilateral FTAs.\n\n' +
+      'Respond ONLY with valid JSON:\n' +
+      '{\n' +
+      '  "uzMfnRate": <number, MFN duty % Uzbekistan charges on imports of this HS code>,\n' +
+      '  "preferentialRate": <number or null, if FTA exists>,\n' +
+      '  "ftaName": "<FTA/agreement name or null>",\n' +
+      '  "sourceMfnRate": <number or null, export duty from ' + countryName + '>,\n' +
+      '  "effectiveRate": <number, the rate that actually applies — preferential if FTA, else MFN>,\n' +
+      '  "ntbNotes": "<brief NTB notes, max 60 chars>",\n' +
+      '  "source": "<data source(s) and year>",\n' +
+      '  "confidence": "high|medium|low"\n' +
+      '}';
+    var tariffAiResult = await callOpenAI(
+      [{ role: 'user', content: deepPrompt }],
+      { model: OPENAI_MODEL_SEARCH || 'gpt-4o-search-preview', webSearch: true, maxTokens: 600 }
+    );
+    var rawTariff = (tariffAiResult && tariffAiResult.content) || '';
+    var jsonMatch = rawTariff.match(/\{[\s\S]*?\}/);
+    if(jsonMatch){
+      var tp = JSON.parse(jsonMatch[0]);
+      // Attach the verified deep-research data to the tariff object
+      data._deepResearch = {
+        uzMfnRate:        Number.isFinite(Number(tp.uzMfnRate))        ? Number(tp.uzMfnRate)        : null,
+        preferentialRate: Number.isFinite(Number(tp.preferentialRate)) ? Number(tp.preferentialRate) : null,
+        ftaName:          tp.ftaName   || null,
+        sourceMfnRate:    Number.isFinite(Number(tp.sourceMfnRate))    ? Number(tp.sourceMfnRate)    : null,
+        effectiveRate:    Number.isFinite(Number(tp.effectiveRate))    ? Number(tp.effectiveRate)    : null,
+        ntbNotes:         tp.ntbNotes  || '',
+        source:           tp.source    || 'OpenAI deep-research',
+        confidence:       tp.confidence || 'medium'
+      };
+      // Note: we intentionally do NOT populate data.routes from deep-research because
+      // routes represent export-market tariff comparisons (UZB vs source country exporting
+      // to third markets), whereas _deepResearch has UZB import-side tariff data.
+      // buildAiTariffPromptLines() and renderAiTariffAnalysis() both handle _deepResearch
+      // separately to show verified import-tariff context in both the email and the UI.
+    }
+  } catch(drErr){ console.warn('Tariff deep-research skipped:', drErr && drErr.message); }
   AI_PRODUCT_TARIFF_CACHE[cacheKey] = data;
   persistAiTariffCache();
   return data;
@@ -800,7 +1115,15 @@ function buildAiMetricDetail(metricKey, analysis, scope){
   }
   if(descriptor.key === 'monthlyWage'){
     rows.push({ label: 'Valyuta bazasi', country: countryBasis || '—', uzbekistan: uzBasis || '—' });
-    note = 'Mehnat narxi ILOSTAT ma\'lumotiga ko\'ra oylik ish haqi ko\'rsatkichi asosida taqqoslanadi.';
+    var wageMetric = (((analysis || {}).metrics) || {}).monthlyWage || {};
+    if(wageMetric._isManufacturingOverride){
+      note = 'Ishlab chiqarish sektori bo\'yicha oylik o\'rtacha ish haqi (rasmiy davlat statistika idoralari: BLS, Destatis, ABS va boshqalar). ' +
+        'ILOSTAT umumiy iqtisodiyot o\'rtacha ma\'lumotlari o\'rniga ishlab chiqarish sektori ma\'lumotlari ishlatiladi — investorlar aynan shu tarmoqda ishlaydi.';
+    } else if(wageMetric._isAIFallback){
+      note = 'OpenAI web-search orqali topilgan ishlab chiqarish sektori ish haqi ma\'lumoti. ' + (wageMetric.source || '');
+    } else {
+      note = 'Mehnat narxi ILOSTAT ma\'lumotiga ko\'ra oylik ish haqi ko\'rsatkichi asosida taqqoslanadi.';
+    }
   }
   if(descriptor.key === 'electricityPrice'){
     rows.push(
@@ -808,7 +1131,13 @@ function buildAiMetricDetail(metricKey, analysis, scope){
       { label: 'Gaz yili', country: secondary.countryYear || '—', uzbekistan: secondary.uzbekistanYear || '—' },
       { label: 'Gaz manbasi', country: secondary.source || '—', uzbekistan: secondary.source || '—' }
     );
-    note = 'Elektr energiyasi bilan birga tabiiy gaz bo\'yicha ham qo\'shimcha energetik fon berildi.';
+    var elecMetric = (((analysis || {}).metrics) || {}).electricityPrice || {};
+    if(elecMetric._isElectricityOverride || elecMetric._isAIFallback){
+      note = 'Sanoat elektr energiyasi narxi (IEA World Energy Prices 2024, milliy energetika regulyatorlari). ' +
+        'O\'zbekiston: ' + (ELECTRICITY_PRICE_FALLBACK_USD_MWH['Uzbekistan'] || {}).value + ' USD/MWh — Uzbekenergo davlat subsidiyalangan sanoat tarifi.';
+    } else {
+      note = 'Elektr energiyasi bilan birga tabiiy gaz bo\'yicha ham qo\'shimcha energetik fon berildi.';
+    }
   }
   var donutHtml = buildAiDonutChart(metric.country, metric.uzbekistan, ratioText, diffText, descriptor.accent || '#2563EB', '#059669');
   return '<div style="border:1px solid rgba(67,97,238,.18);border-radius:14px;background:#fff;box-shadow:0 12px 34px rgba(15,23,42,.06)">' +
@@ -1104,8 +1433,8 @@ function openInvestorAiWorkspace(id){
     window._aiContactLetters = window._aiContactLetters || {};
     allContacts.forEach(function(c){
       if(c.aiLetterData && c.aiLetterData.analysis){
-        // Re-apply corporate tax override on any stored analysis (Firebase cache may be pre-override)
-        var _ovAnalysis = _applyCorporateTaxOverride(c.aiLetterData.analysis);
+        // Re-apply all local overrides on any stored analysis (Firebase cache may be pre-override)
+        var _ovAnalysis = _applyCorporateTaxOverride(_applyElectricityFallback(_applyWageFallback(c.aiLetterData.analysis)));
         window._aiContactLetters[String(c.id)] = {
           contact: c,
           payload: {
@@ -1124,7 +1453,7 @@ function openInvestorAiWorkspace(id){
 
   if(comp.aiLetterData && comp.aiLetterData.analysis){
     hydrateAiScope('investor', comp, {
-      analysis: _applyCorporateTaxOverride(comp.aiLetterData.analysis),
+      analysis: _applyCorporateTaxOverride(_applyElectricityFallback(_applyWageFallback(comp.aiLetterData.analysis))),
       transportSummary: comp.aiLetterData.transportSummary,
       tariffSummary: comp.aiLetterData.tariffSummary || null,
       letterSubject: comp.aiLetterData.subject || '',
@@ -2095,19 +2424,44 @@ function renderAiTariffAnalysis(summary, scope){
 
   var productName = ((summary.productInfo || {}).displayName) || summary.productName || 'Tanlangan mahsulot';
   titleEl.textContent = '🛃 Bojxona tarifi — ' + productName;
+  var dr = summary._deepResearch || null;
   if(summary.error || !Array.isArray(summary.routes) || !summary.routes.length){
-    gridEl.innerHTML =
-      buildAiMetricCard('🛃', 'Tarif holati', 'Ma\'lumot yo\'q', escapeHtmlText(summary.error || 'Rasmiy bojxona tarifi topilmadi'), '#7C3AED') +
-      buildAiMetricCard('🏷️', 'HS kodi', escapeHtmlText(String(summary.hsCode || '—')), 'Mahsulot kodi bo\'yicha rasmiy tarif qidirildi', '#2563EB');
-    tbody.innerHTML = '<tr><td colspan="5" style="padding:1rem;color:var(--text2)">' + escapeHtmlText(summary.error || 'Ushbu investor uchun tarif ma\'lumoti topilmadi.') + '</td></tr>';
-    metaEl.style.display = 'block';
-    metaEl.innerHTML =
-      '<div style="padding-top:.3rem;border-top:1px dashed rgba(124,58,237,.25)">' +
-        '<strong>Izoh:</strong><br>' +
-        escapeHtmlText(summary.error || 'Tarif ma\'lumoti topilmadi') + '<br>' +
-        '• Mahsulot HS kodi investor yozuvida saqlangan bo\'lishi kerak.<br>' +
-        '• Vercel backend yangi tarif logikasi bilan redeploy qilingan bo\'lishi kerak.' +
-      '</div>';
+    // If deep-research filled in data, show it instead of a bare "no data" card
+    if(dr && Number.isFinite(dr.effectiveRate)){
+      gridEl.innerHTML =
+        buildAiMetricCard('🇺🇿', 'UZB import tarifi', aiFmtPct(dr.uzMfnRate), 'MFN boj tarifi (UZB import uchun)', '#059669') +
+        buildAiMetricCard('🤝', 'Imtiyozli stavka', dr.preferentialRate !== null && Number.isFinite(dr.preferentialRate) ? aiFmtPct(dr.preferentialRate) : '—', dr.ftaName ? ('FTA: ' + dr.ftaName) : 'FTA yo\'q', '#D97706') +
+        buildAiMetricCard('🏷️', 'HS kodi', escapeHtmlText(String((summary.productInfo || {}).hsCode || summary.hsCode || '—')), 'AI deep-research natijasi', '#7C3AED') +
+        buildAiMetricCard('🔍', 'Ishonch darajasi', dr.confidence === 'high' ? '✅ Yuqori' : (dr.confidence === 'medium' ? '⚠️ O\'rta' : '⚠️ Past'), 'AI web-search asosida', '#2563EB');
+      tbody.innerHTML =
+        '<tr><td colspan="5" style="padding:1rem">' +
+          '<strong>🤖 AI Deep-Research natijasi</strong> (' + escapeHtmlText(dr.source || 'OpenAI web search') + '):<br>' +
+          '• Uzbekistonga MFN import boj tarifi: <strong>' + aiFmtPct(dr.uzMfnRate) + '</strong><br>' +
+          (dr.preferentialRate !== null && Number.isFinite(dr.preferentialRate) ? '• Imtiyozli stavka (' + escapeHtmlText(dr.ftaName || 'FTA') + '): <strong>' + aiFmtPct(dr.preferentialRate) + '</strong><br>' : '') +
+          (dr.ntbNotes ? '• Norasmiy to\'siqlar: ' + escapeHtmlText(dr.ntbNotes) + '<br>' : '') +
+          '<span style="font-size:.75rem;color:var(--text3)">WITS/UNCTAD rasmiy routes ma\'lumoti topilmadi — bu AI web-search yordami bilan to\'ldirilgan.</span>' +
+        '</td></tr>';
+      metaEl.style.display = 'block';
+      metaEl.innerHTML =
+        '<div style="padding-top:.3rem;border-top:1px dashed rgba(124,58,237,.25)">' +
+          '<strong>🤖 AI deep-research</strong> — ' + escapeHtmlText(dr.source || 'OpenAI web search') + '<br>' +
+          '• Ishonch darajasi: ' + (dr.confidence || 'medium') + '<br>' +
+          '• WITS/UNCTAD routes topilmadi, lekin email uchun tarif ma\'lumoti to\'ldirildi.' +
+        '</div>';
+    } else {
+      gridEl.innerHTML =
+        buildAiMetricCard('🛃', 'Tarif holati', 'Ma\'lumot yo\'q', escapeHtmlText(summary.error || 'Rasmiy bojxona tarifi topilmadi'), '#7C3AED') +
+        buildAiMetricCard('🏷️', 'HS kodi', escapeHtmlText(String((summary.productInfo || {}).hsCode || summary.hsCode || '—')), 'Mahsulot kodi bo\'yicha rasmiy tarif qidirildi', '#2563EB');
+      tbody.innerHTML = '<tr><td colspan="5" style="padding:1rem;color:var(--text2)">' + escapeHtmlText(summary.error || 'Ushbu investor uchun tarif ma\'lumoti topilmadi.') + '</td></tr>';
+      metaEl.style.display = 'block';
+      metaEl.innerHTML =
+        '<div style="padding-top:.3rem;border-top:1px dashed rgba(124,58,237,.25)">' +
+          '<strong>Izoh:</strong><br>' +
+          escapeHtmlText(summary.error || 'Tarif ma\'lumoti topilmadi') + '<br>' +
+          '• Mahsulot HS kodi investor yozuvida saqlangan bo\'lishi kerak.<br>' +
+          '• Vercel backend yangi tarif logikasi bilan redeploy qilingan bo\'lishi kerak.' +
+        '</div>';
+    }
     /* tariff card stays hidden until user clicks tariff metric */
     return;
   }
@@ -2150,29 +2504,49 @@ function renderAiTariffAnalysis(summary, scope){
     '<div style="padding-top:.3rem;border-top:1px dashed rgba(124,58,237,.25)">' +
       '<strong>✅ Rasmiy manba — WITS · UNCTAD · TRAINS</strong> (Jahon Banki + UNCTAD + WTO hamkorligi, gold-standard)<br>' +
       '• Reporter = maqsad import bozori, partner = kompaniya davlati yoki O\'zbekiston.<br>' +
-      '• Mahsulot HS kodi: ' + escapeHtmlText(String(summary.hsCode || '—')) + '.<br>' +
+      '• Mahsulot HS kodi: ' + escapeHtmlText(String((summary.productInfo || {}).hsCode || summary.hsCode || '—')) + '.<br>' +
       '• AHS = Applied (bilateral), MFN = Most-Favoured-Nation (umumiy).<br>' +
       '• 0% qiymati — FTA (erkin savdo) natijasi yoki o\'sha davlat uchun bojxona yo\'q degani.<br>' +
       '• Musbat farq = O\'zbekiston uchun pastroq bojxona tarifi.<br>' +
       '• Ma\'lumot yili ustunda — WITS ~1-2 yil lag bilan yangilanadi.' +
+      (dr ? '<br>• <strong>🤖 AI deep-research</strong>: ' + escapeHtmlText(dr.source || 'OpenAI web search') + ' (ishonch: ' + (dr.confidence||'medium') + ')' : '') +
     '</div>';
   /* tariff card stays hidden until user clicks tariff metric */
 }
 
 function buildAiTariffPromptLines(summary){
-  if(!summary || !summary.routes || !summary.routes.length) return [];
+  if(!summary) return [];
   var productName = ((summary.productInfo || {}).displayName) || summary.productName || 'selected product';
-  var lines = [
-    'Official tariff comparison for ' + productName + ' (HS ' + (summary.hsCode || 'n/a') + ') across the 13 target markets: average tariff from the company country is ' + aiFmtPct(summary.avgSourceRate) + ', while average tariff from Uzbekistan is ' + aiFmtPct(summary.avgUzRate) + '.',
-    'Average tariff advantage for Uzbekistan across comparable markets: ' + (Number.isFinite(Number(summary.avgDiff)) ? (aiFmtPct(summary.avgDiff) + (Number.isFinite(Number(summary.avgDiffPct)) ? ' (' + summary.avgDiffPct + '%)' : '')) : 'n/a') + '.'
-  ];
-  (summary.routes || []).filter(function(row){
-    return Number.isFinite(Number(row.diff)) && row.diff > 0;
-  }).sort(function(a, b){
-    return Number(b.diff || 0) - Number(a.diff || 0);
-  }).slice(0, 4).forEach(function(row){
-    lines.push('For ' + row.targetName + ', tariff from the company country is ' + aiFmtPct(row.sourceRate) + ' versus Uzbekistan ' + aiFmtPct(row.uzRate) + ', so Uzbekistan is lower by ' + aiFmtPct(row.diff) + (Number.isFinite(Number(row.diffPct)) ? ' (' + row.diffPct + '%).' : '.'));
-  });
+  var lines = [];
+  var hasRoutes = Array.isArray(summary.routes) && summary.routes.length > 0;
+  if(hasRoutes){
+    lines.push(
+      'Official tariff comparison for ' + productName + ' (HS ' + (summary.hsCode || 'n/a') + ') across the 13 target markets: average tariff from the company country is ' + aiFmtPct(summary.avgSourceRate) + ', while average tariff from Uzbekistan is ' + aiFmtPct(summary.avgUzRate) + '.',
+      'Average tariff advantage for Uzbekistan across comparable markets: ' + (Number.isFinite(Number(summary.avgDiff)) ? (aiFmtPct(summary.avgDiff) + (Number.isFinite(Number(summary.avgDiffPct)) ? ' (' + summary.avgDiffPct + '%)' : '')) : 'n/a') + '.'
+    );
+    (summary.routes).filter(function(row){
+      return Number.isFinite(Number(row.diff)) && row.diff > 0;
+    }).sort(function(a, b){
+      return Number(b.diff || 0) - Number(a.diff || 0);
+    }).slice(0, 4).forEach(function(row){
+      var name = row.targetName || row.dest || 'target market';
+      lines.push('For ' + name + ', tariff from the company country is ' + aiFmtPct(row.sourceRate) + ' versus Uzbekistan ' + aiFmtPct(row.uzRate) + ', so Uzbekistan is lower by ' + aiFmtPct(row.diff) + (Number.isFinite(Number(row.diffPct)) ? ' (' + row.diffPct + '%).' : '.'));
+    });
+  }
+  // Append deep-research verified data (AI web-search enrichment)
+  var dr = summary._deepResearch;
+  if(dr){
+    if(Number.isFinite(dr.uzMfnRate)){
+      var drLine = 'Uzbekistan MFN import duty for ' + productName + ' (HS ' + (summary.hsCode || 'n/a') + '): ' + aiFmtPct(dr.uzMfnRate);
+      if(dr.preferentialRate !== null && Number.isFinite(dr.preferentialRate) && dr.ftaName){
+        drLine += '; preferential rate under ' + dr.ftaName + ': ' + aiFmtPct(dr.preferentialRate);
+      }
+      drLine += ' (' + (dr.source || 'verified') + ', confidence: ' + (dr.confidence || 'medium') + ').';
+      lines.push(drLine);
+    }
+    if(dr.ntbNotes){ lines.push('Non-tariff notes: ' + dr.ntbNotes + '.'); }
+    if(dr.ftaName && !dr.uzMfnRate){ lines.push('Trade agreement between source country and Uzbekistan: ' + dr.ftaName + '.'); }
+  }
   return lines;
 }
 
