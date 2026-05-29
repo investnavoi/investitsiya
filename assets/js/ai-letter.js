@@ -2961,15 +2961,15 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   // Persona-based prompt tailoring
   var persona = detectContactPersona(comp.lavozim || comp.title || '');
   var personaConfig = {
-    ceo:        { wordRange:'160-220', paras:4, angle:'strategic partnership + ROI — CEO reads in 30s; specific dollar outcome; 2 strong figures; end with a short call ask',                                                                     hook:'strategic value / ROI' },
-    cfo:        { wordRange:'200-260', paras:4, angle:'cost structure — tax, wage, energy savings with exact % figures; ROI math; concrete working capital terms',                                                                                hook:'cost reduction math' },
-    coo:        { wordRange:'210-280', paras:4, angle:'supply chain — Navoi logistics, 13-market reach, freight cost per route, lead times',                                                                                                      hook:'supply reliability + freight' },
-    technical:  { wordRange:'210-280', paras:4, angle:'product/engineering — manufacturing capacity, quality standards (ISO), skilled workforce metrics',                                                                                         hook:'technical capability' },
-    export:     { wordRange:'220-290', paras:4, angle:'trade access — 13 neighboring markets, FTA tariff zeros, multi-modal corridors from Navoi',                                                                                                hook:'market access' },
-    procurement:{ wordRange:'210-270', paras:4, angle:'unit economics — landed cost per ton/container including tariffs and freight; clear "% saving vs current source"',                                                                         hook:'landed cost savings' },
-    sales:      { wordRange:'220-290', paras:4, angle:'new Central Asia revenue channel — 80M regional consumers, FTA access, co-marketing',                                                                                                      hook:'revenue growth' },
-    marketing:  { wordRange:'220-290', paras:4, angle:'Central Asia brand entry, co-branded Navoi FEZ narrative, trade-fair co-presence',                                                                                                         hook:'brand entry' },
-    manager:    { wordRange:'230-300', paras:5, angle:'balanced overview — cost, logistics, tariffs, next steps',                                                                                                                                 hook:'partnership overview' }
+    ceo:        { wordRange:'280-380', paras:5, angle:'ALL available advantages — cost, tax, energy, logistics, tariffs, FEZ incentives. Lead with ROI/dollar outcome; cover every metric in the data block; CEO must see the full picture at a glance',                                                            hook:'full economic picture / ROI' },
+    cfo:        { wordRange:'320-420', paras:5, angle:'ALL cost and fiscal advantages — cover every figure: energy, labour, corporate tax rate, property tax, import duties, FEZ holiday years. Show arithmetic where possible. Leave nothing out',                                                                 hook:'complete cost reduction picture' },
+    coo:        { wordRange:'320-420', paras:5, angle:'ALL advantages — lead with supply chain and logistics, then cover every remaining metric: energy, tax, FEZ, tariffs. Full picture of what running operations from Navoi looks like',                                                                         hook:'supply chain + full cost overview' },
+    technical:  { wordRange:'320-420', paras:5, angle:'ALL advantages — lead with manufacturing/technical fit, then cover every metric: energy cost, labour, FEZ incentives, logistics, tariffs. Complete picture',                                                                                                hook:'technical capability + full economics' },
+    export:     { wordRange:'320-400', paras:5, angle:'ALL advantages — lead with market access and tariffs, then cover every remaining metric: energy, labour, tax, FEZ, logistics. Nothing omitted',                                                                                                             hook:'market access + full cost picture' },
+    procurement:{ wordRange:'320-400', paras:5, angle:'ALL advantages — lead with unit economics and landed cost, then cover every metric: energy, labour, tax holiday, import duties, logistics. Show every saving explicitly',                                                                                   hook:'complete landed cost savings' },
+    sales:      { wordRange:'320-400', paras:5, angle:'ALL advantages — lead with Central Asia revenue channel, then cover every supporting metric: FEZ incentives, cost advantages, logistics, tariffs. Full picture',                                                                                            hook:'revenue growth + full economics' },
+    marketing:  { wordRange:'320-400', paras:5, angle:'ALL advantages — lead with brand/market entry angle, then cover every metric: cost, tax, logistics, tariffs, FEZ. Complete proposition',                                                                                                                   hook:'brand entry + full cost picture' },
+    manager:    { wordRange:'350-460', paras:6, angle:'ALL available advantages — comprehensive overview: cost, energy, labour, corporate tax, FEZ incentives (all terms), logistics, tariffs, market access. Cover everything in the data block',                                                                 hook:'complete investment overview' }
   };
   var pc = personaConfig[persona] || personaConfig.manager;
 
@@ -3002,6 +3002,8 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   var _noCountry = !!(analysis && analysis._noCountry);
   var dataBlock =
     'VERIFIED DATA (the ONLY numbers you are allowed to cite — do not invent any other figure or year):\n\n' +
+    'COVERAGE RULE: Every bullet point in this data block MUST appear somewhere in the email body. ' +
+    'Do not skip any metric. Use all of them.\n\n' +
     fezBlock +
     '\n\n' +
     (_noCountry
@@ -3009,11 +3011,11 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
         'Do NOT invent any country-vs-Uzbekistan comparison figures whatsoever. ' +
         'Focus the email entirely on the FEZ incentives, Navoi logistics, and the 13-market regional access above.'
       : (advantageLines.length
-          ? 'COMPARATIVE ADVANTAGES vs ' + (comp.davlat || 'recipient country') + ' (official API data, cite with source):\n' +
+          ? 'COMPARATIVE ADVANTAGES vs ' + (comp.davlat || 'recipient country') + ' (official API data, cite with source — include ALL of these in the email):\n' +
             advantageLines.map(function(line){ return '• ' + line; }).join('\n')
           : 'COMPARATIVE ADVANTAGES: API data does not show a statistically significant advantage on standard metrics for this country pair. Do NOT invent comparative figures. Focus the email on the FEZ incentives and logistics above.')) +
-    (transportLines.length ? '\n\nLOGISTICS / TRANSPORT (estimated costs, cite as approximate):\n' + transportLines.map(function(line){ return '• ' + line; }).join('\n') : '') +
-    (!_noCountry && tariffLines.length ? '\n\nTARIFFS (WITS/UNCTAD official data — cite only where Uzbekistan tariff is lower):\n' + tariffLines.map(function(line){ return '• ' + line; }).join('\n') : '');
+    (transportLines.length ? '\n\nLOGISTICS / TRANSPORT (estimated costs, cite as approximate — include ALL of these in the email):\n' + transportLines.map(function(line){ return '• ' + line; }).join('\n') : '') +
+    (!_noCountry && tariffLines.length ? '\n\nTARIFFS (WITS/UNCTAD official data — include ALL of these in the email):\n' + tariffLines.map(function(line){ return '• ' + line; }).join('\n') : '');
 
   var personaBlock =
     'RECIPIENT PROFILE:\n' +
@@ -3038,14 +3040,23 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       economic implication from it. NEVER evaluate their character or intent ("this highlights your ' +
     '       commitment", "demonstrating your leadership"). Describe what happened and what it means in cost ' +
     '       or logistics terms. ONE or two sentences.\n' +
-    '  ¶2 — The economic case for Navoi, specific to them. Take the cost driver most relevant to their ' +
-    '       industry (energy, labour, logistics, or tariff access) and show the arithmetic. Do not say ' +
-    '       "significantly lower" — put the number. Example: "At $40/MWh against [country] grid rates, ' +
-    '       a facility at that scale running at 80% load saves approximately $[X]K per year on energy alone."\n' +
-    '  ¶3 — The regulatory framework. State the single most relevant FEZ incentive: tax holiday years, ' +
-    '       0% import duty on equipment, or labour cost advantage. Reference the specific Presidential ' +
-    '       Decree number if available (e.g. "Decree No. 820"). One comparative figure maximum. ' +
-    '       Frame it as legal certainty, not a sales claim.\n' +
+    '  ¶2 — COST AND ECONOMIC ADVANTAGES: Cover EVERY entry in the COMPARATIVE ADVANTAGES section ' +
+    '       of the VERIFIED DATA block. Do not skip any metric. For each advantage, state BOTH the ' +
+    '       Navoi figure AND the recipient country figure explicitly, then the annual implication ' +
+    '       in one phrase. Group naturally — operating costs (energy + labour), fiscal position ' +
+    '       (corporate tax + property tax + import duties), market access if present. Show arithmetic ' +
+    '       where data allows. This paragraph may be 3–5 sentences or two short paragraphs if there ' +
+    '       are 5 or more metrics. Example rhythm: "Industrial electricity in Navoi runs at $40/MWh ' +
+    '       against [country]\'s $[X]/MWh — at [Y]MW and 8,000 hours/year that is roughly $[Z]K in ' +
+    '       annual savings. Labour costs follow the same pattern: [UZ figure] versus [country figure]. ' +
+    '       Corporate income tax is [UZ%] versus [country%]."\n' +
+    '  ¶3 — REGULATORY FRAMEWORK AND ALL REMAINING ADVANTAGES: Cover ALL FEZ incentive terms: ' +
+    '       tax holiday (exact years from the data block), property tax exemption, 0% import customs ' +
+    '       on technological equipment AND raw materials, land allocation terms if listed. Reference ' +
+    '       the specific Presidential Decree number (e.g. "Decree No. 820"). Then add ALL logistics ' +
+    '       and transport data from the LOGISTICS section, and ALL tariff advantages from the TARIFFS ' +
+    '       section. Every line in the data block must appear in the email — either in ¶2 or ¶3. ' +
+    '       Frame the whole paragraph as legal certainty and infrastructure fact, not a sales claim.\n' +
     '  ¶4 — One clear invitation. Do NOT offer multiple options — that is a menu, not a decision. ' +
     '       Choose exactly one: either a named colleague who can send a two-page cost-comparison ' +
     '       summary within 5 business days, OR an in-person visit to Navoi with logistics covered. ' +
@@ -3087,7 +3098,10 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     "meet your needs", "uniquely positioned", "I would welcome the chance".\n' +
     ' 15. GOVERNMENT REGISTER: You represent a public institution. State the legal/regulatory framework ' +
     '     with precision. Reference specific decree numbers (e.g. "Decree No. 820"), not vague ' +
-    '     "current Presidential Decrees". Confidence comes from verified facts, not enthusiasm.\n\n' +
+    '     "current Presidential Decrees". Confidence comes from verified facts, not enthusiasm.\n' +
+    ' 16. COVERAGE IS MANDATORY: Before finalising the email, check that EVERY bullet point from the ' +
+    '     VERIFIED DATA block appears in the text. If a metric is in the data, it must be in the email. ' +
+    '     Skipping any advantage is not acceptable.\n\n' +
     'EXAMPLES — calibrate your voice from these (DO NOT copy the wording):\n' +
     '  Weak (AI-sounding, full of clichés):\n' +
     '    "I hope this email finds you well. I am writing to introduce the Navoi Free Economic Zone, ' +
