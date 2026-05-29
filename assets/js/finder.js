@@ -2697,9 +2697,37 @@ function apolloAbsoluteUrl(url){
   return '';
 }
 
+// Domen TLD → davlat nomi (ko'p ishlatiladigan ccTLD'lar). com/net/org generik — skip.
+var APOLLO_TLD_COUNTRY = {
+  br:'Brazil', in:'India', cn:'China', ru:'Russia', tr:'Turkey', de:'Germany',
+  fr:'France', it:'Italy', es:'Spain', nl:'Netherlands', uk:'United Kingdom',
+  gb:'United Kingdom', us:'United States', ca:'Canada', au:'Australia', jp:'Japan',
+  kr:'South Korea', ae:'United Arab Emirates', sa:'Saudi Arabia', eg:'Egypt',
+  za:'South Africa', mx:'Mexico', ar:'Argentina', pl:'Poland', se:'Sweden',
+  ch:'Switzerland', at:'Austria', be:'Belgium', pt:'Portugal', gr:'Greece',
+  pk:'Pakistan', id:'Indonesia', th:'Thailand', vn:'Vietnam', my:'Malaysia',
+  ph:'Philippines', ir:'Iran', il:'Israel', kz:'Kazakhstan', uz:'Uzbekistan',
+  ua:'Ukraine', ro:'Romania', cz:'Czech Republic', no:'Norway', fi:'Finland',
+  dk:'Denmark', ie:'Ireland', sg:'Singapore', nz:'New Zealand', cl:'Chile',
+  co:'Colombia', pe:'Peru', ng:'Nigeria', ke:'Kenya', ma:'Morocco', qa:'Qatar'
+};
+function apolloCountryFromWebsite(website){
+  var w = String(website || '').trim().toLowerCase();
+  if(!w) return '';
+  try {
+    if(!/^https?:\/\//.test(w)) w = 'https://' + w;
+    var host = new URL(w).hostname.replace(/^www\./,'');
+    var bits = host.split('.');
+    var tld = bits[bits.length - 1];
+    // .com.br, .co.uk kabilarda oxirgi qism ccTLD bo'ladi
+    if(APOLLO_TLD_COUNTRY[tld]) return APOLLO_TLD_COUNTRY[tld];
+  } catch(_e){}
+  return '';
+}
+
 // Apollo org obyektidan davlat nomini turli maydonlardan ajratib olish.
 // Apollo davlatni country, primary_location.country, nested organization.country,
-// yoki raw_address oxirida qaytaradi.
+// raw_address oxirida, yoki website domeni TLD'sida qaytaradi.
 function apolloExtractOrgCountry(org){
   if(!org) return '';
   var c = String(
@@ -2713,7 +2741,8 @@ function apolloExtractOrgCountry(org){
     var parts = addr.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
     if(parts.length) return parts[parts.length - 1];
   }
-  return '';
+  // Oxirgi fallback: website domeni TLD'sidan davlat
+  return apolloCountryFromWebsite(org.website_url || org.website || org.organization_website || '');
 }
 
 function mapApolloOrganizationToFinderResult(org, country, meta){
@@ -4656,6 +4685,21 @@ async function runCompanyFinder(source){
           };
           var peopleData = await apolloRequestJson(peopleReq);
           var persons = normalizeApolloArray(peopleData, ['people','contacts']);
+          // Davlat — org search'da bo'sh bo'lsa, people natijasidagi to'liq org obyektidan
+          // yoki person'ning o'zidan (country / city,state) olamiz.
+          if(!String(tpItem.davlat || '').trim()){
+            for(var _pci=0; _pci<persons.length; _pci++){
+              var _pp = persons[_pci] || {};
+              var _pc = apolloExtractOrgCountry(_pp.organization || {}) ||
+                        String(_pp.country || (_pp.organization && _pp.organization.country) || '').trim();
+              if(_pc){ tpItem.davlat = _pc; break; }
+            }
+            // Hali bo'sh bo'lsa — kompaniya website domeni TLD'sidan (masalan stone.com.br → Brazil)
+            if(!String(tpItem.davlat || '').trim()){
+              tpItem.davlat = apolloCountryFromWebsite(tpItem.website || '');
+            }
+            console.log('[Apollo Top] country for', tpItem.kompaniya, '→', tpItem.davlat || '(bo\'sh)', '| person[0]:', persons[0] && { country: persons[0].country, city: persons[0].city, state: persons[0].state, org_country: persons[0].organization && persons[0].organization.country });
+          }
           // Candidates: email bor yoki hasEmailHint bor
           var allContacts = persons.map(function(p){ return apolloPersonToContact(p, p.organization || {}); }).filter(Boolean);
           var directEmail = allContacts.filter(finderContactHasEmail);
