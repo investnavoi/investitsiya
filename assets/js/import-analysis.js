@@ -4758,10 +4758,11 @@ async function analyzeInvestmentMaterial(){
       }, function(textDelta){
         _investAiMarkdown += textDelta;
         renderInvestAiMarkdown(_investAiMarkdown);
-        var stage = inferInvestAiPhase(_investAiMarkdown);
-        if(stage !== _investAiPhase){
-          _investAiPhase = stage;
-          renderInvestAiProgress(_investAiPhase, false);
+        // Matn oqib kela boshlashi bilanoq barcha fazalarni "Tayyor" deb belgilaymiz —
+        // foydalanuvchi "Jarayonda"da kutib qolmasin (hisobot baribir real vaqtda yozilib boradi).
+        if(_investAiPhase !== 3){
+          _investAiPhase = 3;
+          renderInvestAiProgress(3, true);
         }
       });
     } catch(e){
