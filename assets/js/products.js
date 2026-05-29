@@ -10,18 +10,18 @@ if(!DB.tradeSnapshots) DB.tradeSnapshots = [];
 if(!DB.importSnapshots) DB.importSnapshots = [];
 
 var TARGET_COUNTRIES = [
-  {code:'RU',name:'Rossiya',flag:'🇷🇺',comtrade:'643'},
-  {code:'KZ',name:'Qozog\'iston',flag:'🇰🇿',comtrade:'398'},
-  {code:'KG',name:'Qirg\'iziston',flag:'🇰🇬',comtrade:'417'},
-  {code:'TJ',name:'Tojikiston',flag:'🇹🇯',comtrade:'762'},
-  {code:'TM',name:'Turkmaniston',flag:'🇹🇲',comtrade:'795'},
-  {code:'AZ',name:'Ozarbayjon',flag:'🇦🇿',comtrade:'031'},
-  {code:'GE',name:'Gruziya',flag:'🇬🇪',comtrade:'268'},
-  {code:'AM',name:'Armaniston',flag:'🇦🇲',comtrade:'051'},
-  {code:'AF',name:'Afg\'oniston',flag:'🇦🇫',comtrade:'004'},
-  {code:'IR',name:'Eron',flag:'🇮🇷',comtrade:'364'},
-  {code:'PK',name:'Pokiston',flag:'🇵🇰',comtrade:'586'},
-  {code:'MN',name:'Mo\'g\'uliston',flag:'🇲🇳',comtrade:'496'}
+  {code:'RU',name:'Rossiya',name_en:'Russia',flag:'🇷🇺',comtrade:'643'},
+  {code:'KZ',name:'Qozog\'iston',name_en:'Kazakhstan',flag:'🇰🇿',comtrade:'398'},
+  {code:'KG',name:'Qirg\'iziston',name_en:'Kyrgyzstan',flag:'🇰🇬',comtrade:'417'},
+  {code:'TJ',name:'Tojikiston',name_en:'Tajikistan',flag:'🇹🇯',comtrade:'762'},
+  {code:'TM',name:'Turkmaniston',name_en:'Turkmenistan',flag:'🇹🇲',comtrade:'795'},
+  {code:'AZ',name:'Ozarbayjon',name_en:'Azerbaijan',flag:'🇦🇿',comtrade:'031'},
+  {code:'GE',name:'Gruziya',name_en:'Georgia',flag:'🇬🇪',comtrade:'268'},
+  {code:'AM',name:'Armaniston',name_en:'Armenia',flag:'🇦🇲',comtrade:'051'},
+  {code:'AF',name:'Afg\'oniston',name_en:'Afghanistan',flag:'🇦🇫',comtrade:'004'},
+  {code:'IR',name:'Eron',name_en:'Iran',flag:'🇮🇷',comtrade:'364'},
+  {code:'PK',name:'Pokiston',name_en:'Pakistan',flag:'🇵🇰',comtrade:'586'},
+  {code:'MN',name:'Mo\'g\'uliston',name_en:'Mongolia',flag:'🇲🇳',comtrade:'496'}
 ];
 
 var PRODUCT_SECTION_STATE = {
