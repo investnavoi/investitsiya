@@ -186,7 +186,15 @@ function getCompanyProductImportTotals(productInfo, comp){
     var allCountries = snap.countries || [];
 
     allCountries.forEach(function(c){
-      var usd = Number(c.u||0) || 0;
+      /* c.u = import_usd (2021-2024 jami). c.y = {year: usd, ...} per-yillik.
+         Agar c.u nol bo'lsa, c.y dan yig'indini hisoblaymiz (eski snapshot'lar uchun). */
+      var baseUsd = Number(c.u||0) || 0;
+      if(!baseUsd && c.y && typeof c.y === 'object'){
+        ['2021','2022','2023','2024'].forEach(function(yr){
+          baseUsd += Number((c.y)[yr] || 0) || 0;
+        });
+      }
+      var usd = baseUsd;
       var code = String(c.c||'').toUpperCase();
       if(code === 'UZ'){
         uzbekistanUsd += usd;
@@ -196,7 +204,9 @@ function getCompanyProductImportTotals(productInfo, comp){
       }
     });
 
-    if(uzbekistanUsd <= 0 && otherTwelveUsd <= 0) return null;
+    /* Agar UZ ma'lumoti yo'q bo'lsa (TARGET_COUNTRIES da UZ yo'q edi) yoki ikkisi ham nol —
+       null qaytaramiz va fetchProductImportTotalsLive ishga tushsin. */
+    if(uzbekistanUsd <= 0 || otherTwelveUsd <= 0) return null;
 
     /* Top 3 boshqa davlatlarni ham qaytaramiz, prompt'da kontekst uchun foydali. */
     otherCountries.sort(function(a,b){ return b.usd - a.usd; });
@@ -230,8 +240,9 @@ function _formatImportUsdShort(usd){
 
 /* ═══════════════════════════════════════════════════════════════
    JONLI UN COMTRADE: agar snapshot mavjud bo'lmasa, 13 davlat × 4 yil
-   import ma'lumotlarini Vercel proxy yoki CORS proxy orqali to'g'ridan
-   olamiz. Natija — exact USD raqamlar, "between X and Y" emas.
+   import ma'lumotlarini comtrade.js proxy yordamida BITTA so'rovda olamiz.
+   Bu usul trade.js orqali 13 ta alohida so'rov yuborishdan samaraliroq —
+   quota kamroq sarflanadi va O'zbekiston ham kiritilgan (snapshot'larda yo'q).
    ═══════════════════════════════════════════════════════════════ */
 async function fetchProductImportTotalsLive(productInfo, comp){
   try {
@@ -240,90 +251,52 @@ async function fetchProductImportTotalsLive(productInfo, comp){
     if(!hsCode || hsCode.length < 2) return null;
 
     var BASE = 'https://navoiy-api-proxy.vercel.app';
-    var CORS_PROXIES = [
-      'https://corsproxy.io/?',
-      'https://api.allorigins.win/raw?url=',
-      'https://api.codetabs.com/v1/proxy?quest='
-    ];
-    var countries13 = [
-      {code:'UZ', name:"O'zbekiston", comtrade:'860'},
-      {code:'TM', name:'Turkmaniston', comtrade:'795'},
-      {code:'TJ', name:'Tojikiston',   comtrade:'762'},
-      {code:'KG', name:"Qirg'iziston", comtrade:'417'},
-      {code:'KZ', name:"Qozog'iston",  comtrade:'398'},
-      {code:'MN', name:"Mo'g'uliston", comtrade:'496'},
-      {code:'RU', name:'Rossiya',      comtrade:'643'},
-      {code:'AZ', name:'Ozarbayjon',   comtrade:'031'},
-      {code:'GE', name:'Gruziya',      comtrade:'268'},
-      {code:'AM', name:'Armaniston',   comtrade:'051'},
-      {code:'IR', name:'Eron',         comtrade:'364'},
-      {code:'AF', name:"Afg'oniston",  comtrade:'004'},
-      {code:'PK', name:'Pokiston',     comtrade:'586'}
-    ];
-    var level = hsCode.length >= 6 ? '6' : (hsCode.length >= 4 ? '4' : '2');
 
-    // Comtrade `period=2021,2022,2023,2024` ko'p yilni bitta so'rovda qaytaradi.
-    var fetchCountry = async function(country){
-      var paramStr = 'reporter=' + encodeURIComponent(country.comtrade)
-        + '&year=' + encodeURIComponent('2021,2022,2023,2024')
-        + '&flow=M'
-        + '&hs=' + encodeURIComponent(hsCode)
-        + '&level=' + level;
+    /* comtrade.js proxy — 13 davlatni bitta so'rovda qaytaradi, UZ ham bor.
+       Bu so'rov YEARS=[2021,2022,2023,2024] ni avtomatik yig'adi. */
+    var countries13Names = 'Uzbekistan|Russia|Kazakhstan|Kyrgyzstan|Tajikistan|Turkmenistan|Azerbaijan|Georgia|Armenia|Afghanistan|Iran|Pakistan|Mongolia';
+    var comtradeUrl = BASE + '/api/comtrade?hs=' + encodeURIComponent(hsCode)
+      + '&countries=' + encodeURIComponent(countries13Names) + '&flow=M';
 
-      // 1) Vercel proxy
-      try {
-        var r1 = await fetch(BASE + '/api/trade?' + paramStr);
-        if(r1.ok){
-          var j1 = await r1.json();
-          var d1 = j1 && j1.data ? j1.data : [];
-          if(d1.length){
-            var sum1 = 0;
-            d1.forEach(function(d){ sum1 += Number(d.primaryValue || d.cifvalue || d.value || 0) || 0; });
-            if(sum1 > 0) return { code: country.code, name: country.name, usd: sum1 };
-          }
-        }
-      } catch(e1){}
-
-      // 2) CORS proxy → bevosita Comtrade
-      var directUrl = 'https://comtradeapi.un.org/public/v1/preview/C/A/HS?'
-        + 'reporterCode=' + encodeURIComponent(country.comtrade)
-        + '&period=' + encodeURIComponent('2021,2022,2023,2024')
-        + '&flowCode=M&cmdCode=' + encodeURIComponent(hsCode)
-        + '&partnerCode=0&maxRecords=500&includeDesc=true';
-      for(var pi = 0; pi < CORS_PROXIES.length; pi++){
-        try {
-          var r2 = await fetch(CORS_PROXIES[pi] + encodeURIComponent(directUrl));
-          if(r2.ok){
-            var j2 = await r2.json();
-            var d2 = j2 && j2.data ? j2.data : [];
-            if(d2.length){
-              var sum2 = 0;
-              d2.forEach(function(d){ sum2 += Number(d.primaryValue || d.cifvalue || d.value || 0) || 0; });
-              if(sum2 > 0) return { code: country.code, name: country.name, usd: sum2 };
-            }
-          }
-        } catch(e2){}
+    var respData = null;
+    try {
+      var fetchOpts = {};
+      if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout){
+        fetchOpts.signal = AbortSignal.timeout(35000);
       }
+      var r = await fetch(comtradeUrl, fetchOpts);
+      if(r.ok){
+        respData = await r.json();
+      }
+    } catch(e1){ console.warn('[fetchProductImportTotalsLive] comtrade.js so\'rovi xato:', e1 && e1.message); }
 
-      return { code: country.code, name: country.name, usd: 0 };
-    };
+    if(!respData || !Array.isArray(respData.countries) || !respData.countries.length){
+      console.warn('[fetchProductImportTotalsLive] comtrade.js null/bo\'sh qaytardi');
+      return null;
+    }
 
-    // 13 davlat parallel ravishda olib kelinadi.
-    var results = await Promise.all(countries13.map(function(c){ return fetchCountry(c); }));
-
+    /* 13 davlat natijasini parse qilish */
     var uzUsd = 0, otherUsd = 0;
     var otherCountries = [];
-    results.forEach(function(r){
-      if(r.code === 'UZ'){
-        uzUsd = r.usd;
+    respData.countries.forEach(function(c){
+      /* import_usd = 2021-2024 yig'indisi (comtrade.js da totalValue sifatida hisoblanadi) */
+      var usd = Number(c.import_usd || 0) || 0;
+      if(!usd && c.year_imports && typeof c.year_imports === 'object'){
+        ['2021','2022','2023','2024'].forEach(function(yr){
+          usd += Number(c.year_imports[yr] || 0) || 0;
+        });
+      }
+      var code = String(c.code || '').toUpperCase();
+      if(code === 'UZ'){
+        uzUsd = usd;
       } else {
-        otherUsd += r.usd;
-        if(r.usd > 0) otherCountries.push({ name: r.name, usd: r.usd });
+        otherUsd += usd;
+        if(usd > 0) otherCountries.push({ name: c.name, usd: usd });
       }
     });
 
     if(uzUsd <= 0 && otherUsd <= 0){
-      console.warn('[fetchProductImportTotalsLive] hech qaysi davlat uchun ma\'lumot topilmadi');
+      console.warn('[fetchProductImportTotalsLive] barcha 13 davlat uchun 0 USD');
       return null;
     }
 
@@ -335,12 +308,13 @@ async function fetchProductImportTotalsLive(productInfo, comp){
       combinedUsd: uzUsd + otherUsd,
       topOthers: otherCountries.slice(0, 3),
       productName: productInfo.displayName || '',
-      hsCode: productInfo.hsCode || '',
-      source: 'UN Comtrade (live fetch)',
+      hsCode: hsCode,
+      source: 'UN Comtrade (live)',
       period: '2021-2024',
       countryCount: 13,
       isLive: true
     };
+
   } catch(e){
     console.warn('[fetchProductImportTotalsLive] xato:', e && e.message);
     return null;
