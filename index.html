@@ -44,6 +44,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/default-data.js"></script>
 <script src="assets/js/api-config.js"></script>
 <script src="assets/js/gemini.js?v=real-contacts-v1"></script>
+<script src="assets/js/openai.js?v=v1"></script>
 <script src="assets/js/apollo-config.js"></script>
 <script src="assets/js/apollo.js" defer></script>
 <script src="assets/js/snov.js" defer></script>
@@ -152,7 +153,153 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
   #page-trade #tradeTableCard .tscroll{overflow-x:auto !important;}
 </style>
 </head>
-<body class="">
+<body class="" data-auth="loading">
+
+<!-- ═══════════════════════════════════════
+     AUTH GATE — sayt faqat login qilganlar uchun ochiq.
+     Auth state loaded bo'lguncha "loading", login qilinmagan bo'lsa
+     "false" → page content yashiriladi, auth-gate ko'rsatiladi.
+     ═══════════════════════════════════════ -->
+<style>
+  /* Sayt tarkibini auth bo'lmaguncha yashir */
+  body[data-auth="false"] > :not(#authGate):not(script):not(style):not(#fb-loading) { display:none !important; }
+  body[data-auth="loading"] > :not(#authGate):not(script):not(style):not(#fb-loading) { visibility:hidden; }
+  body[data-auth="true"] #authGate { display:none !important; }
+
+  #authGate {
+    position:fixed; inset:0; z-index:99998;
+    background:linear-gradient(135deg, #0f1629 0%, #1a2349 60%, #2d3f7a 100%);
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; padding:2rem; overflow:auto;
+  }
+  #authGate .gate-card {
+    background:#fff; border-radius:16px; padding:2.4rem 2rem;
+    width:100%; max-width:420px;
+    box-shadow:0 30px 80px rgba(0,0,0,.4);
+    animation: gateFade .4s ease both;
+  }
+  #authGate .gate-brand {
+    display:flex; align-items:center; gap:.7rem; justify-content:center;
+    margin-bottom:1.4rem;
+  }
+  #authGate .gate-brand img { width:44px; height:44px; border-radius:10px; }
+  #authGate .gate-brand-text { font-family:'Sora', sans-serif; font-weight:800; color:#0f1629; font-size:1.05rem; }
+  #authGate .gate-brand-sub { font-size:.68rem; color:#6B7280; }
+  #authGate h2 { font-family:'Sora',sans-serif; font-size:1.1rem; color:#0f1629; margin:0 0 .35rem; font-weight:700; text-align:center; }
+  #authGate .gate-sub { font-size:.74rem; color:#64748b; text-align:center; margin-bottom:1.4rem; }
+  #authGate label { display:block; font-size:.7rem; font-weight:600; color:#344054; margin-bottom:6px; }
+  #authGate input { width:100%; padding:9px 12px; border:1.5px solid #E5E7EB; border-radius:8px; font-size:.82rem; outline:none; transition:border .15s, box-shadow .15s; box-sizing:border-box; }
+  #authGate input:focus { border-color:#465fff; box-shadow:0 0 0 3px rgba(70,95,255,.1); }
+  #authGate .gate-field { margin-bottom:.85rem; }
+  #authGate .gate-err {
+    display:none; font-size:.72rem; color:#B91C1C;
+    background:#FEF2F2; border:1px solid #FECACA; border-radius:6px;
+    padding:8px 10px; margin-bottom:.7rem;
+  }
+  #authGate button.gate-submit {
+    width:100%; padding:11px; border:none; border-radius:8px;
+    background:#465fff; color:#fff; font-size:.85rem; font-weight:600;
+    cursor:pointer; transition:background .15s;
+  }
+  #authGate button.gate-submit:hover { background:#3b50e0; }
+  #authGate button.gate-submit:disabled { opacity:.6; cursor:wait; }
+  #authGate .gate-forgot {
+    background:none; border:none; color:#465fff; font-size:.72rem;
+    cursor:pointer; text-decoration:underline; margin-top:.6rem; display:block;
+    width:100%; text-align:center;
+  }
+  #authGate .gate-footer {
+    text-align:center; margin-top:1.4rem; font-size:.66rem; color:#94a3b8;
+  }
+  @keyframes gateFade { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+</style>
+<div id="authGate" aria-hidden="false">
+  <div class="gate-card">
+    <div class="gate-brand">
+      <img src="assets/logo.png" alt="Navoi" onerror="this.style.display='none'">
+      <div>
+        <div class="gate-brand-text">Navoi Investment Portal</div>
+        <div class="gate-brand-sub">Navoiy viloyati investitsiya bo'limi</div>
+      </div>
+    </div>
+    <h2>Tizimga kirish</h2>
+    <div class="gate-sub">Faqat ro'yxatdan o'tgan xodimlar uchun</div>
+    <div class="gate-field">
+      <label for="gateEmail">Email</label>
+      <input type="email" id="gateEmail" placeholder="email@example.com" autocomplete="email">
+    </div>
+    <div class="gate-field">
+      <label for="gatePass">Parol</label>
+      <input type="password" id="gatePass" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')doGateLogin()">
+    </div>
+    <div class="gate-err" id="gateErr"></div>
+    <button class="gate-submit" id="gateBtn" onclick="doGateLogin()">Kirish</button>
+    <button class="gate-forgot" onclick="doGateForgotPassword()">Parolni unutdingizmi?</button>
+    <div class="gate-footer">
+      © Navoi Regional Investment Office<br>
+      Yordam uchun: admin bilan bog'laning
+    </div>
+  </div>
+</div>
+
+<script>
+/* Auth gate handlerlar — admin-login.js'dagi fbLogin / fbSendPasswordReset ga proxy.
+   Login muvaffaqiyatli bo'lsa, applyAdminUI body data-auth ni "true" ga o'zgartiradi. */
+async function doGateLogin(){
+  var emailEl = document.getElementById('gateEmail');
+  var passEl  = document.getElementById('gatePass');
+  var errEl   = document.getElementById('gateErr');
+  var btn     = document.getElementById('gateBtn');
+  var email = (emailEl && emailEl.value || '').trim();
+  var pass  = (passEl && passEl.value || '');
+  if(!email || !pass){
+    errEl.textContent = 'Email va parolni kiriting'; errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+  if(btn){ btn.disabled = true; btn.textContent = 'Kirmoqda...'; }
+  try{
+    if(typeof window.fbLogin !== 'function') throw new Error('Tizim hali yuklanmagan, biroz kuting');
+    await window.fbLogin(email, pass);
+    /* applyAdminUI hook orqali data-auth=true qo'yiladi → gate yopiladi */
+  }catch(e){
+    errEl.textContent = (e && e.message) ? e.message : 'Kirishda xatolik';
+    errEl.style.display = 'block';
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Kirish'; }
+  }
+}
+async function doGateForgotPassword(){
+  var emailEl = document.getElementById('gateEmail');
+  var errEl   = document.getElementById('gateErr');
+  var email = (emailEl && emailEl.value || '').trim();
+  if(!email){
+    errEl.textContent = 'Avval email kiriting'; errEl.style.display = 'block'; return;
+  }
+  try{
+    if(typeof window.fbSendPasswordReset !== 'function') throw new Error('Tizim hali yuklanmagan');
+    await window.fbSendPasswordReset(email);
+    errEl.style.background = '#ECFDF5';
+    errEl.style.borderColor = '#A7F3D0';
+    errEl.style.color = '#047857';
+    errEl.textContent = 'Parol tiklash havolasi ' + email + ' ga yuborildi';
+    errEl.style.display = 'block';
+  }catch(e){
+    errEl.style.background = '#FEF2F2';
+    errEl.style.borderColor = '#FECACA';
+    errEl.style.color = '#B91C1C';
+    errEl.textContent = (e && e.message) ? e.message : 'Yuborishda xatolik';
+    errEl.style.display = 'block';
+  }
+}
+/* Loading timeout — agar 6 soniyada auth state kelmasa, login ko'rsat. */
+setTimeout(function(){
+  if(document.body.dataset.auth === 'loading'){
+    document.body.dataset.auth = 'false';
+  }
+}, 6000);
+</script>
+
 <!-- Loader (hidden immediately - Hope UI loader requires images we don't have) -->
 <div id="loading" style="display:none">
   <div class="loader simple-loader"><div class="loader-body"></div></div>
@@ -2867,8 +3014,9 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
     <div class="form-card" style="margin-bottom:1.2rem">
       <div class="form-title"><div class="form-title-icon">🔑</div> API Kalitlar</div>
       <div class="form-grid">
-        <div class="form-group span-2"><label class="form-label">Gemini API Key (asosiy)</label><input class="form-input" id="set-gemini-key" type="password" placeholder="AIzaSy..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">aistudio.google.com dan oling</div></div>
-        <div class="form-group span-2"><label class="form-label">Gemini API Key (zaxira)</label><input class="form-input" id="set-gemini-key2" type="password" placeholder="AIzaSy... (ikkinchi akkaunt)"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">Asosiy kvota tugaganda avtomatik ishlatiladi</div></div>
+        <div class="form-group span-2"><label class="form-label">🤖 OpenAI API Key (asosiy — chatbot + AI email)</label><input class="form-input" id="set-openai-key" type="password" placeholder="sk-proj-..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">platform.openai.com/api-keys dan oling. Chatbot va AI email generatsiyasi shu kalitdan foydalanadi (gpt-4o + web search).</div></div>
+        <div class="form-group span-2"><label class="form-label">Gemini API Key (asosiy — zaxira/tarjima uchun)</label><input class="form-input" id="set-gemini-key" type="password" placeholder="AIzaSy..."><div style="font-size:.6rem;color:var(--text3);margin-top:4px">aistudio.google.com dan oling. Auto-tarjima va zaxira ishlatishlar uchun.</div></div>
+        <div class="form-group span-2"><label class="form-label">Gemini API Key (zaxira)</label><input class="form-input" id="set-gemini-key2" type="password" placeholder="AIzaSy... (ikkinchi akkaunt)"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">Gemini asosiy kvota tugaganda avtomatik ishlatiladi</div></div>
         <div class="form-group span-2"><label class="form-label">Apollo API Key</label><input class="form-input" id="set-apollo-key" type="password" placeholder="API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">apollo.io dan oling</div></div>
         <div class="form-group span-2"><label class="form-label">SeaRates API Key</label><input class="form-input" id="set-searates-key" type="password" placeholder="SeaRates API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">searates.com/integrations (bepul — 100 so'rov/oy)</div></div>
         <div class="form-group span-2"><label class="form-label">UN Comtrade Subscription Key</label><input class="form-input" id="set-comtrade-key" type="password" placeholder="UN Comtrade subscription key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">comtradeplus.un.org → Sign Up → Subscription (bepul: 500 so'rov/kun, 100K qator). Kalitsiz: 100 so'rov/kun.</div></div>
@@ -3783,7 +3931,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
     <div class="chat-head-avatar">🤖</div>
     <div class="chat-head-info">
       <div class="chat-head-name">Navoiy AI Yordamchi</div>
-      <div class="chat-head-status">Gemini AI — investitsiya savollari uchun</div>
+      <div class="chat-head-status">Sizning AI yordamchingiz</div>
     </div>
     <button class="chat-head-close" onclick="toggleChat()">✕</button>
   </div>

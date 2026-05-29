@@ -483,10 +483,30 @@ window.fbDeleteCollection = async function(colName){
   } catch(e){ console.error('fbDeleteCollection error:', e); }
 };
 
-// Wait for DB to be defined then load
+// Auth state ni kutish — sayt faqat login qilganlar uchun ochiq, shuning uchun
+// Firestore so'rovlari auth tugaguncha kutadi. publicRead → isAuthed bo'ldi —
+// anonim so'rov endi permission-denied qaytaradi.
+window._fbLoadStarted = false;
+function _kickoffFirstFirestoreLoad(){
+  if(window._fbLoadStarted) return;
+  if(!window._currentUser) return; // hali login qilinmagan
+  window._fbLoadStarted = true;
+  try{
+    var urlParams = new URLSearchParams(window.location.search);
+    var pageFromUrl = urlParams.get('page');
+    if(pageFromUrl && typeof showPage==='function'){
+      showPage(pageFromUrl);
+    } else if(typeof showPage==='function'){
+      showPage('investors');
+    }
+  }catch(e){ if(typeof showPage==='function') showPage('investors'); }
+  loadFromFirestore();
+}
+
+// Wait for DB to be defined, then prepare UI and arm auth listener
 function waitForDB(){
   if(typeof DB !== 'undefined' && typeof renderAll === 'function'){
-    // Restore saved language
+    // Restore saved language (auth talab qilinmaydi — UI qoladi)
     const savedLang = localStorage.getItem('_lang');
     if(savedLang && ['uz','ru','en'].includes(savedLang)){
       window.currentLang = savedLang;
@@ -496,25 +516,23 @@ function waitForDB(){
       });
       var langLabel = document.getElementById('currentLangLabel');
       if(langLabel) langLabel.textContent = savedLang.toUpperCase();
-      // Auto-translate after page renders if non-Uzbek
       if(savedLang !== 'uz' && typeof autoTranslatePage === 'function'){
         [500, 2000, 5000, 10000].forEach(function(delay){
           setTimeout(function(){ autoTranslatePage(savedLang); }, delay);
         });
       }
     }
-    // Firebase Auth handles admin session — see firebase-auth.js
-    // URL ?page= parametridan sahifani darhol tiklash
-    try{
-      var urlParams = new URLSearchParams(window.location.search);
-      var pageFromUrl = urlParams.get('page');
-      if(pageFromUrl && typeof showPage==='function'){
-        showPage(pageFromUrl);
-      } else {
-        showPage('investors');
+    // Agar auth allaqachon hal qilingan bo'lsa (refresh holatida), darrov ishga tushir
+    _kickoffFirstFirestoreLoad();
+    // Aks holda auth qachon o'rnatilsa, polling orqali aniqlaymiz
+    var pollAuth = setInterval(function(){
+      if(window._currentUser){
+        clearInterval(pollAuth);
+        _kickoffFirstFirestoreLoad();
       }
-    }catch(e){ showPage('investors'); }
-    loadFromFirestore();
+    }, 200);
+    // 5 daqiqa ichida auth bo'lmasa, polling to'xtaydi (login qilmagan visitor)
+    setTimeout(function(){ clearInterval(pollAuth); }, 5 * 60 * 1000);
   } else {
     setTimeout(waitForDB, 100);
   }

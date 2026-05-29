@@ -17,6 +17,8 @@ function loadSettings(){
   });
   // API keys from Firebase
   var keys = window._apiKeys||{};
+  var oaEl = document.getElementById('set-openai-key');
+  if(oaEl) oaEl.value = keys.openai||'';
   var gkEl = document.getElementById('set-gemini-key');
   if(gkEl) gkEl.value = keys.gemini||getGeminiKey()||'';
   var gk2El = document.getElementById('set-gemini-key2');
@@ -53,6 +55,10 @@ function saveSettings(){
   if(typeof fbSaveSettings==='function') fbSaveSettings(DB.settings);
 
   // Save API keys to Firebase (alohida collection)
+  var openaiVal = (document.getElementById('set-openai-key')||{}).value||'';
+  if(openaiVal && typeof saveApiKey==='function'){
+    saveApiKey('openai', openaiVal.trim());
+  }
   var geminiVal = (document.getElementById('set-gemini-key')||{}).value||'';
   var apolloVal = (document.getElementById('set-apollo-key')||{}).value||'';
   if(geminiVal && typeof saveApiKey==='function'){

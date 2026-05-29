@@ -23,6 +23,7 @@ const JS_FILES = [
   'default-data.js',
   'api-config.js',
   'gemini.js',
+  'openai.js',
   'apollo-config.js',
   'apollo.js',
   'snov.js',
@@ -130,8 +131,9 @@ async function build(){
   html = html.replace('</head>', '<script src="assets/js/bundle.min.js"></script>\n</head>');
   await writeFile(join(DIST, 'index.html'), html);
 
-  // 7. Copy firebase-init.js (ES module — not bundled, used as-is)
+  // 7. Copy firebase-init.js + firebase-auth.js (ES modules — not bundled, used as-is)
   await copyFile(join(ROOT, 'assets/js/firebase-init.js'), join(DIST, 'assets/js/firebase-init.js'));
+  await copyFile(join(ROOT, 'assets/js/firebase-auth.js'), join(DIST, 'assets/js/firebase-auth.js'));
 
   // 8. Copy static assets
   console.log('📁 Static fayllarni nusxalash...');

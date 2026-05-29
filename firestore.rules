@@ -9,10 +9,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /* PUBLIC READ — barcha foydalanuvchilarga ochiq (kirish talab qilinmaydi).
-       Birinchi martta saytga kirayotganlar ham hamma ma'lumotni ko'rishi uchun. */
+    /* READ — sayt faqat ruxsat etilgan login/parollar bilan kirilgan foydalanuvchilarga
+       ochiq. Public foydalanuvchilar saytni ko'ra olmaydi.
+       Avval `return true;` edi (public access), endi auth talab qilinadi. */
     function publicRead() {
-      return true;
+      return isAuthed();
     }
 
     /* Domain whitelist disabled — any authenticated user can read.
@@ -110,9 +111,12 @@ service cloud.firestore {
       allow write: if isAuthed();
     }
 
-    /* API Keys — ADMIN ONLY — contains 3rd-party secrets */
+    /* API Keys — READ uchun har qanday auth qilingan foydalanuvchi (chatbot + AI email
+       generatsiyasi kalitlarni o'qib olishi kerak). WRITE faqat admin uchun. Sayt faqat
+       ruxsat etilgan login/parollar bilan kirilgani uchun risk past — har bir
+       foydalanuvchi ishonchli xodim hisoblanadi. */
     match /apiKeys/{id} {
-      allow read: if isAdmin();
+      allow read: if isAuthed();
       allow write: if isAdmin();
     }
 

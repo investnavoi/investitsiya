@@ -114,6 +114,15 @@ async function forgotPassword(){
 window.forgotPassword = forgotPassword;
 
 function applyAdminUI(admin, user){
+  /* Auth gate — login qilingan bo'lsa saytni ochamiz, aks holda gate ko'rinadi */
+  try {
+    document.body.dataset.auth = user ? 'true' : 'false';
+    /* Login qilingach: chatbot/dot reset, oldingi user qoldiqlari tozalansin */
+    if(user && typeof window.resetChat === 'function'){
+      /* faqat user almashganda chat tarixini tozalash kerak emas — qoldiramiz */
+    }
+  } catch(e){}
+
   const av = document.getElementById('navAvatar');
   const un = document.getElementById('navUname');
   const lbl = document.getElementById('adminTabLabel');
