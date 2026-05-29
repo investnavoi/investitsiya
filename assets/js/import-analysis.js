@@ -227,8 +227,11 @@ async function fetchComtrade(hsCode, year, targetCountries, source){
     if(hsCode !== 'TOTAL'){
       url += '&flow='+encodeURIComponent(getImportAnalysisTradeFlowCode());
     }
-    if(window._apiKeys && window._apiKeys.comtrade){
-      url += '&key='+encodeURIComponent(window._apiKeys.comtrade);
+    // «Mahsulotlar» bo'limi uchun alohida Comtrade kaliti (comtrade2). Bo'sh bo'lsa,
+    // asosiy kalitga (comtrade) qaytamiz.
+    var _matComtradeKey = (window._apiKeys && (window._apiKeys.comtrade2 || window._apiKeys.comtrade)) || '';
+    if(_matComtradeKey){
+      url += '&key='+encodeURIComponent(_matComtradeKey);
     }
     // Partner filter — tanlangan eksportyor davlat(lar) UN Comtrade'da partner sifatida filtrlanadi
     // Barcha rejimlar (TOTAL, manual HS, mahsulot HS) uchun ishlaydi

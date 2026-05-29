@@ -49,7 +49,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/apollo.js" defer></script>
 <script src="assets/js/snov.js" defer></script>
 <script src="assets/js/ai-letter.js?v=wage-fallback-v1" defer></script>
-<script src="assets/js/settings.js" defer></script>
+<script src="assets/js/settings.js?v=comtrade2-key-v1" defer></script>
 <script>
 /* Inline stub — defer scripts hali yuklanmagan paytda foydalanuvchi bosib yuborsa, xato chiqmasin */
 (function(){
@@ -68,7 +68,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/pipeline-crm.js" defer></script>
 <script src="assets/js/finder.js?v=apollo-org-enrich-country-v26" defer></script>
 <script src="assets/js/finder-world-map.js" defer></script>
-<script src="assets/js/import-analysis.js?v=openai-translate-v21" defer></script>
+<script src="assets/js/import-analysis.js?v=comtrade2-key-v22" defer></script>
 <script src="assets/js/products.js?v=trade-year-fallback-v16" defer></script>
 <script src="assets/js/email-modal.js" defer></script>
 <script src="assets/js/investor-companies.js"></script>
@@ -3020,7 +3020,8 @@ setTimeout(function(){
         <div class="form-group span-2"><label class="form-label">Gemini API Key (zaxira)</label><input class="form-input" id="set-gemini-key2" type="password" placeholder="AIzaSy... (ikkinchi akkaunt)"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">Gemini asosiy kvota tugaganda avtomatik ishlatiladi</div></div>
         <div class="form-group span-2"><label class="form-label">Apollo API Key</label><input class="form-input" id="set-apollo-key" type="password" placeholder="API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">apollo.io dan oling</div></div>
         <div class="form-group span-2"><label class="form-label">SeaRates API Key</label><input class="form-input" id="set-searates-key" type="password" placeholder="SeaRates API key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">searates.com/integrations (bepul — 100 so'rov/oy)</div></div>
-        <div class="form-group span-2"><label class="form-label">UN Comtrade Subscription Key</label><input class="form-input" id="set-comtrade-key" type="password" placeholder="UN Comtrade subscription key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">comtradeplus.un.org → Sign Up → Subscription (bepul: 500 so'rov/kun, 100K qator). Kalitsiz: 100 so'rov/kun.</div></div>
+        <div class="form-group span-2"><label class="form-label">UN Comtrade Subscription Key (Jahon tashqi savdosi)</label><input class="form-input" id="set-comtrade-key" type="password" placeholder="UN Comtrade subscription key"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">«Jahon tashqi savdosi» bo'limi uchun. comtradeplus.un.org → Sign Up → Subscription (bepul: 500 so'rov/kun, 100K qator). Kalitsiz: 100 so'rov/kun.</div></div>
+        <div class="form-group span-2"><label class="form-label">UN Comtrade Subscription Key (Mahsulotlar)</label><input class="form-input" id="set-comtrade-key2" type="password" placeholder="UN Comtrade subscription key (2-kalit)"><div style="font-size:.6rem;color:var(--text3);margin-top:4px">«Mahsulotlar» bo'limi (xomashyo AI tahlili) uchun alohida kalit. Bo'sh qoldirilsa, yuqoridagi asosiy kalit ishlatiladi.</div></div>
       </div>
       <div class="form-actions"><button class="btn btn-blue" onclick="saveSettings()">💾 Saqlash</button></div>
     </div>
