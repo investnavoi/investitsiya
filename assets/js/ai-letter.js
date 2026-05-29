@@ -3035,6 +3035,23 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     'recipient enough to be precise, concise, and direct. A diplomat who writes well is specific and unhurried — ' +
     'never flattering, never vague, never offering a menu of options.\n\n' +
     'STRUCTURE GUIDANCE (adapt to flow naturally — not a rigid template):\n' +
+    '  SALUTATION (mandatory, line 1 of the body): "Dear Mr. [Surname]," or "Dear Ms. [Surname]," using ' +
+    '       the recipient\'s actual surname from the recipient profile. If only a single name is available, ' +
+    '       use "Dear [FullName],". After the comma, leave a blank line, then continue.\n' +
+    '  BRIEF IDENTIFICATION (mandatory, 1 short sentence, before ¶1): Diplomatic protocol requires that ' +
+    '       you state who you are and the institutional context in one concise sentence — not a pitch, ' +
+    '       not a hedge, just identification. Acceptable forms (adapt, do not copy verbatim):\n' +
+    '       • "On behalf of the Department of Investment, Industry and Trade of Navoi Region, Republic ' +
+    '         of Uzbekistan, I write to you regarding [the product sector]."\n' +
+    '       • "My department at the Navoi Regional Hokimiyat has been studying the [product] sector ' +
+    '         across our partner markets, and your work at [company] is the reason for this note."\n' +
+    '       • "I write in my capacity as Head of the Department of Investment, Industry and Trade of ' +
+    '         Navoi Region — a brief, factual note on [product] manufacturing economics that may be ' +
+    '         relevant to [company]."\n' +
+    '       This identification sentence is NOT subject to the "I am writing to" ban below — that ban ' +
+    '       applies to corporate-cliché versions ("I am writing to introduce", "I am writing to outline"). ' +
+    '       Formal diplomatic identification with a clear referent ("regarding [product]", "concerning ' +
+    '       [sector]") is required and expected. Then a blank line, then ¶1.\n' +
     '  ¶1 — NAVOI PRODUCTION REALITY for this specific product. This paragraph is the entire reason ' +
     '       you are writing. Open the email by stating, with verifiable facts, what Navoi Region currently ' +
     '       produces (or has the capacity to produce) of THIS recipient\'s product. Three valid forms ' +
@@ -3087,8 +3104,12 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '  • Be confident, not boastful. State facts plainly; let the numbers do the persuading.\n' +
     '  • Sound like someone who can actually pick up the phone and make things happen.\n\n' +
     'HARD RULES (these are non-negotiable):\n' +
-    '  1. NEVER use these openings (instant AI tells): "I hope this email finds you well", "I am writing to", ' +
-    '     "I wanted to reach out", "I am pleased to", "Recognizing your focus on", "In today\'s landscape".\n' +
+    '  1. NEVER use these AI-cliché openings: "I hope this email finds you well", "I am writing to introduce", ' +
+    '     "I am writing to outline", "I am writing to reach out", "I wanted to reach out", "I am pleased to", ' +
+    '     "Recognizing your focus on", "In today\'s landscape". The formal diplomatic identification sentence ' +
+    '     described in the SALUTATION/BRIEF IDENTIFICATION step ("I write to you regarding [product]", ' +
+    '     "On behalf of the Department of Investment, Industry and Trade", "I write in my capacity as") ' +
+    '     is mandatory and IS allowed — it is not a cliché but required diplomatic protocol.\n' +
     '  2. NEVER use these cliché phrases: leverage, synergies, win-win, unlock potential, cutting-edge, ' +
     '     best-in-class, game-changer, seamless, transformative, value proposition, robust ecosystem, ' +
     '     unique opportunity, mutually beneficial, strategic alignment, ecosystem partner.\n' +
@@ -3126,17 +3147,20 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     a robust ecosystem offering unparalleled opportunities for forward-thinking manufacturers like ' +
     '     [Company] to leverage strategic advantages and unlock new value. I believe this could present ' +
     '     an advantageous opportunity for your expansion efforts."\n' +
-    '  Strong (government official — Navoi production reality first, then company link, then numbers, one ask):\n' +
-    '    "Navoi Region currently produces around [X tons/year] of [product] across [N] facilities, ' +
+    '  Strong (government official — salutation, identification, Navoi production, then numbers, one ask):\n' +
+    '    "Dear Mr. [Surname],\n\n' +
+    '     On behalf of the Department of Investment, Industry and Trade of Navoi Region, Republic of ' +
+    '     Uzbekistan, I write to you regarding [product] manufacturing economics.\n\n' +
+    '     Navoi Region currently produces around [X tons/year] of [product] across [N] facilities, ' +
     '     with a documented regional demand gap of roughly [Y tons/year] across Uzbekistan, Kazakhstan ' +
     '     and Tajikistan. [Recipient Company]\'s [specific recent activity in their country] mirrors ' +
-    '     the production profile a new Navoi line would require. At the Navoi FEZ industrial ' +
-    '     electricity tariff of $40/MWh, a facility at that scale running at 80% load saves ' +
-    '     approximately $[X]K per year versus the [country] grid rate. Under Presidential Decree No. ' +
-    '     [X], corporate income tax is zero for the first [N] years from commencement of production, ' +
-    '     with no property tax and 0% import duty on process equipment. My colleague Sh. Toshmatov ' +
-    '     can send a two-page cost-comparison summary within five business days if you would like the ' +
-    '     figures reviewed against your own model."\n\n' +
+    '     the production profile a new Navoi line would require.\n\n' +
+    '     At the Navoi FEZ industrial electricity tariff of $40/MWh, a facility at that scale running ' +
+    '     at 80% load saves approximately $[X]K per year versus the [country] grid rate. Under ' +
+    '     Presidential Decree No. [X], corporate income tax is zero for the first [N] years from ' +
+    '     commencement of production, with no property tax and 0% import duty on process equipment.\n\n' +
+    '     My colleague Sh. Toshmatov can send a two-page cost-comparison summary within five business ' +
+    '     days if you would like the figures reviewed against your own model."\n\n' +
     'SIGN-OFF — use this format exactly (no bold, no extra blank lines):\n' +
     '  Yours sincerely,\n' +
     '  E. I. Gafforov\n' +
