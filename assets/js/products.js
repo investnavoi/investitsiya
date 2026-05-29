@@ -482,7 +482,6 @@ function syncProductRawAiPanelState(section){
   if(!PRODUCT_AI_STATE.open || PRODUCT_AI_STATE.section !== section) return;
   var raw = getSelectedProductAiRaw();
   if(!raw) return;
-  console.log('[syncProductRawAiPanelState]', { section: section, rawId: raw.id, activeRawId: (typeof _investAiActiveRawId!=='undefined'?_investAiActiveRawId:''), busy: _investAiBusy, mdLen: (_investAiMarkdown||'').length, material: _investAiCurrentMaterial });
   var analyzeBtn = document.getElementById('productRawAiAnalyzeBtn');
   if(analyzeBtn){
     analyzeBtn.disabled = _investAiBusy;
@@ -490,7 +489,9 @@ function syncProductRawAiPanelState(section){
   }
   var _isActiveRawAnalysis = (typeof _investAiActiveRawId !== 'undefined' && _investAiActiveRawId && String(_investAiActiveRawId) === String(raw.id));
   if((_isActiveRawAnalysis || doesInvestAiMaterialMatchRaw(_investAiCurrentMaterial, raw)) && _investAiMarkdown){
-    renderInvestAiProgressInto('productRawAiProgress', 'productRawAiProgressCard', _investAiBusy ? Math.max(_investAiPhase,0) : 3, !_investAiBusy);
+    // Hisobot matni allaqachon kelyapti — barcha fazalarni "Tayyor" deb ko'rsatamiz
+    // (busy bo'lsa ham), aks holda Phase 3 "Jarayonda"da qotib qoladi.
+    renderInvestAiProgressInto('productRawAiProgress', 'productRawAiProgressCard', 3, true);
     renderInvestAiMarkdownInto('productRawAiOutput', _investAiMarkdown);
     updateInvestAiOutputMetaInto('productRawAiOutputMeta', _investAiCurrentMaterial, new Date().toISOString());
     var outputCard = document.getElementById('productRawAiOutputCard');
