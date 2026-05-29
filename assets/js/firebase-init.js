@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  initializeFirestore, persistentLocalCache, persistentSingleTabManager,
   collection, doc, setDoc, getDoc, getDocs, getDocsFromCache, deleteDoc, writeBatch, onSnapshot
 } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
@@ -16,13 +16,16 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 window.fbApp = fbApp;
-// Firestore + IndexedDB persistent cache — 10x tezroq, offline ishlaydi
+// Firestore + IndexedDB persistent cache — 10x tezroq, offline ishlaydi.
+// Single-tab manager ishlatamiz: multi-tab manager Firebase v11'da
+// "INTERNAL ASSERTION FAILED: Unexpected state" xatosini keltirib chiqaradi
+// (bir nechta tab o'rtasida IndexedDB lease koordinatsiyasi bug'i).
 let db;
 try {
   db = initializeFirestore(fbApp, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager(undefined) })
   });
-  console.log('🚀 Firestore IndexedDB persistent cache yoqildi');
+  console.log('🚀 Firestore IndexedDB persistent cache yoqildi (single-tab)');
 } catch(e){
   // Fallback to default (memory cache)
   console.warn('Persistent cache fail, using memory:', e.message);
