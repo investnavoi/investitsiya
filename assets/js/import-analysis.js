@@ -4361,91 +4361,26 @@ async function collectInvestAiTradeContext(material){
       reason: 'raw_not_found'
     };
   }
-  var uniqueHsFetches = {};
   var liveByHs = {};
-  var fetchedCount = 0;
   var summaries = [];
 
+  // ── Phase A: resolve each product's HS code + any existing cached snapshot.
+  //    Collect the unique HS codes that still need an API fetch. ──
+  var YEARS_TO_FETCH = ['2021', '2022', '2023', '2024'];
+  var perProduct = [];          // {product, hsCode, snapshot}
+  var hsNeedsFetch = {};        // hsCode -> representative product (for save)
   for(var i=0;i<products.length;i++){
     var product = products[i];
     var hsCode = getExactImportHsCode(product);
     if(!hsCode || hsCode.length < 2) continue;
+    // Exact cached snapshot (productId + hsCode)
     var snapshot = (DB.importSnapshots||[]).find(function(sn){
       return String(sn.productId)===String(product.id) &&
              String(sn.hsCode||'')===String(hsCode) &&
              /UN Comtrade/i.test(String(sn.source||'')) &&
              (sn.countries||[]).length > 0;
     }) || null;
-    // If same HS already fetched, reuse data for this product
-    if(!snapshot && liveByHs[hsCode]){
-      snapshot = {
-        id: buildImportSnapshotId(product, hsCode, FINDER_ALWAYS_TARGET_COUNTRIES, 'comtrade'),
-        productId: String(product.id || ''),
-        productName: formatBilingualProductName(product),
-        hsCode: hsCode,
-        source: 'UN Comtrade (real)',
-        countries: liveByHs[hsCode]
-      };
-    }
-    // If no snapshot and HS not yet fetched, fetch from API for ALL years (2021-2024) in parallel
-    if(!snapshot && !uniqueHsFetches[hsCode]){
-      uniqueHsFetches[hsCode] = true;
-      fetchedCount += 1;
-      try{
-        var YEARS_TO_FETCH = ['2021', '2022', '2023', '2024'];
-        var perYearResults = await Promise.all(YEARS_TO_FETCH.map(function(yr){
-          return fetchComtrade(hsCode, yr).catch(function(){ return null; });
-        }));
-        // Merge: build a country-keyed map with year_imports populated for all years
-        var byCode = Object.create(null);
-        perYearResults.forEach(function(rows, yi){
-          if(!rows || !rows.length) return;
-          var yr = YEARS_TO_FETCH[yi];
-          rows.forEach(function(c){
-            var code = String(c.code || c.c || '').toUpperCase();
-            if(!code) return;
-            if(!byCode[code]){
-              byCode[code] = {
-                code: code,
-                name: c.name || c.n || code,
-                flag: c.flag || c.f || '',
-                import_usd: 0,
-                trend_pct: typeof c.trend_pct === 'number' ? c.trend_pct : null,
-                volume_tons: 0,
-                year_imports: {},
-                year_statuses: {},
-                status: 'ok'
-              };
-            }
-            var v = Number(c.import_usd || c.u || 0) || 0;
-            if(v) byCode[code].year_imports[yr] = v;
-            byCode[code].year_statuses[yr] = c.status || 'ok';
-            if(c.volume_tons || c.v) byCode[code].volume_tons = Math.max(byCode[code].volume_tons, Number(c.volume_tons || c.v || 0) || 0);
-          });
-        });
-        var liveCountries = Object.keys(byCode).map(function(k){
-          var co = byCode[k];
-          // Set import_usd to latest available year (2024 -> 2023 -> 2022 -> 2021)
-          co.import_usd = Number(co.year_imports['2024'] || co.year_imports['2023'] || co.year_imports['2022'] || co.year_imports['2021'] || 0) || 0;
-          return co;
-        });
-        if(liveCountries.length){
-          liveByHs[hsCode] = liveCountries;
-          saveImportSnapshot(product, hsCode, liveCountries, 'UN Comtrade (real, multi-year)');
-          snapshot = {
-            id: buildImportSnapshotId(product, hsCode, FINDER_ALWAYS_TARGET_COUNTRIES, 'comtrade'),
-            productId: String(product.id || ''),
-            productName: formatBilingualProductName(product),
-            hsCode: hsCode,
-            source: 'UN Comtrade (real, multi-year)',
-            countries: liveCountries
-          };
-        }
-      }catch(e){
-        console.log('AI analyzer Comtrade context xato:', e.message);
-      }
-    }
-    // Try any cached snapshot with same HS code from DB
+    // Any cached snapshot with the same HS code (same trade data) — avoids a refetch
     if(!snapshot){
       var anySnap = (DB.importSnapshots||[]).find(function(sn){
         return String(sn.hsCode||'')===String(hsCode) &&
@@ -4453,6 +4388,89 @@ async function collectInvestAiTradeContext(material){
                (sn.countries||[]).length > 0;
       });
       if(anySnap) snapshot = anySnap;
+    }
+    if(!snapshot && !hsNeedsFetch[hsCode]) hsNeedsFetch[hsCode] = product;
+    perProduct.push({ product: product, hsCode: hsCode, snapshot: snapshot });
+  }
+
+  // ── Phase B: fetch all unique HS codes IN PARALLEL (bounded concurrency).
+  //    Previously HS codes were fetched one-by-one (sequential), which was slow
+  //    for materials with many products. Now up to CONCURRENCY HS codes run at
+  //    once, each fetching its 4 years in parallel. ──
+  function mergeYearRows(perYearResults){
+    var byCode = Object.create(null);
+    perYearResults.forEach(function(rows, yi){
+      if(!rows || !rows.length) return;
+      var yr = YEARS_TO_FETCH[yi];
+      rows.forEach(function(c){
+        var code = String(c.code || c.c || '').toUpperCase();
+        if(!code) return;
+        if(!byCode[code]){
+          byCode[code] = {
+            code: code,
+            name: c.name || c.n || code,
+            flag: c.flag || c.f || '',
+            import_usd: 0,
+            trend_pct: typeof c.trend_pct === 'number' ? c.trend_pct : null,
+            volume_tons: 0,
+            year_imports: {},
+            year_statuses: {},
+            status: 'ok'
+          };
+        }
+        var v = Number(c.import_usd || c.u || 0) || 0;
+        if(v) byCode[code].year_imports[yr] = v;
+        byCode[code].year_statuses[yr] = c.status || 'ok';
+        if(c.volume_tons || c.v) byCode[code].volume_tons = Math.max(byCode[code].volume_tons, Number(c.volume_tons || c.v || 0) || 0);
+      });
+    });
+    return Object.keys(byCode).map(function(k){
+      var co = byCode[k];
+      // Set import_usd to latest available year (2024 -> 2023 -> 2022 -> 2021)
+      co.import_usd = Number(co.year_imports['2024'] || co.year_imports['2023'] || co.year_imports['2022'] || co.year_imports['2021'] || 0) || 0;
+      return co;
+    });
+  }
+  async function fetchOneHs(hsCode){
+    try{
+      var perYearResults = await Promise.all(YEARS_TO_FETCH.map(function(yr){
+        return fetchComtrade(hsCode, yr).catch(function(){ return null; });
+      }));
+      var liveCountries = mergeYearRows(perYearResults);
+      if(liveCountries.length){
+        liveByHs[hsCode] = liveCountries;
+        saveImportSnapshot(hsNeedsFetch[hsCode], hsCode, liveCountries, 'UN Comtrade (real, multi-year)');
+      }
+    }catch(e){
+      console.log('AI analyzer Comtrade context xato:', e.message);
+    }
+  }
+  var hsList = Object.keys(hsNeedsFetch);
+  var CONCURRENCY = 5;
+  var _hsIdx = 0;
+  async function _hsWorker(){
+    while(_hsIdx < hsList.length){
+      var my = hsList[_hsIdx++];
+      await fetchOneHs(my);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, hsList.length) }, _hsWorker));
+
+  // ── Phase C: build per-product summaries from cached/fetched snapshots ──
+  for(var p=0;p<perProduct.length;p++){
+    var product = perProduct[p].product;
+    var hsCode = perProduct[p].hsCode;
+    var snapshot = perProduct[p].snapshot;
+    // If still no snapshot, use the freshly fetched live data for this HS
+    if(!snapshot && liveByHs[hsCode]){
+      snapshot = {
+        id: buildImportSnapshotId(product, hsCode, FINDER_ALWAYS_TARGET_COUNTRIES, 'comtrade'),
+        productId: String(product.id || ''),
+        productName: formatBilingualProductName(product),
+        hsCode: hsCode,
+        source: 'UN Comtrade (real, multi-year)',
+        countries: liveByHs[hsCode]
+      };
     }
     if(!snapshot || !(snapshot.countries||[]).length) continue;
     // Expand countries from compressed format for correct year_imports access
