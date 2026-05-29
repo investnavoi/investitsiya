@@ -2651,10 +2651,19 @@ function renderInvestAiProgress(activeIdx, forceDone){
 
 function inferInvestAiPhase(markdown){
   var text = String(markdown || '').toLowerCase();
-  if(/phase\s*3|report generation|final summary|investment recommendation|recommendations/i.test(text)) return 3;
-  if(/phase\s*2|data processing|analysis|processed data|comparative analysis/i.test(text)) return 2;
-  if(/phase\s*1|un comtrade|trade data collection|data collection/i.test(text)) return 1;
-  if(/phase\s*0|hs code|product research|code mapping/i.test(text)) return 0;
+  // Inglizcha VA o'zbekcha kalit so'zlar — tahlil o'zbekcha yozilgani uchun
+  // o'zbekcha bo'limlarni ham tanib olishimiz kerak (aks holda Phase indikatori
+  // "Jarayonda"da qotib qoladi).
+  if(/phase\s*3|report generation|final summary|investment recommendation|recommendations|tavsiya|xulosa|investitsiya imkoniyat|keyingi qadam|risk/i.test(text)) return 3;
+  if(/phase\s*2|data processing|analysis|processed data|comparative analysis|tahlil|qayta ishlash|savdo tendensiya|import dinamika/i.test(text)) return 2;
+  if(/phase\s*1|un comtrade|trade data collection|data collection|savdo ma|import qiluvchi|top davlat|import hajmi/i.test(text)) return 1;
+  if(/phase\s*0|hs code|product research|code mapping|hs kod|mahsulot tadqiqot|xomashyo identifik/i.test(text)) return 0;
+  // Kalit so'z topilmasa — yig'ilgan matn uzunligiga qarab taxminiy progress
+  // (model uzun yozsa ham indikator oldinga siljiydi).
+  var len = text.length;
+  if(len > 3500) return 3;
+  if(len > 2000) return 2;
+  if(len > 600) return 1;
   return _investAiPhase < 0 ? 0 : _investAiPhase;
 }
 
@@ -4743,7 +4752,9 @@ async function analyzeInvestmentMaterial(){
       await callOpenAIStream(openAiMessages, {
         model: (typeof OPENAI_MODEL_DEFAULT !== 'undefined') ? OPENAI_MODEL_DEFAULT : 'gpt-4o',
         temperature: 0.2,
-        maxTokens: 8192
+        // 4096 token ≈ 3000 so'z — to'liq hisobot uchun yetarli, lekin 8192'dan
+        // 2x tezroq yakunlanadi (oldin Phase 3 juda uzoq cho'zilardi)
+        maxTokens: 4096
       }, function(textDelta){
         _investAiMarkdown += textDelta;
         renderInvestAiMarkdown(_investAiMarkdown);
