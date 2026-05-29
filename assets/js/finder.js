@@ -4255,7 +4255,7 @@ async function runCompanyFinder(source){
 
   // ═══ TOP 100 GLOBAL MODE — Apollo always runs in Top 100 mode (country filter ignored) ═══
   var isTop100Global = (source === 'apollo');
-  var TOP100_CAP = 2;
+  var TOP100_CAP = 10;
   if(isTop100Global){
     requestedCount = TOP100_CAP;
   }
@@ -4578,7 +4578,7 @@ async function runCompanyFinder(source){
           });
 
           // Page 2 if needed
-          if(top100Results.length < TOP100_CAP && orgList100.length >= 20){
+          if(top100Results.length < TOP100_CAP && orgList100.length >= TOP100_CAP){
             var orgReq100p2 = Object.assign({}, orgReq100, {page:2});
             var orgData100p2 = await apolloRequestJson(orgReq100p2);
             normalizeApolloArray(orgData100p2, ['organizations','accounts','companies']).forEach(function(org){
