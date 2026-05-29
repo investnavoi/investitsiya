@@ -228,6 +228,125 @@ function _formatImportUsdShort(usd){
   return '$' + Math.round(n);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   JONLI UN COMTRADE: agar snapshot mavjud bo'lmasa, 13 davlat × 4 yil
+   import ma'lumotlarini Vercel proxy yoki CORS proxy orqali to'g'ridan
+   olamiz. Natija — exact USD raqamlar, "between X and Y" emas.
+   ═══════════════════════════════════════════════════════════════ */
+async function fetchProductImportTotalsLive(productInfo, comp){
+  try {
+    if(!productInfo) return null;
+    var hsCode = String(productInfo.hsCode || '').replace(/\D/g,'').slice(0,6);
+    if(!hsCode || hsCode.length < 2) return null;
+
+    var BASE = 'https://navoiy-api-proxy.vercel.app';
+    var CORS_PROXIES = [
+      'https://corsproxy.io/?',
+      'https://api.allorigins.win/raw?url=',
+      'https://api.codetabs.com/v1/proxy?quest='
+    ];
+    var countries13 = [
+      {code:'UZ', name:"O'zbekiston", comtrade:'860'},
+      {code:'TM', name:'Turkmaniston', comtrade:'795'},
+      {code:'TJ', name:'Tojikiston',   comtrade:'762'},
+      {code:'KG', name:"Qirg'iziston", comtrade:'417'},
+      {code:'KZ', name:"Qozog'iston",  comtrade:'398'},
+      {code:'MN', name:"Mo'g'uliston", comtrade:'496'},
+      {code:'RU', name:'Rossiya',      comtrade:'643'},
+      {code:'AZ', name:'Ozarbayjon',   comtrade:'031'},
+      {code:'GE', name:'Gruziya',      comtrade:'268'},
+      {code:'AM', name:'Armaniston',   comtrade:'051'},
+      {code:'IR', name:'Eron',         comtrade:'364'},
+      {code:'AF', name:"Afg'oniston",  comtrade:'004'},
+      {code:'PK', name:'Pokiston',     comtrade:'586'}
+    ];
+    var level = hsCode.length >= 6 ? '6' : (hsCode.length >= 4 ? '4' : '2');
+
+    // Comtrade `period=2021,2022,2023,2024` ko'p yilni bitta so'rovda qaytaradi.
+    var fetchCountry = async function(country){
+      var paramStr = 'reporter=' + encodeURIComponent(country.comtrade)
+        + '&year=' + encodeURIComponent('2021,2022,2023,2024')
+        + '&flow=M'
+        + '&hs=' + encodeURIComponent(hsCode)
+        + '&level=' + level;
+
+      // 1) Vercel proxy
+      try {
+        var r1 = await fetch(BASE + '/api/trade?' + paramStr);
+        if(r1.ok){
+          var j1 = await r1.json();
+          var d1 = j1 && j1.data ? j1.data : [];
+          if(d1.length){
+            var sum1 = 0;
+            d1.forEach(function(d){ sum1 += Number(d.primaryValue || d.cifvalue || d.value || 0) || 0; });
+            if(sum1 > 0) return { code: country.code, name: country.name, usd: sum1 };
+          }
+        }
+      } catch(e1){}
+
+      // 2) CORS proxy → bevosita Comtrade
+      var directUrl = 'https://comtradeapi.un.org/public/v1/preview/C/A/HS?'
+        + 'reporterCode=' + encodeURIComponent(country.comtrade)
+        + '&period=' + encodeURIComponent('2021,2022,2023,2024')
+        + '&flowCode=M&cmdCode=' + encodeURIComponent(hsCode)
+        + '&partnerCode=0&maxRecords=500&includeDesc=true';
+      for(var pi = 0; pi < CORS_PROXIES.length; pi++){
+        try {
+          var r2 = await fetch(CORS_PROXIES[pi] + encodeURIComponent(directUrl));
+          if(r2.ok){
+            var j2 = await r2.json();
+            var d2 = j2 && j2.data ? j2.data : [];
+            if(d2.length){
+              var sum2 = 0;
+              d2.forEach(function(d){ sum2 += Number(d.primaryValue || d.cifvalue || d.value || 0) || 0; });
+              if(sum2 > 0) return { code: country.code, name: country.name, usd: sum2 };
+            }
+          }
+        } catch(e2){}
+      }
+
+      return { code: country.code, name: country.name, usd: 0 };
+    };
+
+    // 13 davlat parallel ravishda olib kelinadi.
+    var results = await Promise.all(countries13.map(function(c){ return fetchCountry(c); }));
+
+    var uzUsd = 0, otherUsd = 0;
+    var otherCountries = [];
+    results.forEach(function(r){
+      if(r.code === 'UZ'){
+        uzUsd = r.usd;
+      } else {
+        otherUsd += r.usd;
+        if(r.usd > 0) otherCountries.push({ name: r.name, usd: r.usd });
+      }
+    });
+
+    if(uzUsd <= 0 && otherUsd <= 0){
+      console.warn('[fetchProductImportTotalsLive] hech qaysi davlat uchun ma\'lumot topilmadi');
+      return null;
+    }
+
+    otherCountries.sort(function(a,b){ return b.usd - a.usd; });
+
+    return {
+      uzbekistanUsd: uzUsd,
+      otherTwelveUsd: otherUsd,
+      combinedUsd: uzUsd + otherUsd,
+      topOthers: otherCountries.slice(0, 3),
+      productName: productInfo.displayName || '',
+      hsCode: productInfo.hsCode || '',
+      source: 'UN Comtrade (live fetch)',
+      period: '2021-2024',
+      countryCount: 13,
+      isLive: true
+    };
+  } catch(e){
+    console.warn('[fetchProductImportTotalsLive] xato:', e && e.message);
+    return null;
+  }
+}
+
 // Barcha davlatlar uchun rasmiy mehnat haqi ma'lumotlari (USD/oy, manufacturing avg)
 // Manba: World Bank, ILOSTAT, OECD, national statistics offices (2023-2024)
 var WAGE_FALLBACK_USD = {
@@ -3087,9 +3206,19 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
 
   var _noCountry = !!(analysis && analysis._noCountry);
 
-  /* 13-davlat import totallarini (2021-2024) snapshotdan o'qib olish.
-     Bu raqamlar ¶1 da bozor talab hajmini ko'rsatish uchun ishlatiladi. */
+  /* 13-davlat import totallarini (2021-2024) avval snapshotdan, agar topilmasa
+     jonli ravishda UN Comtrade'dan olamiz. Bu raqamlar ¶1 da bozor talabini
+     "between X and Y" diapazon emas, EXACT raqamlar bilan ko'rsatish uchun. */
   var _importTotals = getCompanyProductImportTotals(productInfo, comp);
+  if(!_importTotals){
+    console.log('[email] snapshot topilmadi, UN Comtrade jonli so\'rov...');
+    try {
+      _importTotals = await fetchProductImportTotalsLive(productInfo, comp);
+      if(_importTotals) console.log('[email] jonli Comtrade muvaffaqiyatli:', _importTotals.uzbekistanUsd, _importTotals.otherTwelveUsd);
+    } catch(eL){
+      console.warn('[email] jonli Comtrade xato:', eL && eL.message);
+    }
+  }
   var importTotalsBlock = '';
   if(_importTotals && (_importTotals.uzbekistanUsd > 0 || _importTotals.otherTwelveUsd > 0)){
     var _uzShort = _formatImportUsdShort(_importTotals.uzbekistanUsd);
@@ -3286,26 +3415,25 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     either of these two figures is a hard fail — the entire ¶1 is invalid and must be ' +
     '     rewritten. These two numbers quantify the addressable regional demand and are the reason ' +
     '     the recipient should care about this product in Navoi.\n' +
-    ' 19. ABSOLUTE BAN ON HEDGE-AWAY LANGUAGE: The email body MUST NEVER contain any of these phrases ' +
-    '     or their close translations / paraphrases:\n' +
+    ' 19. ABSOLUTE BAN ON HEDGE-AWAY LANGUAGE AND APPROXIMATE RANGES FOR THE 13-MARKET TOTALS: ' +
+    '     The email body MUST NEVER contain any of these phrases or their close translations:\n' +
     '       "unspecified", "remain unspecified", "not specified", "not available", "unknown", ' +
     '       "no data", "no specific data", "no precise figure", "exact figure unknown", "no exact ' +
     '       figure", "while specific figures...remain", "while exact numbers are not available", ' +
-    '       "details are limited", "concrete figures are limited".\n' +
-    '     These phrases are an instant credibility kill. If you do not have a precise figure, do ' +
-    '     ONE of the following instead — never hedge:\n' +
-    '       (a) Use the exact number from the VERIFIED DATA block ("13-MARKET IMPORT TOTALS").\n' +
-    '       (b) Use the researched figure from the COMPANY & RECIPIENT INTELLIGENCE block (web ' +
-    '           search returned a sourced number for Uzbek imports or 13-market demand).\n' +
-    '       (c) Provide a CREDIBLE SOURCED ESTIMATE as a range, with a real source, using the ' +
-    '           standard regional industry references: "approximately $X–Y million per year across ' +
-    '           the 13-market region (estimate based on UN Comtrade chapter-level data and World ' +
-    '           Bank construction-materials demand projections)". The recipient MUST see a number, ' +
-    '           even if it is a range.\n' +
-    '     If you genuinely cannot produce any defensible figure for ¶1 supply-and-demand after ' +
-    '     using both data sources, drop the supply-and-demand framing entirely and replace ¶1 with ' +
-    '     a different specific Navoi-resource fact (mineral reserves, FEZ industrial output, ' +
-    '     existing plants) plus the FEZ scale figure — but never write "unspecified" or "unknown".\n\n' +
+    '       "details are limited", "concrete figures are limited", "estimated between X and Y", ' +
+    '       "ranges from X to Y" (when applied to the two MANDATORY 2021–2024 import totals).\n' +
+    '     The two MANDATORY import totals (Uzbekistan 2021–2024 cumulative AND other-12-markets ' +
+    '     2021–2024 cumulative) are SUPPLIED AS EXACT NUMBERS in the VERIFIED DATA block. You MUST ' +
+    '     copy them verbatim — never round them into ranges. Citing "between $15M and $25M" instead ' +
+    '     of the exact figure provided is a hard fail.\n' +
+    '     Order of preference for ALL numerical claims in ¶1:\n' +
+    '       (a) Exact figure from VERIFIED DATA block ("13-MARKET IMPORT TOTALS") — ALWAYS preferred.\n' +
+    '       (b) Researched figure from COMPANY & RECIPIENT INTELLIGENCE block (web search result).\n' +
+    '       (c) ONLY for non-mandatory secondary figures (capacity ceiling, growth rate, etc.) may ' +
+    '           a sourced range be used. NEVER for the two cumulative 2021–2024 import totals.\n' +
+    '     If you genuinely cannot produce any defensible figure for ¶1 after using both data sources, ' +
+    '     replace ¶1 with a Navoi-resource fact (mineral reserves, FEZ output, existing plants) plus ' +
+    '     the FEZ scale figure — but NEVER write "unspecified" or "unknown".\n\n' +
     'EXAMPLES — calibrate your voice from these (DO NOT copy the wording):\n' +
     '  Weak (AI-sounding, full of clichés):\n' +
     '    "I hope this email finds you well. I am writing to introduce the Navoi Free Economic Zone, ' +
@@ -3467,32 +3595,51 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       /* Hedge-phrase detector — Hard Rule 19. Hech qachon "unspecified/unknown/not available"
          kabi iboralar emailda paydo bo'lmasligi kerak. Topilsa bir marta qayta yozishni so'raymiz. */
       var _HEDGE_BAN_RX = /\b(unspecified|remain unspecified|not specified|specific figures[^.]{0,80}(?:remain|are not|not yet)|exact (?:figures?|numbers?)[^.]{0,40}(?:not (?:yet )?available|unavailable)|no (?:specific|precise|exact) (?:data|figure|number|figures|numbers)|details are limited|concrete figures are limited|figures are limited|exact (?:numbers|figures) are not (?:yet )?available|are currently unknown|remain unknown)\b/i;
+      /* Agar VERIFIED DATA da "13-MARKET IMPORT TOTALS" mavjud bo'lsa va emailda diapazon (between
+         X and Y million) yoki faqat bir yillik (in 2024) ishlatilgan bo'lsa — qattiq xato. */
+      var _hasTotalsBlock = (typeof importTotalsBlock === 'string' && importTotalsBlock.length > 0);
+      var _RANGE_OR_SINGLE_YEAR_RX = /\b(?:estimated between|ranges? from|between\s*\$?\d+(?:\.\d+)?[KM]?(?:\s*million)?\s*(?:to|and)\s*\$?\d+(?:\.\d+)?[KM]?(?:\s*million)?|in 20(?:21|22|23|24)[,.\s]+(?:Uzbekistan|the (?:other|12|thirteen)))\b/i;
       var _maybeRetryHedged = async function(content, modelOpts){
-        if(!content || !_HEDGE_BAN_RX.test(content)) return content;
-        var m = content.match(_HEDGE_BAN_RX);
-        console.warn('[email] hedge phrase detected, retrying:', m && m[0]);
+        if(!content) return content;
+        var hedgeMatch = _HEDGE_BAN_RX.test(content);
+        var rangeMatch = _hasTotalsBlock && _RANGE_OR_SINGLE_YEAR_RX.test(content);
+        if(!hedgeMatch && !rangeMatch) return content;
+        var problem = '';
+        if(hedgeMatch){
+          var m = content.match(_HEDGE_BAN_RX);
+          problem += 'Forbidden hedge phrase found: "' + (m ? m[0] : 'hedge') + '". ';
+        }
+        if(rangeMatch){
+          var m2 = content.match(_RANGE_OR_SINGLE_YEAR_RX);
+          problem += 'Forbidden range/single-year phrase found: "' + (m2 ? m2[0] : 'range') + '" — but the VERIFIED DATA block contains EXACT 2021-2024 cumulative totals that MUST be copied verbatim.';
+        }
+        console.warn('[email] hedge/range detected, retrying:', problem);
         var fixupPrompt =
-          'Your previous draft contained the forbidden hedge phrase: "' + (m ? m[0] : 'a hedge phrase') + '". ' +
-          'Hedge phrases like "unspecified", "unknown", "not available", "no specific data", ' +
-          '"specific figures...remain", "exact figures are not available", "details are limited" ' +
-          'are absolutely forbidden by Hard Rule 19. Rewrite the ENTIRE email. Replace every hedge ' +
-          'with one of: (a) an exact figure from the "13-MARKET IMPORT TOTALS" section of VERIFIED ' +
-          'DATA if present; (b) a researched figure from the COMPANY & RECIPIENT INTELLIGENCE block; ' +
-          'or (c) a credible sourced estimate range like "approximately $X–Y million across 2021–2024 ' +
-          '(estimate based on UN Comtrade chapter-level data and World Bank construction-materials ' +
-          'demand)". Specific numbers are non-negotiable — the recipient MUST see numbers, even if ' +
-          'they are ranges. Output the rewritten email in the same "subject\\n===BODY===\\nbody" format.';
+          problem + '\n\n' +
+          'Hard Rule 19 forbids hedge phrases ("unspecified", "unknown", "not available", "no ' +
+          'specific data", "while exact figures..."), AND for the 13-market import totals it ALSO ' +
+          'forbids ranges like "between $X and $Y million" or single-year claims like "in 2024 ' +
+          'Uzbekistan imported..." when the VERIFIED DATA block already supplies the exact ' +
+          'cumulative 2021–2024 figure.\n\n' +
+          'Rewrite the ENTIRE email. For ¶1:\n' +
+          ' • Copy the Uzbekistan 2021–2024 cumulative total VERBATIM from the "13-MARKET IMPORT ' +
+          '   TOTALS" section of the VERIFIED DATA block.\n' +
+          ' • Copy the other-12-markets 2021–2024 cumulative total VERBATIM from the same section.\n' +
+          ' • Cite the 2021–2024 period and "UN Comtrade" source.\n' +
+          ' • Do NOT use ranges, do NOT use "in 2024", do NOT use any hedge phrase.\n\n' +
+          'Output the rewritten email in the same "subject\\n===BODY===\\nbody" format.';
         try {
           var retry = await callOpenAI(msgs.concat([
             { role:'assistant', content: content },
             { role:'user',      content: fixupPrompt }
           ]), modelOpts);
           if(retry && retry.content && retry.content.trim().length > 80){
-            if(!_HEDGE_BAN_RX.test(retry.content)){
-              console.log('[email] hedge-retry succeeded');
+            var stillBad = _HEDGE_BAN_RX.test(retry.content) || (_hasTotalsBlock && _RANGE_OR_SINGLE_YEAR_RX.test(retry.content));
+            if(!stillBad){
+              console.log('[email] hedge/range-retry succeeded');
               return retry.content;
             }
-            console.warn('[email] retry still contained hedge, keeping retry but stripping');
+            console.warn('[email] retry still flagged, keeping retry');
             return retry.content;
           }
         } catch(eR){ console.warn('[email] hedge-retry call failed:', eR && eR.message); }
