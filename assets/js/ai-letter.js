@@ -3052,29 +3052,38 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       applies to corporate-cliché versions ("I am writing to introduce", "I am writing to outline"). ' +
     '       Formal diplomatic identification with a clear referent ("regarding [product]", "concerning ' +
     '       [sector]") is required and expected. Then a blank line, then ¶1.\n' +
-    '  ¶1 — NAVOI PRODUCTION REALITY for this specific product. This paragraph is the entire reason ' +
-    '       you are writing. Open the email by stating, with verifiable facts, what Navoi Region currently ' +
-    '       produces (or has the capacity to produce) of THIS recipient\'s product. Three valid forms ' +
-    '       — choose the one the intelligence supports:\n' +
-    '       (a) IF Navoi already produces this product at scale → state the current annual volume / ' +
-    '           number of facilities / operating plant names, plus the unmet domestic and regional ' +
-    '           demand a new line could absorb (e.g. "Navoi Region currently produces ~X tons/year ' +
-    '           of [product] across N facilities, against estimated regional demand of Y tons/year.").\n' +
-    '       (b) IF Navoi has the upstream inputs but no finished-product line → name the specific ' +
-    '           raw materials Navoi already supplies (gold, uranium, copper, cotton, gas-condensate, ' +
-    '           marble, phosphate, etc.) and the integration gap a new facility would close ' +
-    '           (e.g. "Navoi mines ~X kt/year of [feedstock] but has no integrated [finished product] ' +
-    '           line — a new facility would convert local input into export-grade output.").\n' +
-    '       (c) IF Navoi has no current production at scale → state the documented resource + ' +
-    '           logistics base that makes a greenfield facility viable, with a realistic capacity ' +
-    '           ceiling (e.g. "Navoi has no current [product] production at scale, but [resource A], ' +
-    '           [resource B] and Trans-Caspian rail access support a greenfield facility of up to ' +
-    '           X tons/year serving the 13-country regional market.").\n' +
-    '       After stating the Navoi production reality, ONE short connector sentence linking what ' +
-    '       [recipient company] already does in [their country] to that Navoi production opportunity. ' +
-    '       NEVER flatter, NEVER hype, NEVER evaluate the recipient\'s character. Use the Navoi figures ' +
-    '       from the COMPANY & RECIPIENT INTELLIGENCE block — if a Navoi figure is "unknown" there, ' +
-    '       do NOT invent one; describe the resource base qualitatively instead. 2–4 sentences total.\n' +
+    '  ¶1 — NAVOI SUPPLY-AND-DEMAND REALITY for this specific product. This paragraph is the entire ' +
+    '       reason you are writing — it must answer "how big is the market gap, and why Navoi?" with ' +
+    '       NUMBERS, not adjectives. THIS PARAGRAPH MUST CONTAIN AT LEAST 3 QUANTITATIVE FIGURES from ' +
+    '       the intelligence block: (i) current Navoi/Uzbekistan supply in tons/units/m²/$, (ii) ' +
+    '       Uzbek import volume OR 13-country regional demand in tons AND USD, (iii) the unmet-demand ' +
+    '       gap a new facility would absorb in tons/year AND $/year. Banned phrasing: "rich deposits", ' +
+    '       "advanced infrastructure", "viable location", "feasible to target", "promising market", ' +
+    '       "significant potential" — these are adjectives, not facts. Required phrasing uses figures ' +
+    '       with sources. Three valid structures (choose the one your intelligence supports):\n' +
+    '       (a) IF Navoi already produces at scale → "Navoi Region currently produces ~[X tons]/year ' +
+    '           of [product] across [N] facilities. Uzbekistan still imports ~[Y tons / $Z M] annually ' +
+    '           (UN Comtrade [year]), and the 13-country regional market consumes an estimated ' +
+    '           [W tons / $V M] per year. A new line would absorb the [Y+regional gap] tons/year ' +
+    '           currently sourced from outside the region."\n' +
+    '       (b) IF only upstream inputs exist locally → "Navoi mines ~[X kt]/year of [feedstock — gold, ' +
+    '           copper, marble, etc.] but has no integrated [product] line. Uzbekistan imported ' +
+    '           ~[Y tons / $Z M] of finished [product] in [year] (UN Comtrade), with regional demand ' +
+    '           at roughly [W tons / $V M] per year. A finishing facility of [up to N kt/year] would ' +
+    '           convert local feedstock into export-grade output."\n' +
+    '       (c) IF no current production at scale → "Navoi has no current [product] production at ' +
+    '           scale. Uzbekistan imported ~[Y tons / $Z M] in [year] (UN Comtrade [year]), and the ' +
+    '           combined 13-country regional market consumes ~[W tons / $V M] per year, growing at ' +
+    '           ~[CAGR]% (source). [Specific resource A], [resource B] and Trans-Caspian rail access ' +
+    '           support a greenfield facility of up to [N tons]/year — enough to displace ~[%] of ' +
+    '           Uzbek imports alone."\n' +
+    '       After the supply-and-demand picture, ONE short connector sentence linking the recipient ' +
+    '       company\'s existing activity in [their country] to this Navoi opportunity (e.g. "Cornerstone\'s ' +
+    '       Double-Lok™ line at [facility] is the production profile a Navoi facility would mirror"). ' +
+    '       NEVER flatter, NEVER hype, NEVER use the banned adjectives above. If a specific figure is ' +
+    '       marked "unknown" in the intelligence block, omit it and use a different valid figure — do ' +
+    '       NOT invent. 3–5 sentences total. If the paragraph contains fewer than 3 numerical figures, ' +
+    '       it is wrong and must be rewritten.\n' +
     '  ¶2 — COST AND ECONOMIC ADVANTAGES: Cover EVERY entry in the COMPARATIVE ADVANTAGES section ' +
     '       of the VERIFIED DATA block. Do not skip any metric. For each advantage, state BOTH the ' +
     '       Navoi figure AND the recipient country figure explicitly, then the annual implication ' +
@@ -3140,7 +3149,13 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     "current Presidential Decrees". Confidence comes from verified facts, not enthusiasm.\n' +
     ' 16. COVERAGE IS MANDATORY: Before finalising the email, check that EVERY bullet point from the ' +
     '     VERIFIED DATA block appears in the text. If a metric is in the data, it must be in the email. ' +
-    '     Skipping any advantage is not acceptable.\n\n' +
+    '     Skipping any advantage is not acceptable.\n' +
+    ' 17. ¶1 QUANTITATIVE TEST: ¶1 must contain at least 3 numerical figures with units (tons, m², ' +
+    '     USD, %). Count them before finalising. If ¶1 has 0–2 numbers, the paragraph is invalid and ' +
+    '     must be rewritten using the SUPPLY/DEMAND/GAP data from the intelligence block. Banned ' +
+    '     in ¶1: "rich deposits", "advanced infrastructure", "viable location", "feasible to target", ' +
+    '     "promising market", "significant potential", "strategic location" — these are adjectives ' +
+    '     dressed as facts. Replace them with figures.\n\n' +
     'EXAMPLES — calibrate your voice from these (DO NOT copy the wording):\n' +
     '  Weak (AI-sounding, full of clichés):\n' +
     '    "I hope this email finds you well. I am writing to introduce the Navoi Free Economic Zone, ' +
@@ -3238,19 +3253,33 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
           '   regulation) that might make them open to relocating part of production.\n' +
           '5. Anything personal/professional about ' + (recipientName2 || 'the contact') + ' that is ' +
           'publicly documented (recent interviews, conference speeches, named projects). Only verifiable facts.\n' +
-          '6. NAVOI REGION PRODUCTION CONTEXT for ' + (productLabel2 || 'this product') + ' — this is the ' +
-          'highest-priority section: the email must OPEN with these facts. Research and return:\n' +
-          '   • Current production of ' + (productLabel2 || 'the product') + ' in Navoi Region, Uzbekistan ' +
-          '(volume in tons / m² / units per year, number of facilities, names of operating plants if any).\n' +
-          '   • Upstream inputs / raw materials Navoi already supplies that feed this product (e.g. gold, ' +
-          'uranium, copper, cotton, gas-condensate, marble, phosphate — be specific to the product).\n' +
+          '6. NAVOI / UZBEKISTAN SUPPLY-AND-DEMAND for ' + (productLabel2 || 'this product') + ' — THIS IS ' +
+          'THE HIGHEST-PRIORITY SECTION. The email must OPEN with these facts, and EVERY bullet below ' +
+          'must come back with a NUMBER (tons/year, USD/year) or an explicit "unknown". Qualitative ' +
+          'language ("rich deposits", "advanced infrastructure", "feasible to target") is forbidden — ' +
+          'only quantitative answers are useful. Research and return:\n' +
+          '   • SUPPLY: Current production of ' + (productLabel2 || 'the product') + ' in Navoi Region / ' +
+          'Uzbekistan — volume in tons (or m², units) per year, number of facilities, names of operating ' +
+          'plants if any. If zero, say "zero" explicitly.\n' +
+          '   • DEMAND (MANDATORY NUMBERS): How much of this product does Uzbekistan import per year? ' +
+          'Cite the most recent figure in TONS AND IN USD (e.g. "Uzbekistan imported ~12,400 t / $48M of ' +
+          '[product] in 2023, source: UN Comtrade"). Also estimate the combined demand across the 13-country ' +
+          'regional market (Central Asia + CIS + nearest South Asia) in tons/year AND USD/year. If exact ' +
+          'figures are unavailable, give a sourced range (e.g. "120–180 kt/year regional, World Bank/WITS").\n' +
+          '   • UNMET-DEMAND GAP: subtract local supply from local + regional demand. State the gap in ' +
+          'tons/year AND USD/year. This is the addressable market a new Navoi facility would absorb.\n' +
+          '   • IMPORT-DEPENDENCY %: what share of Uzbek demand is met by imports today? ' +
+          '(e.g. "~92% of domestic [product] consumption is currently imported").\n' +
+          '   • DEMAND TREND: is regional demand growing? cite a CAGR or recent year-over-year change ' +
+          'if available (e.g. "+8%/yr 2020-2023, IFC report").\n' +
+          '   • UPSTREAM INPUTS Navoi already supplies that feed this product (gold, uranium, copper, ' +
+          'cotton, gas-condensate, marble, phosphate, etc. — be specific). Annual volume if known.\n' +
           '   • Navoi FEZ / industrial parks where this product or its inputs are processed.\n' +
-          '   • Regional / domestic demand gap a new manufacturing line could absorb (Uzbekistan + 13-country ' +
-          'CIS-Central-Asia-South-Asia market).\n' +
-          '   • If Navoi currently has zero production at scale, state the documented resource + logistics ' +
-          'base that makes a greenfield facility viable, with a realistic capacity ceiling.\n' +
-          '   Cite sources for every Navoi figure (uzstat.uz, stat.uz, gov.uz, navoifez.uz, navoi.gov.uz, ' +
-          'presidential decrees, trade publications).\n\n' +
+          '   • Realistic CAPACITY CEILING (tons/year) for a greenfield facility in Navoi, based on ' +
+          'resource availability and FEZ land allocations.\n' +
+          '   Cite every figure (uzstat.uz, stat.uz, gov.uz, navoifez.uz, navoi.gov.uz, UN Comtrade, WITS, ' +
+          'World Bank, IFC, ADB, presidential decrees, trade publications). If a number is genuinely ' +
+          'unknown after research, say "unknown" — do not invent.\n\n' +
           'Output a short, scannable briefing (400-600 words). Use plain prose with short labelled sections. ' +
           'If something is unknown, say "unknown" — do NOT guess. Cite sources inline like (source: domain.com).';
         var sResp = await callOpenAI(
