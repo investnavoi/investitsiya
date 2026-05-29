@@ -83,6 +83,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/gmail.js" defer></script>
 <script src="assets/js/embassy.js?v=real-products-only-v1" defer></script>
 <script src="assets/js/chatbot.js" defer></script>
+<script src="assets/js/chatbot-file.js" defer></script>
 <style>
   /* Jahon tashqi savdosi — dropdown ko'rinishi tuzatildi */
   #page-trade .form-card{overflow:visible !important;}
@@ -3936,10 +3937,12 @@ setTimeout(function(){
     <button class="chat-head-close" onclick="toggleChat()">✕</button>
   </div>
   <div class="chat-msgs" id="chatMsgs">
-    <div class="chat-msg bot">Assalomu alaykum! 👋 Men Navoiy viloyati investitsiya yordamchisiman. Navoiy haqida, investitsiya imkoniyatlari, foydali qazilmalar, sanoat va boshqa savollaringizga javob beraman. Nima so'raysiz?</div>
+    <div class="chat-msg bot">Assalomu alaykum! 👋 Men Navoiy viloyati investitsiya yordamchisiman. Navoiy haqida, investitsiya imkoniyatlari, foydali qazilmalar, sanoat va boshqa savollaringizga javob beraman.<br><br>📎 <b>So'rovnoma yuborish:</b> Fayl qo'shish tugmasi orqali investor so'rovnomasini yuboring — men uni aniqlab, tayyor javob faylini qaytaraman.</div>
   </div>
   <div class="chat-input-wrap">
-    <input class="chat-input" id="chatInput" placeholder="Savolingizni yozing..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
+    <input type="file" id="chatFileInput" accept=".docx,.xlsx,.pdf" style="display:none">
+    <button class="chat-attach" id="chatAttachBtn" onclick="document.getElementById('chatFileInput').click()" title="So'rovnoma fayl yuklash (.docx, .xlsx, .pdf)">📎</button>
+    <input class="chat-input" id="chatInput" placeholder="Savolingizni yozing... yoki 📎 so'rovnoma yuboring" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
     <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
   </div>
 </div>
