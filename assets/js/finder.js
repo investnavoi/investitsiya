@@ -2178,6 +2178,10 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   // Apollo ma'lumotlari bilan item'ni boyitish
   item._orgId = orgId;
   item.website = item.website || apolloAbsoluteUrl(org.website_url || org.website || '');
+  // Davlat — Apollo org'dan to'ldiramiz (TradeAtlas item'da davlat bo'sh bo'lishi mumkin)
+  if(!String(item.davlat || '').trim()){
+    item.davlat = String(org.country || org.organization_country || org.country_name || org.primary_country || '').trim();
+  }
   item.shahar = item.shahar || org.city || '';
   item.soha = item.soha || org.industry || '';
   item.xodimlar = item.xodimlar || Number(org.estimated_num_employees || 0) || 0;
@@ -2272,7 +2276,9 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
     item._contactCandidates = finalContacts;
     var lead = finalContacts.filter(finderContactHasEmail)[0] || finalContacts[0];
     if(lead){
-      var secondary = finalContacts.filter(function(c){ return c !== lead; })[0];
+      // 2-lead: avval email/telefoni bor kontaktni afzal ko'ramiz, bo'lmasa har qanday boshqasini
+      var others = finalContacts.filter(function(c){ return c !== lead; });
+      var secondary = others.filter(function(c){ return finderContactHasEmail(c) || finderContactHasPhone(c); })[0] || others[0];
       item.contacts = secondary ? [lead, secondary] : [lead];
       item.rahbar = lead.name || item.rahbar || '';
       item.lavozim = lead.title || item.lavozim || '';
