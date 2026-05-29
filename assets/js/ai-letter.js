@@ -3209,12 +3209,22 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   /* 13-davlat import totallarini (2021-2024) avval snapshotdan, agar topilmasa
      jonli ravishda UN Comtrade'dan olamiz. Bu raqamlar ¶1 da bozor talabini
      "between X and Y" diapazon emas, EXACT raqamlar bilan ko'rsatish uchun. */
+  // Firebase'dan importSnapshots'ni yuklaymiz (agar oldin yuklanmagan bo'lsa)
+  try {
+    if(typeof ensureCollectionLoaded === 'function'){
+      await ensureCollectionLoaded('importSnapshots');
+    }
+  } catch(eEnsure){ console.warn('[email] importSnapshots yuklash xato:', eEnsure && eEnsure.message); }
+
   var _importTotals = getCompanyProductImportTotals(productInfo, comp);
-  if(!_importTotals){
+  if(_importTotals){
+    console.log('[email] snapshot topildi:', _importTotals.uzbekistanUsd, _importTotals.otherTwelveUsd);
+  } else {
     console.log('[email] snapshot topilmadi, UN Comtrade jonli so\'rov...');
     try {
       _importTotals = await fetchProductImportTotalsLive(productInfo, comp);
       if(_importTotals) console.log('[email] jonli Comtrade muvaffaqiyatli:', _importTotals.uzbekistanUsd, _importTotals.otherTwelveUsd);
+      else console.warn('[email] jonli Comtrade null qaytardi');
     } catch(eL){
       console.warn('[email] jonli Comtrade xato:', eL && eL.message);
     }
@@ -3240,7 +3250,22 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       'RULE: ¶1 of the email MUST cite BOTH the Uzbekistan figure (' + _uzShort + ') AND the other-12 ' +
       'figure (' + _otShort + ') explicitly, with the 2021–2024 period and the UN Comtrade source. ' +
       'These two numbers are the entire reason this product matters for Navoi — they quantify the ' +
-      'addressable regional demand. Do NOT round them away, do NOT skip either one.';
+      'addressable regional demand. Do NOT round them away, do NOT skip either one. ' +
+      'Use the exact short-form values shown above (' + _uzShort + ' and ' + _otShort + ') — DO NOT ' +
+      'invent placeholder text like "$X million" or "$Y million".';
+  } else {
+    // Snapshot YOQ va jonli olib kelish ham ishlamadi. AI placeholder "$X"/"$Y" yozmasligi uchun
+    // aniq ko'rsatma: bu raqamlarni MUTLAQO mavjud emas, ulardan voz keching, boshqa Navoi
+    // resurslari bilan ¶1 ni to'ldiring.
+    importTotalsBlock =
+      '13-MARKET IMPORT TOTALS: NOT AVAILABLE for this product right now (UN Comtrade and snapshot ' +
+      'data did not return results). Therefore ¶1 MUST NOT mention any Uzbekistan 2021–2024 ' +
+      'cumulative import figure, MUST NOT mention any 13-country regional demand figure, MUST NOT ' +
+      'use placeholder text such as "$X million", "$Y million", "[amount]", "[USD]", "approximately ' +
+      '$X", or any X/Y/Z stand-in. INSTEAD ¶1 must rely entirely on Navoi-side facts (mineral ' +
+      'reserves, FEZ scale of 564 hectares, existing industrial output, upstream raw materials such ' +
+      'as gold/uranium/copper/marble/gas-condensate when relevant to the product) plus a concrete ' +
+      'connector sentence to the recipient company.';
   }
 
   var dataBlock =
@@ -3595,38 +3620,51 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       /* Hedge-phrase detector — Hard Rule 19. Hech qachon "unspecified/unknown/not available"
          kabi iboralar emailda paydo bo'lmasligi kerak. Topilsa bir marta qayta yozishni so'raymiz. */
       var _HEDGE_BAN_RX = /\b(unspecified|remain unspecified|not specified|specific figures[^.]{0,80}(?:remain|are not|not yet)|exact (?:figures?|numbers?)[^.]{0,40}(?:not (?:yet )?available|unavailable)|no (?:specific|precise|exact) (?:data|figure|number|figures|numbers)|details are limited|concrete figures are limited|figures are limited|exact (?:numbers|figures) are not (?:yet )?available|are currently unknown|remain unknown)\b/i;
-      /* Agar VERIFIED DATA da "13-MARKET IMPORT TOTALS" mavjud bo'lsa va emailda diapazon (between
-         X and Y million) yoki faqat bir yillik (in 2024) ishlatilgan bo'lsa — qattiq xato. */
-      var _hasTotalsBlock = (typeof importTotalsBlock === 'string' && importTotalsBlock.length > 0);
+      /* Agar VERIFIED DATA da raqamlar BOR bo'lsa va email diapazon ishlatsa — yomon. */
+      var _hasTotalsData = !!(_importTotals && (_importTotals.uzbekistanUsd > 0 || _importTotals.otherTwelveUsd > 0));
       var _RANGE_OR_SINGLE_YEAR_RX = /\b(?:estimated between|ranges? from|between\s*\$?\d+(?:\.\d+)?[KM]?(?:\s*million)?\s*(?:to|and)\s*\$?\d+(?:\.\d+)?[KM]?(?:\s*million)?|in 20(?:21|22|23|24)[,.\s]+(?:Uzbekistan|the (?:other|12|thirteen)))\b/i;
+      /* PLACEHOLDER (eng zararli): "$X million", "$Y million", "[amount]", "[USD]" va shu kabilar.
+         Bular emailda BO'LISHI MUMKIN EMAS — modeli aniq raqam qo'yishi yoki butun jumlani olib
+         tashlashi kerak. */
+      var _PLACEHOLDER_RX = /(\$\s*[XYZ](?:\.[XYZ]+)?\s*(?:million|M|billion|B|K)?\b|\bapproximately\s+\$\s*[XYZ]\b|\[(?:amount|usd|value|x|y|z|figure|number|cost|price|insert[^\]]*)\]|\b[XYZ]\s*(?:million|M|billion|B)\s+worth\b|\$\s*[XYZ]{1,3}[,.]?\d*\s*[KMB]?\b)/i;
       var _maybeRetryHedged = async function(content, modelOpts){
         if(!content) return content;
         var hedgeMatch = _HEDGE_BAN_RX.test(content);
-        var rangeMatch = _hasTotalsBlock && _RANGE_OR_SINGLE_YEAR_RX.test(content);
-        if(!hedgeMatch && !rangeMatch) return content;
+        var rangeMatch = _hasTotalsData && _RANGE_OR_SINGLE_YEAR_RX.test(content);
+        var placeholderMatch = _PLACEHOLDER_RX.test(content);
+        if(!hedgeMatch && !rangeMatch && !placeholderMatch) return content;
         var problem = '';
+        if(placeholderMatch){
+          var mp = content.match(_PLACEHOLDER_RX);
+          problem += 'PLACEHOLDER TEXT found in email: "' + (mp ? mp[0] : 'placeholder') +
+            '" — this is the worst kind of failure. You wrote "$X" / "$Y" / "[amount]" as a literal ' +
+            'stand-in for a number. Either copy the real number from the VERIFIED DATA block, or ' +
+            'remove the entire sentence and rewrite ¶1 with Navoi-side facts only. ';
+        }
         if(hedgeMatch){
           var m = content.match(_HEDGE_BAN_RX);
-          problem += 'Forbidden hedge phrase found: "' + (m ? m[0] : 'hedge') + '". ';
+          problem += 'Forbidden hedge phrase: "' + (m ? m[0] : 'hedge') + '". ';
         }
         if(rangeMatch){
           var m2 = content.match(_RANGE_OR_SINGLE_YEAR_RX);
-          problem += 'Forbidden range/single-year phrase found: "' + (m2 ? m2[0] : 'range') + '" — but the VERIFIED DATA block contains EXACT 2021-2024 cumulative totals that MUST be copied verbatim.';
+          problem += 'Forbidden range/single-year phrase: "' + (m2 ? m2[0] : 'range') +
+            '" — VERIFIED DATA has EXACT 2021-2024 cumulative totals that must be copied verbatim.';
         }
-        console.warn('[email] hedge/range detected, retrying:', problem);
+        console.warn('[email] validator triggered, retrying:', problem);
+        var dataAvailableNote = _hasTotalsData
+          ? 'The VERIFIED DATA block DOES contain the exact 13-MARKET IMPORT TOTALS. Copy them ' +
+            'verbatim into ¶1: the Uzbekistan 2021–2024 total and the other-12-markets 2021–2024 ' +
+            'total, both with the UN Comtrade source.'
+          : 'The VERIFIED DATA block does NOT contain 13-market import totals for this product. ' +
+            'You MUST NOT mention any Uzbekistan 4-year cumulative import figure or 13-market ' +
+            'regional demand figure in ¶1. Replace that material entirely with Navoi-side facts ' +
+            '(FEZ scale of 564 hectares, mineral reserves, existing industrial output, upstream ' +
+            'raw materials) and a connector to the recipient company. Do NOT use placeholders.';
         var fixupPrompt =
-          problem + '\n\n' +
-          'Hard Rule 19 forbids hedge phrases ("unspecified", "unknown", "not available", "no ' +
-          'specific data", "while exact figures..."), AND for the 13-market import totals it ALSO ' +
-          'forbids ranges like "between $X and $Y million" or single-year claims like "in 2024 ' +
-          'Uzbekistan imported..." when the VERIFIED DATA block already supplies the exact ' +
-          'cumulative 2021–2024 figure.\n\n' +
-          'Rewrite the ENTIRE email. For ¶1:\n' +
-          ' • Copy the Uzbekistan 2021–2024 cumulative total VERBATIM from the "13-MARKET IMPORT ' +
-          '   TOTALS" section of the VERIFIED DATA block.\n' +
-          ' • Copy the other-12-markets 2021–2024 cumulative total VERBATIM from the same section.\n' +
-          ' • Cite the 2021–2024 period and "UN Comtrade" source.\n' +
-          ' • Do NOT use ranges, do NOT use "in 2024", do NOT use any hedge phrase.\n\n' +
+          problem + '\n\n' + dataAvailableNote + '\n\n' +
+          'Hard Rules 18 and 19 forbid: hedges ("unspecified", "unknown"), ranges ("between $X and ' +
+          '$Y"), single-year framing ("in 2024"), and ESPECIALLY placeholders ("$X million", ' +
+          '"[amount]"). Rewrite the ENTIRE email.\n\n' +
           'Output the rewritten email in the same "subject\\n===BODY===\\nbody" format.';
         try {
           var retry = await callOpenAI(msgs.concat([
@@ -3634,15 +3672,21 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
             { role:'user',      content: fixupPrompt }
           ]), modelOpts);
           if(retry && retry.content && retry.content.trim().length > 80){
-            var stillBad = _HEDGE_BAN_RX.test(retry.content) || (_hasTotalsBlock && _RANGE_OR_SINGLE_YEAR_RX.test(retry.content));
+            var stillBad = _HEDGE_BAN_RX.test(retry.content)
+              || (_hasTotalsData && _RANGE_OR_SINGLE_YEAR_RX.test(retry.content))
+              || _PLACEHOLDER_RX.test(retry.content);
             if(!stillBad){
-              console.log('[email] hedge/range-retry succeeded');
+              console.log('[email] validator-retry succeeded');
               return retry.content;
             }
-            console.warn('[email] retry still flagged, keeping retry');
+            console.warn('[email] retry still flagged');
+            // Placeholderlar HALI HAM bo'lsa, ularni butunlay olib tashlaymiz
+            if(_PLACEHOLDER_RX.test(retry.content)){
+              return retry.content.replace(/[^.]*?\$\s*[XYZ][^.]*?\./gi, '').replace(/[^.]*?\[(?:amount|usd|value|x|y|z|figure|number|insert[^\]]*)\][^.]*?\./gi, '').replace(/\s+/g,' ');
+            }
             return retry.content;
           }
-        } catch(eR){ console.warn('[email] hedge-retry call failed:', eR && eR.message); }
+        } catch(eR){ console.warn('[email] validator-retry call failed:', eR && eR.message); }
         return content;
       };
 
