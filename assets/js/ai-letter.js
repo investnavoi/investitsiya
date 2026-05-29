@@ -2059,7 +2059,7 @@ function renderAiAnalysis(analysis, scope){
     '</div>';
   }
 
-  // === Navoiy iqtisodiy foyda hisoblash ===
+  // === Navoiy birlik narxlari taqqosi (investitsiya miqdoridan mustaqil) ===
   var profitEl = dom.profitEstimate;
   if(profitEl){
     var comp = null;
@@ -2069,76 +2069,117 @@ function renderAiAnalysis(analysis, scope){
       var selId = ((document.getElementById('ailetter-company-select')||{}).value || '');
       if(selId) comp = (DB.investorCompanies||[]).find(function(c){ return String(c.id) === String(selId); });
     }
+    // investSum faqat embassy cache uchun — displayda ko'rsatilmaydi
     var investSum = comp ? (parseFloat(comp.summa) || 0) : 0;
-    if(investSum <= 0) investSum = 10000000; // default $10M agar summa yo'q bo'lsa
+    if(investSum <= 0) investSum = 10000000;
 
-    var savingsBreakdown = [];
+    var savingsBreakdown = []; // embassy.js cache uchun saqlanadi
     var totalAnnualSaving = 0;
+    var unitItems = []; // birlik narxlari taqqosi uchun
 
-    // 1. Soliq tejamkorlik (tax saving)
-    // Foyda daromadi: investitsiyaning taxminan 12% (konservativ manufacturing margin)
-    // Faqat ≥3 percentage-point farqda ko'rsatiladi — marginal farq noise bo'ladi
+    var svgIcons = {
+      'Soliq tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 14l-4-4m0 0l4-4m-4 4h11a4 4 0 010 8h-1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'Mehnat narxi tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm11 0l-3 3m0 0l-3-3m3 3V4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'Elektr energiya tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'Tabiiy gaz tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C8 6 4 10.5 4 14a8 8 0 0016 0c0-3.5-4-8-8-12z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'Transport logistika tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 3h15v13H1zM16 8h4l3 4v5h-7V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/></svg>'
+    };
+
+    // 1. Soliq yuklamasi
     var taxC = Number(tax.country), taxU = Number(tax.uzbekistan);
     if(Number.isFinite(taxC) && Number.isFinite(taxU) && taxC > taxU && (taxC - taxU) >= 3){
-      var taxSaving = investSum * 0.12 * ((taxC - taxU) / 100); // 12% annual profit margin (konservativ)
+      var taxDiff = taxC - taxU;
+      var taxSaving = investSum * 0.12 * (taxDiff / 100);
       totalAnnualSaving += taxSaving;
-      savingsBreakdown.push({label:'Soliq tejamkorlik', value:taxSaving, pct:((taxC-taxU).toFixed(1))+'pp', color:'#7C3AED', desc:'Soliq yuklamasi: '+taxC.toFixed(1)+'% → '+taxU.toFixed(1)+'% (12% profit margin asosida)'});
+      savingsBreakdown.push({label:'Soliq tejamkorlik', value:taxSaving, pct:taxDiff.toFixed(1)+'pp', color:'#7C3AED', desc:'Soliq yuklamasi: '+taxC.toFixed(1)+'% → '+taxU.toFixed(1)+'%'});
+      unitItems.push({
+        label: 'Soliq yuklamasi',
+        iconKey: 'Soliq tejamkorlik',
+        color: '#7C3AED',
+        uzLabel: taxU.toFixed(1) + '%',
+        cLabel: taxC.toFixed(1) + '%',
+        unit: 'foyda solig\'i (profit tax burden, % foydadan)',
+        pctNum: Math.min(99, Math.round((taxDiff / taxC) * 100)),
+        pctText: taxDiff.toFixed(1) + 'pp past'
+      });
     }
 
-    // 2. Mehnat narxi tejamkorlik (labor cost saving)
-    // Ishchi soni: $300K ga taxminan 1 ishchi (manufacturing); max 150 ishchi (hiperestimatsiyadan saqlanish uchun)
+    // 2. Mehnat narxi (oylik, manufacturing)
     var wageC = Number(wage.country), wageU = Number(wage.uzbekistan);
     if(Number.isFinite(wageC) && Number.isFinite(wageU) && wageC > wageU){
       var wageRelDiff = wageC > 0 ? ((wageC - wageU) / wageC) : 0;
-      if(wageRelDiff >= 0.15){ // faqat ≥15% farqda hisoblab ko'rsatamiz
+      if(wageRelDiff >= 0.15){
         var workerCount = Math.min(150, Math.max(20, Math.round(investSum / 300000)));
         var annualWageSaving = (wageC - wageU) * 12 * workerCount;
         totalAnnualSaving += annualWageSaving;
-        savingsBreakdown.push({label:'Mehnat narxi tejamkorlik', value:annualWageSaving, pct:Math.round(wageRelDiff*100)+'%', color:'#059669', desc:workerCount+' ishchi (taxm.) × $'+Math.round(wageC-wageU)+'/oy farq'});
+        savingsBreakdown.push({label:'Mehnat narxi tejamkorlik', value:annualWageSaving, pct:Math.round(wageRelDiff*100)+'%', color:'#059669', desc:workerCount+' ishchi × $'+Math.round(wageC-wageU)+'/oy farq'});
+        unitItems.push({
+          label: 'Mehnat narxi',
+          iconKey: 'Mehnat narxi tejamkorlik',
+          color: '#059669',
+          uzLabel: '$' + Math.round(wageU) + '/oy',
+          cLabel: '$' + Math.round(wageC) + '/oy',
+          unit: 'o\'rtacha ishlab chiqarish sektori ish haqi (oylik, USD)',
+          pctNum: Math.round(wageRelDiff * 100),
+          pctText: Math.round(wageRelDiff * 100) + '% arzon'
+        });
       }
     }
 
-    // 3. Elektr energiya tejamkorlik (faqat ≥15% va ≥$5/MWh farqda)
+    // 3. Elektr energiya ($/MWh, faqat ≥15% va ≥$5/MWh farqda)
     var elC = Number(electricity.country), elU = Number(electricity.uzbekistan);
     if(Number.isFinite(elC) && Number.isFinite(elU) && elC > elU){
       var elRelDiff = elC > 0 ? ((elC - elU) / elC) : 0;
       var elAbsDiff = elC - elU;
       if(elRelDiff >= 0.15 && elAbsDiff >= 5){
-        var annualMwh = investSum / 1500; // taxminiy yillik energiya sarfi MWh
+        var annualMwh = investSum / 1500;
         var elSaving = elAbsDiff * annualMwh;
         totalAnnualSaving += elSaving;
-        savingsBreakdown.push({label:'Elektr energiya tejamkorlik', value:elSaving, pct:Math.round(elRelDiff*100)+'%', color:'#DC2626', desc:Math.round(annualMwh)+' MWh × $'+elAbsDiff.toFixed(1)+' farq'});
+        savingsBreakdown.push({label:'Elektr energiya tejamkorlik', value:elSaving, pct:Math.round(elRelDiff*100)+'%', color:'#DC2626', desc:'$'+elU.toFixed(1)+'/MWh vs $'+elC.toFixed(1)+'/MWh'});
+        unitItems.push({
+          label: 'Elektr energiya',
+          iconKey: 'Elektr energiya tejamkorlik',
+          color: '#DC2626',
+          uzLabel: '$' + elU.toFixed(1) + '/MWh',
+          cLabel: '$' + elC.toFixed(1) + '/MWh',
+          unit: 'sanoat elektr energiya tarifi (kWh emas, MWh)',
+          pctNum: Math.round(elRelDiff * 100),
+          pctText: Math.round(elRelDiff * 100) + '% arzon'
+        });
       }
     }
 
-    // 4. Tabiiy gaz tejamkorlik
+    // 4. Tabiiy gaz ($/MWh)
     var gasC = Number(gas.country), gasU = Number(gas.uzbekistan);
     if(Number.isFinite(gasC) && Number.isFinite(gasU) && gasC > gasU){
-      /* Anti-hype: agar UZ gaz $5/MWh dan past bo'lsa, IEA ma'lumotida noaniqlik bor —
-         davlat subsidiyasi sababli rasmiy ko'rsatkich noto'liq. Bunday holda
-         realistic minimum sifatida $8/MWh ishlatamiz (taqqoslash uchun mintaqaviy
-         baseline). "100% cheaper" kabi hype yozilmasin uchun. */
       var gasU_adj = gasU < 5 ? 8 : gasU;
-      var gasC_adj = Math.max(gasC, gasU_adj + 0.5); // bo'sh farq bo'lib qolmasin
+      var gasC_adj = Math.max(gasC, gasU_adj + 0.5);
       var annualGasMwh = investSum / 3000;
       var gasSaving = (gasC_adj - gasU_adj) * annualGasMwh;
-      var gasPct = Math.min(70, Math.round((1 - gasU_adj/gasC_adj) * 100)); // max 70% — "100%" hype emas
-      var gasDesc = (gasU < 5)
-        ? 'Davlat subsidiyali narx — taxminiy $'+gasU_adj.toFixed(1)+'/MWh dan hisoblangan'
-        : Math.round(annualGasMwh)+' MWh × $'+((gasC_adj-gasU_adj).toFixed(1))+' farq';
+      var gasPct = Math.min(70, Math.round((1 - gasU_adj/gasC_adj) * 100));
+      var gasDescCache = (gasU < 5)
+        ? 'Davlat subsidiyali narx — taxminiy $'+gasU_adj.toFixed(1)+'/MWh'
+        : '$'+gasU.toFixed(1)+'/MWh vs $'+gasC.toFixed(1)+'/MWh';
       totalAnnualSaving += gasSaving;
-      savingsBreakdown.push({label:'Tabiiy gaz tejamkorlik', value:gasSaving, pct:gasPct+'%', color:'#F59E0B', desc:gasDesc});
+      savingsBreakdown.push({label:'Tabiiy gaz tejamkorlik', value:gasSaving, pct:gasPct+'%', color:'#F59E0B', desc:gasDescCache});
+      unitItems.push({
+        label: 'Tabiiy gaz',
+        iconKey: 'Tabiiy gaz tejamkorlik',
+        color: '#F59E0B',
+        uzLabel: (gasU < 5 ? '~$' : '$') + gasU_adj.toFixed(1) + '/MWh',
+        cLabel: '$' + gasC.toFixed(1) + '/MWh',
+        unit: gasU < 5 ? 'davlat subsidiyali narx (taxminiy minimum)' : 'sanoat gaz tarifi',
+        pctNum: gasPct,
+        pctText: gasPct + '% arzon'
+      });
     }
 
-    // 5. Transport tejamkorlik — faqat Navoiy net ustunlikka ega yo'nalishlar bo'yicha
+    // 5. Transport logistika — faqat Navoiy ustunlikka ega yo'nalishlar
     if(transportSummary && transportSummary.routes && transportSummary.routes.length){
       var favRoutes = transportSummary.routes.filter(function(r){ return r.saving > 0; });
-      if(favRoutes.length >= 3){ // kamida 3 ta yo'nalishda arzon bo'lsa hisoblash mantiqiy
+      if(favRoutes.length >= 3){
         var favAvgSaving = Math.round(favRoutes.reduce(function(s,r){ return s+r.saving; },0) / favRoutes.length);
-        var favAvgPct = favRoutes.length > 0
-          ? Math.round(favRoutes.reduce(function(s,r){ return s+r.savingPct; },0) / favRoutes.length)
-          : 0;
-        // Shipment soni: yiliga taxminan. $500K har bir shipment uchun, max 24 shipment/yil
+        var favAvgPct = Math.round(favRoutes.reduce(function(s,r){ return s+r.savingPct; },0) / favRoutes.length);
         var shipments = Math.min(24, Math.max(4, Math.round(investSum / 500000)));
         var trSaving = favAvgSaving * shipments;
         totalAnnualSaving += trSaving;
@@ -2147,12 +2188,22 @@ function renderAiAnalysis(analysis, scope){
           value: trSaving,
           pct: favAvgPct+'%',
           color:'#D97706',
-          desc: shipments+' jo\'natma × $'+favAvgSaving.toLocaleString()+' ('+favRoutes.length+' ta qulay yo\'nalish bo\'yicha o\'rtacha)'
+          desc: favRoutes.length+' ta yo\'nalishda o\'rtacha $'+favAvgSaving.toLocaleString()+' arzonroq/jo\'natma'
+        });
+        unitItems.push({
+          label: 'Transport (logistika)',
+          iconKey: 'Transport logistika tejamkorlik',
+          color: '#D97706',
+          uzLabel: '$' + favAvgSaving.toLocaleString() + ' tejamkorlik/jo\'natma',
+          cLabel: countryName + ' ga nisbatan',
+          unit: favRoutes.length + ' ta yo\'nalishda Navoiy arzonroq · o\'rtacha farq',
+          pctNum: Math.min(99, favAvgPct),
+          pctText: favAvgPct + '% arzon'
         });
       }
     }
 
-    // Embassy letter uchun cache — har country bo'yicha savingsBreakdown saqlanadi
+    // Embassy letter uchun cache
     try {
       if(!window._aiSavingsCache) window._aiSavingsCache = {};
       var _cacheKey = String(countryName || '').toLowerCase().trim();
@@ -2168,75 +2219,61 @@ function renderAiAnalysis(analysis, scope){
       }
     } catch(_e){}
 
-    if(totalAnnualSaving > 0){
+    if(unitItems.length > 0){
       profitEl.style.display = 'block';
-      var mln = totalAnnualSaving / 1000000;
 
-      var svgIcons = {
-        'Soliq tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 14l-4-4m0 0l4-4m-4 4h11a4 4 0 010 8h-1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        'Mehnat narxi tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm11 0l-3 3m0 0l-3-3m3 3V4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        'Elektr energiya tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        'Tabiiy gaz tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C8 6 4 10.5 4 14a8 8 0 0016 0c0-3.5-4-8-8-12z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        'Transport logistika tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 3h15v13H1zM16 8h4l3 4v5h-7V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/></svg>'
-      };
-
-      var savingsRows = savingsBreakdown.map(function(s){
-        var sMln = s.value / 1000000;
-        var barWidth = Math.min(100, Math.round((s.value / totalAnnualSaving) * 100));
-        var valStr = sMln >= 0.01 ? ('$' + sMln.toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + ' mln') : ('$' + (s.value/1000).toFixed(0) + 'K');
-        var ico = svgIcons[s.label] || '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
-          '<div style="width:34px;height:34px;border-radius:10px;background:' + s.color + '15;color:' + s.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">' + ico + '</div>' +
-          '<div style="flex:1;min-width:0">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">' +
-              '<span style="font-size:.74rem;font-weight:700;color:var(--text)">' + escapeHtmlText(s.label) + '</span>' +
-              '<span style="font-family:\'Sora\',sans-serif;font-size:.78rem;font-weight:800;color:' + s.color + '">' + valStr + '</span>' +
+      var unitRows = unitItems.map(function(item){
+        var barW = Math.min(99, Math.max(5, item.pctNum));
+        var ico = svgIcons[item.iconKey] || '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        return (
+          '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+            '<div style="width:34px;height:34px;border-radius:10px;background:' + item.color + '15;color:' + item.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">' + ico + '</div>' +
+            '<div style="flex:1;min-width:0">' +
+              /* Label + badge */
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px">' +
+                '<span style="font-size:.74rem;font-weight:700;color:var(--text)">' + escapeHtmlText(item.label) + '</span>' +
+                '<span style="font-size:.68rem;font-weight:800;color:' + item.color + ';background:' + item.color + '15;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0">↓ ' + escapeHtmlText(item.pctText) + '</span>' +
+              '</div>' +
+              /* UZ vs Country values */
+              '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;flex-wrap:wrap">' +
+                '<span style="font-family:\'Sora\',sans-serif;font-size:.76rem;font-weight:800;color:#fff;background:#059669;padding:2px 9px;border-radius:6px">O\'Z: ' + escapeHtmlText(item.uzLabel) + '</span>' +
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;color:var(--text3)"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+                '<span style="font-size:.73rem;font-weight:600;color:var(--text2)">' + escapeHtmlText(item.cLabel) + '</span>' +
+              '</div>' +
+              /* Unit description */
+              '<div style="font-size:.61rem;color:var(--text3);margin-bottom:5px">' + escapeHtmlText(item.unit) + '</div>' +
+              /* Advantage bar */
+              '<div style="height:5px;background:var(--bg);border-radius:20px;overflow:hidden">' +
+                '<div style="height:100%;width:' + barW + '%;background:linear-gradient(90deg,' + item.color + ',' + item.color + 'aa);border-radius:20px;transition:width 1.2s cubic-bezier(.4,0,.2,1)"></div>' +
+              '</div>' +
             '</div>' +
-            '<div style="font-size:.64rem;color:var(--text3);margin-bottom:5px">' + escapeHtmlText(s.desc) + ' · <span style="color:' + s.color + ';font-weight:600">↓ ' + escapeHtmlText(s.pct) + ' arzon</span></div>' +
-            '<div style="height:5px;background:var(--bg);border-radius:20px;overflow:hidden">' +
-              '<div style="height:100%;width:' + barWidth + '%;background:linear-gradient(90deg,' + s.color + ',' + s.color + 'aa);border-radius:20px;transition:width 1.2s cubic-bezier(.4,0,.2,1)"></div>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
+          '</div>'
+        );
       });
 
-      var investLabel = investSum >= 1000000 ? ('$' + (investSum/1000000).toFixed(1).replace(/\.0$/,'') + ' mln') : ('$' + (investSum/1000).toFixed(0) + 'K');
-
-      profitEl.innerHTML = '<div style="margin-top:.6rem;background:var(--card);border-radius:16px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(58,87,232,.06);overflow:hidden;animation:aiDonutFadeIn .6s ease both">' +
-        /* Header */
-        '<div style="padding:1rem 1.2rem;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;gap:12px">' +
-          '<div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
-            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      profitEl.innerHTML = (
+        '<div style="margin-top:.6rem;background:var(--card);border-radius:16px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(58,87,232,.06);overflow:hidden;animation:aiDonutFadeIn .6s ease both">' +
+          /* Header */
+          '<div style="padding:1rem 1.2rem;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;gap:12px">' +
+            '<div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
+              '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h12M3 18h8" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>' +
+            '</div>' +
+            '<div style="flex:1">' +
+              '<div style="font-family:\'Sora\',sans-serif;font-size:.88rem;font-weight:800;color:#fff">Navoiy vs ' + escapeHtmlText(countryName) + ' · Birlik narxlari</div>' +
+              '<div style="font-size:.66rem;color:rgba(255,255,255,.8);margin-top:2px">' + unitItems.length + ' ta ko\'rsatkichda Navoiy arzonroq · rasmiy API ma\'lumotlari</div>' +
+            '</div>' +
           '</div>' +
-          '<div style="flex:1">' +
-            '<div style="font-family:\'Sora\',sans-serif;font-size:.88rem;font-weight:800;color:#fff">Navoiyda loyiha qilgandagi yillik iqtisod</div>' +
-            '<div style="font-size:.66rem;color:rgba(255,255,255,.75);margin-top:2px">Investitsiya: ' + investLabel + ' · ' + escapeHtmlText(countryName) + ' bilan taqqoslaganda</div>' +
+          /* Unit comparison rows */
+          '<div style="padding:.8rem 1.2rem">' +
+            unitRows.join('') +
           '</div>' +
-        '</div>' +
-        /* Main values */
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">' +
-          '<div style="padding:1rem 1.2rem;text-align:center;border-right:1px solid var(--border)">' +
-            '<div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.35rem">Yillik tejamkorlik</div>' +
-            '<div style="font-family:\'Sora\',sans-serif;font-size:1.65rem;font-weight:900;color:#059669;line-height:1.1">$' + mln.toFixed(2) + '</div>' +
-            '<div style="font-size:.62rem;font-weight:600;color:#059669;opacity:.7;margin-top:2px">million / yil</div>' +
+          /* Footer note */
+          '<div style="padding:.6rem 1.2rem;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;margin-top:1px;color:var(--text3)"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" stroke-width="2"/><path d="M12 8v4m0 4h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+            '<div style="font-size:.62rem;color:var(--text3);line-height:1.55"><b style="color:var(--text2)">Eslatma:</b> Birlik narxlari World Bank/ILOSTAT/IEA rasmiy API ma\'lumotlari asosida. Haqiqiy tejamkorlik investitsiya hajmi, soha va mahsulotga qarab farq qiladi. FEZ soliq ta\'tili inobatga olinmagan — bu alohida va qo\'shimcha imtiyozdir.</div>' +
           '</div>' +
-          '<div style="padding:1rem 1.2rem;text-align:center">' +
-            '<div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.35rem">5 yillik prognoz</div>' +
-            '<div style="font-family:\'Sora\',sans-serif;font-size:1.65rem;font-weight:900;color:#4361EE;line-height:1.1">$' + (mln*5).toFixed(1) + '</div>' +
-            '<div style="font-size:.62rem;font-weight:600;color:#4361EE;opacity:.7;margin-top:2px">million / 5 yil</div>' +
-          '</div>' +
-        '</div>' +
-        /* Breakdown */
-        '<div style="padding:.8rem 1.2rem">' +
-          '<div style="font-size:.64rem;font-weight:700;color:var(--text2);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.06em">Tejamkorlik tarkibi</div>' +
-          savingsRows.join('') +
-        '</div>' +
-        /* Footer note */
-        '<div style="padding:.6rem 1.2rem;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">' +
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;margin-top:1px;color:var(--text3)"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" stroke-width="2"/><path d="M12 8v4m0 4h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
-          '<div style="font-size:.62rem;color:var(--text3);line-height:1.55"><b style="color:var(--text2)">Eslatma:</b> Taxminiy hisob-kitob — faqat World Bank/ILOSTAT/IEA rasmiy API ma\'lumotlari asosida. Quyidagi taxminlar qo\'llanilgan: foyda margini 12%, ishchi soni investitsiyaga mutanosib, energiya sarfi sanoat o\'rtachasiga ko\'ra. FEZ soliq ta\'tili bu hisob-kitobda inobatga olinmagan — u alohida va qo\'shimcha imtiyozdir. Haqiqiy tejamkorlik loyiha, soha va mahsulotga qarab farq qiladi.</div>' +
-        '</div>' +
-      '</div>';
+        '</div>'
+      );
     } else {
       profitEl.style.display = 'none';
     }
