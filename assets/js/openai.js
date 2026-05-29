@@ -111,12 +111,33 @@ async function callOpenAIStream(messages, opts, onChunk){
     body.temperature = Number.isFinite(Number(opts.temperature)) ? Number(opts.temperature) : 0.7;
   }
 
-  var resp = await fetch(OPENAI_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + key },
-    body: JSON.stringify(body)
-  });
+  // AbortController — umumiy va idle (chunklar orasidagi) timeout uchun.
+  // Stream stalled bo'lsa (yangi token kelmasa) abadiy osilib qolmaslik kerak.
+  var ctrl = new AbortController();
+  var OVERALL_MS = Number(opts.timeoutMs) || 180000; // 3 daqiqa umumiy
+  var IDLE_MS = Number(opts.idleTimeoutMs) || 45000;  // 45s yangi chunk kelmasa
+  var overallTimer = setTimeout(function(){ try { ctrl.abort(); } catch(_e){} }, OVERALL_MS);
+  var idleTimer = null;
+  function resetIdle(){
+    if(idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){ try { ctrl.abort(); } catch(_e){} }, IDLE_MS);
+  }
+
+  var resp;
+  try {
+    resp = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + key },
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+  } catch(e){
+    clearTimeout(overallTimer); if(idleTimer) clearTimeout(idleTimer);
+    if(e && e.name === 'AbortError') throw new Error('OpenAI so\'rovi vaqtdan oshdi (timeout)');
+    throw e;
+  }
   if(!resp.ok){
+    clearTimeout(overallTimer); if(idleTimer) clearTimeout(idleTimer);
     var errBody = await resp.json().catch(function(){ return {}; });
     var errMsg = (errBody.error && errBody.error.message) || ('Status ' + resp.status);
     if(resp.status === 401) throw new Error('OpenAI: API kalit noto\'g\'ri.');
@@ -128,27 +149,39 @@ async function callOpenAIStream(messages, opts, onChunk){
   var decoder = new TextDecoder();
   var full = '';
   var buf = '';
-  while(true){
-    var chunk = await reader.read();
-    if(chunk.done) break;
-    buf += decoder.decode(chunk.value, { stream: true });
-    var lines = buf.split('\n');
-    buf = lines.pop();
-    for(var i = 0; i < lines.length; i++){
-      var line = lines[i].trim();
-      if(!line.startsWith('data:')) continue;
-      var dataStr = line.slice(5).trim();
-      if(!dataStr || dataStr === '[DONE]') continue;
-      try {
-        var payload = JSON.parse(dataStr);
-        var delta = (((payload.choices || [])[0] || {}).delta || {}).content || '';
-        if(delta){
-          full += delta;
-          if(typeof onChunk === 'function') onChunk(delta, full);
-        }
-      } catch(e){ /* malformed chunk — skip */ }
+  resetIdle();
+  try {
+    while(true){
+      var chunk = await reader.read();
+      if(chunk.done) break;
+      resetIdle();
+      buf += decoder.decode(chunk.value, { stream: true });
+      var lines = buf.split('\n');
+      buf = lines.pop();
+      for(var i = 0; i < lines.length; i++){
+        var line = lines[i].trim();
+        if(!line.startsWith('data:')) continue;
+        var dataStr = line.slice(5).trim();
+        if(!dataStr || dataStr === '[DONE]') continue;
+        try {
+          var payload = JSON.parse(dataStr);
+          var delta = (((payload.choices || [])[0] || {}).delta || {}).content || '';
+          if(delta){
+            full += delta;
+            if(typeof onChunk === 'function') onChunk(delta, full);
+          }
+        } catch(e){ /* malformed chunk — skip */ }
+      }
     }
+  } catch(e){
+    // Stream o'rtada uzilsa — agar matn yig'ilgan bo'lsa, uni qaytaramiz (foydalanuvchi
+    // qisman tahlilni ko'radi); aks holda xato tashlaymiz.
+    if(e && e.name === 'AbortError'){
+      if(full && full.trim().length > 50){ console.warn('[callOpenAIStream] stream timeout — qisman natija qaytarildi'); }
+      else { clearTimeout(overallTimer); if(idleTimer) clearTimeout(idleTimer); throw new Error('OpenAI stream vaqtdan oshdi (timeout)'); }
+    } else { clearTimeout(overallTimer); if(idleTimer) clearTimeout(idleTimer); throw e; }
   }
+  clearTimeout(overallTimer); if(idleTimer) clearTimeout(idleTimer);
   return { content: full, model: model };
 }
 

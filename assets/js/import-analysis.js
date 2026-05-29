@@ -4779,8 +4779,24 @@ async function analyzeInvestmentMaterial(){
     toast(investAiT('toastReady'));
   } catch(e){
     console.error(e);
-    renderInvestAiMarkdown('## Error\n\n' + (e && e.message ? e.message : 'Unknown error'));
-    toast('⚠️ ' + (e.message || 'Error'),'error');
+    // Agar stream timeout/uzilishida qisman tahlil yig'ilgan bo'lsa — uni saqlab
+    // qoldiramiz (foydalanuvchi mavjud qismni ko'radi), faqat xato toast chiqaramiz.
+    if(_investAiMarkdown && _investAiMarkdown.trim().length > 80){
+      renderInvestAiProgress(3, true);
+      var _partialOfficial = !!(_investAiTradeContext && _investAiTradeContext.officialDataAvailable);
+      if(notice) notice.style.display = _partialOfficial ? 'block' : 'none';
+      if(shouldMirrorInvestAiToProductPanel(material) && inlineNotice) inlineNotice.style.display = _partialOfficial ? 'block' : 'none';
+      updateInvestAiOutputMeta(material, new Date().toISOString());
+      saveInvestAiHistory(material, _investAiMarkdown, _investAiTradeContext);
+      renderInvestAiHistory();
+      if(typeof syncProductRawAiPanelState === 'function' && typeof PRODUCT_ACTIVE_SECTION !== 'undefined'){
+        try { syncProductRawAiPanelState(PRODUCT_ACTIVE_SECTION); } catch(_se){}
+      }
+      toast('⚠️ Tahlil to\'liq yakunlanmadi, mavjud qismi saqlandi: ' + (e.message || 'xato'),'error');
+    } else {
+      renderInvestAiMarkdown('## Error\n\n' + (e && e.message ? e.message : 'Unknown error'));
+      toast('⚠️ ' + (e.message || 'Error'),'error');
+    }
   } finally {
     setInvestAiBusy(false);
   }
