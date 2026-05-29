@@ -29,6 +29,8 @@ function loadSettings(){
   if(srEl) srEl.value = keys.searates||'';
   var ctEl = document.getElementById('set-comtrade-key');
   if(ctEl) ctEl.value = keys.comtrade||'';
+  var ct2El = document.getElementById('set-comtrade-key2');
+  if(ct2El) ct2El.value = keys.comtrade2||'';
   var pptxEl = document.getElementById('set-pptx-url');
   if(pptxEl) pptxEl.value = keys.pptx_url||'';
   if(keys.pptx_url && typeof PPTX_TEMPLATE_URL!=='undefined') PPTX_TEMPLATE_URL = keys.pptx_url;
@@ -79,6 +81,10 @@ function saveSettings(){
   var comtradeVal = (document.getElementById('set-comtrade-key')||{}).value||'';
   if(comtradeVal && typeof saveApiKey==='function'){
     saveApiKey('comtrade', comtradeVal.trim());
+  }
+  var comtrade2Val = (document.getElementById('set-comtrade-key2')||{}).value||'';
+  if(comtrade2Val && typeof saveApiKey==='function'){
+    saveApiKey('comtrade2', comtrade2Val.trim());
   }
   // Telegram token va chatId ham apiKeys ga saqlash
   var tgTokenVal = (document.getElementById('set-tg-token')||{}).value||'';
