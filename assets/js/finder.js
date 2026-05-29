@@ -2178,11 +2178,27 @@ async function apolloEnrichTradeAtlasItem(item, apolloKey, prod, meta){
   // Apollo ma'lumotlari bilan item'ni boyitish
   item._orgId = orgId;
   item.website = item.website || apolloAbsoluteUrl(org.website_url || org.website || '');
-  // Davlat — Apollo org'dan to'ldiramiz (TradeAtlas item'da davlat bo'sh bo'lishi mumkin)
+  // Davlat — Apollo org'dan to'ldiramiz (TradeAtlas item'da davlat bo'sh bo'lishi mumkin).
+  // Apollo davlatni turli maydonlarda qaytaradi: country, primary_location.country,
+  // organization_country, country_name, yoki raw_address oxirida.
   if(!String(item.davlat || '').trim()){
-    item.davlat = String(org.country || org.organization_country || org.country_name || org.primary_country || '').trim();
+    var _orgCountry = String(
+      (org.country || org.organization_country || org.country_name || org.primary_country ||
+       (org.primary_location && (org.primary_location.country || org.primary_location.country_name)) ||
+       (org.organization && org.organization.country) || '')
+    ).trim();
+    // Fallback: raw_address / present_raw_address oxiridagi davlat nomi (vergul bilan ajratilgan)
+    if(!_orgCountry){
+      var _addr = String(org.raw_address || org.present_raw_address || org.organization_raw_address || '').trim();
+      if(_addr){
+        var _parts = _addr.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+        if(_parts.length) _orgCountry = _parts[_parts.length - 1];
+      }
+    }
+    if(_orgCountry) item.davlat = _orgCountry;
+    console.log('[Apollo org] country resolved:', item.davlat || '(bo\'sh)', '| raw fields:', { country: org.country, primary_location: org.primary_location, raw_address: org.raw_address });
   }
-  item.shahar = item.shahar || org.city || '';
+  item.shahar = item.shahar || org.city || (org.primary_location && org.primary_location.city) || '';
   item.soha = item.soha || org.industry || '';
   item.xodimlar = item.xodimlar || Number(org.estimated_num_employees || 0) || 0;
   item.daromad = item.daromad || org.organization_revenue_printed || org.annual_revenue_printed || '';
