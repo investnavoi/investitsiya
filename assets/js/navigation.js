@@ -222,10 +222,12 @@ function _showPageInner(id){
   else if(id==='ailetter'){if(typeof populateProductSelects==='function')populateProductSelects();}
   else if(id==='pipeline'){if(typeof renderCrmDashboard==='function')renderCrmDashboard();}
   else if(id==='trade'){
+    // Collection'larni preload qilamiz (manual qidiruv tez ishlashi uchun), lekin
+    // avtomatik oxirgi qidiruvni TIKLAMAYMIZ — foydalanuvchi o'zi davlat tanlab
+    // "Qidirish" bosgandagina natija chiqsin.
     if(window.ensureCollectionLoaded){
-      Promise.all([window.ensureCollectionLoaded('tradeData'), window.ensureCollectionLoaded('tradeSnapshots'), window.ensureCollectionLoaded('tradeSnapshotChunks')])
-        .then(function(){ restoreLastTradeSnapshot(); });
-    } else { restoreLastTradeSnapshot(); }
+      Promise.all([window.ensureCollectionLoaded('tradeData'), window.ensureCollectionLoaded('tradeSnapshots'), window.ensureCollectionLoaded('tradeSnapshotChunks')]);
+    }
   }
   else if(id==='settings'){if(typeof loadSettings==='function')loadSettings();if(typeof checkTgStatus==='function')checkTgStatus();}
 
