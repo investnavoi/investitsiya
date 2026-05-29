@@ -97,8 +97,13 @@ function getRawAnalysisMaterialName(raw){
 function findInvestAiHistoryIndexForRaw(raw){
   if(!raw) return -1;
   var items = getInvestAiHistory();
+  // 1) Aniq: rawId bo'yicha
   for(var i=0;i<items.length;i++){
-    if(doesInvestAiMaterialMatchRaw(items[i].material, raw)) return i;
+    if(items[i] && items[i].rawId && String(items[i].rawId) === String(raw.id)) return i;
+  }
+  // 2) Fallback: material nomi bo'yicha
+  for(var j=0;j<items.length;j++){
+    if(doesInvestAiMaterialMatchRaw(items[j].material, raw)) return j;
   }
   return -1;
 }
@@ -258,6 +263,8 @@ function analyzeSelectedProductRaw(){
   fillInvestAiMaterial(name);
   // Pass rawId directly so collectInvestAiTradeContext can find it by ID
   _investAiDirectRawId = String(raw.id || '');
+  // Natija aynan shu xomashyo panelida ko'rinishi uchun aktiv ID ni saqlaymiz
+  _investAiActiveRawId = String(raw.id || '');
   analyzeInvestmentMaterial();
 }
 window.closeProductRawAi = function(section){ closeProductRawAi(section); _syncExpandBody(); };
@@ -480,7 +487,8 @@ function syncProductRawAiPanelState(section){
     analyzeBtn.disabled = _investAiBusy;
     analyzeBtn.textContent = _investAiBusy ? '⏳ AI tahlil qilinmoqda...' : '🧠 Shu xomashyoni tahlil qilish';
   }
-  if(doesInvestAiMaterialMatchRaw(_investAiCurrentMaterial, raw) && _investAiMarkdown){
+  var _isActiveRawAnalysis = (typeof _investAiActiveRawId !== 'undefined' && _investAiActiveRawId && String(_investAiActiveRawId) === String(raw.id));
+  if((_isActiveRawAnalysis || doesInvestAiMaterialMatchRaw(_investAiCurrentMaterial, raw)) && _investAiMarkdown){
     renderInvestAiProgressInto('productRawAiProgress', 'productRawAiProgressCard', _investAiBusy ? Math.max(_investAiPhase,0) : 3, !_investAiBusy);
     renderInvestAiMarkdownInto('productRawAiOutput', _investAiMarkdown);
     updateInvestAiOutputMetaInto('productRawAiOutputMeta', _investAiCurrentMaterial, new Date().toISOString());
@@ -514,6 +522,9 @@ function shouldMirrorInvestAiToProductPanel(material){
   var shell = document.getElementById('productRawAiShell');
   var raw = getSelectedProductAiRaw();
   if(!shell || !raw) return false;
+  // Eng ishonchli: tahlil aynan shu xomashyo paneli uchun boshlangan bo'lsa (ID bo'yicha)
+  if(typeof _investAiActiveRawId !== 'undefined' && _investAiActiveRawId && String(_investAiActiveRawId) === String(raw.id)) return true;
+  // Aks holda material nomi bo'yicha mos kelishini tekshiramiz (fallback)
   return doesInvestAiMaterialMatchRaw(material || _investAiCurrentMaterial, raw);
 }
 

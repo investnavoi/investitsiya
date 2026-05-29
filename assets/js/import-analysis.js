@@ -2234,6 +2234,9 @@ var _investAiPhase = -1;
 var _investAiMarkdown = '';
 var _investAiCurrentMaterial = '';
 var _investAiDirectRawId = '';
+// Mahsulotlar panelidan boshlangan tahlil uchun aktiv xomashyo ID — natijani aniq
+// shu xomashyo panelida ko'rsatish uchun (fuzzy material matching'ga tayanmaymiz).
+var _investAiActiveRawId = '';
 var _investAiTradeContext = null;
 var INVEST_AI_FALLBACK_MATERIALS = [
   'Basalt','Quartz','Limestone','Gypsum','Granite','Marble','Kaolin','Bentonite','Dolomite','Phosphorite',
@@ -2500,6 +2503,8 @@ function saveInvestAiHistory(material, markdown, tradeContext){
     markdown: markdown,
     headline: headline,
     savedAt: new Date().toISOString(),
+    // Xomashyo ID — "Oxirgi tahlilni ochish" aniq topishi uchun (material nomiga tayanmaymiz)
+    rawId: (tradeContext && tradeContext.raw && tradeContext.raw.id) || _investAiActiveRawId || '',
     tradeContext: tradeContext || null
   };
 
@@ -2546,6 +2551,7 @@ function saveInvestAiHistory(material, markdown, tradeContext){
         markdown: slimMarkdown,
         headline: record.headline,
         savedAt: record.savedAt,
+        rawId: record.rawId || '',
         tradeContext: slimTradeContext
       };
       window.fbSave('investAiHistory', slimRecord);
@@ -2593,6 +2599,8 @@ function loadInvestAiHistory(idx){
   if(!item) return;
   _investAiMarkdown = item.markdown || '';
   _investAiCurrentMaterial = item.material || '';
+  // Saqlangan xomashyo ID — inline panel mirror'i aniq ishlashi uchun
+  if(item.rawId) _investAiActiveRawId = String(item.rawId);
   fillInvestAiMaterial(_investAiCurrentMaterial);
   _investAiTradeContext = item.tradeContext || null;
   renderInvestAiMarkdown(_investAiMarkdown);
@@ -2600,7 +2608,14 @@ function loadInvestAiHistory(idx){
   var notice = document.getElementById('materialAiExcelNotice');
   if(outputCard) outputCard.style.display = 'block';
   if(notice) notice.style.display = 'block';
-  // Also reveal inline product panel cards (when loading from products page)
+  // Also reveal inline product panel cards + render markdown directly (when loading
+  // from products page — mirror tekshiruviga tayanmasdan to'g'ridan-to'g'ri).
+  var inlineOutput = document.getElementById('productRawAiOutput');
+  if(inlineOutput){
+    renderInvestAiMarkdownInto('productRawAiOutput', _investAiMarkdown);
+    updateInvestAiOutputMetaInto('productRawAiOutputMeta', item.material, item.savedAt);
+    renderInvestAiProgressInto('productRawAiProgress', 'productRawAiProgressCard', 3, true);
+  }
   var inlineOutputCard = document.getElementById('productRawAiOutputCard');
   var inlineNotice = document.getElementById('productRawAiExcelNotice');
   if(inlineOutputCard) inlineOutputCard.style.display = 'block';
