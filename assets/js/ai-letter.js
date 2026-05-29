@@ -3035,11 +3035,29 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     'recipient enough to be precise, concise, and direct. A diplomat who writes well is specific and unhurried — ' +
     'never flattering, never vague, never offering a menu of options.\n\n' +
     'STRUCTURE GUIDANCE (adapt to flow naturally — not a rigid template):\n' +
-    '  ¶1 — Company-specific hook. State ONE verifiable fact from the intelligence block: a specific expansion, ' +
-    '       new equipment, market entry, export volume, or recent news. State it plainly and draw ONE concrete ' +
-    '       economic implication from it. NEVER evaluate their character or intent ("this highlights your ' +
-    '       commitment", "demonstrating your leadership"). Describe what happened and what it means in cost ' +
-    '       or logistics terms. ONE or two sentences.\n' +
+    '  ¶1 — NAVOI PRODUCTION REALITY for this specific product. This paragraph is the entire reason ' +
+    '       you are writing. Open the email by stating, with verifiable facts, what Navoi Region currently ' +
+    '       produces (or has the capacity to produce) of THIS recipient\'s product. Three valid forms ' +
+    '       — choose the one the intelligence supports:\n' +
+    '       (a) IF Navoi already produces this product at scale → state the current annual volume / ' +
+    '           number of facilities / operating plant names, plus the unmet domestic and regional ' +
+    '           demand a new line could absorb (e.g. "Navoi Region currently produces ~X tons/year ' +
+    '           of [product] across N facilities, against estimated regional demand of Y tons/year.").\n' +
+    '       (b) IF Navoi has the upstream inputs but no finished-product line → name the specific ' +
+    '           raw materials Navoi already supplies (gold, uranium, copper, cotton, gas-condensate, ' +
+    '           marble, phosphate, etc.) and the integration gap a new facility would close ' +
+    '           (e.g. "Navoi mines ~X kt/year of [feedstock] but has no integrated [finished product] ' +
+    '           line — a new facility would convert local input into export-grade output.").\n' +
+    '       (c) IF Navoi has no current production at scale → state the documented resource + ' +
+    '           logistics base that makes a greenfield facility viable, with a realistic capacity ' +
+    '           ceiling (e.g. "Navoi has no current [product] production at scale, but [resource A], ' +
+    '           [resource B] and Trans-Caspian rail access support a greenfield facility of up to ' +
+    '           X tons/year serving the 13-country regional market.").\n' +
+    '       After stating the Navoi production reality, ONE short connector sentence linking what ' +
+    '       [recipient company] already does in [their country] to that Navoi production opportunity. ' +
+    '       NEVER flatter, NEVER hype, NEVER evaluate the recipient\'s character. Use the Navoi figures ' +
+    '       from the COMPANY & RECIPIENT INTELLIGENCE block — if a Navoi figure is "unknown" there, ' +
+    '       do NOT invent one; describe the resource base qualitatively instead. 2–4 sentences total.\n' +
     '  ¶2 — COST AND ECONOMIC ADVANTAGES: Cover EVERY entry in the COMPARATIVE ADVANTAGES section ' +
     '       of the VERIFIED DATA block. Do not skip any metric. For each advantage, state BOTH the ' +
     '       Navoi figure AND the recipient country figure explicitly, then the annual implication ' +
@@ -3108,14 +3126,17 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     a robust ecosystem offering unparalleled opportunities for forward-thinking manufacturers like ' +
     '     [Company] to leverage strategic advantages and unlock new value. I believe this could present ' +
     '     an advantageous opportunity for your expansion efforts."\n' +
-    '  Strong (government official — precise, fact-based, single ask):\n' +
-    '    "[Company] commissioned [specific equipment] at [facility] in [month/year]. At the Navoi FEZ ' +
-    '     industrial electricity tariff of $40/MWh, a facility at that scale running at 80% load ' +
-    '     saves approximately $[X]K per year versus the [country] grid rate. Under Presidential ' +
-    '     Decree No. [X], corporate income tax is zero for the first [N] years from commencement ' +
-    '     of production, with no property tax and 0% import duty on process equipment. ' +
-    '     My colleague Sh. Toshmatov can send a two-page cost-comparison summary within five ' +
-    '     business days if you would like the figures reviewed against your own model."\n\n' +
+    '  Strong (government official — Navoi production reality first, then company link, then numbers, one ask):\n' +
+    '    "Navoi Region currently produces around [X tons/year] of [product] across [N] facilities, ' +
+    '     with a documented regional demand gap of roughly [Y tons/year] across Uzbekistan, Kazakhstan ' +
+    '     and Tajikistan. [Recipient Company]\'s [specific recent activity in their country] mirrors ' +
+    '     the production profile a new Navoi line would require. At the Navoi FEZ industrial ' +
+    '     electricity tariff of $40/MWh, a facility at that scale running at 80% load saves ' +
+    '     approximately $[X]K per year versus the [country] grid rate. Under Presidential Decree No. ' +
+    '     [X], corporate income tax is zero for the first [N] years from commencement of production, ' +
+    '     with no property tax and 0% import duty on process equipment. My colleague Sh. Toshmatov ' +
+    '     can send a two-page cost-comparison summary within five business days if you would like the ' +
+    '     figures reviewed against your own model."\n\n' +
     'SIGN-OFF — use this format exactly (no bold, no extra blank lines):\n' +
     '  Yours sincerely,\n' +
     '  E. I. Gafforov\n' +
@@ -3192,8 +3213,21 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
           '4. Industry-level pressure points in their country (rising labor cost, energy cost, tariffs, ' +
           '   regulation) that might make them open to relocating part of production.\n' +
           '5. Anything personal/professional about ' + (recipientName2 || 'the contact') + ' that is ' +
-          'publicly documented (recent interviews, conference speeches, named projects). Only verifiable facts.\n\n' +
-          'Output a short, scannable briefing (300-450 words). Use plain prose with short labelled sections. ' +
+          'publicly documented (recent interviews, conference speeches, named projects). Only verifiable facts.\n' +
+          '6. NAVOI REGION PRODUCTION CONTEXT for ' + (productLabel2 || 'this product') + ' — this is the ' +
+          'highest-priority section: the email must OPEN with these facts. Research and return:\n' +
+          '   • Current production of ' + (productLabel2 || 'the product') + ' in Navoi Region, Uzbekistan ' +
+          '(volume in tons / m² / units per year, number of facilities, names of operating plants if any).\n' +
+          '   • Upstream inputs / raw materials Navoi already supplies that feed this product (e.g. gold, ' +
+          'uranium, copper, cotton, gas-condensate, marble, phosphate — be specific to the product).\n' +
+          '   • Navoi FEZ / industrial parks where this product or its inputs are processed.\n' +
+          '   • Regional / domestic demand gap a new manufacturing line could absorb (Uzbekistan + 13-country ' +
+          'CIS-Central-Asia-South-Asia market).\n' +
+          '   • If Navoi currently has zero production at scale, state the documented resource + logistics ' +
+          'base that makes a greenfield facility viable, with a realistic capacity ceiling.\n' +
+          '   Cite sources for every Navoi figure (uzstat.uz, stat.uz, gov.uz, navoifez.uz, navoi.gov.uz, ' +
+          'presidential decrees, trade publications).\n\n' +
+          'Output a short, scannable briefing (400-600 words). Use plain prose with short labelled sections. ' +
           'If something is unknown, say "unknown" — do NOT guess. Cite sources inline like (source: domain.com).';
         var sResp = await callOpenAI(
           [{ role:'user', content: searchQuery }],
