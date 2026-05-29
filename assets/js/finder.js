@@ -4694,7 +4694,27 @@ async function runCompanyFinder(source){
                         String(_pp.country || (_pp.organization && _pp.organization.country) || '').trim();
               if(_pc){ tpItem.davlat = _pc; break; }
             }
-            // Hali bo'sh bo'lsa — kompaniya website domeni TLD'sidan (masalan stone.com.br → Brazil)
+            // Hali bo'sh bo'lsa — organization enrichment chaqirib to'liq org ma'lumotidan olamiz.
+            // People-search'dagi org obyekti qisqartirilgan; org_enrichment to'liq country/manzilni beradi.
+            if(!String(tpItem.davlat || '').trim() && tpItem._orgId){
+              try {
+                var _orgDomain = (function(){
+                  try { var u = String(tpItem.website || '').trim(); if(!u) return ''; if(!/^https?:\/\//i.test(u)) u = 'https://' + u; return new URL(u).hostname.replace(/^www\./,''); } catch(_e){ return ''; }
+                })();
+                var _enrReq = { search_type:'org_enrichment', api_key: apolloKeyTop };
+                if(_orgDomain) _enrReq.domain = _orgDomain;
+                else _enrReq.id = tpItem._orgId;
+                var _enrData = await apolloRequestJson(_enrReq);
+                var _enrOrg = (_enrData && (_enrData.organization || _enrData.account)) || _enrData;
+                var _enrCountry = apolloExtractOrgCountry(_enrOrg || {});
+                if(_enrCountry) tpItem.davlat = _enrCountry;
+                // Enrichment'dan shahar/manzilni ham to'ldiramiz
+                if(_enrOrg){
+                  if(!String(tpItem.shahar || '').trim()) tpItem.shahar = String(_enrOrg.city || (_enrOrg.primary_location && _enrOrg.primary_location.city) || '').trim();
+                }
+              } catch(_orgEnrErr){ console.log('[Apollo Top] org_enrichment xato for '+tpItem.kompaniya+':', _orgEnrErr && _orgEnrErr.message); }
+            }
+            // Oxirgi fallback: kompaniya website domeni TLD'sidan (masalan stone.com.br → Brazil)
             if(!String(tpItem.davlat || '').trim()){
               tpItem.davlat = apolloCountryFromWebsite(tpItem.website || '');
             }
