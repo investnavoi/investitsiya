@@ -2580,155 +2580,165 @@ function estimateAiExportRoute(sourceHub, target){
   };
 }
 
-// Gemini-powered transport estimates — live AI research per source country.
-// Cached to localStorage for 7 days (freight corridors change slowly).
-var AI_TRANSPORT_GEMINI_CACHE = {};
-var AI_TRANSPORT_GEMINI_TTL = 7 * 24 * 60 * 60 * 1000;
-(function hydrateTransportCache(){
+/* ═══════════════════════════════════════════════════════════════════════
+   REAL FREIGHT RATES — SeaRates Logistics Explorer API v2 (GraphQL)
+   + Freightos public fallback
+   Proxy endpoint: navoiy-api-proxy /api/freight
+   Container: FCL 20ft standard (ST20)
+   Cache: localStorage, 7 days per route pair
+   ═══════════════════════════════════════════════════════════════════════ */
+
+var _SR_FREIGHT_STORE_KEY = '_srFreightCache';
+var _SR_FREIGHT_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+var _SR_NAVOI_LAT = 40.1039, _SR_NAVOI_LNG = 65.3686;
+
+/* ── localStorage helpers ── */
+function _srCacheGet(key) {
   try {
-    var raw = localStorage.getItem('_aiTransportCache');
-    if(!raw) return;
-    var parsed = JSON.parse(raw);
+    var raw = localStorage.getItem(_SR_FREIGHT_STORE_KEY);
+    if (!raw) return null;
+    var store = JSON.parse(raw);
+    var entry = store[key];
+    if (!entry || !entry._ts || (Date.now() - entry._ts) > _SR_FREIGHT_TTL) return null;
+    return entry.data;
+  } catch(e) { return null; }
+}
+function _srCacheSet(key, data) {
+  try {
+    var raw = localStorage.getItem(_SR_FREIGHT_STORE_KEY);
+    var store = raw ? JSON.parse(raw) : {};
+    // Evict expired keys to keep localStorage size manageable
     var now = Date.now();
-    Object.keys(parsed || {}).forEach(function(k){
-      var entry = parsed[k];
-      if(entry && entry._ts && (now - entry._ts) < AI_TRANSPORT_GEMINI_TTL){
-        AI_TRANSPORT_GEMINI_CACHE[k] = entry.data;
-      }
+    Object.keys(store).forEach(function(k) {
+      if (!store[k]._ts || (now - store[k]._ts) > _SR_FREIGHT_TTL) delete store[k];
     });
-  } catch(e){}
-})();
-function persistTransportCache(){
-  try {
-    var out = {};
-    Object.keys(AI_TRANSPORT_GEMINI_CACHE).forEach(function(k){
-      out[k] = { _ts: Date.now(), data: AI_TRANSPORT_GEMINI_CACHE[k] };
-    });
-    localStorage.setItem('_aiTransportCache', JSON.stringify(out));
-  } catch(e){}
+    store[key] = { _ts: now, data: data };
+    localStorage.setItem(_SR_FREIGHT_STORE_KEY, JSON.stringify(store));
+  } catch(e) {}
+}
+function _srRouteKey(fromLat, fromLng, toLat, toLng) {
+  return [fromLat.toFixed(2), fromLng.toFixed(2), toLat.toFixed(2), toLng.toFixed(2)].join('_');
 }
 
-/* NOTE: Despite the legacy name, OpenAI (gpt-4o / gpt-4o-search-preview) is tried FIRST.
-   Gemini is only used as fallback when the OpenAI key is missing or the call fails. */
-async function fetchAiTransportEstimatesFromGemini(countryInfo, comp){
-  var sourceName = String((countryInfo && (countryInfo.display || countryInfo.name)) || '').trim();
-  var sourceIso3 = String((countryInfo && countryInfo.iso3) || '').toUpperCase();
-  if(!sourceName || !sourceIso3) return null;
-
-  // Extract TradeAtlas annual export volume if available
-  var taQuantity = comp ? Number(comp._tradeAtlasQuantity || 0) : 0;
-  var taUnit = comp ? String(comp._tradeAtlasQuantityUnit || '').trim() : '';
-  var taValue = comp ? Number(comp._tradeAtlasTradeValue || 0) : 0;
-  var hasVolume = Number.isFinite(taQuantity) && taQuantity > 0 && taUnit;
-
-  // Cache key includes volume signature so different companies get distinct results
-  var cacheKey = sourceIso3 + (hasVolume ? ('|'+Math.round(taQuantity)+taUnit) : '');
-  if(AI_TRANSPORT_GEMINI_CACHE[cacheKey]) return AI_TRANSPORT_GEMINI_CACHE[cacheKey];
-
-  var hasOpenAI = (typeof callOpenAI === 'function') && (typeof getOpenAIKey === 'function') && getOpenAIKey();
-  var hasGemini = (typeof callGemini === 'function');
-  if(!hasOpenAI && !hasGemini) return null;
-
-  var targetList = AI_TRANSPORT_TARGETS.map(function(t){ return '- '+t.iso3+' ('+t.name+')'; }).join('\n');
-  var volumeSpec;
-  if(hasVolume){
-    volumeSpec = 'CARGO VOLUME: '+taQuantity.toLocaleString('en-US')+' '+taUnit+' per year '+
-      (taValue > 0 ? '(total trade value ~$'+Math.round(taValue).toLocaleString('en-US')+'/year)' : '')+'.\n' +
-      'Calculate cost for shipping THIS TOTAL annual volume to each destination — break into realistic shipment batches (20ft/40ft containers, truckloads, rail wagons, or bulk) as appropriate. Return TOTAL annual freight cost per route, not per-container.';
-  } else {
-    volumeSpec = 'CARGO VOLUME: 1 standard 20ft container of general cargo (~20 tonnes / ~33m³).';
-  }
-
-  var prompt = 'You are a freight logistics expert. Provide ACCURATE, honest, unbiased freight cost estimates for 2024-2025.\n' +
-    'Reference: Drewry WCI, Xeneta, Freightos Baltic Index, major forwarder rate sheets.\n' +
-    'Do NOT inflate or deflate numbers to make either origin look better. If Navoi is more expensive for some destinations, say so.\n\n' +
-    volumeSpec + '\n\n' +
-    'ORIGIN A: '+sourceName+' ('+sourceIso3+') — use the main industrial export hub/port for this country.\n' +
-    'ORIGIN B: Navoi, Uzbekistan (UZB) — landlocked Central Asia. Main corridors: rail via Kazakhstan to Russia/China, road via Turkmenistan to Iran/Turkey, Navoi International Airport (ICAO: UTNN) for air cargo.\n\n' +
-    'Destinations (13):\n' + targetList + '\n\n' +
-    'For EACH destination output: foreignCost (USD, total for the volume), foreignDays (transit days door-to-door), foreignMode (mode description), navoiCost (USD from Navoi), navoiDays, navoiMode.\n\n' +
-    'ACCURACY RULES — read carefully:\n' +
-    '1. Base EVERY number on actual market rates and real corridors. Do not guess.\n' +
-    '2. Navoi reference benchmarks (20ft container): TUR ~$2,000-3,000, RUS ~$1,800-2,500, KAZ ~$800-1,200, IRN ~$1,200-1,800, AFG ~$900-1,400, TJK ~$700-1,000, TKM ~$800-1,100, PAK ~$1,500-2,200.\n' +
-    '3. For sea-accessible destinations from Origin A with direct port access (TUR, RUS, CHN, EUR...) — the foreign origin will often be cheaper. REPORT THIS HONESTLY.\n' +
-    '4. Navoi advantages are REAL for CIS/Central Asia neighbours and where the Middle Corridor rail gives a genuine edge. Do not fabricate advantages elsewhere.\n' +
-    '5. Round to nearest $50. Stay within realistic freight market ranges — do not output $200 or $50,000 for a container.\n' +
-    '6. Output ONLY the 13 destinations listed. No extras. No UZB (domestic).\n\n' +
-    'Return ONLY valid JSON:\n' +
-    '{"routes":[{"iso3":"TUR","foreignCost":3200,"foreignDays":18,"foreignMode":"Sea + truck","navoiCost":2400,"navoiDays":7,"navoiMode":"Rail + road"}, ...]}';
-
-  /* Try OpenAI (web search preferred) first, then Gemini as fallback. */
-  async function tryOpenAi(){
-    var resp = await callOpenAI([
-      { role:'system', content:'You are a freight logistics expert. Always reply with valid JSON only.' },
-      { role:'user', content: prompt }
-    ], {
-      model: (hasVolume ? (window.OPENAI_MODEL_SEARCH || 'gpt-4o-search-preview') : (window.OPENAI_MODEL_DEFAULT || 'gpt-4o')),
-      temperature: 0.2,
-      maxTokens: 4096,
-      webSearch: !!hasVolume,
-      jsonMode: !hasVolume  /* jsonMode and webSearch are mutually exclusive */
-    });
-    return resp.content;
-  }
-  async function tryGemini(){
-    var resp = await callGemini({
-      contents: [{ role:'user', parts:[{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
-    });
-    return (resp && resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts && resp.candidates[0].content.parts[0] && resp.candidates[0].content.parts[0].text) || '';
-  }
+/* ── Batch fetch from Vercel proxy → SeaRates/Freightos ──
+   routes: [{from_lat, from_lng, to_lat, to_lng, _iso3}, ...]
+   Returns: {iso3: {rate_usd, transit_days, mode, source}, ...}
+*/
+async function _srBatchFetch(routes) {
+  var PROXY = 'https://navoiy-api-proxy.vercel.app/api/freight';
+  var out = {};
+  if (!routes || !routes.length) return out;
 
   try {
-    var text = '';
-    if(hasOpenAI){
-      try { text = await tryOpenAi(); }
-      catch(eo){ console.warn('OpenAI transport estimate failed, trying Gemini:', eo && eo.message); }
+    var fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+      fetchOpts.signal = AbortSignal.timeout(35000);
     }
-    if(!text && hasGemini){ text = await tryGemini(); }
-    if(!text) return null;
-
-    var parsed = (typeof safeParseOpenAIJson === 'function' ? safeParseOpenAIJson(text) : safeParseJSON(text));
-    var arr = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.routes) ? parsed.routes : null);
-    if(!Array.isArray(arr)) return null;
-
-    // Sanity-check clipping: reject routes with obviously hype/implausible costs.
-    // Single 20ft container should be $300–$25,000; transit 1–90 days.
-    var byIso = {};
-    arr.forEach(function(row){
-      if(!row || !row.iso3) return;
-      var fCost = Number(row.foreignCost);
-      var nCost = Number(row.navoiCost);
-      var fDays = Number(row.foreignDays);
-      var nDays = Number(row.navoiDays);
-      // Clip costs to plausible range
-      if(!Number.isFinite(fCost) || fCost < 200 || fCost > 30000) return; // skip implausible
-      if(!Number.isFinite(nCost) || nCost < 200 || nCost > 30000) return;
-      if(!Number.isFinite(fDays) || fDays < 1) row.foreignDays = 1;
-      if(!Number.isFinite(nDays) || nDays < 1) row.navoiDays = 1;
-      // Cap Navoi costs at reference benchmarks +50% to prevent AI inflation
-      var navoiBenchmark = {TUR:3000,RUS:2500,KAZ:1200,IRN:1800,AFG:1400,TJK:1000,TKM:1100,PAK:2200,KGZ:1200,MNG:3500,AZE:2800,GEO:2800,ARM:2800}[String(row.iso3).toUpperCase()];
-      if(navoiBenchmark && nCost > navoiBenchmark * 1.5){
-        row.navoiCost = navoiBenchmark * 1.5;
-      }
-      byIso[String(row.iso3).toUpperCase()] = row;
+    fetchOpts.body = JSON.stringify({
+      routes: routes.map(function(r) {
+        return { from_lat: r.from_lat, from_lng: r.from_lng, to_lat: r.to_lat, to_lng: r.to_lng };
+      })
     });
-    if(!Object.keys(byIso).length) return null; // all rows were invalid
-    AI_TRANSPORT_GEMINI_CACHE[cacheKey] = byIso;
-    persistTransportCache();
-    return byIso;
-  } catch(e){
-    console.warn('Transport estimate failed:', e && e.message);
-    return null;
+
+    var resp = await fetch(PROXY, fetchOpts);
+    if (!resp.ok) { console.warn('[freight] proxy HTTP', resp.status); return out; }
+
+    var json = await resp.json();
+    if (!Array.isArray(json.results)) { console.warn('[freight] bad response', json); return out; }
+
+    json.results.forEach(function(result, i) {
+      var route = routes[i];
+      if (!route || !result || result.error || !result.rate_usd) return;
+      var rate = Number(result.rate_usd);
+      if (!Number.isFinite(rate) || rate < 150 || rate > 50000) return; // sanity check
+      out[route._iso3] = result;
+      // Save to cache
+      var cacheKey = _srRouteKey(route.from_lat, route.from_lng, route.to_lat, route.to_lng);
+      _srCacheSet(cacheKey, result);
+    });
+  } catch(e) {
+    console.warn('[freight] batch fetch error:', e && e.message);
   }
+  return out;
+}
+
+/* ── Main function: returns byIso map for buildAiTransportAnalysis ──
+   Format: { TUR: {foreignCost, foreignDays, foreignMode, navoiCost, navoiDays, navoiMode}, ... }
+   Falls back to null if SeaRates is unavailable → formula used instead.
+*/
+async function fetchSeaRatesTransportEstimates(countryInfo) {
+  var sourceHub = getAiTransportHub(countryInfo);
+  if (!sourceHub || !Number.isFinite(sourceHub.lat) || !Number.isFinite(sourceHub.lon)) return null;
+
+  /* Split routes into "need fetch" vs "cached" — separately for source and Navoi origin */
+  var sourceRoutes = []; // source country → each target
+  var navoiRoutes  = []; // Navoi → each target
+  var sourceCached = {}; // iso3 → cached result
+  var navoiCached  = {}; // iso3 → cached result
+
+  AI_TRANSPORT_TARGETS.forEach(function(target) {
+    var sCacheKey = _srRouteKey(sourceHub.lat, sourceHub.lon, target.lat, target.lon);
+    var nCacheKey = _srRouteKey(_SR_NAVOI_LAT, _SR_NAVOI_LNG, target.lat, target.lon);
+
+    var sHit = _srCacheGet(sCacheKey);
+    var nHit = _srCacheGet(nCacheKey);
+
+    if (sHit) { sourceCached[target.iso3] = sHit; }
+    else { sourceRoutes.push({ from_lat: sourceHub.lat, from_lng: sourceHub.lon, to_lat: target.lat, to_lng: target.lon, _iso3: target.iso3 }); }
+
+    if (nHit) { navoiCached[target.iso3] = nHit; }
+    else { navoiRoutes.push({ from_lat: _SR_NAVOI_LAT, from_lng: _SR_NAVOI_LNG, to_lat: target.lat, to_lng: target.lon, _iso3: target.iso3 }); }
+  });
+
+  console.log('[freight] cache hit:', Object.keys(sourceCached).length + '/' + AI_TRANSPORT_TARGETS.length,
+    'source, ' + Object.keys(navoiCached).length + '/' + AI_TRANSPORT_TARGETS.length + ' navoi');
+
+  /* Fetch uncached routes in parallel (two batch requests simultaneously) */
+  var fetchedSource = {}, fetchedNavoi = {};
+  if (sourceRoutes.length || navoiRoutes.length) {
+    var fetchPromises = [];
+    if (sourceRoutes.length) fetchPromises.push(_srBatchFetch(sourceRoutes).then(function(r){ fetchedSource = r; }));
+    if (navoiRoutes.length)  fetchPromises.push(_srBatchFetch(navoiRoutes).then(function(r){ fetchedNavoi  = r; }));
+    await Promise.all(fetchPromises);
+  }
+
+  /* Merge: cached + freshly fetched */
+  var sourceMap = Object.assign({}, sourceCached, fetchedSource);
+  var navoiMap  = Object.assign({}, navoiCached, fetchedNavoi);
+
+  /* Build byIso in the same format buildAiTransportAnalysis expects */
+  var byIso = {};
+  var successCount = 0;
+  AI_TRANSPORT_TARGETS.forEach(function(target) {
+    var sRes = sourceMap[target.iso3];
+    var nRes = navoiMap[target.iso3];
+
+    var foreignCost = sRes && Number.isFinite(Number(sRes.rate_usd)) ? Number(sRes.rate_usd) : null;
+    var navoiCost   = nRes && Number.isFinite(Number(nRes.rate_usd)) ? Number(nRes.rate_usd) : null;
+
+    if (!foreignCost || !navoiCost) return; // need both to make comparison
+
+    byIso[target.iso3] = {
+      foreignCost:  Math.round(foreignCost),
+      foreignDays:  Math.round(Number(sRes.transit_days) || 0) || 7,
+      foreignMode:  sRes.mode || 'FCL 20ft',
+      navoiCost:    Math.round(navoiCost),
+      navoiDays:    Math.round(Number(nRes.transit_days) || 0) || 3,
+      navoiMode:    nRes.mode || 'FCL 20ft',
+      dataSource:   sRes.source || 'SeaRates'
+    };
+    successCount++;
+  });
+
+  console.log('[freight] SeaRates result:', successCount + '/' + AI_TRANSPORT_TARGETS.length + ' routes resolved');
+  return successCount > 0 ? byIso : null;
 }
 
 async function buildAiTransportAnalysis(countryInfo, comp){
   var sourceHub = getAiTransportHub(countryInfo);
-  // AI transport estimates disabled: GPT/Gemini hallucinate freight costs too often.
-  // Always use distance-based formula for source-country costs + static Navoi benchmarks.
-  // Source: geographic haversine distance × modal profile rates (see estimateAiExportRoute).
-  var geminiMap = null;
+  // SeaRates + Freightos real freight rates via navoiy-api-proxy.
+  // Falls back to haversine formula if API unavailable or returns 0 routes.
+  var geminiMap = await fetchSeaRatesTransportEstimates(countryInfo).catch(function(){ return null; });
   var routes = AI_TRANSPORT_TARGETS.map(function(target){
     var gRow = geminiMap && geminiMap[target.iso3];
     var estimate;
