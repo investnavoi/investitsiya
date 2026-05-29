@@ -4770,6 +4770,12 @@ async function analyzeInvestmentMaterial(){
     updateInvestAiOutputMeta(material, new Date().toISOString());
     saveInvestAiHistory(material, _investAiMarkdown, _investAiTradeContext);
     renderInvestAiHistory();
+    // saveInvestAiHistory ichida chip'lar qayta chizilib, inline panel DOM'i
+    // qayta yaratiladi. Shu sababli natijani inline panelga MAJBURAN qayta
+    // render qilamiz (aks holda "Tahlil tayyor" deyilsa-da, natija ko'rinmaydi).
+    if(typeof syncProductRawAiPanelState === 'function' && typeof PRODUCT_ACTIVE_SECTION !== 'undefined'){
+      try { syncProductRawAiPanelState(PRODUCT_ACTIVE_SECTION); } catch(_se){}
+    }
     toast(investAiT('toastReady'));
   } catch(e){
     console.error(e);

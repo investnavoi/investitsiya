@@ -482,6 +482,7 @@ function syncProductRawAiPanelState(section){
   if(!PRODUCT_AI_STATE.open || PRODUCT_AI_STATE.section !== section) return;
   var raw = getSelectedProductAiRaw();
   if(!raw) return;
+  console.log('[syncProductRawAiPanelState]', { section: section, rawId: raw.id, activeRawId: (typeof _investAiActiveRawId!=='undefined'?_investAiActiveRawId:''), busy: _investAiBusy, mdLen: (_investAiMarkdown||'').length, material: _investAiCurrentMaterial });
   var analyzeBtn = document.getElementById('productRawAiAnalyzeBtn');
   if(analyzeBtn){
     analyzeBtn.disabled = _investAiBusy;
