@@ -481,7 +481,12 @@ function _applyWageFallback(data){
 
 async function fetchOfficialAiCountryAnalysis(comp){
   var countryName = getAiCompanyCountry(comp);
-  if(!countryName) throw new Error('Kompaniyaning joylashgan davlati ko\'rsatilmagan');
+  if(!countryName){
+    // No country — return a minimal stub so analysis & email still work.
+    // FEZ incentives + Navoi logistics block will carry the content instead of
+    // country-vs-UZ economic comparisons.
+    return { _noCountry: true, country: { display: '', iso3: '', iso2: '' }, metrics: {} };
+  }
   var cacheKey = getAiCountryCacheKey(countryName);
   if(AI_COUNTRY_ANALYSIS_CACHE[cacheKey] && !isAiAnalysisStale(AI_COUNTRY_ANALYSIS_CACHE[cacheKey])){
     // Eski cache'da fallback qo'llanmagan bo'lishi mumkin
@@ -1157,6 +1162,7 @@ function closeFinderAiWorkspace(){
 
 function renderAiAnalysis(analysis, scope){
   var dom = getAiScopeDom(scope);
+  var _noCountryAnalysis = !!(analysis && analysis._noCountry);
   var countryName = (analysis && analysis.country && analysis.country.display) || 'Tanlangan davlat';
   var metrics = (analysis && analysis.metrics) || {};
   var scopeKey = getAiScopeKey(scope);
@@ -1164,14 +1170,31 @@ function renderAiAnalysis(analysis, scope){
   var transportSummary = (dom.analysisCard && dom.analysisCard._transportSummary) || null;
   var meta = [];
   var grid = [];
+  var titleEl = dom.analysisTitle;
+  var metaEl = dom.analysisMeta;
+
+  // No-country mode: show Navoi FEZ incentives info only, skip metric cards
+  if(_noCountryAnalysis){
+    if(titleEl) titleEl.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="vertical-align:text-bottom;margin-right:4px"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#4361EE" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Navoiy FEZ Imtiyozlari — Davlat Ko\'rsatilmagan';
+    if(dom.analysisGrid) dom.analysisGrid.innerHTML =
+      '<div style="padding:1.2rem;background:rgba(37,99,235,.05);border-radius:12px;border:1px dashed rgba(37,99,235,.2);color:var(--text2);font-size:.82rem;line-height:1.65">' +
+      '<div style="font-weight:700;margin-bottom:.5rem;color:var(--text)">ℹ️ Kompaniya davlati ko\'rsatilmagan</div>' +
+      'Iqtisodiy taqqoslash (soliq, ish haqi, elektr) uchun davlat ma\'lumoti kerak. ' +
+      'Shunga qaramay, AI xat generatsiyasi ishlaydi — faqat <strong>Navoiy FEZ imtiyozlari</strong> ' +
+      've <strong>regional logistika</strong> asosida xat yoziladi.<br><br>' +
+      'Agar davlatni bilsangiz, kompaniya kartasida <em>Davlat</em> maydonini to\'ldirib, ' +
+      'tahlilni qayta ishga tushiring.' +
+      '</div>';
+    if(metaEl) metaEl.innerHTML = '';
+    return;
+  }
+
   var gdp = metrics.gdpPerCapita || {};
   var industry = metrics.industryShare || {};
   var tax = metrics.totalTaxRate || {};
   var wage = metrics.monthlyWage || {};
   var electricity = metrics.electricityPrice || {};
   var gas = metrics.naturalGasPrice || {};
-  var titleEl = dom.analysisTitle;
-  var metaEl = dom.analysisMeta;
   if(titleEl) titleEl.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="vertical-align:text-bottom;margin-right:4px"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#4361EE" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Iqtisodiy Tahlil — ' + escapeHtmlText(countryName) + ' vs O\'zbekiston';
 
   grid.push(buildAiMetricCard(
@@ -2312,23 +2335,28 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   var _fezM = investSumForFez / 1e6;
   var taxHolidayYearsForSubject = _fezM >= 10 ? 10 : _fezM >= 5 ? 7 : _fezM >= 3 ? 5 : 3;
 
+  var _noCountry = !!(analysis && analysis._noCountry);
   var dataBlock =
     'VERIFIED DATA (the ONLY numbers you are allowed to cite — do not invent any other figure or year):\n\n' +
     fezBlock +
     '\n\n' +
-    (advantageLines.length
-      ? 'COMPARATIVE ADVANTAGES vs ' + (comp.davlat || 'recipient country') + ' (official API data, cite with source):\n' +
-        advantageLines.map(function(line){ return '• ' + line; }).join('\n')
-      : 'COMPARATIVE ADVANTAGES: API data does not show a statistically significant advantage on standard metrics for this country pair. Do NOT invent comparative figures. Focus the email on the FEZ incentives and logistics above.') +
+    (_noCountry
+      ? 'COMPARATIVE ADVANTAGES: No country data is available for this company (country field is blank). ' +
+        'Do NOT invent any country-vs-Uzbekistan comparison figures whatsoever. ' +
+        'Focus the email entirely on the FEZ incentives, Navoi logistics, and the 13-market regional access above.'
+      : (advantageLines.length
+          ? 'COMPARATIVE ADVANTAGES vs ' + (comp.davlat || 'recipient country') + ' (official API data, cite with source):\n' +
+            advantageLines.map(function(line){ return '• ' + line; }).join('\n')
+          : 'COMPARATIVE ADVANTAGES: API data does not show a statistically significant advantage on standard metrics for this country pair. Do NOT invent comparative figures. Focus the email on the FEZ incentives and logistics above.')) +
     (transportLines.length ? '\n\nLOGISTICS / TRANSPORT (estimated costs, cite as approximate):\n' + transportLines.map(function(line){ return '• ' + line; }).join('\n') : '') +
-    (tariffLines.length ? '\n\nTARIFFS (WITS/UNCTAD official data — cite only where Uzbekistan tariff is lower):\n' + tariffLines.map(function(line){ return '• ' + line; }).join('\n') : '');
+    (!_noCountry && tariffLines.length ? '\n\nTARIFFS (WITS/UNCTAD official data — cite only where Uzbekistan tariff is lower):\n' + tariffLines.map(function(line){ return '• ' + line; }).join('\n') : '');
 
   var personaBlock =
     'RECIPIENT PROFILE:\n' +
     '• Name: ' + (comp.rahbar || 'the recipient') + '\n' +
     '• Title: ' + (comp.lavozim || 'Manager') + '\n' +
     '• Company: ' + (comp.kompaniya || 'their company') + '\n' +
-    '• Country: ' + (comp.davlat || 'abroad') + '\n' +
+    '• Country: ' + (_noCountry ? 'unknown (do not guess or mention a country)' : (comp.davlat || 'abroad')) + '\n' +
     '• Product line in scope: ' + productLabel + ' (industry: ' + industryLabel + ')\n' +
     '• Persona class: ' + persona.toUpperCase() + ' → angle to emphasise: ' + pc.angle + '\n' +
     '• Hook: ' + pc.hook;
@@ -2629,7 +2657,8 @@ async function generateAiLetterForScope(scope){
   if(!compId){ toast('⚠️ Kompaniya tanlang','error'); return; }
   var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(compId);});
   if(!comp){ toast('⚠️ Kompaniya topilmadi','error'); return; }
-  if(!getAiCompanyCountry(comp)){ toast('⚠️ Kompaniyaning joylashgan davlati ko\'rsatilmagan','error'); return; }
+  // No country is fine — email will rely on FEZ incentives + Navoi logistics data instead
+  // of country-vs-UZ economic comparisons.
 
   var lang = dom.lang ? dom.lang.value : 'en';
 
@@ -2880,10 +2909,7 @@ async function generateBulkAiLetters(){
         okIds.push(String(comp.id));
         continue;
       }
-      if(!getAiCompanyCountry(comp)){
-        failed++;
-        continue;
-      }
+      // No country is allowed — email uses FEZ/logistics-only mode
       if(btn) btn.textContent = '⏳ ' + (i+1) + '/' + companies.length + ' — ' + (comp.kompaniya || 'Kompaniya');
       try{
         var payload = await buildAiLetterPackage(comp, lang);
