@@ -1081,19 +1081,19 @@ function clearWorldBankData(){
 
 /* ═══ TRANSPORT TAB SWITCHING ═══ */
 TARGET_COUNTRIES = [
-  {code:'UZ',name:"O'zbekiston",flag:'',comtrade:'860'},
-  {code:'TM',name:'Turkmaniston',flag:'',comtrade:'795'},
-  {code:'TJ',name:'Tojikiston',flag:'',comtrade:'762'},
-  {code:'KG',name:"Qirg'iziston",flag:'',comtrade:'417'},
-  {code:'KZ',name:"Qozog'iston",flag:'',comtrade:'398'},
-  {code:'MN',name:"Mo'g'uliston",flag:'',comtrade:'496'},
-  {code:'RU',name:'Rossiya',flag:'',comtrade:'643'},
-  {code:'AZ',name:'Ozarbayjon',flag:'',comtrade:'031'},
-  {code:'GE',name:'Gruziya',flag:'',comtrade:'268'},
-  {code:'AM',name:'Armaniston',flag:'',comtrade:'051'},
-  {code:'IR',name:'Eron',flag:'',comtrade:'364'},
-  {code:'AF',name:"Afg'oniston",flag:'',comtrade:'004'},
-  {code:'PK',name:'Pokiston',flag:'',comtrade:'586'}
+  {code:'UZ',name:"O'zbekiston",name_en:'Uzbekistan',flag:'',comtrade:'860'},
+  {code:'TM',name:'Turkmaniston',name_en:'Turkmenistan',flag:'',comtrade:'795'},
+  {code:'TJ',name:'Tojikiston',name_en:'Tajikistan',flag:'',comtrade:'762'},
+  {code:'KG',name:"Qirg'iziston",name_en:'Kyrgyzstan',flag:'',comtrade:'417'},
+  {code:'KZ',name:"Qozog'iston",name_en:'Kazakhstan',flag:'',comtrade:'398'},
+  {code:'MN',name:"Mo'g'uliston",name_en:'Mongolia',flag:'',comtrade:'496'},
+  {code:'RU',name:'Rossiya',name_en:'Russia',flag:'',comtrade:'643'},
+  {code:'AZ',name:'Ozarbayjon',name_en:'Azerbaijan',flag:'',comtrade:'031'},
+  {code:'GE',name:'Gruziya',name_en:'Georgia',flag:'',comtrade:'268'},
+  {code:'AM',name:'Armaniston',name_en:'Armenia',flag:'',comtrade:'051'},
+  {code:'IR',name:'Eron',name_en:'Iran',flag:'',comtrade:'364'},
+  {code:'AF',name:"Afg'oniston",name_en:'Afghanistan',flag:'',comtrade:'004'},
+  {code:'PK',name:'Pokiston',name_en:'Pakistan',flag:'',comtrade:'586'}
 ];
 
 function initImportAnalysisComtradeOnly(){
@@ -4689,92 +4689,42 @@ async function analyzeInvestmentMaterial(){
       '- If data is missing, say it is missing.\n\n' +
       'Official UN Comtrade context:\n' + ctxJson;
 
-    var directKeys = (typeof getAllGeminiKeys === 'function') ? getAllGeminiKeys() : [];
-    if(!directKeys.length) throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalardan kiriting.');
-
-    // Gemma first — much higher free-tier daily limit (14,400 RPD vs Gemini 250 RPD)
-    var directModels = ['gemma-3-27b-it','gemma-3-12b-it','gemma-3-4b-it','gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.0-flash','gemini-2.0-flash-lite'];
-    var resp = null;
-    var lastDirectErr = null;
-    outer:
-    for(var ki=0; ki<directKeys.length; ki++){
-      for(var mi=0; mi<directModels.length; mi++){
-        var dModel = directModels[mi];
-        var isGemma = /^gemma/i.test(dModel);
-        var dBody = isGemma ? {
-          contents: [{ role:'user', parts:[{ text: systemPrompt + '\n\n---\n\n' + contextText }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
-        } : {
-          system_instruction: { parts:[{ text: systemPrompt }] },
-          contents: [{ role:'user', parts:[{ text: contextText }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
-        };
-        var dUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(dModel) + ':streamGenerateContent?alt=sse&key=' + directKeys[ki];
-        try {
-          var r = await fetch(dUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dBody) });
-          if(r.ok){ resp = r; console.log('[analyze-material direct] key#'+(ki+1)+' '+dModel+' OK'); break outer; }
-          var eTxt = await r.text();
-          var parsedErr = '';
-          try {
-            var errJson = JSON.parse(eTxt);
-            if(Array.isArray(errJson)) errJson = errJson[0];
-            parsedErr = (errJson && errJson.error && errJson.error.message) || eTxt;
-          } catch(_){ parsedErr = eTxt; }
-          lastDirectErr = { status: r.status, model: dModel, key: ki+1, detail: parsedErr };
-          console.warn('[analyze-material direct] key#'+(ki+1)+' '+dModel+' -> '+r.status+' :: '+parsedErr.slice(0,300));
-
-          // Per-minute token quota — wait then retry SAME model once
-          var retryMatch = parsedErr.match(/retry in ([\d.]+)s/i);
-          if(r.status === 429 && retryMatch){
-            var waitSec = Math.min(parseFloat(retryMatch[1]) + 2, 30);
-            toast('⏳ Per-minute limit — '+Math.ceil(waitSec)+'s kutilmoqda...','info');
-            await new Promise(function(rr){ setTimeout(rr, waitSec*1000); });
-            try {
-              var r2 = await fetch(dUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dBody) });
-              if(r2.ok){ resp = r2; console.log('[analyze-material direct retry] key#'+(ki+1)+' '+dModel+' OK after wait'); break outer; }
-              var e2 = await r2.text();
-              console.warn('[analyze-material direct retry] '+dModel+' STILL '+r2.status);
-            } catch(e2){ console.warn('[retry] exception:', e2.message); }
-          }
-        } catch(e){
-          lastDirectErr = { message: e.message, model: dModel, key: ki+1 };
-          console.warn('[analyze-material direct] key#'+(ki+1)+' '+dModel+' exception:', e.message);
-        }
-      }
+    // OpenAI (ChatGPT) orqali tahlil — Gemini/Gemma o'rniga.
+    // callOpenAIStream() assets/js/openai.js da aniqlangan; kalit Firebase apiKeys
+    // collection'idan window._apiKeys.openai sifatida yuklanadi.
+    if(typeof callOpenAIStream !== 'function'){
+      throw new Error('OpenAI moduli yuklanmadi (openai.js). Sahifani yangilang.');
     }
-    if(!resp){
-      var detailMsg = lastDirectErr && lastDirectErr.detail ? lastDirectErr.detail : (lastDirectErr && lastDirectErr.message) || '';
-      throw new Error('Gemini API javobi: ' + detailMsg + '\n\nTried: ' + directModels.join(', '));
+    if(typeof getOpenAIKey === 'function' && !getOpenAIKey()){
+      throw new Error('OpenAI API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
     }
 
-    var reader = resp.body.getReader();
-    var decoder = new TextDecoder();
-    var buffer = '';
-    while(true){
-      var part = await reader.read();
-      if(part.done) break;
-      buffer += decoder.decode(part.value, {stream:true});
-      var match;
-      while((match = buffer.match(/\r?\n\r?\n/))){
-        var idx = match.index;
-        var chunk = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + match[0].length);
-        parseAnthropicSseChunk(chunk, function(textDelta){
-          _investAiMarkdown += textDelta;
-          renderInvestAiMarkdown(_investAiMarkdown);
-          var stage = inferInvestAiPhase(_investAiMarkdown);
-          if(stage !== _investAiPhase){
-            _investAiPhase = stage;
-            renderInvestAiProgress(_investAiPhase, false);
-          }
-        });
-      }
-    }
-    if(buffer.trim()){
-      parseAnthropicSseChunk(buffer, function(textDelta){
+    var openAiMessages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: contextText }
+    ];
+
+    try {
+      await callOpenAIStream(openAiMessages, {
+        model: (typeof OPENAI_MODEL_DEFAULT !== 'undefined') ? OPENAI_MODEL_DEFAULT : 'gpt-4o',
+        temperature: 0.2,
+        maxTokens: 8192
+      }, function(textDelta){
         _investAiMarkdown += textDelta;
         renderInvestAiMarkdown(_investAiMarkdown);
+        var stage = inferInvestAiPhase(_investAiMarkdown);
+        if(stage !== _investAiPhase){
+          _investAiPhase = stage;
+          renderInvestAiProgress(_investAiPhase, false);
+        }
       });
+    } catch(e){
+      console.warn('[analyze-material openai] xato:', e && e.message);
+      throw new Error('OpenAI tahlil xatosi: ' + (e && e.message ? e.message : 'noma\'lum xato'));
+    }
+
+    if(!_investAiMarkdown.trim()){
+      throw new Error('OpenAI bo\'sh javob qaytardi. Qayta urinib ko\'ring.');
     }
 
     renderInvestAiProgress(3, true);
