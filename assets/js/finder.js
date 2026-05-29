@@ -2697,6 +2697,25 @@ function apolloAbsoluteUrl(url){
   return '';
 }
 
+// Apollo org obyektidan davlat nomini turli maydonlardan ajratib olish.
+// Apollo davlatni country, primary_location.country, nested organization.country,
+// yoki raw_address oxirida qaytaradi.
+function apolloExtractOrgCountry(org){
+  if(!org) return '';
+  var c = String(
+    (org.country || org.organization_country || org.country_name || org.primary_country ||
+     (org.primary_location && (org.primary_location.country || org.primary_location.country_name)) ||
+     (org.organization && org.organization.country) || '')
+  ).trim();
+  if(c) return c;
+  var addr = String(org.raw_address || org.present_raw_address || org.organization_raw_address || '').trim();
+  if(addr){
+    var parts = addr.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    if(parts.length) return parts[parts.length - 1];
+  }
+  return '';
+}
+
 function mapApolloOrganizationToFinderResult(org, country, meta){
   return {
     id:'fc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
@@ -2705,7 +2724,7 @@ function mapApolloOrganizationToFinderResult(org, country, meta){
     lavozim:meta.mode === 'exporters' ? 'Exportyor kompaniya' : 'Importyor kompaniya',
     email:'',
     telefon:'',
-    davlat:country || org.country || org.organization_country || org.country_name || '',
+    davlat:country || apolloExtractOrgCountry(org),
     shahar:'',
     soha:org.industry || org.industry_tag || org.primary_industry || org.organization_industry || '',
     linkedin:'',
@@ -4561,7 +4580,7 @@ async function runCompanyFinder(source){
               lavozim:'',
               email:'',
               telefon:'',
-              davlat: org.country || org.raw_address || '',
+              davlat: apolloExtractOrgCountry(org),
               shahar: org.city || '',
               soha: org.industry || org.industry_tag_id || '',
               website: apolloAbsoluteUrl(org.website_url || org.website || ''),
@@ -4596,7 +4615,7 @@ async function runCompanyFinder(source){
               top100Results.push({
                 id:'top100_'+Date.now()+'_'+top100Results.length,
                 kompaniya: name, rahbar:'', lavozim:'', email:'', telefon:'',
-                davlat: org.country || '', shahar: org.city || '',
+                davlat: apolloExtractOrgCountry(org), shahar: org.city || (org.primary_location && org.primary_location.city) || '',
                 soha: org.industry || '', website: apolloAbsoluteUrl(org.website_url || org.website || ''),
                 xodimlar: employees, daromad: revenue, tpilyil: org.founded_year || '',
                 description: org.short_description || '',
