@@ -3382,23 +3382,33 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       3 or more. Banned phrasing: "rich deposits", ' +
     '       "advanced infrastructure", "viable location", "feasible to target", "promising market", ' +
     '       "significant potential" — these are adjectives, not facts. Required phrasing uses figures ' +
-    '       with sources. Three valid structures (choose the one your intelligence supports):\n' +
-    '       (a) IF Navoi already produces at scale → "Navoi Region currently produces ~[X tons]/year ' +
-    '           of [product] across [N] facilities. Uzbekistan still imports ~[Y tons / $Z M] annually ' +
-    '           (UN Comtrade [year]), and the 13-country regional market consumes an estimated ' +
-    '           [W tons / $V M] per year. A new line would absorb the [Y+regional gap] tons/year ' +
-    '           currently sourced from outside the region."\n' +
-    '       (b) IF only upstream inputs exist locally → "Navoi mines ~[X kt]/year of [feedstock — gold, ' +
-    '           copper, marble, etc.] but has no integrated [product] line. Uzbekistan imported ' +
-    '           ~[Y tons / $Z M] of finished [product] in [year] (UN Comtrade), with regional demand ' +
-    '           at roughly [W tons / $V M] per year. A finishing facility of [up to N kt/year] would ' +
-    '           convert local feedstock into export-grade output."\n' +
-    '       (c) IF no current production at scale → "Navoi has no current [product] production at ' +
-    '           scale. Uzbekistan imported ~[Y tons / $Z M] in [year] (UN Comtrade [year]), and the ' +
-    '           combined 13-country regional market consumes ~[W tons / $V M] per year, growing at ' +
-    '           ~[CAGR]% (source). [Specific resource A], [resource B] and Trans-Caspian rail access ' +
-    '           support a greenfield facility of up to [N tons]/year — enough to displace ~[%] of ' +
-    '           Uzbek imports alone."\n' +
+    '       with sources. This paragraph is what an investor cares about most: OUR resources and OUR ' +
+    '       market. Pick the ONE structure below that matches the real production status of this ' +
+    '       product in Uzbekistan (use the COMPANY & RECIPIENT INTELLIGENCE block and Navoi resource ' +
+    '       facts to decide):\n' +
+    '       (a) IF the product is ALREADY made in Uzbekistan/Navoi but NOT yet at mass-production ' +
+    '           scale, while demand is large → say so plainly with numbers: "Uzbekistan already ' +
+    '           produces [product] at [N facilities / ~X tons/year], but not yet at mass-production ' +
+    '           scale. Even so, the country imported [$Z exact UZ total] in 2021-2024 (UN Comtrade), ' +
+    '           and the other twelve regional markets a further [$Y exact total]. The resource base ' +
+    '           and existing know-how are already here; what is missing is scale." Make clear the ' +
+    '           opportunity is to industrialise an existing capability into mass output.\n' +
+    '       (b) IF the finished product is NOT made in Uzbekistan, but its inputs, components or ' +
+    '           feedstock ALREADY exist in Navoi → name those local elements explicitly (the specific ' +
+    '           mineral, intermediate good, or existing plant): "Uzbekistan does not yet manufacture ' +
+    '           [product], yet [specific local input A] and [input B] are already produced/mined in ' +
+    '           Navoi at [figure]. The finished product is still imported: [$Z exact UZ total] in ' +
+    '           2021-2024, with [$Y exact total] more across the other twelve markets (UN Comtrade). ' +
+    '           A facility here would convert local inputs into finished, export-grade output."\n' +
+    '       (c) IF there is no current production AND no obvious local inputs → greenfield framing: ' +
+    '           "Uzbekistan imported [$Z exact UZ total] of [product] in 2021-2024, and the other ' +
+    '           twelve regional markets a combined [$Y exact total] (UN Comtrade). [Specific Navoi ' +
+    '           resource A], [resource B] and Trans-Caspian rail access support a new facility of up ' +
+    '           to [N tons]/year, enough to displace a meaningful share of those imports."\n' +
+    '       In ALL three structures the two exact 2021-2024 import totals are mandatory and must be ' +
+    '       copied verbatim from the data block. Choose import-side framing (demand a Navoi facility ' +
+    '       would serve) by default; use export-side framing only if the data block is explicitly ' +
+    '       about Uzbek export capacity for this product.\n' +
     '       After the supply-and-demand picture, ONE short connector sentence linking the recipient ' +
     '       company\'s existing activity in [their country] to this Navoi opportunity (e.g. "Cornerstone\'s ' +
     '       Double-Lok™ line at [facility] is the production profile a Navoi facility would mirror"). ' +
@@ -3423,10 +3433,14 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       and transport data from the LOGISTICS section, and ALL tariff advantages from the TARIFFS ' +
     '       section. Every line in the data block must appear in the email — either in ¶2 or ¶3. ' +
     '       Frame the whole paragraph as legal certainty and infrastructure fact, not a sales claim.\n' +
-    '  ¶4 — One clear invitation. Do NOT offer multiple options — that is a menu, not a decision. ' +
-    '       Choose exactly one: either a named colleague who can send a two-page cost-comparison ' +
-    '       summary within 5 business days, OR an in-person visit to Navoi with logistics covered. ' +
-    '       State it as a confident, specific offer. Then stop.\n\n' +
+    '  ¶4 — One clear, open invitation to continue the conversation. NEVER name a colleague or any ' +
+    '       individual (no "my colleague", no "Mr. X", no "Senior Investment Advisor"). NEVER promise ' +
+    '       a "two-page financial model", a "cost-comparison summary", or any specific deliverable ' +
+    '       within a fixed number of days — those named-person / fixed-deliverable offers are banned. ' +
+    '       Instead, invite the recipient to contact the Department directly with any questions, and ' +
+    '       state plainly that we are ready to provide further figures, a detailed cost breakdown, or ' +
+    '       arrange a visit to Navoi should they wish. Frame it as: any question they have, we can ' +
+    '       answer. One or two sentences, warm and professional. Then stop.\n\n' +
     'WRITING VOICE — what makes this sound human:\n' +
     '  • Vary sentence length aggressively. Mix 4–6 word punches with 20–25 word detail sentences.\n' +
     '  • Use contractions sparingly but naturally where the language allows (we\'re, it\'s).\n' +
@@ -3526,8 +3540,9 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     at 80% load saves approximately $[X]K per year versus the [country] grid rate. Under ' +
     '     Presidential Decree No. [X], corporate income tax is zero for the first [N] years from ' +
     '     commencement of production, with no property tax and 0% import duty on process equipment.\n\n' +
-    '     My colleague Sh. Toshmatov can send a two-page cost-comparison summary within five business ' +
-    '     days if you would like the figures reviewed against your own model."\n\n' +
+    '     Should any of these figures be useful to review against your own projections, I would be glad ' +
+    '     to provide a detailed breakdown. Please do not hesitate to contact our Department directly ' +
+    '     with any questions, and we will be happy to answer them."\n\n' +
     'SIGN-OFF — use this format exactly (no bold, no extra blank lines):\n' +
     '  Yours sincerely,\n' +
     '  E. I. Gafforov\n' +
