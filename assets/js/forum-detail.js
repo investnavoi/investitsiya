@@ -1040,13 +1040,23 @@ function renderInvestorGeoCard(companies){
 
   // Re-render bubbles on zoom/pan
   if(window._investorGeoJvInstance){
-    var mapInstance = window._investorGeoJvInstance;
-    var origZoomIn = mapInstance.zoomIn ? mapInstance.zoomIn.bind(mapInstance) : null;
-    var origZoomOut = mapInstance.zoomOut ? mapInstance.zoomOut.bind(mapInstance) : null;
-    // Observe SVG transform changes via MutationObserver
+    // Avvalgi observerni uzamiz — har renderdan keyin yangisi qo'shilib ketmasligi uchun
+    // (aks holda har zoom/pan'da bir nechta observer barobar ishlab, lag chiqaradi).
+    if(window._investorGeoObserver){
+      try{ window._investorGeoObserver.disconnect(); }catch(e){}
+      window._investorGeoObserver = null;
+    }
+    // Observe SVG transform changes via MutationObserver — rAF bilan throttle qilamiz
     var svgG = mapEl.querySelector('svg g[transform]');
     if(svgG){
-      var obs = new MutationObserver(function(){ _renderInvestorGeoBubbles(); });
+      var _bubbleRaf = 0;
+      var obs = new MutationObserver(function(){
+        if(_bubbleRaf) return; // bu kadr uchun allaqachon rejalashtirilgan
+        _bubbleRaf = requestAnimationFrame(function(){
+          _bubbleRaf = 0;
+          _renderInvestorGeoBubbles();
+        });
+      });
       obs.observe(svgG, { attributes: true, attributeFilter: ['transform'] });
       window._investorGeoObserver = obs;
     }

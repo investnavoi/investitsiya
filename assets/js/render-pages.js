@@ -277,6 +277,20 @@ function renderInvCharts(inv){
 }
 
 function renderIcCharts(companies){
+  companies = Array.isArray(companies) ? companies : [];
+  // ═══ Perf: bir xil ma'lumot uchun 3 ta ApexChart'ni qayta qurmaymiz ═══
+  // (har renderInvestorCompanies chaqiruvida chart destroy+recreate qilish lag beradi).
+  // Hash = company id'lar + tanlangan davr. O'zgarmasa — skip.
+  try {
+    var _periodEl = document.getElementById('ic-period-select');
+    var _monthlyEl = document.getElementById('ic-monthly-chart');
+    // Agar chart konteyneri bo'sh bo'lsa (sahifa qayta yaratilgan) — har doim qayta chizamiz
+    var _chartEmpty = !_monthlyEl || !_monthlyEl.querySelector('svg, canvas');
+    var _chartsHash = companies.length + '|' + (_periodEl ? _periodEl.value : '') + '|' +
+      companies.map(function(r){ return (r.id||'') + (r.davlat||r.country||'') + (r.sana||r.date||''); }).join(',');
+    if(!_chartEmpty && window._icChartsHash === _chartsHash){ return; } // o'zgarmadi va chart joyida
+    window._icChartsHash = _chartsHash;
+  } catch(_e){}
   // Monthly chart for investor base — count UNIQUE companies per month (not contacts)
   var months=['Yan','Fev','Mar','Apr','May','Iyu','Iyu','Avg','Sen','Okt','Noy','Dek'];
   var monthlyGroups=new Array(12).fill(null).map(function(){return {};});
