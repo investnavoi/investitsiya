@@ -3717,7 +3717,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
           'If something is unknown, say "unknown" — do NOT guess. Cite sources inline like (source: domain.com).';
         var sResp = await callOpenAI(
           [{ role:'user', content: searchQuery }],
-          { model: 'gpt-4o-search-preview', webSearch: true, maxTokens: 900, timeoutMs: 75000 }
+          { model: 'gpt-4o-search-preview', webSearch: true, maxTokens: 1400, timeoutMs: 75000 }
         );
         if(sResp && sResp.content) marketCtx = sResp.content;
       }catch(eSearch){ console.warn('Letter web-search stage skipped:', eSearch && eSearch.message); }
@@ -3809,12 +3809,14 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
         return content;
       };
 
-      /* Try o4-mini with high reasoning effort first (best quality + most human prose) */
+      /* Try o4-mini — 'medium' reasoning effort is enough for email writing and leaves
+         plenty of room for output. 'high' eats ~3k reasoning tokens, truncating the letter.
+         max_completion_tokens covers BOTH reasoning + output so must be generous.         */
       try{
         var _o4Opts = {
           model: (window.OPENAI_MODEL_REASONING || 'o4-mini'),
-          reasoningEffort: 'high',
-          maxTokens: 3500,
+          reasoningEffort: 'medium',
+          maxTokens: 8000,
           timeoutMs: 120000
         };
         var r1 = await callOpenAI(msgs, _o4Opts);
@@ -3827,12 +3829,12 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
         console.warn('o4-mini letter failed, falling back to gpt-4o:', e1 && e1.message);
       }
 
-      /* Fallback to gpt-4o with higher temperature for more natural prose */
+      /* Fallback to gpt-4o — generous token budget; a full 4-para letter is ~700 words / ~1000 tokens */
       try{
         var _gpt4oOpts = {
           model: (window.OPENAI_MODEL_DEFAULT || 'gpt-4o'),
           temperature: 0.75,
-          maxTokens: 2800,
+          maxTokens: 4000,
           timeoutMs: 90000
         };
         var r2 = await callOpenAI(msgs, _gpt4oOpts);
@@ -3894,6 +3896,18 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       letterSubject = lines[0].replace(/^Subject:\s*/i,'').replace(/\*\*/g,'').trim();
       letterBody = lines.slice(1).join('\n').trim();
     }
+  }
+
+  /* ── Truncation guard — if body doesn't end with sign-off it was cut off; throw so the
+       caller shows an error rather than saving a half-written email.                       */
+  var _signOffRx = /(?:Yours sincerely|Respectfully|Kind regards|Best regards|Sincerely)\s*,?\s*\n/i;
+  var _signOffSimple = /Gafforov|info@navoi\.uz/i;
+  if(letterBody && letterBody.trim().length > 100 &&
+     !_signOffRx.test(letterBody) && !_signOffSimple.test(letterBody)){
+    throw new Error(
+      'Email chala generatsiya qilindi (token limit). Qayta urinib ko\'ring. ' +
+      '(Truncated at ' + letterBody.trim().split(/\s+/).length + ' words)'
+    );
   }
 
   /* ── Humanizer post-processing — strip residual AI tells the model might have slipped in ── */
