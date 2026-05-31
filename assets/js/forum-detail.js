@@ -293,14 +293,41 @@ var INVESTOR_GEO_HUBS = {
   ARM:{name:'Armenia',lat:40.0691,lon:45.0382},
   IRN:{name:'Iran',lat:32.4279,lon:53.6880},
   AFG:{name:'Afghanistan',lat:33.9391,lon:67.7100},
-  PAK:{name:'Pakistan',lat:30.3753,lon:69.3451}
+  PAK:{name:'Pakistan',lat:30.3753,lon:69.3451},
+  EGY:{name:'Egypt',lat:26.8206,lon:30.8025},
+  ZAF:{name:'South Africa',lat:-30.5595,lon:22.9375},
+  PRT:{name:'Portugal',lat:39.3999,lon:-8.2245},
+  GRC:{name:'Greece',lat:39.0742,lon:21.8243},
+  MAR:{name:'Morocco',lat:31.7917,lon:-7.0926},
+  DZA:{name:'Algeria',lat:28.0339,lon:1.6596},
+  TUN:{name:'Tunisia',lat:33.8869,lon:9.5375},
+  PER:{name:'Peru',lat:-9.1900,lon:-75.0152},
+  PHL:{name:'Philippines',lat:12.8797,lon:121.7740},
+  SWE:{name:'Sweden',lat:60.1282,lon:18.6435},
+  TWN:{name:'Taiwan',lat:23.6978,lon:120.9605},
+  NZL:{name:'New Zealand',lat:-40.9006,lon:174.8860},
+  THA:{name:'Thailand',lat:15.8700,lon:100.9925},
+  VNM:{name:'Vietnam',lat:14.0583,lon:108.2772},
+  IDN:{name:'Indonesia',lat:-0.7893,lon:113.9213},
+  MYS:{name:'Malaysia',lat:4.2105,lon:101.9758},
+  UKR:{name:'Ukraine',lat:48.3794,lon:31.1656},
+  BLR:{name:'Belarus',lat:53.7098,lon:27.9534},
+  ROU:{name:'Romania',lat:45.9432,lon:24.9668},
+  ISR:{name:'Israel',lat:31.0461,lon:34.8516},
+  JOR:{name:'Jordan',lat:30.5852,lon:36.2384},
+  ARG:{name:'Argentina',lat:-38.4161,lon:-63.6167},
+  CHL:{name:'Chile',lat:-35.6751,lon:-71.5430},
+  COL:{name:'Colombia',lat:4.5709,lon:-74.2973}
 };
 
 var INVESTOR_GEO_ISO2_BY_ISO3 = {
   UZB:'UZ', CHN:'CN', USA:'US', DEU:'DE', FRA:'FR', ITA:'IT', ESP:'ES', GBR:'GB', NLD:'NL', BEL:'BE',
   CHE:'CH', AUT:'AT', POL:'PL', TUR:'TR', ARE:'AE', SAU:'SA', QAT:'QA', JPN:'JP', KOR:'KR', IND:'IN',
   CAN:'CA', AUS:'AU', BRA:'BR', MEX:'MX', SGP:'SG', RUS:'RU', KAZ:'KZ', KGZ:'KG', TJK:'TJ', TKM:'TM',
-  MNG:'MN', AZE:'AZ', GEO:'GE', ARM:'AM', IRN:'IR', AFG:'AF', PAK:'PK'
+  MNG:'MN', AZE:'AZ', GEO:'GE', ARM:'AM', IRN:'IR', AFG:'AF', PAK:'PK',
+  EGY:'EG', ZAF:'ZA', PRT:'PT', GRC:'GR', MAR:'MA', DZA:'DZ', TUN:'TN', PER:'PE', PHL:'PH',
+  SWE:'SE', TWN:'TW', NZL:'NZ', THA:'TH', VNM:'VN', IDN:'ID', MYS:'MY', UKR:'UA', BLR:'BY',
+  ROU:'RO', ISR:'IL', JOR:'JO', ARG:'AR', CHL:'CL', COL:'CO'
 };
 
 var INVESTOR_GEO_ISO2_ALIASES = {
@@ -341,7 +368,19 @@ var INVESTOR_GEO_ISO2_ALIASES = {
   brazil:'BR', braziliya:'BR',
   mexico:'MX', meksika:'MX',
   singapore:'SG', singapur:'SG',
-  "czech republic":'CZ', czechia:'CZ'
+  "czech republic":'CZ', czechia:'CZ',
+  'tuerkiye':'TR', 'türkiye':'TR', turkiye:'TR',
+  egypt:'EG', misr:'EG', "south africa":'ZA', "janubiy afrika":'ZA',
+  portugal:'PT', portugaliya:'PT', greece:'GR', gretsiya:'GR', yunoniston:'GR',
+  morocco:'MA', marokash:'MA', algeria:'DZ', jazoir:'DZ', tunisia:'TN', tunis:'TN',
+  peru:'PE', philippines:'PH', filippin:'PH', sweden:'SE', shvetsiya:'SE',
+  taiwan:'TW', tayvan:'TW', "new zealand":'NZ', "yangi zelandiya":'NZ',
+  thailand:'TH', tailand:'TH', vietnam:'VN', vyetnam:'VN',
+  indonesia:'ID', indoneziya:'ID', malaysia:'MY', malayziya:'MY',
+  ukraine:'UA', ukraina:'UA', belarus:'BY', "belorussiya":'BY',
+  romania:'RO', ruminiya:'RO', israel:'IL', isroil:'IL',
+  jordan:'JO', iordaniya:'JO', argentina:'AR', chile:'CL', chili:'CL',
+  colombia:'CO', kolumbiya:'CO'
 };
 
 var INVESTOR_GEO_ALIASES = {
@@ -385,7 +424,19 @@ var INVESTOR_GEO_ALIASES = {
   australia:'AUS', avstraliya:'AUS',
   brazil:'BRA', braziliya:'BRA',
   mexico:'MEX', meksika:'MEX',
-  singapore:'SGP', singapur:'SGP'
+  singapore:'SGP', singapur:'SGP',
+  turkey:'TUR', 'tuerkiye':'TUR', 'türkiye':'TUR', turkiye:'TUR',
+  egypt:'EGY', misr:'EGY', "south africa":'ZAF', "janubiy afrika":'ZAF',
+  portugal:'PRT', portugaliya:'PRT', greece:'GRC', gretsiya:'GRC', yunoniston:'GRC',
+  morocco:'MAR', marokash:'MAR', algeria:'DZA', jazoir:'DZA', tunisia:'TUN', tunis:'TUN',
+  peru:'PER', philippines:'PHL', filippin:'PHL', sweden:'SWE', shvetsiya:'SWE',
+  taiwan:'TWN', tayvan:'TWN', "new zealand":'NZL', "yangi zelandiya":'NZL',
+  thailand:'THA', tailand:'THA', vietnam:'VNM', vyetnam:'VNM',
+  indonesia:'IDN', indoneziya:'IDN', malaysia:'MYS', malayziya:'MYS',
+  ukraine:'UKR', ukraina:'UKR', belarus:'BLR', "belorussiya":'BLR',
+  romania:'ROU', ruminiya:'ROU', israel:'ISR', isroil:'ISR',
+  jordan:'JOR', iordaniya:'JOR', argentina:'ARG', chile:'CHL', chili:'CHL',
+  colombia:'COL', kolumbiya:'COL'
 };
 
 function normalizeInvestorGeoCountry(value){
@@ -2677,7 +2728,8 @@ _renderInvestorCompaniesMain = function(){
   const co = allCo.filter(function(r){
     if(_isImporterRec(r)) return false;
     if(_investorGeoFilterStateCode){
-      if(getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
+      // {} ishlatamiz — xarita statsByCountry'ni qurganda ham {} ishlatadi, mos kelishi shart
+      if(getInvestorGeoStateCode(r, {}) !== _investorGeoFilterStateCode) return false;
     }
     if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
     if(!_matchesSourceFilter(r)) return false;
@@ -2883,30 +2935,38 @@ _renderInvestorCompaniesMain = function(){
     });
   }
 
-  // ═══ Filter bypass: xarita davlat filtri tufayli o'tib ketgan PARENT (eksportyor) recordlarini ham qo'shamiz ═══
-  // FAQAT geo filter aktiv BO'LMAGANDA bypass ishlaydi.
-  // Geo filter aktiv bo'lsa — boshqa davlat parent'larini olmaymiz (foydalanuvchi tanlovi bo'yicha)
-  if(!_investorGeoFilterStateCode){
+  // ═══ Filter bypass: hamkor (partner) kompaniyalarni co'ga qo'shamiz ═══
+  // Geo filter YO'Q: barcha bog'langan partnerlarni qo'shamiz (xarita to'liq ko'rinadi).
+  // Geo filter BOR: BARCHA eksportyorlarning partnerlarini skanlab, FAQAT tanlangan
+  //   davlatga mos partnerlarni qo'shamiz — shunda xaritadagi son va jadval mos keladi
+  //   (ilgari filter bor bo'lsa bypass o'tkazib yuborilardi → "0 ta kontakt" xatosi).
+  (function(){
     var _coKeysSet = Object.create(null);
     co.forEach(function(r){
       var k = String(r.kompaniya || '').trim().toLowerCase();
       if(k) _coKeysSet[k] = true;
     });
-    var _coSnapshot = co.slice();
-    _coSnapshot.forEach(function(rec){
+    // Filter aktiv bo'lsa — barcha eksportyorlarning partnerlarini skanlaymiz (allCo),
+    // aks holda faqat co ichidagilarni.
+    var _scanSource = _investorGeoFilterStateCode
+      ? allCo.filter(function(r){ return !_isImporterRec(r); })
+      : co.slice();
+    _scanSource.forEach(function(rec){
       var linked = [];
       (rec._partners || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
       (rec._partnerOf || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
       linked.forEach(function(nm){
         if(!nm || _coKeysSet[nm]) return;
         var existingRec = _existingNamesLower[nm];
-        if(existingRec){
-          co.push(existingRec);
-          _coKeysSet[nm] = true;
-        }
+        if(!existingRec) return;
+        // Geo filter aktiv bo'lsa — faqat tanlangan davlatga mos partnerni qo'shamiz
+        if(_investorGeoFilterStateCode &&
+           getInvestorGeoStateCode(existingRec, {}) !== _investorGeoFilterStateCode) return;
+        co.push(existingRec);
+        _coKeysSet[nm] = true;
       });
     });
-  }
+  })();
 
   var groupedMap = Object.create(null);
   var grouped = [];
