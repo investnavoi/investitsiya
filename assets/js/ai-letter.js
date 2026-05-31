@@ -3464,12 +3464,37 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       copied verbatim from the data block. Choose import-side framing (demand a Navoi facility ' +
     '       would serve) by default; use export-side framing only if the data block is explicitly ' +
     '       about Uzbek export capacity for this product.\n' +
-    '       After the supply-and-demand picture, ONE short connector sentence linking the recipient ' +
-    '       company\'s existing activity in [their country] to this Navoi opportunity (e.g. "Cornerstone\'s ' +
-    '       Double-Lok™ line at [facility] is the production profile a Navoi facility would mirror"). ' +
+    '       DEMAND ON A YEARLY BASIS: in addition to the cumulative 2021-2024 totals, also express the ' +
+    '       demand as an approximate annual run-rate so the recipient grasps the yearly scale — divide ' +
+    '       the cumulative figure by the number of years (e.g. "$8.4M over 2021-2024, roughly $2.1M a ' +
+    '       year"). This is allowed arithmetic on the supplied figure, not a new invented number. Do ' +
+    '       this for BOTH the Uzbekistan total and the 12-market total where it reads naturally.\n' +
+    '       UZBEK PRODUCTION / LOCAL INPUTS: if the intelligence shows Uzbekistan can already make this ' +
+    '       product, or already mines/produces its raw inputs or components in Navoi, state that plainly ' +
+    '       with the figure — it is the core of our pitch (we have the resource, you have the demand/' +
+    '       capability).\n' +
+    '       RECIPIENT-FIT OPPORTUNITY (this is the persuasive heart — get it RIGHT for THIS recipient, ' +
+    '       1-2 sentences after the supply/demand picture). Read the COMPANY & RECIPIENT INTELLIGENCE ' +
+    '       block and pick the ONE angle that actually fits what this company does. The message should ' +
+    '       feel like "what only you can bring meets what only Navoi can offer":\n' +
+    '         • IF the recipient is an established MANUFACTURER / EXPORTER of this product → invite them ' +
+    '           to build or expand a production line in Navoi, closer to this regional demand and at ' +
+    '           lower operating cost (e.g. "A [product] line in the Navoi FEZ would put your output ' +
+    '           inside a [$Y/year] regional market while cutting energy and labour costs to the figures ' +
+    '           below").\n' +
+    '         • IF the recipient BUYS this product or its inputs from elsewhere, especially at a higher ' +
+    '           price → point out that Navoi has the specific resource/input available locally and ' +
+    '           cheaper, with the number (e.g. "Navoi mines [input] at [figure], so sourcing here would ' +
+    '           replace your current [origin] supply at a lower landed cost").\n' +
+    '         • IF the recipient is an INVESTOR / FUND → frame a concrete buildable project: build a ' +
+    '           [product] facility from [specific local Navoi input] to serve the [$Y] regional gap.\n' +
+    '       RELEVANCE IS MANDATORY: the angle and the product must match what the recipient actually ' +
+    '       does. Never pitch an unrelated product (do NOT write about cement to a lime producer, or ' +
+    '       about a product they have no connection to). If unsure which angle fits, default to the ' +
+    '       manufacturer angle using the recipient\'s real product line. ' +
     '       NEVER flatter, NEVER hype, NEVER use the banned adjectives above. If a specific figure is ' +
     '       marked "unknown" in the intelligence block, omit it and use a different valid figure — do ' +
-    '       NOT invent. 3–5 sentences total. If the paragraph contains fewer than 3 numerical figures, ' +
+    '       NOT invent. 4–6 sentences total. If the paragraph contains fewer than 3 numerical figures, ' +
     '       it is wrong and must be rewritten.\n' +
     '  ¶2 — COST AND ECONOMIC ADVANTAGES: Cover EVERY entry in the COMPARATIVE ADVANTAGES section ' +
     '       of the VERIFIED DATA block. Do not skip any metric. For each advantage, state BOTH the ' +
@@ -3675,6 +3700,13 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
           '   regulation) that might make them open to relocating part of production.\n' +
           '5. Anything personal/professional about ' + (recipientName2 || 'the contact') + ' that is ' +
           'publicly documented (recent interviews, conference speeches, named projects). Only verifiable facts.\n' +
+          '5b. RECIPIENT ROLE & SOURCING (needed so the email picks the right pitch) — classify this ' +
+          'company as ONE of: (A) a MANUFACTURER/EXPORTER that produces ' + (productLabel2 || 'this product') + ', ' +
+          '(B) a BUYER/IMPORTER that purchases this product or its raw inputs from suppliers, or (C) an ' +
+          'INVESTOR / holding / fund. If they buy or import, note WHERE they currently source from and at ' +
+          'roughly what cost/price if public. If they manufacture, note their plant locations and capacity. ' +
+          'This determines whether we pitch "build a plant in Navoi", "source the input cheaper from Navoi", ' +
+          'or "invest in a Navoi project". State the classification explicitly (A/B/C) with the evidence.\n' +
           '6. NAVOI / UZBEKISTAN SUPPLY-AND-DEMAND for ' + (productLabel2 || 'this product') + ' — THIS IS ' +
           'THE HIGHEST-PRIORITY SECTION. The email must OPEN with these facts, and EVERY bullet below ' +
           'must come back with a NUMBER (tons/year, USD/year) or a defensible sourced range. The word ' +
