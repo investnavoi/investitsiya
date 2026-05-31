@@ -2725,7 +2725,7 @@ _renderInvestorCompaniesMain = function(){
   var _apolloBaseTotal = Object.keys(_apolloBaseGroupKeys).length;
   var _taBaseTotal = Object.keys(_taBaseGroupKeys).length;
 
-  const co = allCo.filter(function(r){
+  var co = allCo.filter(function(r){
     if(_isImporterRec(r)) return false;
     if(_investorGeoFilterStateCode){
       // {} ishlatamiz — xarita statsByCountry'ni qurganda ham {} ishlatadi, mos kelishi shart
@@ -2735,6 +2735,24 @@ _renderInvestorCompaniesMain = function(){
     if(!_matchesSourceFilter(r)) return false;
     return true;
   });
+
+  // ═══ Geo filter aktiv, lekin 0 ta eksportyor topildi → importyorlarni ham qo'shamiz ═══
+  // Foydalanuvchi davlatni bossa, o'sha davlatdagi BARCHA kompaniyalarni ko'rishi kerak
+  // (rol importer bo'lsa ham). Aks holda "0 ta kontakt" chiqib qolardi.
+  if(_investorGeoFilterStateCode && co.length === 0){
+    var _allRolesForCountry = allCo.filter(function(r){
+      if(getInvestorGeoStateCode(r, {}) !== _investorGeoFilterStateCode) return false;
+      if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
+      if(!_matchesSourceFilter(r)) return false;
+      return true;
+    });
+    // Diagnostika — qaysi recordlar bor, qaysi roli bilan
+    console.warn('[geo-click] ' + _investorGeoFilterStateCode + ': eksportyor=0, barcha rollar=' +
+      _allRolesForCountry.length, _allRolesForCountry.slice(0,8).map(function(r){
+        return { kompaniya: r.kompaniya, davlat: r.davlat, finderMode: r.finderMode || r.role || '', importer: _isImporterRec(r) };
+      }));
+    if(_allRolesForCountry.length){ co = _allRolesForCountry; }
+  }
 
   var allGroupMap = Object.create(null);
   var apolloGroups = Object.create(null);
