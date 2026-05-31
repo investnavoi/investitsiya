@@ -396,6 +396,12 @@ function normalizeInvestorGeoCountry(value){
     .replace(/\s+/g,' ');
 }
 
+// ISO2 → ISO3 reverse map (built from INVESTOR_GEO_ISO2_BY_ISO3)
+var INVESTOR_GEO_ISO3_BY_ISO2 = (function(){
+  var m = {}; Object.keys(INVESTOR_GEO_ISO2_BY_ISO3).forEach(function(iso3){ m[INVESTOR_GEO_ISO2_BY_ISO3[iso3]] = iso3; });
+  return m;
+})();
+
 function getInvestorGeoHub(rec){
   rec = rec || {};
   var iso3 = String(rec.iso3 || rec.countryIso3 || rec.country_iso3 || '').trim().toUpperCase();
@@ -408,6 +414,21 @@ function getInvestorGeoHub(rec){
   if(aliasIso && INVESTOR_GEO_HUBS[aliasIso]){
     return Object.assign({ iso3: aliasIso, display: rawCountry || INVESTOR_GEO_HUBS[aliasIso].name }, INVESTOR_GEO_HUBS[aliasIso]);
   }
+  // Cyrillic name → ISO2 → ISO3
+  var cyrIso2 = (typeof INVESTOR_GEO_CYRILLIC !== 'undefined') ? INVESTOR_GEO_CYRILLIC[normalized] : '';
+  if(cyrIso2 && INVESTOR_GEO_ISO3_BY_ISO2[cyrIso2] && INVESTOR_GEO_HUBS[INVESTOR_GEO_ISO3_BY_ISO2[cyrIso2]]){
+    var ci3 = INVESTOR_GEO_ISO3_BY_ISO2[cyrIso2];
+    return Object.assign({ iso3: ci3, display: rawCountry || INVESTOR_GEO_HUBS[ci3].name }, INVESTOR_GEO_HUBS[ci3]);
+  }
+  // Raw value may itself be an ISO2 ("RU") or ISO3 ("RUS") code
+  var rawUpper = String(rawCountry || '').trim().toUpperCase();
+  if(rawUpper.length === 3 && INVESTOR_GEO_HUBS[rawUpper]){
+    return Object.assign({ iso3: rawUpper, display: INVESTOR_GEO_HUBS[rawUpper].name }, INVESTOR_GEO_HUBS[rawUpper]);
+  }
+  if(rawUpper.length === 2 && INVESTOR_GEO_ISO3_BY_ISO2[rawUpper] && INVESTOR_GEO_HUBS[INVESTOR_GEO_ISO3_BY_ISO2[rawUpper]]){
+    var r3 = INVESTOR_GEO_ISO3_BY_ISO2[rawUpper];
+    return Object.assign({ iso3: r3, display: INVESTOR_GEO_HUBS[r3].name }, INVESTOR_GEO_HUBS[r3]);
+  }
   var matchedIso = Object.keys(INVESTOR_GEO_HUBS).find(function(key){
     return normalizeInvestorGeoCountry(INVESTOR_GEO_HUBS[key].name) === normalized;
   });
@@ -417,15 +438,37 @@ function getInvestorGeoHub(rec){
   return null;
 }
 
+// Cyrillic country names → ISO2 (Apollo/manual entries sometimes use Russian)
+var INVESTOR_GEO_CYRILLIC = {
+  'россия':'RU','российская федерация':'RU','рф':'RU',
+  'узбекистан':'UZ','казахстан':'KZ','киргизия':'KG','кыргызстан':'KG',
+  'таджикистан':'TJ','туркменистан':'TM','азербайджан':'AZ','грузия':'GE',
+  'армения':'AM','иран':'IR','афганистан':'AF','пакистан':'PK','китай':'CN',
+  'турция':'TR','германия':'DE','франция':'FR','италия':'IT','испания':'ES',
+  'индия':'IN','япония':'JP','южная корея':'KR','корея':'KR','сша':'US',
+  'канада':'CA','бразилия':'BR','мексика':'MX','польша':'PL'
+};
+// All known ISO2 codes (from the ISO3→ISO2 map values) for direct-code detection
+var INVESTOR_GEO_KNOWN_ISO2 = (function(){
+  var s = {}; Object.keys(INVESTOR_GEO_ISO2_BY_ISO3).forEach(function(k){ s[INVESTOR_GEO_ISO2_BY_ISO3[k]] = true; });
+  return s;
+})();
+
 function getInvestorGeoStateCode(rec, stateSpecific){
   rec = rec || {};
   var rawIso2 = String(rec.iso2 || rec.countryIso2 || rec.country_iso2 || '').trim().toUpperCase();
   if(rawIso2 && stateSpecific && stateSpecific[rawIso2]) return rawIso2;
+  if(rawIso2 && INVESTOR_GEO_KNOWN_ISO2[rawIso2]) return rawIso2;
   var hub = getInvestorGeoHub(rec);
   if(hub && hub.iso3 && INVESTOR_GEO_ISO2_BY_ISO3[hub.iso3]) return INVESTOR_GEO_ISO2_BY_ISO3[hub.iso3];
   var rawCountry = getInvestorGeoCountrySource(rec);
   var normalized = normalizeInvestorGeoCountry(rawCountry);
   if(INVESTOR_GEO_ISO2_ALIASES[normalized]) return INVESTOR_GEO_ISO2_ALIASES[normalized];
+  if(INVESTOR_GEO_CYRILLIC[normalized]) return INVESTOR_GEO_CYRILLIC[normalized];
+  // Raw value may itself be an ISO2 ("RU") or ISO3 ("RUS") code
+  var rawUpper = String(rawCountry || '').trim().toUpperCase();
+  if(rawUpper.length === 2 && INVESTOR_GEO_KNOWN_ISO2[rawUpper]) return rawUpper;
+  if(rawUpper.length === 3 && INVESTOR_GEO_ISO2_BY_ISO3[rawUpper]) return INVESTOR_GEO_ISO2_BY_ISO3[rawUpper];
   if(stateSpecific){
     var found = Object.keys(stateSpecific).find(function(code){
       return normalizeInvestorGeoCountry(stateSpecific[code].name) === normalized;
@@ -3294,16 +3337,22 @@ _renderInvestorCompaniesMain = function(){
   var statsBySource = { apollo: 0, tradeatlas: 0, other: 0 };
   var statsByRole = { exporters: 0, importers: 0, unknown: 0 };
   // ═══ byCountry — `co` (filter qo'llangan, parent-child reorderdan oldin) bo'yicha ═══
-  // Faqat eksportyor — Jami = xarita yig'indisi
+  // Xarita BARCHA kompaniyalarni ko'rsatadi (importer + exporter) — "Kompaniyalar geografiyasi"
+  // 388 ta kompaniya · N ta davlat sarlavhasiga mos bo'lishi uchun.
+  // _exporterGroupKeys alohida — faqat eksportyorlarni sanaydi (boshqa joyda ishlatiladi).
   var _byCountrySeenGroups = Object.create(null);
   var _exporterGroupKeys = Object.create(null); // jami eksportyor sonini hisoblash
+  var _failedGeoNames = Object.create(null); // resolve bo'lmagan davlat nomlari (diagnostika)
   co.forEach(function(rec){
-    if(_isImporterRec(rec)) return;
     var code = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec, {}) : '';
     var groupKey = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
     if(!groupKey) return;
-    _exporterGroupKeys[groupKey] = true;
-    if(!code) return;
+    if(!_isImporterRec(rec)) _exporterGroupKeys[groupKey] = true; // eksportyor total o'zgarmaydi
+    if(!code){
+      var _raw = (typeof getInvestorGeoCountrySource === 'function') ? getInvestorGeoCountrySource(rec) : '';
+      if(_raw) _failedGeoNames[_raw] = (_failedGeoNames[_raw] || 0) + 1;
+      return;
+    }
     if(!_byCountrySeenGroups[code]) _byCountrySeenGroups[code] = Object.create(null);
     if(_byCountrySeenGroups[code][groupKey]) return;
     _byCountrySeenGroups[code][groupKey] = true;
@@ -3323,6 +3372,10 @@ _renderInvestorCompaniesMain = function(){
     statsByCountryName[statsByCountry[code].name] = (statsByCountryName[statsByCountry[code].name] || 0) + 1;
   });
   var _exporterTotal = Object.keys(_exporterGroupKeys).length;
+  // Diagnostika — qaysi davlat nomlari xaritaga tushmadi (resolve bo'lmadi)
+  if(Object.keys(_failedGeoNames).length){
+    console.warn('[geo] Resolve bo\'lmagan davlat nomlari (xaritada ko\'rinmaydi):', _failedGeoNames);
+  }
 
   // visibleGroups loop — role va source uchun saqlandi
   visibleGroups.forEach(function(g){
