@@ -282,7 +282,7 @@ var INVESTOR_GEO_HUBS = {
   BRA:{name:'Brazil',lat:-14.2350,lon:-51.9253},
   MEX:{name:'Mexico',lat:23.6345,lon:-102.5528},
   SGP:{name:'Singapore',lat:1.3521,lon:103.8198},
-  RUS:{name:'Russia',lat:61.5240,lon:105.3188},
+  RUS:{name:'Russia',lat:61.0,lon:85.0},
   KAZ:{name:'Kazakhstan',lat:48.0196,lon:66.9237},
   KGZ:{name:'Kyrgyzstan',lat:41.2044,lon:74.7661},
   TJK:{name:'Tajikistan',lat:38.8610,lon:71.2761},
@@ -310,7 +310,7 @@ var INVESTOR_GEO_ISO2_ALIASES = {
   kyrgyzstan:'KG', "qirg'iziston":'KG', qirgiziston:'KG',
   kazakhstan:'KZ', "qozog'iston":'KZ', qozogiston:'KZ',
   mongolia:'MN', mongoliya:'MN',
-  russia:'RU', rossiya:'RU',
+  russia:'RU', rossiya:'RU', 'russian federation':'RU', 'russian fed':'RU', 'russia (russian federation)':'RU',
   azerbaijan:'AZ', ozarbayjon:'AZ',
   georgia:'GE', gruziya:'GE',
   armenia:'AM', armaniston:'AM',
@@ -322,7 +322,8 @@ var INVESTOR_GEO_ISO2_ALIASES = {
   france:'FR', fransiya:'FR',
   italy:'IT', italiya:'IT',
   spain:'ES', ispaniya:'ES',
-  "united kingdom":'GB', britain:'GB', england:'GB',
+  "united kingdom":'GB', "uk":'GB', britain:'GB', england:'GB', "great britain":'GB',
+  "united states":'US', "usa":'US', "united states of america":'US', "u.s.a.":'US',
   netherlands:'NL', nederland:'NL',
   belgium:'BE', belgiya:'BE',
   switzerland:'CH', shveytsariya:'CH',
@@ -330,16 +331,17 @@ var INVESTOR_GEO_ISO2_ALIASES = {
   poland:'PL', polsha:'PL',
   turkey:'TR', turkiye:'TR', turkiya:'TR',
   "united arab emirates":'AE', uae:'AE', baa:'AE',
-  "saudi arabia":'SA',
+  "saudi arabia":'SA', saudi:'SA',
   qatar:'QA',
   japan:'JP', yaponiya:'JP',
-  "south korea":'KR', korea:'KR', koreya:'KR',
+  "south korea":'KR', "republic of korea":'KR', "korea, republic of":'KR', korea:'KR', koreya:'KR',
   india:'IN', hindiston:'IN',
   canada:'CA',
   australia:'AU', avstraliya:'AU',
   brazil:'BR', braziliya:'BR',
   mexico:'MX', meksika:'MX',
-  singapore:'SG', singapur:'SG'
+  singapore:'SG', singapur:'SG',
+  "czech republic":'CZ', czechia:'CZ'
 };
 
 var INVESTOR_GEO_ALIASES = {
@@ -349,7 +351,7 @@ var INVESTOR_GEO_ALIASES = {
   kyrgyzstan:'KGZ', "qirg'iziston":'KGZ', "qirgiziston":'KGZ',
   kazakhstan:'KAZ', "qozog'iston":'KAZ', qozogiston:'KAZ',
   mongolia:'MNG', mongoliya:'MNG',
-  russia:'RUS', rossiya:'RUS',
+  russia:'RUS', rossiya:'RUS', 'russian federation':'RUS', 'russian fed':'RUS', 'russia (russian federation)':'RUS',
   azerbaijan:'AZE', ozarbayjon:'AZE',
   georgia:'GEO', gruziya:'GEO',
   armenia:'ARM', armaniston:'ARM',
@@ -361,7 +363,12 @@ var INVESTOR_GEO_ALIASES = {
   france:'FRA', fransiya:'FRA',
   italy:'ITA', italiya:'ITA',
   spain:'ESP', ispaniya:'ESP',
-  "united kingdom":'GBR', britain:'GBR', england:'GBR',
+  "united kingdom":'GBR', "uk":'GBR', britain:'GBR', england:'GBR', "great britain":'GBR',
+  "united states":'USA', "usa":'USA', "united states of america":'USA', "u.s.a.":'USA',
+  "republic of korea":'KOR', "korea, republic of":'KOR',
+  "united arab emirates":'ARE', "uae":'ARE',
+  "saudi arabia":'SAU', "saudi":'SAU',
+  "czech republic":'CZE', czechia:'CZE',
   netherlands:'NLD', nederland:'NLD',
   belgium:'BEL', belgiya:'BEL',
   switzerland:'CHE', shveytsariya:'CHE',
@@ -3201,6 +3208,7 @@ _renderInvestorCompaniesMain = function(){
   var vTayyor = 0, vEmailSent = 0, vHasEmail = 0;
   var vEmailSentGroups = Object.create(null);
   var vHasEmailGroups = Object.create(null);
+  var vTayyorGroups = Object.create(null); // group-level count, not record-level
   var visibleRecords = []; // pie chart va geo karta uchun
   visibleGroups.forEach(function(g){
     if(!Array.isArray(g.records)) return;
@@ -3209,13 +3217,14 @@ _renderInvestorCompaniesMain = function(){
       var src = String(rec.manba || rec.source || '').toLowerCase().trim();
       if(src.indexOf('apollo') !== -1) visibleApolloGroups[g.key] = true;
       if(src.indexOf('tradeatlas') !== -1 || src.indexOf('trade atlas') !== -1 || src === 'trade' || src === 'ta') visibleTaGroups[g.key] = true;
-      if(rec.holat === 'Tayyor') vTayyor++;
+      if(rec.holat === 'Tayyor') vTayyorGroups[g.key] = true; // count per company, not per contact
       if(rec.emailSent) vEmailSentGroups[g.key] = true;
       if(rec.email) vHasEmailGroups[g.key] = true;
     });
   });
   vEmailSent = Object.keys(vEmailSentGroups).length;
   vHasEmail = Object.keys(vHasEmailGroups).length;
+  vTayyor = Object.keys(vTayyorGroups).length; // companies (groups) with Tayyor status
   // "Jami" KPI — keyinroq _icStats yig'ilgandan keyin yangilanadi (pastki blok'da)
   var ic1El = document.getElementById('ic-k1');
   var ic2El = document.getElementById('ic-k2');
