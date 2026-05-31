@@ -1209,19 +1209,24 @@ async function fetchOfficialAiTariffSummary(comp, analysis){
       '- Uzbekistan is NOT in the EU. It is in CIS. CIS FTA may apply for CIS countries.\n' +
       '- Uzbekistan average MFN tariff is ~8-10%. Rates range from 0% (equipment/pharmaceuticals) to 30-50% (food/tobacco/cars).\n' +
       '- A flat 1.2% for all products is WRONG. Use the actual HS-specific rate.\n\n' +
-      'Required (2023–2025 data):\n' +
-      '1. Uzbekistan MFN import duty for this HS code (check WTO Tariff Download Facility or customs.uz)\n' +
+      'Required (2023–2025 data) — be PRECISE, use the actual HS heading rate, not a chapter average:\n' +
+      '1. Uzbekistan MFN import duty for THIS exact HS code. Prefer the official customs tariff\n' +
+      '   (customs.uz / lex.uz Customs Tariff of the Republic of Uzbekistan) or WTO Tariff Download\n' +
+      '   Facility / Macmap.org. Cite the specific source you used in the "source" field, including the\n' +
+      '   HS heading you read and the year. If the rate is a band, give the rate for this 6-digit line.\n' +
       '2. Does ' + countryName + ' have a CIS FTA, SCO trade arrangement, or bilateral FTA with Uzbekistan?\n' +
-      '3. Preferential rate under that agreement if applicable\n' +
-      '4. Key NTB notes (certification, labeling, quotas)\n\n' +
+      '3. Preferential rate under that agreement if applicable (CIS FTA members often get 0%).\n' +
+      '4. Note any excise/VAT or NTB (certification, labeling, quotas) that materially changes landed cost.\n' +
+      '5. Set "confidence" to "high" ONLY if you found the rate on an official/WTO source for this exact\n' +
+      '   HS line; "medium" if inferred from chapter/neighbouring lines; "low" if uncertain.\n\n' +
       'Respond ONLY with valid JSON:\n' +
       '{\n' +
       '  "uzMfnRate": <number, verified MFN% Uzbekistan charges for this HS code>,\n' +
       '  "preferentialRate": <number or null>,\n' +
       '  "ftaName": "<agreement name or null>",\n' +
       '  "effectiveRate": <number, preferential if FTA applies, else MFN>,\n' +
-      '  "ntbNotes": "<brief notes, max 80 chars>",\n' +
-      '  "source": "<source + year>",\n' +
+      '  "ntbNotes": "<brief notes incl. excise/VAT if relevant, max 90 chars>",\n' +
+      '  "source": "<specific source + HS heading + year, e.g. customs.uz Tariff HS 2516 (2024)>",\n' +
       '  "confidence": "high|medium|low"\n' +
       '}';
     var tariffAiResult = await callOpenAI(
@@ -3070,17 +3075,30 @@ function renderAiTariffAnalysis(summary, scope){
     '</tr>';
   }).join('');
 
+  // Plain-language explanation block: distinguish the TWO different tariff concepts so the
+  // "0%" headline next to a "2.7% vs 1.2%" comparison is not confusing.
+  var hsChapter = String((summary.productInfo || {}).hsCode || summary.hsCode || '').replace(/\D/g,'').slice(0,2);
+  var uzImp = (dr && dr.uzMfnRate !== null && Number.isFinite(Number(dr.uzMfnRate))) ? Number(dr.uzMfnRate)
+            : (Number.isFinite(Number(summary.uzbImportMfnRate)) ? Number(summary.uzbImportMfnRate) : null);
+  var uzImpSource = dr ? (dr.source || 'AI web-search (customs.uz/WTO)') : 'O\'zbekiston MFN bojxona jadvali (HS bob darajasi)';
+  var prefBlock = (dr && dr.preferentialRate !== null && Number.isFinite(Number(dr.preferentialRate)))
+    ? ' Imtiyozli (FTA' + (dr.ftaName ? ' · ' + escapeHtmlText(dr.ftaName) : '') + '): <strong>' + aiFmtPct(dr.preferentialRate) + '</strong>.'
+    : '';
   metaEl.style.display = 'block';
   metaEl.innerHTML =
     '<div style="padding-top:.3rem;border-top:1px dashed rgba(124,58,237,.25)">' +
-      '<strong>✅ Rasmiy manba — WITS · UNCTAD · TRAINS</strong> (Jahon Banki + UNCTAD + WTO hamkorligi, gold-standard)<br>' +
-      '• Reporter = maqsad import bozori, partner = kompaniya davlati yoki O\'zbekiston.<br>' +
-      '• Mahsulot HS kodi: ' + escapeHtmlText(String((summary.productInfo || {}).hsCode || summary.hsCode || '—')) + '.<br>' +
-      '• AHS = Applied (bilateral), MFN = Most-Favoured-Nation (umumiy).<br>' +
-      '• 0% qiymati — FTA (erkin savdo) natijasi yoki o\'sha davlat uchun bojxona yo\'q degani.<br>' +
-      '• Musbat farq = O\'zbekiston uchun pastroq bojxona tarifi.<br>' +
-      '• Ma\'lumot yili ustunda — WITS ~1-2 yil lag bilan yangilanadi.' +
-      (dr ? '<br>• <strong>🤖 AI deep-research</strong>: ' + escapeHtmlText(dr.source || 'OpenAI web search') + ' (ishonch: ' + (dr.confidence||'medium') + ')' : '') +
+      '<div style="background:rgba(5,150,105,.06);border-radius:10px;padding:.7rem .8rem;margin-bottom:.7rem">' +
+        '<div style="font-weight:800;color:var(--text);margin-bottom:4px">1️⃣ O\'zbekiston import boji (asosiy raqam)</div>' +
+        'Bu — O\'zbekiston ushbu mahsulotni (' + escapeHtmlText(((summary.productInfo||{}).displayName) || ('HS ' + hsChapter)) + ', HS ' + escapeHtmlText(hsChapter) + '-bob) chetdan olib kelishda oladigan bojxona tarifi: ' +
+        (uzImp !== null ? '<strong>' + aiFmtPct(uzImp) + '</strong>.' : '<strong>aniqlanmadi</strong>.') + prefBlock + '<br>' +
+        '<span style="font-size:.7rem;color:var(--text3)">Manba: ' + escapeHtmlText(uzImpSource) + '. Investor uchun ma\'no: xom-ashyo/uskuna keltirishda to\'lanadigan boj. 0% — ko\'p sanoat xom-ashyosi va uskunalar uchun normal (qonuniy imtiyoz).</span>' +
+      '</div>' +
+      '<div style="background:rgba(37,99,235,.06);border-radius:10px;padding:.7rem .8rem;margin-bottom:.7rem">' +
+        '<div style="font-weight:800;color:var(--text);margin-bottom:4px">2️⃣ Eksport bozori tariflari (pastdagi jadval)</div>' +
+        '13 ta mintaqaviy bozor ushbu mahsulotni import qilishda <strong>' + escapeHtmlText(summary.sourceCountry || 'kompaniya davlati') + '</strong>dan (o\'rtacha ' + aiFmtPct(summary.avgSourceRate) + ') va <strong>O\'zbekiston</strong>dan (o\'rtacha ' + aiFmtPct(summary.avgUzRate) + ') qancha boj olishini solishtiradi.<br>' +
+        '<span style="font-size:.7rem;color:var(--text3)">Manba: WITS · UNCTAD TRAINS (Jahon Banki gold-standard, ~1-2 yil lag). AHS = bilateral amaldagi, MFN = umumiy stavka. Musbat farq = O\'zbekistondan eksportga pastroq boj.</span>' +
+      '</div>' +
+      (dr ? '<div style="font-size:.72rem;color:var(--text2)">🤖 Tekshiruv: AI web-search (' + escapeHtmlText(dr.source || 'customs.uz/WTO') + ') · ishonch: <strong>' + (dr.confidence||'o\'rta') + '</strong>' + (dr.ntbNotes ? ' · norasmiy to\'siqlar: ' + escapeHtmlText(dr.ntbNotes) : '') + '</div>' : '') +
     '</div>';
   /* tariff card stays hidden until user clicks tariff metric */
 }
