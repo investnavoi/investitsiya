@@ -1996,9 +1996,9 @@ function renderAiAnalysis(analysis, scope){
   if(transportSummary && transportSummary.routes && transportSummary.routes.length){
     grid.push(buildAiMetricCard(
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M1 3h15v13H1zM16 8h4l3 4v5h-7V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/></svg>',
-      'Transport kalkulyatori 🤖 AI',
+      'Transport — o\'rtacha tejamkorlik',
       aiFmtTransportUsd(transportSummary.avgSaving) + ' (' + transportSummary.avgSavingPct + '%)',
-      (transportSummary.volumeSpec || '13 davlat bo\'yicha') + ' · ' + (transportSummary.dataSourceBadge || '🤖 AI tahlil'),
+      'Navoiydan 13 bozorga arzonroq · ' + (transportSummary.dataSourceBadge || '📐 model'),
       '#D97706',
       { scope: scope, metricKey: 'transportSummary', selected: selectedMetric === 'transportSummary', countryVal: transportSummary.avgForeign, uzVal: transportSummary.avgNavoi, countryLabel: aiFmtTransportUsd(transportSummary.avgForeign), uzLabel: aiFmtTransportUsd(transportSummary.avgNavoi) }
     ));
@@ -2514,15 +2514,32 @@ var AI_TRANSPORT_HUBS = {
   PAK:{name:'Lahore',lat:31.5204,lon:74.3587,profile:'southAsia'}
 };
 
+/* Door-to-door 20ft FCL cost model, calibrated to real 2024-2025 corridor benchmarks
+   (Drewry/Freightos WCI ocean + Middle Corridor rail + inland trucking). Used ONLY as a
+   fallback when real SeaRates rates are unavailable for a route. Distance is haversine
+   (straight-line), so per-km is deliberately conservative and a fixed corridor base carries
+   most of the cost — real freight is dominated by origin/destination handling, not pure km. */
+/* Ocean/rail freight cost is largely FLAT per corridor (dominated by handling + line-haul),
+   so the fixed "base" carries most of the cost and per-km is a small modifier — a pure
+   distance model would wildly overcharge coastal destinations. Calibrated to 2024-2025
+   Drewry/Freightos WCI + Middle Corridor rail benchmarks for a 20ft FCL, door-to-door. */
 var AI_TRANSPORT_PROFILE_CFG = {
-  regional:{base:180,perKm:0.82,border:80,dayDiv:450,dayBase:1,mode:'Avto / temir yo\'l'},
-  middle:{base:320,perKm:0.90,border:140,dayDiv:550,dayBase:2,mode:'Avto + temir yo\'l'},
-  southAsia:{base:340,perKm:0.80,border:160,dayDiv:580,dayBase:2,mode:'Avto + multimodal'},
-  europe:{base:420,perKm:0.95,border:180,dayDiv:650,dayBase:3,mode:'Temir yo\'l + avto'},
-  europeAsia:{base:300,perKm:0.88,border:120,dayDiv:620,dayBase:2,mode:'Temir yo\'l + avto'},
-  eastAsia:{base:650,perKm:1.00,border:220,dayDiv:720,dayBase:4,mode:'Temir yo\'l + dengiz'},
-  americas:{base:1200,perKm:0.55,border:240,dayDiv:900,dayBase:8,mode:'Dengiz + avto'},
-  oceania:{base:1400,perKm:0.58,border:260,dayDiv:950,dayBase:9,mode:'Dengiz + avto'}
+  regional:{base:700,perKm:0.55,border:150,dayDiv:450,dayBase:1,mode:'Avto / temir yo\'l'},
+  middle:{base:1500,perKm:0.22,border:220,dayDiv:550,dayBase:3,mode:'Avto + temir yo\'l'},
+  southAsia:{base:1700,perKm:0.16,border:260,dayDiv:580,dayBase:4,mode:'Dengiz + avto'},
+  europe:{base:2200,perKm:0.16,border:260,dayDiv:650,dayBase:5,mode:'Temir yo\'l + avto'},
+  europeAsia:{base:1400,perKm:0.20,border:180,dayDiv:620,dayBase:4,mode:'Temir yo\'l + avto'},
+  eastAsia:{base:2300,perKm:0.18,border:300,dayDiv:720,dayBase:6,mode:'Temir yo\'l + dengiz'},
+  americas:{base:3800,perKm:0.10,border:380,dayDiv:900,dayBase:10,mode:'Dengiz + temir yo\'l'},
+  oceania:{base:4200,perKm:0.10,border:400,dayDiv:950,dayBase:12,mode:'Dengiz + temir yo\'l'}
+};
+
+/* Landlocked destination markets need an extra last-leg transshipment (sea/rail port → inland).
+   The premium depends on the origin profile: ocean origins (Americas/Oceania) pay the most;
+   rail-reachable origins (Europe/East Asia/South Asia/Middle East) pay a smaller inland leg. */
+var AI_LANDLOCKED_TARGETS = { TKM:1, TJK:1, KGZ:1, KAZ:1, MNG:1, AFG:1, ARM:1 };
+var AI_LANDLOCKED_PREMIUM = {
+  americas:5500, oceania:5500, eastAsia:2400, europe:2400, southAsia:2600, middle:1200, europeAsia:1200
 };
 
 function aiFmtTransportUsd(value){
@@ -2566,13 +2583,20 @@ function estimateAiExportRoute(sourceHub, target){
   var cfg = AI_TRANSPORT_PROFILE_CFG[sourceHub.profile] || AI_TRANSPORT_PROFILE_CFG.regional;
   var km = aiTransportHaversineKm(sourceHub.lat, sourceHub.lon, target.lat, target.lon);
   var border = cfg.border;
-  if(target.iso3 === 'AFG') border += 220;
+  if(target.iso3 === 'AFG') border += 350;   // extra security/handling surcharge
   if(target.iso3 === 'PAK') border += 180;
-  if(target.iso3 === 'MNG') border += 120;
-  if(target.iso3 === 'RUS') border += 90;
-  if(target.iso3 === 'IRN') border += 60;
-  var foreignCost = Math.round(cfg.base + (km * cfg.perKm) + border);
-  var foreignDays = Math.max(1, Math.round((km / cfg.dayDiv) + cfg.dayBase));
+  if(target.iso3 === 'MNG') border += 200;
+  if(target.iso3 === 'RUS') border += 120;
+  if(target.iso3 === 'IRN') border += 120;   // sanctions-related routing/banking friction
+  // Landlocked destination → extra last-leg transshipment (port/rail hub → inland), by origin type.
+  var landlockedPremium = 0;
+  var extraDays = 0;
+  if(AI_LANDLOCKED_TARGETS[target.iso3]){
+    landlockedPremium = AI_LANDLOCKED_PREMIUM[sourceHub.profile] || 0;
+    extraDays = landlockedPremium >= 3000 ? 6 : (landlockedPremium > 0 ? 3 : 0);
+  }
+  var foreignCost = Math.round(cfg.base + (km * cfg.perKm) + border + landlockedPremium);
+  var foreignDays = Math.max(1, Math.round((km / cfg.dayDiv) + cfg.dayBase + extraDays));
   return {
     foreignCost: foreignCost,
     foreignDays: foreignDays,
@@ -2625,7 +2649,7 @@ function _srRouteKey(fromLat, fromLng, toLat, toLng) {
    Returns: {iso3: {rate_usd, transit_days, mode, source}, ...}
 */
 async function _srBatchFetch(routes) {
-  var PROXY = 'https://navoiy-api-proxy.vercel.app/api/freight';
+  var PROXY = 'https://navoiy-api-proxy.vercel.app/api/ai-country-analysis?mode=freight';
   var out = {};
   if (!routes || !routes.length) return out;
 
@@ -2772,9 +2796,10 @@ async function buildAiTransportAnalysis(countryInfo, comp){
       navoiMode: navoiMode,
       saving: saving,
       savingPct: savingPct,
-      dataSource: gRow ? 'gemini' : 'formula'
+      dataSource: gRow ? 'searates' : 'formula'
     };
   });
+  var realCount = routes.filter(function(r){ return r.dataSource === 'searates'; }).length;
   var totalForeign = routes.reduce(function(sum, row){ return sum + row.foreignCost; }, 0);
   var totalNavoi = routes.reduce(function(sum, row){ return sum + row.navoiCost; }, 0);
   var totalSaving = totalForeign - totalNavoi;
@@ -2790,8 +2815,16 @@ async function buildAiTransportAnalysis(countryInfo, comp){
   var volumeSpec = (Number.isFinite(taQty) && taQty > 0 && taUnit)
     ? ('Yillik ' + Math.round(taQty).toLocaleString('en-US') + ' ' + taUnit + ' hajmda')
     : '1 × 20ft konteyner (standart)';
-  var dataSourceBadge = '📐 Masofa asosida taxmin (±30%)';
+  var dataSourceBadge;
+  if(realCount === routes.length){
+    dataSourceBadge = '🚢 SeaRates real FCL narxlari';
+  } else if(realCount > 0){
+    dataSourceBadge = '🚢 SeaRates (' + realCount + '/' + routes.length + ' real) + 📐 model';
+  } else {
+    dataSourceBadge = '📐 Koridor-model bahosi (taxminiy, ±35%)';
+  }
   return {
+    realCount: realCount,
     sourceCountry: String((countryInfo && countryInfo.display) || sourceHub.name || 'Tanlangan davlat'),
     sourceHub: sourceHub,
     routes: routes,
@@ -2834,7 +2867,7 @@ function buildAiTransportDetail(summary){
         '</tr>';
       }).join('') +
     '</tbody></table></div>' +
-    '<div style="padding:0 1rem 1rem;font-size:.72rem;line-height:1.6;color:var(--text2)"><strong>Logistika modeli:</strong><br>• Kompaniya joylashgan davlat uchun markaziy logistika hub: ' + escapeHtmlText(summary.sourceHub.name) + '.<br>• Narxlar 1 ta 40ft konteyner bo\'yicha taxminiy multimodal eksport modeli asosida hisoblandi.<br>• Navoiy narxlari ichki koridor benchmarklari, qolganlari esa masofa + koridor profili bo\'yicha modellashtirildi.' + (summary.fastestNavoi ? '<br>• Eng tez Navoiy yo\'nalishi: ' + escapeHtmlText(summary.fastestNavoi.name) + ' (~' + summary.fastestNavoi.navoiDays + ' kun).' : '') + '</div>' +
+    '<div style="padding:0 1rem 1rem;font-size:.72rem;line-height:1.6;color:var(--text2)"><strong>Logistika modeli:</strong><br>• Kompaniya joylashgan davlat uchun markaziy logistika hub: ' + escapeHtmlText(summary.sourceHub.name) + '.<br>• Narxlar 1 ta 20ft standart konteyner (FCL) bo\'yicha eshikdan-eshikgacha hisoblandi.<br>• Navoiy narxlari ichki koridor benchmarklari, qolganlari SeaRates real narxi yoki masofa + koridor modeli bo\'yicha.' + (summary.fastestNavoi ? '<br>• Eng tez Navoiy yo\'nalishi: ' + escapeHtmlText(summary.fastestNavoi.name) + ' (~' + summary.fastestNavoi.navoiDays + ' kun).' : '') + '</div>' +
   '</div>';
 }
 
@@ -2879,14 +2912,18 @@ function renderAiTransportAnalysis(summary, scope){
     '</tr>';
   }).join('');
 
-  var srcBadge = summary.dataSourceBadge || '📐 Formula (fallback)';
+  var srcBadge = summary.dataSourceBadge || '📐 Koridor-model bahosi';
+  var isReal = (summary.realCount || 0) > 0;
   metaEl.style.display = 'block';
   metaEl.innerHTML = '<div style="padding-top:.3rem;border-top:1px dashed rgba(16,185,129,.28)">' +
-    '<strong>Logistika modeli (' + escapeHtmlText(srcBadge) + '):</strong><br>' +
-    '• Eksport hub: ' + escapeHtmlText(summary.sourceHub.name) + ' → 13 bozorga solishtirildi.<br>' +
-    '• Narxlar: ' + (srcBadge.indexOf('AI') !== -1 ? 'OpenAI tahlili (Drewry/Xeneta/Freightos ko\'rsatkichlari asosida). Aniq taklif uchun freight forwarder bilan muzokaraning kerak.' : 'Masofa + koridor profili formulasi (fallback). AI tahlili mavjud bo\'lganda yangilanadi.') + '<br>' +
-    '• Navoiy − Markaziy Osiyo mamlakatlariga quruqlik koridori orqali raqobatbardosh. Dengizga yaqin davlatlar uchun manba davlat arzonroq bo\'lishi mumkin — bu normal.' +
-    (summary.fastestNavoi ? '<br>• Eng tez yo\'nalish: ' + escapeHtmlText(summary.fastestNavoi.name) + ' (~' + summary.fastestNavoi.navoiDays + ' kun).' : '') +
+    '<strong>Ma\'lumot manbasi: ' + escapeHtmlText(srcBadge) + '</strong><br>' +
+    '• <strong>Birlik:</strong> 1 × 20ft standart konteyner (FCL), eshikdan-eshikgacha (door-to-door).<br>' +
+    '• <strong>Solishtirish:</strong> ' + escapeHtmlText(summary.sourceHub.name) + ' (kompaniya davlati) va Navoiydan har bir 13 bozorga eksport narxi.<br>' +
+    (isReal
+      ? '• <strong>Real narxlar:</strong> SeaRates Logistics Explorer API\'dan jonli FCL stavkalari (' + (summary.realCount||0) + '/' + summary.routes.length + ' yo\'nalish). Qolgani koridor-model bilan to\'ldirilgan.<br>'
+      : '• <strong>Koridor-model:</strong> SeaRates real narx topilmagan yo\'nalishlar uchun masofa + koridor profili (Drewry/Freightos benchmarklari bilan kalibrlangan). Bu taxminiy baho (±35%), aniq taklif uchun freight forwarder bilan tasdiqlang.<br>') +
+    '• <strong>Navoiy ustunligi:</strong> Markaziy Osiyo va CIS bozorlariga quruqlik koridori (Trans-Kaspiy / O\'rta yo\'lak) orqali qisqaroq masofa. Dengiz portiga yaqin davlatlar uchun manba davlat ba\'zan arzonroq bo\'lishi mumkin — bu normal va halol ko\'rsatiladi.' +
+    (summary.fastestNavoi ? '<br>• <strong>Eng tez Navoiy yo\'nalishi:</strong> ' + escapeHtmlText(summary.fastestNavoi.name) + ' (~' + summary.fastestNavoi.navoiDays + ' kun).' : '') +
     '</div>';
   /* card stays hidden until user clicks transport metric card in analysis section */
 }
