@@ -4302,24 +4302,22 @@ async function runCompanyFinder(source){
   var strategy = getFinderStrategyFilters();
 
   // ═══ APOLLO MODE SELECTION ═══
-  // Avval foydalanuvchi eksportyor davlat tanlagan bo'lsa — shu davlatlar bo'yicha qidirish (per-country)
-  // Tanlangan bo'lmasa — import tahlilidan top eksportyor davlatlar olinadi (window._importTopExporterCountries)
-  // Hech narsa yo'q bo'lsa — global Top mode
+  // Foydalanuvchi "Eksportyor davlatlar" filtri bilan ANIQ davlat tanlagan bo'lsa:
+  //   → per-country mode (apolloFinderSearchCountry) — har davlatdan alohida qidirish
+  // Tanlangan bo'lmasa (Barchasi):
+  //   → global Top mode — mahsulot bo'yicha dunyo bo'yicha qidirish
+  // window._importTopExporterCountries avtomatik ishlatilmaydi — bu import tahlilisiz
+  //   ishlaganda bo'sh yoki noto'g'ri davlatlar bilan per-country ni trigger qilardi.
   var apolloExporterCountries = []; // per-country Apollo search uchun
-  if(source === 'apollo'){
-    if(sourceScope.effectiveCountries && sourceScope.effectiveCountries.length > 0){
-      // Foydalanuvchi "Eksportyor davlatlar" filtri bilan tanlagan
-      apolloExporterCountries = sourceScope.effectiveCountries.slice();
-    } else if(window._importTopExporterCountries && window._importTopExporterCountries.length > 0){
-      // Import tahlilidan avtomatik olingan top eksportyor davlatlar
-      apolloExporterCountries = window._importTopExporterCountries.slice(0, 6);
-    }
+  if(source === 'apollo' && sourceScope.effectiveCountries && sourceScope.effectiveCountries.length > 0){
+    // Faqat foydalanuvchi "Eksportyor davlatlar" filtri bilan ANIQ tanlagan bo'lsa
+    apolloExporterCountries = sourceScope.effectiveCountries.slice();
   }
 
   var isTop100Global = (source === 'apollo') && !apolloExporterCountries.length;
   var isApolloPerCountry = (source === 'apollo') && apolloExporterCountries.length > 0;
-  var TOP100_CAP = 30; // global rejimda endi 10 emas, 30
-  var APOLLO_PER_COUNTRY_CAP = 3; // har bir eksportyor davlatdan nechta kompaniya
+  var TOP100_CAP = 10; // global rejim: eski qiymat (email filter bilan 10 tani topish yetarli)
+  var APOLLO_PER_COUNTRY_CAP = 3; // per-country rejim: har bir eksportyor davlatdan nechta kompaniya
   if(isTop100Global){
     requestedCount = TOP100_CAP;
   }
