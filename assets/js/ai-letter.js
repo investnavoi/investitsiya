@@ -3353,18 +3353,24 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       'Use the exact short-form values shown above (' + _uzShort + ' and ' + _otShort + ') — DO NOT ' +
       'invent placeholder text like "$X million" or "$Y million".';
   } else {
-    // Snapshot YOQ va jonli olib kelish ham ishlamadi. AI placeholder "$X"/"$Y" yozmasligi uchun
-    // aniq ko'rsatma: bu raqamlarni MUTLAQO mavjud emas, ulardan voz keching, boshqa Navoi
-    // resurslari bilan ¶1 ni to'ldiring.
+    // Snapshot YOQ va jonli olib kelish ham ishlamadi — AI placeholder yozmasligi uchun
+    // aniq ko'rsatma. ¶1 struktura(a/b/c)dan foydalanish shart.
     importTotalsBlock =
-      '13-MARKET IMPORT TOTALS: NOT AVAILABLE for this product right now (UN Comtrade and snapshot ' +
-      'data did not return results). Therefore ¶1 MUST NOT mention any Uzbekistan 2021–2024 ' +
-      'cumulative import figure, MUST NOT mention any 13-country regional demand figure, MUST NOT ' +
-      'use placeholder text such as "$X million", "$Y million", "[amount]", "[USD]", "approximately ' +
-      '$X", or any X/Y/Z stand-in. INSTEAD ¶1 must rely entirely on Navoi-side facts (mineral ' +
-      'reserves, FEZ scale of 564 hectares, existing industrial output, upstream raw materials such ' +
-      'as gold/uranium/copper/marble/gas-condensate when relevant to the product) plus a concrete ' +
-      'connector sentence to the recipient company.';
+      '13-MARKET IMPORT TOTALS: NOT AVAILABLE (UN Comtrade data not yet loaded for this HS code). ' +
+      'STRICT RULES for ¶1 when import totals are unavailable:\n' +
+      '1. ABSOLUTELY NO placeholder text: no "$X million", "$Y million", "[amount]", "[USD]", ' +
+      '"approximately $X", "X/Y/Z" stand-ins. Any invented figure is a hard fail.\n' +
+      '2. ABSOLUTELY NO banned adjectives: "rich deposits", "significant mineral reserves", ' +
+      '"robust industrial infrastructure", "advanced infrastructure", "highly developed", ' +
+      '"abundant resources". These are marketing clichés — do not use them.\n' +
+      '3. USE structure (b) from ¶1 guidance: Uzbekistan has upstream inputs or raw materials ' +
+      'for this product — name them specifically and factually (e.g. Navoi mines gold at ~100 t/yr, ' +
+      'or produces gas-condensate for energy-intensive processes) with the figure from verified data.\n' +
+      '4. Then write ONE connector sentence linking the recipient company\'s actual product line ' +
+      'and their country to the Navoi opportunity — no flattery, just the factual link.\n' +
+      '5. The paragraph still needs at least 3 numerical figures: use FEZ scale (564 hectares), ' +
+      'investment threshold ($300K USD for 3-year tax holiday), and one specific Navoi resource ' +
+      'figure (e.g. airport throughput, rail transit days, or a specific mineral output volume).';
   }
 
   var dataBlock =
@@ -3385,15 +3391,26 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     (transportLines.length ? '\n\nLOGISTICS / TRANSPORT (estimated costs, cite as approximate — include ALL of these in the email):\n' + transportLines.map(function(line){ return '• ' + line; }).join('\n') : '') +
     (!_noCountry && tariffLines.length ? '\n\nTARIFFS (WITS/UNCTAD official data — include ALL of these in the email):\n' + tariffLines.map(function(line){ return '• ' + line; }).join('\n') : '');
 
+  // Ism bo'sh bo'lsa "the recipient" o'rniga mos fallback ishlatamiz
+  var _recipientName = String(comp.rahbar || '').trim();
+  var _recipientNameForPrompt = _recipientName
+    || ('the team at ' + (comp.kompaniya || 'your company'));
+  var _salutationNote = _recipientName
+    ? '' // ism bor — oddiy "Dear Mr./Ms. [Surname]"
+    : '\n• SALUTATION NOTE: No individual name is available. Use "Dear Sir or Madam," ' +
+      'as the salutation — NEVER write "Dear the recipient" or "Dear the team at [Company]". ' +
+      '"Dear Sir or Madam," is the correct diplomatic form when the contact name is unknown.';
+
   var personaBlock =
     'RECIPIENT PROFILE:\n' +
-    '• Name: ' + (comp.rahbar || 'the recipient') + '\n' +
+    '• Name: ' + _recipientNameForPrompt + '\n' +
     '• Title: ' + (comp.lavozim || 'Manager') + '\n' +
     '• Company: ' + (comp.kompaniya || 'their company') + '\n' +
     '• Country: ' + (_noCountry ? 'unknown (do not guess or mention a country)' : (comp.davlat || 'abroad')) + '\n' +
     '• Product line in scope: ' + productLabel + ' (industry: ' + industryLabel + ')\n' +
     '• Persona class: ' + persona.toUpperCase() + ' → angle to emphasise: ' + pc.angle + '\n' +
-    '• Hook: ' + pc.hook;
+    '• Hook: ' + pc.hook +
+    _salutationNote;
 
   var styleBlock =
     'HOW THIS EMAIL MUST FEEL — read this before drafting:\n\n' +
@@ -3403,9 +3420,13 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     'recipient enough to be precise, concise, and direct. A diplomat who writes well is specific and unhurried — ' +
     'never flattering, never vague, never offering a menu of options.\n\n' +
     'STRUCTURE GUIDANCE (adapt to flow naturally — not a rigid template):\n' +
-    '  SALUTATION (mandatory, line 1 of the body): "Dear Mr. [Surname]," or "Dear Ms. [Surname]," using ' +
-    '       the recipient\'s actual surname from the recipient profile. If only a single name is available, ' +
-    '       use "Dear [FullName],". After the comma, leave a blank line, then continue.\n' +
+    '  SALUTATION (mandatory, line 1 of the body):\n' +
+    '       IF recipient name is known: "Dear Mr. [Surname]," or "Dear Ms. [Surname]," (use actual\n' +
+    '       surname from the Name field). If only a single full name is available, use "Dear [FullName],".\n' +
+    '       IF recipient name is NOT known / blank: use exactly "Dear Sir or Madam," — this is the\n' +
+    '       correct diplomatic form. NEVER write "Dear the recipient", "Dear the team at [Company]",\n' +
+    '       or "Dear [Company] Team" — these are not acceptable diplomatic salutations.\n' +
+    '       After the salutation comma, leave one blank line, then continue.\n' +
     '  BRIEF IDENTIFICATION (mandatory, 1 short sentence, before ¶1): Diplomatic protocol requires that ' +
     '       you state who you are and the institutional context in one concise sentence — not a pitch, ' +
     '       not a hedge, just identification. Acceptable forms (adapt, do not copy verbatim):\n' +
