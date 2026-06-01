@@ -941,9 +941,11 @@ select,.form-select{outline:none !important;}
 .page.active{will-change:auto;}
 /* Page switching — smooth transition identical to first load */
 .page{display:none;padding:0;max-width:1600px;margin:0 auto;}
-.page.active{display:block;animation:pageEnter 1s cubic-bezier(.25,.46,.45,.94) both;}
+.page.active{display:block;}
+/* page-anim-restart class triggers animation without forced reflow */
+.page.active.page-anim-restart{animation:pageEnter .45s cubic-bezier(.25,.46,.45,.94) both;}
 @keyframes pageEnter{
-  from{opacity:0;transform:translateY(18px)}
+  from{opacity:0;transform:translateY(14px)}
   to{opacity:1;transform:translateY(0)}
 }
 /* Hope UI body override for SPA */

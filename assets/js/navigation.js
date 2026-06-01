@@ -180,11 +180,10 @@ function _showPageInner(id){
   var titleEl=document.getElementById('topbarTitle');
   if(titleEl) titleEl.textContent=titles[id]||id;
 
-  // Re-trigger page enter animation (force restart CSS animation)
+  // Re-trigger page enter animation — CSS class toggle (reflow yo'q)
   if(pg){
-    pg.style.animation='none';
-    void pg.offsetHeight; // force reflow
-    pg.style.animation='';
+    pg.classList.remove('page-anim-restart');
+    requestAnimationFrame(function(){ pg.classList.add('page-anim-restart'); });
   }
 
   // Scroll to top

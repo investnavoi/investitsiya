@@ -390,9 +390,15 @@ async function loadFromFirestore(){
     if(batchRef.needSeed) await batchRef.batch.commit();
 
     if(loadEl) loadEl.style.display = 'none';
-    renderAll();
-    renderOverview();
-    if(typeof applyTranslations==='function') applyTranslations();
+    // Firebase yangilanishi bo'yicha render — rAF bilan keyingi framega surish.
+    // Bu birinchi cache render'i bilan bir frameda blokirovka qilmaydi
+    // (kesh + Firebase bir vaqtda renderAll() chaqirganda 2x freeze chiqardi).
+    // Ma'lumotlar xavfsiz — DB allaqachon to'liq yangilangan, faqat render keyinga suriladi.
+    requestAnimationFrame(function(){
+      renderAll();
+      renderOverview();
+      if(typeof applyTranslations==='function') applyTranslations();
+    });
     console.log(`✅ Firebase yangilandi: ${totalDocs} ta yozuv (${Date.now()-t0}ms)`);
 
     // 3. Heavy collections (tradeData, tradeSnapshots, importSnapshots) load ON DEMAND only

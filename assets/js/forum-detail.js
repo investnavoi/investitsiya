@@ -2566,9 +2566,11 @@ function showIcTableCard(){
 /* ═══ DEBOUNCE: renderInvestorCompanies ═══ */
 var _icRenderTimer = null;
 var _icGeoHash = '';
+var _icLastRenderHash = '';   // render hash guard — bir xil holatda qayta chizmaymiz
 function renderInvestorCompanies(){
   if(_icRenderTimer) clearTimeout(_icRenderTimer);
-  _icRenderTimer = setTimeout(_renderInvestorCompaniesNow, 60);
+  // 250ms debounce: bir vaqtda 17 ta call kelsa faqat 1 ta render bo'ladi
+  _icRenderTimer = setTimeout(_renderInvestorCompaniesNow, 250);
 }
 /* Apollo / TradeAtlas KPI kartochkasi bosilganda manbasiga qarab filter qo'llash (toggle).
    source = null bo'lsa filter butunlay olib tashlanadi (Jami bosilganda chaqiriladi) */
@@ -2640,6 +2642,30 @@ function getInvestorCompanyGroupKey(rec){
 }
 
 _renderInvestorCompaniesMain = function(){
+  // ═══ RENDER HASH GUARD ═══
+  // Agar sahifa, filter va ma'lumot o'zgarmagan bo'lsa — qayta render qilmaymiz.
+  // Bu "burst" calllardan kelib chiqadigan 2-3 sekundlik freeze'ni bartaraf etadi.
+  try {
+    var _periodEl = document.getElementById('ic-period-select');
+    var _sohaEl = document.getElementById('ic-soha-filter');
+    var _searchEl = document.getElementById('ic-search');
+    var _hashNow = [
+      (DB.investorCompanies || []).length,
+      _icPage || 1,
+      window._investorSourceFilter || '',
+      window._investorGeoFilterStateCode || '',
+      window._investorProductFilter || '',
+      _periodEl ? _periodEl.value : '',
+      _sohaEl ? _sohaEl.value : '',
+      _searchEl ? _searchEl.value : '',
+      (DB.investorCompanies && DB.investorCompanies[0] ? String(DB.investorCompanies[0].id||'') : '')
+    ].join('|');
+    if(_icLastRenderHash === _hashNow){
+      return; // Hech narsa o'zgarmagan — render skip
+    }
+    _icLastRenderHash = _hashNow;
+  } catch(_he){}
+
   // Avvalgi render'lardan qoldirilgan in-memory synthetic record'larni DB'dan olib tashlaymiz
   // (avvalgi bug — har render'da DB.investorCompanies o'sib boryotgan edi)
   if(Array.isArray(DB.investorCompanies)){
@@ -4101,9 +4127,14 @@ function saveIcCheck(cb){
   });
 }
 function restoreIcChecks(){
-  document.querySelectorAll('.ic-check').forEach(function(cb){
+  // querySelectorAll bir marta, natijani cache qilamiz — 6 ta alohida DOM scan o'rniga 1 ta
+  var checks = document.querySelectorAll('.ic-check');
+  if(!checks.length) return;
+  var selectedIds = window._icSelectedIds;
+  if(!selectedIds || !selectedIds.size){ return; } // hech narsa tanlangan emas — skip
+  checks.forEach(function(cb){
     var ids = String(cb.dataset.ids || cb.dataset.id || '').split(',').map(function(s){return s.trim();}).filter(Boolean);
-    cb.checked = ids.some(function(id){ return window._icSelectedIds.has(id); });
+    cb.checked = ids.some(function(id){ return selectedIds.has(id); });
   });
 }
 window.saveIcCheck = saveIcCheck;
