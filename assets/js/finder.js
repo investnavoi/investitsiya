@@ -4301,18 +4301,37 @@ async function runCompanyFinder(source){
   var requestedCount = countSettings.count;
   var strategy = getFinderStrategyFilters();
 
-  // ═══ TOP 100 GLOBAL MODE — Apollo always runs in Top 100 mode (country filter ignored) ═══
-  var isTop100Global = (source === 'apollo');
-  var TOP100_CAP = 10;
+  // ═══ APOLLO MODE SELECTION ═══
+  // Avval foydalanuvchi eksportyor davlat tanlagan bo'lsa — shu davlatlar bo'yicha qidirish (per-country)
+  // Tanlangan bo'lmasa — import tahlilidan top eksportyor davlatlar olinadi (window._importTopExporterCountries)
+  // Hech narsa yo'q bo'lsa — global Top mode
+  var apolloExporterCountries = []; // per-country Apollo search uchun
+  if(source === 'apollo'){
+    if(sourceScope.effectiveCountries && sourceScope.effectiveCountries.length > 0){
+      // Foydalanuvchi "Eksportyor davlatlar" filtri bilan tanlagan
+      apolloExporterCountries = sourceScope.effectiveCountries.slice();
+    } else if(window._importTopExporterCountries && window._importTopExporterCountries.length > 0){
+      // Import tahlilidan avtomatik olingan top eksportyor davlatlar
+      apolloExporterCountries = window._importTopExporterCountries.slice(0, 6);
+    }
+  }
+
+  var isTop100Global = (source === 'apollo') && !apolloExporterCountries.length;
+  var isApolloPerCountry = (source === 'apollo') && apolloExporterCountries.length > 0;
+  var TOP100_CAP = 30; // global rejimda endi 10 emas, 30
+  var APOLLO_PER_COUNTRY_CAP = 3; // har bir eksportyor davlatdan nechta kompaniya
   if(isTop100Global){
     requestedCount = TOP100_CAP;
   }
 
-  var effectiveRequestedCount = (source === 'apollo' && !isTop100Global) ? Math.min(2, Math.max(1, requestedCount || 2)) : requestedCount;
-  var requestPerCountry = countSettings.mode === 'total'
-    ? Math.max(1, Math.ceil(effectiveRequestedCount / Math.max((meta.mode === 'exporters' ? (sourceScope.effectiveCountries || []).length : (_finderTargetCountries || []).length), 1)))
-    : effectiveRequestedCount;
-  if(source === 'apollo' && !isTop100Global){
+  var effectiveRequestedCount = isTop100Global ? TOP100_CAP
+    : (isApolloPerCountry ? (apolloExporterCountries.length * APOLLO_PER_COUNTRY_CAP)
+    : requestedCount);
+  var requestPerCountry = isApolloPerCountry ? APOLLO_PER_COUNTRY_CAP
+    : (countSettings.mode === 'total'
+      ? Math.max(1, Math.ceil(effectiveRequestedCount / Math.max((meta.mode === 'exporters' ? (sourceScope.effectiveCountries || []).length : (_finderTargetCountries || []).length), 1)))
+      : effectiveRequestedCount);
+  if(source === 'apollo' && !isTop100Global && !isApolloPerCountry){
     requestPerCountry = Math.min(2, Math.max(1, requestPerCountry));
   }
   var finalDisplayLimit = source === 'tradeatlas'
@@ -4321,11 +4340,13 @@ async function runCompanyFinder(source){
 
   // Get selected target countries
   var targetCountries = (_finderTargetCountries || []).slice();
-  if(!isTop100Global && !targetCountries.length){ toast('⚠️ Kamida bitta davlat tanlang','error'); return; }
-  var searchCountries = meta.mode === 'exporters'
-    ? (sourceScope.effectiveCountries || []).slice()
-    : targetCountries.slice();
-  if(meta.mode === 'exporters' && !searchCountries.length && source !== 'tradeatlas' && !isTop100Global){
+  if(!isTop100Global && !isApolloPerCountry && !targetCountries.length){ toast('⚠️ Kamida bitta davlat tanlang','error'); return; }
+  var searchCountries = isApolloPerCountry
+    ? apolloExporterCountries.slice()   // eksportyor davlatlar filtri tanlangan yoki importdan olingan
+    : (meta.mode === 'exporters'
+        ? (sourceScope.effectiveCountries || []).slice()
+        : targetCountries.slice());
+  if(meta.mode === 'exporters' && !searchCountries.length && source !== 'tradeatlas' && !isTop100Global && !isApolloPerCountry){
     toast('⚠️ Eksportyor kompaniyalar uchun avval "Eksportyor manbasi" bo\'limidan qit\'a yoki davlat tanlang','error');
     return;
   }

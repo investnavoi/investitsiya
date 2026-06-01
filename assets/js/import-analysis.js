@@ -1916,11 +1916,15 @@ function renderImportResults(countries, prod, source, targetCountries){
       exporterTotals[exporterName].value += exporterValue;
     });
   });
-  var topPartner = Object.keys(exporterTotals).map(function(name){
+  var topPartnersSorted = Object.keys(exporterTotals).map(function(name){
     return exporterTotals[name];
   }).sort(function(a, b){
     return (b.value || 0) - (a.value || 0);
-  })[0] || null;
+  });
+  // Apollo uchun: top eksportyor davlatlar globally saqlanadi
+  // (finder.js Apollo qidiruvi bu ro'yxatni ishlatadi)
+  window._importTopExporterCountries = topPartnersSorted.slice(0, 8).map(function(e){ return e.name; });
+  var topPartner = topPartnersSorted[0] || null;
   var topPartnerShare = total > 0 && topPartner && topPartner.value ? Math.round((topPartner.value / total) * 100) : 0;
   var topReporter = biggest;
   var topReporterShare = total > 0 && topReporter.import_usd ? Math.round((topReporter.import_usd / total) * 100) : 0;
