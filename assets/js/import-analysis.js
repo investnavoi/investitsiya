@@ -1150,7 +1150,9 @@ function hashTargetList(items){
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
   var sourceScope = getImportAnalysisSourceScopeState();
   var year = (typeof getImportAnalysisSelectedYear === 'function') ? getImportAnalysisSelectedYear() : 'all';
-  return ['importv6', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries), 'y' + year]
+  // v7: yillik import qiymatlari tuzatildi (har yil alohida raqam)
+  // v6 snapshot'lar barcha yillarda bir xil raqam saqlagan — ular e'tiborsiz qoldiriladi
+  return ['importv7', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries), 'y' + year]
     .join('_')
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
@@ -4432,6 +4434,10 @@ async function collectInvestAiTradeContext(material){
   //    for materials with many products. Now up to CONCURRENCY HS codes run at
   //    once, each fetching its 4 years in parallel. ──
   function mergeYearRows(perYearResults){
+    // perYearResults[yi] — yr=YEARS_TO_FETCH[yi] uchun kelgan array.
+    // MUHIM: proxy yil parametrini e'tiborsiz qoldiradi va BARCHA yillarni qaytaradi.
+    // Shuning uchun c.import_usd = 4 yillik JAMI, har yil uchun yozib bo'lmaydi.
+    // Buning o'rniga c.year_imports[yr] dan foydalanamiz (u to'g'ri yillik qiymat).
     var byCode = Object.create(null);
     perYearResults.forEach(function(rows, yi){
       if(!rows || !rows.length) return;
@@ -4452,7 +4458,12 @@ async function collectInvestAiTradeContext(material){
             status: 'ok'
           };
         }
-        var v = Number(c.import_usd || c.u || 0) || 0;
+        // Avvalgi kod: c.import_usd ishlatardi (jami) → barcha yil bir xil chiqardi
+        // Tuzatma: year_imports[yr] dan olamiz (to'g'ri yillik qiymat)
+        var yi_data = c.year_imports || c.y || {};
+        var v = Number(yi_data[yr] || 0) || 0;
+        // Agar proxy year_imports bermagan bo'lsa (eski format) — jami ishlatamiz (1 yil uchun)
+        if(!v) v = Number(c.import_usd || c.u || 0) || 0;
         if(v) byCode[code].year_imports[yr] = v;
         byCode[code].year_statuses[yr] = c.status || 'ok';
         if(c.volume_tons || c.v) byCode[code].volume_tons = Math.max(byCode[code].volume_tons, Number(c.volume_tons || c.v || 0) || 0);
@@ -4460,26 +4471,48 @@ async function collectInvestAiTradeContext(material){
     });
     return Object.keys(byCode).map(function(k){
       var co = byCode[k];
-      // Set import_usd to latest available year (2024 -> 2023 -> 2022 -> 2021)
       co.import_usd = Number(co.year_imports['2024'] || co.year_imports['2023'] || co.year_imports['2022'] || co.year_imports['2021'] || 0) || 0;
       return co;
     });
   }
   async function fetchOneHs(hsCode){
     try{
-      var perYearResults = await Promise.all(YEARS_TO_FETCH.map(function(yr){
-        return fetchComtrade(hsCode, yr).catch(function(){ return null; });
-      }));
-      // Diagnostika — har yil RU importi (proxy yilni hisobga olyaptimi tekshirish)
-      try {
-        var _dbg = YEARS_TO_FETCH.map(function(yr, yi){
-          var rows = perYearResults[yi] || [];
-          var ru = rows.find(function(r){ return String(r.code||r.c||'').toUpperCase()==='RU'; });
-          return yr + '=' + (ru ? Number(ru.import_usd||ru.u||0) : 'null') + '(' + rows.length + ')';
-        });
-        console.log('[fetchOneHs '+hsCode+'] RU per-year:', _dbg.join(' | '));
-      } catch(_de){}
-      var liveCountries = mergeYearRows(perYearResults);
+      // Proxy bir so'rovda BARCHA yillarni qaytaradi (year_imports = {2021: X, 2022: Y, ...}).
+      // Avval 4 marta alohida chaqirilardi: har call c.import_usd (4 yillik jami!) ni
+      // yil uyasiga yozardi → barcha yillarda bir xil raqam chiqardi.
+      // Endi: BITTA chaqiruv, year_imports dan to'g'ridan-to'g'ri foydalanamiz.
+      var rawCountries = await fetchComtrade(hsCode, 'multi').catch(function(){ return null; });
+      if(!rawCountries || !rawCountries.length) return;
+
+      var liveCountries = rawCountries.map(function(c){
+        // year_imports proxy dan keladi: { '2021': N, '2022': N, '2023': N, '2024': N }
+        // import_usd — barcha yillar jami (eski bug: shu raqam har yil uchun ishlatilgan)
+        var yi = c.year_imports || c.y || {};
+        // agar yillik ma'lumot bo'lmasa — jami to'rtga bo'lib bo'g'laymiz (taxminiy)
+        var yearsWithData = YEARS_TO_FETCH.filter(function(yr){ return Number(yi[yr]||0) > 0; });
+        if(!yearsWithData.length && Number(c.import_usd||0) > 0){
+          var approxPerYear = Math.round(Number(c.import_usd) / YEARS_TO_FETCH.length);
+          YEARS_TO_FETCH.forEach(function(yr){ yi[yr] = approxPerYear; });
+        }
+        // import_usd: so'nggi mavjud yil qiymati (total emas)
+        var latestImport = Number(yi['2024']||0) || Number(yi['2023']||0) || Number(yi['2022']||0) || Number(yi['2021']||0) || 0;
+        return {
+          code:         c.code || c.c || '',
+          name:         c.name || c.n || '',
+          flag:         c.flag || c.f || '',
+          import_usd:   latestImport,
+          trend_pct:    typeof (c.trend_pct||c.t) === 'number' ? (c.trend_pct||c.t) : null,
+          volume_tons:  Number(c.volume_tons||c.v||0)||0,
+          year_imports: yi,
+          year_statuses:c.year_statuses||c.s||{},
+          status:       c.status||c.st||'ok'
+        };
+      }).filter(function(c){ return c.code; });
+
+      // Diagnostika
+      var ru = liveCountries.find(function(c){ return c.code.toUpperCase()==='RU'; });
+      if(ru) console.log('[fetchOneHs '+hsCode+'] RU year_imports:', JSON.stringify(ru.year_imports));
+
       if(liveCountries.length){
         liveByHs[hsCode] = liveCountries;
         saveImportSnapshot(hsNeedsFetch[hsCode], hsCode, liveCountries, 'UN Comtrade (real, multi-year)');
