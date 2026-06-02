@@ -3738,8 +3738,12 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       'You write in the first person, you reference one specific decree or incentive, ' +
       'you make one concrete ask, and you stop.';
 
+    // Progress callback chaqirish (generateAiLetterForScope dan keladi)
+    var _onProg = (opts && typeof opts.onProgress === 'function') ? opts.onProgress : null;
+
     if(hasOpenAI){
       /* ── Stage 1: research THIS company specifically. We want concrete hooks to open with. ── */
+      if(_onProg) _onProg(10, '🔍 Kompaniya tadqiqoti (internet)...');
       var marketCtx = '';
       try{
         var compCountryName = comp.davlat || getAiCompanyCountry(comp) || '';
@@ -3819,6 +3823,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
         if(sResp && sResp.content) marketCtx = sResp.content;
       }catch(eSearch){ console.warn('Letter web-search stage skipped:', eSearch && eSearch.message); }
 
+      if(_onProg) _onProg(45, '✍️ AI xat yozmoqda...');
       /* ── Stage 2: write the email using o4-mini (deep reasoning), fallback to gpt-4o ── */
       var fullUserPrompt = letterPrompt +
         (marketCtx
@@ -4010,6 +4015,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   /* ── Humanizer post-processing — strip residual AI tells the model might have slipped in ── */
   letterBody = humaniseLetterBody(letterBody);
   letterSubject = humaniseLetterSubject(letterSubject);
+  if(_onProg) _onProg(95, '✅ Xat sayqallanmoqda...');
 
   return {
     analysis: analysis,
@@ -4067,6 +4073,58 @@ function hydrateAiScope(scope, comp, payload){
   if(dom.emptyCard) dom.emptyCard.style.display = 'none';
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   AI LETTER GENERATION PROGRESS BAR
+   Button o'rniga 0→100% progress bar ko'rsatadi.
+   _setAiProgress(pct, label, sublabel, scope) — istalgan joydan chaqirish mumkin.
+═══════════════════════════════════════════════════════════════ */
+function _setAiProgress(pct, label, sublabel, scope){
+  var prefix = scope === 'investor' ? 'invAi' : 'pageAi';
+  var btnId   = scope === 'investor' ? 'invAiLetterBtn' : 'pageAiLetterBtn';
+  var progId  = prefix + 'GenProgress';
+  var labelId = prefix + 'GenLabel';
+  var pctId   = prefix + 'GenPct';
+  var fillId  = prefix + 'GenFill';
+  var subId   = prefix + 'GenSub';
+
+  var btn  = document.getElementById(btnId);
+  var prog = document.getElementById(progId);
+  if(!prog) return;
+
+  var safeP = Math.max(0, Math.min(100, Math.round(pct)));
+
+  if(btn)  btn.style.display  = 'none';
+  prog.classList.add('visible');
+
+  var labelEl = document.getElementById(labelId);
+  var pctEl   = document.getElementById(pctId);
+  var fillEl  = document.getElementById(fillId);
+  var subEl   = document.getElementById(subId);
+
+  if(labelEl) labelEl.textContent = label   || 'Ishlanmoqda...';
+  if(pctEl)   pctEl.textContent   = safeP + '%';
+  if(fillEl)  fillEl.style.width  = safeP + '%';
+  if(subEl)   subEl.textContent   = sublabel || '';
+}
+
+function _resetAiProgress(scope){
+  var prefix = scope === 'investor' ? 'invAi' : 'pageAi';
+  var btnId  = scope === 'investor' ? 'invAiLetterBtn' : 'pageAiLetterBtn';
+  var progId = prefix + 'GenProgress';
+
+  var btn  = document.getElementById(btnId);
+  var prog = document.getElementById(progId);
+
+  if(btn){ btn.style.display = ''; }
+  if(prog){ prog.classList.remove('visible'); }
+
+  // Fill ni 0 ga qaytarish (keyingi animatsiya uchun)
+  var fillEl = document.getElementById(prefix + 'GenFill');
+  var pctEl  = document.getElementById(prefix + 'GenPct');
+  if(fillEl) fillEl.style.width = '0%';
+  if(pctEl)  pctEl.textContent  = '0%';
+}
+
 async function generateAiLetterForScope(scope){
   var dom = getAiScopeDom(scope);
   var compId = scope === 'investor'
@@ -4075,8 +4133,6 @@ async function generateAiLetterForScope(scope){
   if(!compId){ toast('⚠️ Kompaniya tanlang','error'); return; }
   var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(compId);});
   if(!comp){ toast('⚠️ Kompaniya topilmadi','error'); return; }
-  // No country is fine — email will rely on FEZ incentives + Navoi logistics data instead
-  // of country-vs-UZ economic comparisons.
 
   var lang = dom.lang ? dom.lang.value : 'en';
 
@@ -4085,61 +4141,93 @@ async function generateAiLetterForScope(scope){
   var allContacts = (DB.investorCompanies||[]).filter(function(c){
     return getInvestorCompanyGroupKey(c) === companyKey;
   });
+  var n = allContacts.length;
 
-  var lt = toastLoading('⏳ AI xat tayyorlanmoqda: ' + escHtml(comp.kompaniya || '') + ' (' + allContacts.length + ' ta kontakt) — 2 bosqich: qidiruv + chuqur tahlil...');
+  // Progress bar boshlash
+  _setAiProgress(3, '🔍 Kompaniya tadqiqoti...', comp.kompaniya || '', scope);
+
+  var lt = toastLoading('⏳ AI xat: ' + escHtml(comp.kompaniya || '') + ' — ' + n + ' ta kontakt');
 
   try {
-    // Generate letters for all contacts — analysis runs ONCE per company (shared across contacts)
     window._aiContactLetters = {};
     var sharedAnalysis = null;
     var sharedTariff = null;
-    var usedAngles = []; // track persona/hook already used to avoid repeating across contacts
-    for(var ci=0; ci<allContacts.length; ci++){
+    var usedAngles = [];
+
+    for(var ci=0; ci<n; ci++){
       var contact = allContacts[ci];
-      // First contact: full pipeline (country analysis + tariff). Subsequent: reuse, only letter regenerated.
+      // Per-contact progress offset: each contact gets equal slice of 70–95% range
+      var contactBase = 70 + (ci / n) * 25;   // e.g. 3 contacts: 70, 78, 87
+      var contactSpan = 25 / n;
+
       if(ci === 0){
+        // Stage 1: web search + company research (0→20%)
+        _setAiProgress(8, '🔍 Kompaniya tadqiqoti...', (comp.davlat ? comp.davlat + ' · ' : '') + (comp.kompaniya || ''), scope);
         sharedAnalysis = await fetchOfficialAiCountryAnalysis(contact);
+
+        // Stage 2: iqtisodiy tahlil (20→40%)
+        _setAiProgress(22, '📊 Iqtisodiy tahlil...', 'Davlat iqtisodiy ko\'rsatkichlari', scope);
+
+        // Stage 3: tarif (40→55%)
+        _setAiProgress(42, '📋 Tarif tahlili...', 'WITS/UNCTAD bojxona tariflari', scope);
         try {
           sharedTariff = await fetchOfficialAiTariffSummary(contact, sharedAnalysis);
         } catch(err){
           console.warn('AI tariff analysis skipped:', err && err.message ? err.message : err);
-          sharedTariff = getAiTariffUnavailableSummary(contact, sharedAnalysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
+          sharedTariff = getAiTariffUnavailableSummary(contact, sharedAnalysis, err && err.message ? err.message : 'Tarif topilmadi');
         }
+
+        // Stage 4: import data (55→70%)
+        _setAiProgress(57, '📦 Import ma\'lumotlari...', 'UN Comtrade 2021-2024', scope);
       } else {
-        toast('🔁 ' + (contact.rahbar || 'kontakt') + ': tahlil qayta o\'tkazilmadi, faqat xat yangilanmoqda');
+        _setAiProgress(contactBase, '✍️ Xat yozilmoqda...', (ci+1)+'/'+n+' kontakt: '+(contact.rahbar||'kontakt'), scope);
       }
+
       var persona = detectContactPersona(contact.lavozim || contact.title || '');
+
+      // Stage 5: letter writing (70→95% — per contact)
+      _setAiProgress(Math.round(contactBase), '✍️ Xat yozilmoqda...', (ci+1)+'/'+n+': '+(contact.rahbar||contact.lavozim||'kontakt'), scope);
+
       var payload = await buildAiLetterPackage(contact, lang, sharedAnalysis, sharedTariff, {
         contactIdx: ci,
-        contactTotal: allContacts.length,
-        usedAngles: usedAngles.slice()
+        contactTotal: n,
+        usedAngles: usedAngles.slice(),
+        onProgress: function(subPct, subLabel){
+          // buildAiLetterPackage ichidagi mayda bosqichlar (0-100) → contactBase+0..contactSpan
+          var mapped = contactBase + (subPct / 100) * contactSpan;
+          _setAiProgress(Math.round(mapped), '✍️ Xat yozilmoqda...', subLabel || '', scope);
+        }
       });
       usedAngles.push(persona);
       saveAiLetterPackage(contact, payload);
       window._aiContactLetters[String(contact.id)] = {contact: contact, payload: payload};
     }
 
+    // 100%
+    _setAiProgress(100, '✅ Tayyor!', n + ' ta kontakt uchun xat tayyor', scope);
+
     // Show contacts list
     renderAiContactsList(allContacts, scope);
-
-    // Hydrate with first contact
     hydrateAiScope(scope, allContacts[0], window._aiContactLetters[String(allContacts[0].id)].payload);
 
-    toastDone(lt, '✅ AI xat tayyor! ' + escHtml(comp.kompaniya || '') + ' — ' + allContacts.length + ' ta kontakt');
+    toastDone(lt, '✅ AI xat tayyor! ' + escHtml(comp.kompaniya || '') + ' — ' + n + ' ta kontakt');
 
-    // Push to AI bell — visible even if user navigated away
     try {
       pushAiReadyNotification({
         companyId: String(comp.id),
         companyName: String(comp.kompaniya || ''),
-        contactCount: allContacts.length,
+        contactCount: n,
         scope: scope
       });
     } catch(e){}
 
+    // Tugagandan 1.5 soniya keyin buttonni qaytarish
+    setTimeout(function(){ _resetAiProgress(scope); }, 1500);
+
   } catch(e){
     toastDone(lt, '❌ Xato: '+e.message,'error');
     console.error(e);
+    _resetAiProgress(scope); // Xato bo'lsa ham buttonni qaytarish
   }
 }
 
