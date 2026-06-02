@@ -2673,6 +2673,42 @@ function inferInvestAiPhase(markdown){
   return _investAiPhase < 0 ? 0 : _investAiPhase;
 }
 
+/* Hisobot to'liq yozilganini tekshirish — continuation loop uchun.
+   To'liq hisobot: yetarlicha uzun + oxirgi bo'limlar mavjud + to'g'ri tugagan (chala jumla emas). */
+/* Davom ettirilgan segment boshidagi takror matnni kesib tashlash.
+   Model oxirgi jumlani qaytarsa, confirmed matnning oxiri bilan segment boshini solishtirib
+   eng katta umumiy qismni topib, segmentdan olib tashlaymiz. */
+function _stripInvestAiOverlap(confirmed, segment){
+  var tail = confirmed.slice(-400); // oxirgi 400 belgi
+  var seg = segment;
+  // Eng katta prefiks-suffiks mosligini topamiz (60..20 belgi oralig'ida)
+  for(var len = Math.min(300, tail.length, seg.length); len >= 20; len--){
+    var tailEnd = tail.slice(-len);
+    var segStart = seg.slice(0, len);
+    if(tailEnd === segStart){
+      return seg.slice(len); // takror qismni olib tashlaymiz
+    }
+  }
+  // Agar segment butunlay confirmed ichida bo'lsa (to'liq takror) — bo'sh qaytaramiz
+  if(confirmed.indexOf(seg.trim().slice(0, 120)) !== -1 && seg.trim().length < 200){
+    return '';
+  }
+  return segment;
+}
+
+function _isInvestAiReportComplete(md){
+  var t = String(md || '').trim();
+  if(t.length < 1200) return false; // juda qisqa — chala
+  var lower = t.toLowerCase();
+  // Oxirgi bo'limlardan kamida bittasi yozilgan bo'lishi kerak
+  var hasLateSection = /keyingi qadam|next step|tavsiya|risklar|risk va|xulosa|conclusion|mitigation|kamaytirish|yakuniy/i.test(lower);
+  if(!hasLateSection) return false;
+  // Oxirgi 80 belgida to'g'ri tugash belgisi (chala jumla emas)
+  var tail = t.slice(-80);
+  var endsClean = /[.!?:)\]\}"'`*”’–—]\s*$/.test(t) || /\n\s*[-*•]?\s*$/.test(md) || /\|\s*$/.test(tail);
+  return endsClean;
+}
+
 function decorateInvestAiHtml(html){
   return String(html || '')
     .replace(/\bPriority\s*A\b/gi, '<span class="anx-badge anx-badge-a">Priority A</span>')
@@ -4849,44 +4885,90 @@ async function analyzeInvestmentMaterial(){
       throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
     }
 
-    var geminiMessages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: contextText }
-    ];
+    // ═══ CONTINUATION LOOP — tahlil chala qolsa avtomatik davom ettiramiz ═══
+    // Gemini ba'zan stream'ni o'rtada to'xtatadi (rate-limit yoki MAX_TOKENS).
+    // Natija chala bo'lsa, "qoldingjoydan davom et" so'rovi yuboriladi (3 martagacha).
+    var _TARGET_CHARS = 3500;
+    var _MAX_CONTINUATIONS = 3;
+    var _contAttempt = 0;
+    var _confirmedMarkdown = ''; // har bosqichda tasdiqlangan to'liq matn
+    var _streamErr = null;
 
-    var _streamChars = 0;
-    var _TARGET_CHARS = 3000; // taxminiy to'liq tahlil uzunligi
-    try {
-      await callGeminiStream(geminiMessages, {
-        temperature: 0.2,
-        maxTokens: 4096
-      }, function(textDelta){
-        _investAiMarkdown += textDelta;
-        _streamChars += textDelta.length;
-        renderInvestAiMarkdown(_investAiMarkdown);
-
-        // Matn uzunligiga qarab faza va progress yangilash
-        // 55% (phase 2 boshlangan) → 90% (phase 3 yaqin) → 95% (tugayapti)
-        var streamPct = Math.min(88, 55 + Math.round((_streamChars / _TARGET_CHARS) * 33));
-        if(_streamChars > 200 && _investAiPhase < 2){
-          _investAiPhase = 2;
-          renderInvestAiProgress(2, false);
-        }
-        if(_streamChars > 1500 && _investAiPhase < 3){
-          _investAiPhase = 3;
-          renderInvestAiProgress(3, false); // false = hali tugamagan (loading ring)
-        }
-        _setInvestAiInlineProgress(streamPct, '✍️ Tahlil yozilmoqda... (' + Math.round(_streamChars/1000*10)/10 + ' K belgi)');
-      });
-    } catch(e){
-      console.warn('[analyze-material gemini] xato:', e && e.message);
-      // Stream o'rtada uzilib qisman matn yig'ilgan bo'lsa — uni saqlaymiz (outer catch)
-      if(!_investAiMarkdown || _investAiMarkdown.trim().length < 80){
-        throw new Error('Gemini tahlil xatosi: ' + (e && e.message ? e.message : 'noma\'lum xato'));
+    while(_contAttempt <= _MAX_CONTINUATIONS){
+      var _isContinuation = _contAttempt > 0;
+      var _msgs;
+      if(!_isContinuation){
+        _msgs = [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: contextText }
+        ];
+      } else {
+        // Davom ettirish — oxirgi 1500 belgini kontekst sifatida beramiz
+        _msgs = [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: contextText },
+          { role: 'user', content: 'You already wrote the following part of the report (in Uzbek):\n\n"""' +
+            _confirmedMarkdown.slice(-1500) + '"""\n\n' +
+            'CONTINUE writing the report from EXACTLY where it stopped. Do NOT repeat any sentence you already wrote. ' +
+            'Do NOT restart from the beginning. Just continue the next sentence and finish all remaining sections ' +
+            '(including risks/risklar and next steps/keyingi qadamlar). Write in Uzbek.' }
+        ];
+        _setInvestAiInlineProgress(Math.min(85, 55 + _contAttempt*10), '🔄 Tahlil davom ettirilmoqda (' + _contAttempt + '/' + _MAX_CONTINUATIONS + ')...');
       }
+
+      var _segmentResult = null;
+      try {
+        _segmentResult = await callGeminiStream(_msgs, {
+          temperature: 0.2,
+          maxTokens: 8192
+        }, function(textDelta, fullSoFar){
+          // fullSoFar — shu stream'ning to'liq matni (cross-model kontaminatsiya yo'q).
+          // Display = tasdiqlangan matn + joriy stream
+          _investAiMarkdown = _confirmedMarkdown + (fullSoFar || '');
+          var totalLen = _investAiMarkdown.length;
+          renderInvestAiMarkdown(_investAiMarkdown);
+
+          var streamPct = Math.min(90, 55 + Math.round((totalLen / _TARGET_CHARS) * 33));
+          if(totalLen > 200 && _investAiPhase < 2){ _investAiPhase = 2; renderInvestAiProgress(2, false); }
+          if(totalLen > 1500 && _investAiPhase < 3){ _investAiPhase = 3; renderInvestAiProgress(3, false); }
+          _setInvestAiInlineProgress(streamPct, '✍️ Tahlil yozilmoqda... (' + Math.round(totalLen/1000*10)/10 + ' K belgi)');
+        });
+      } catch(eSeg){
+        _streamErr = eSeg;
+        console.warn('[analyze-material gemini] segment xato:', eSeg && eSeg.message);
+        break; // stream xatosi — bor matnni saqlaymiz
+      }
+
+      var _segText = (_segmentResult && _segmentResult.content) || '';
+      var _finishReason = (_segmentResult && _segmentResult.finishReason) || '';
+      if(!_segText.trim()) break; // bo'sh segment — to'xtaymiz
+
+      // Davom ettirishda takror matnni kesib tashlash (model oxirgi jumlani qaytarsa)
+      if(_isContinuation && _confirmedMarkdown){
+        _segText = _stripInvestAiOverlap(_confirmedMarkdown, _segText);
+      }
+      if(!_segText.trim()){ break; } // hammasi takror edi — yangi narsa yo'q
+
+      // Davom ettirilgan segment so'z o'rtasiga yopishmasligi uchun ajratuvchi qo'shamiz
+      var _sep = (_isContinuation && _confirmedMarkdown && !/\s$/.test(_confirmedMarkdown) && !/^\s/.test(_segText)) ? ' ' : '';
+      _confirmedMarkdown += _sep + _segText;
+      _investAiMarkdown = _confirmedMarkdown;
+      renderInvestAiMarkdown(_investAiMarkdown);
+
+      // To'liqmi? finishReason STOP bo'lsa VA hisobot tugagan ko'rinsa — tayyor.
+      var _truncated = (_finishReason === 'MAX_TOKENS') || !_isInvestAiReportComplete(_confirmedMarkdown);
+      if(!_truncated){
+        console.log('[analyze-material] hisobot to\'liq (finishReason='+_finishReason+', '+_confirmedMarkdown.length+' belgi)');
+        break;
+      }
+      console.log('[analyze-material] hisobot chala (finishReason='+_finishReason+') — davom ettirilmoqda #'+(_contAttempt+1));
+      _contAttempt++;
     }
 
+    _investAiMarkdown = _confirmedMarkdown || _investAiMarkdown;
+
     if(!_investAiMarkdown.trim()){
+      if(_streamErr) throw new Error('Gemini tahlil xatosi: ' + (_streamErr.message || 'noma\'lum xato'));
       throw new Error('Gemini bo\'sh javob qaytardi. Qayta urinib ko\'ring.');
     }
 
