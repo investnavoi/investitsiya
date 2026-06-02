@@ -131,9 +131,15 @@ function getAiCompanyProductInfo(comp){
     }) || null;
   }
   var hsCode = rawHs || String((product && product.hs_code) || '').replace(/\D/g,'');
+  // Email prompt uchun FAQAT inglizcha nom — bilingualdan o'zbek qismi olib tashlanadi
+  // ("explosives, portlovchi moddalar" → "explosives" kabi)
   var displayName = product
-    ? formatBilingualProductName(product)
+    ? (String(product.name_en || product.name || '').trim() || formatBilingualProductName(product))
     : (productName || '—');
+  // Bilingualdan ingliz qismini ajratib olish: verguldan oldingi qism odatda inglizcha
+  if(displayName && displayName.indexOf(',') !== -1 && product && product.name_en){
+    displayName = String(product.name_en).trim() || displayName;
+  }
   return {
     product: product,
     productId: product ? String(product.id || '') : productId,
@@ -2463,20 +2469,25 @@ function detectContactPersona(position){
    "UZB" olib tashlandi (Navoi → O'zbekiston = mahalliy, tashqi mijoz emas).
    O'rniga Türkiye qo'shildi — bu Uzbekistondan asosiy eksport partnyori. */
 var AI_TRANSPORT_TARGETS = [
-  { iso3:'TUR', code:'TR', name:'Turkiya', lat:39.9334, lon:32.8597, navoiCost:2400, navoiDays:7, navoiMode:'Avto + multimodal' },
-  { iso3:'TKM', code:'TM', name:'Turkmaniston', lat:37.9601, lon:58.3261, navoiCost:900, navoiDays:2, navoiMode:'Avto' },
-  { iso3:'TJK', code:'TJ', name:'Tojikiston', lat:38.5598, lon:68.7870, navoiCost:800, navoiDays:2, navoiMode:'Avto' },
-  { iso3:'KGZ', code:'KG', name:"Qirg'iziston", lat:42.8746, lon:74.5698, navoiCost:1400, navoiDays:3, navoiMode:'Avto' },
-  { iso3:'KAZ', code:'KZ', name:"Qozog'iston", lat:43.2389, lon:76.8897, navoiCost:1200, navoiDays:2, navoiMode:'Avto + temir yo\'l' },
-  { iso3:'MNG', code:'MN', name:'Mongoliya', lat:47.8864, lon:106.9057, navoiCost:2600, navoiDays:6, navoiMode:'Temir yo\'l + avto' },
-  { iso3:'RUS', code:'RU', name:'Rossiya', lat:55.7558, lon:37.6173, navoiCost:2500, navoiDays:7, navoiMode:'Temir yo\'l + avto' },
-  { iso3:'AZE', code:'AZ', name:'Ozarbayjon', lat:40.4093, lon:49.8671, navoiCost:2200, navoiDays:5, navoiMode:'Avto + multimodal' },
-  { iso3:'GEO', code:'GE', name:'Gruziya', lat:41.7151, lon:44.8271, navoiCost:2400, navoiDays:6, navoiMode:'Avto + multimodal' },
-  { iso3:'ARM', code:'AM', name:'Armaniston', lat:40.1792, lon:44.4991, navoiCost:2500, navoiDays:6, navoiMode:'Avto + multimodal' },
-  { iso3:'IRN', code:'IR', name:'Eron', lat:35.6892, lon:51.3890, navoiCost:1500, navoiDays:4, navoiMode:'Avto + temir yo\'l' },
-  { iso3:'AFG', code:'AF', name:"Afg'oniston", lat:34.5553, lon:69.2075, navoiCost:1100, navoiDays:3, navoiMode:'Avto' },
-  { iso3:'PAK', code:'PK', name:'Pokiston', lat:31.5204, lon:74.3587, navoiCost:1800, navoiDays:5, navoiMode:'Avto + multimodal' }
+  { iso3:'TUR', code:'TR', name:'Turkiya',       nameEn:'Turkey',      lat:39.9334, lon:32.8597, navoiCost:2400, navoiDays:7, navoiMode:'Avto + multimodal' },
+  { iso3:'TKM', code:'TM', name:'Turkmaniston',  nameEn:'Turkmenistan',lat:37.9601, lon:58.3261, navoiCost:900,  navoiDays:2, navoiMode:'Avto' },
+  { iso3:'TJK', code:'TJ', name:'Tojikiston',    nameEn:'Tajikistan',  lat:38.5598, lon:68.7870, navoiCost:800,  navoiDays:2, navoiMode:'Avto' },
+  { iso3:'KGZ', code:'KG', name:"Qirg'iziston",  nameEn:'Kyrgyzstan',  lat:42.8746, lon:74.5698, navoiCost:1400, navoiDays:3, navoiMode:'Avto' },
+  { iso3:'KAZ', code:'KZ', name:"Qozog'iston",   nameEn:'Kazakhstan',  lat:43.2389, lon:76.8897, navoiCost:1200, navoiDays:2, navoiMode:'Avto + temir yo\'l' },
+  { iso3:'MNG', code:'MN', name:'Mongoliya',     nameEn:'Mongolia',    lat:47.8864, lon:106.9057,navoiCost:2600, navoiDays:6, navoiMode:'Temir yo\'l + avto' },
+  { iso3:'RUS', code:'RU', name:'Rossiya',       nameEn:'Russia',      lat:55.7558, lon:37.6173, navoiCost:2500, navoiDays:7, navoiMode:'Temir yo\'l + avto' },
+  { iso3:'AZE', code:'AZ', name:'Ozarbayjon',    nameEn:'Azerbaijan',  lat:40.4093, lon:49.8671, navoiCost:2200, navoiDays:5, navoiMode:'Avto + multimodal' },
+  { iso3:'GEO', code:'GE', name:'Gruziya',       nameEn:'Georgia',     lat:41.7151, lon:44.8271, navoiCost:2400, navoiDays:6, navoiMode:'Avto + multimodal' },
+  { iso3:'ARM', code:'AM', name:'Armaniston',    nameEn:'Armenia',     lat:40.1792, lon:44.4991, navoiCost:2500, navoiDays:6, navoiMode:'Avto + multimodal' },
+  { iso3:'IRN', code:'IR', name:'Eron',          nameEn:'Iran',        lat:35.6892, lon:51.3890, navoiCost:1500, navoiDays:4, navoiMode:'Avto + temir yo\'l' },
+  { iso3:'AFG', code:'AF', name:"Afg'oniston",   nameEn:'Afghanistan', lat:34.5553, lon:69.2075, navoiCost:1100, navoiDays:3, navoiMode:'Avto' },
+  { iso3:'PAK', code:'PK', name:'Pokiston',      nameEn:'Pakistan',    lat:31.5204, lon:74.3587, navoiCost:1800, navoiDays:5, navoiMode:'Avto + multimodal' }
 ];
+// Email promtida faqat inglizcha davlat nomi ishlatilishi uchun yordamchi funksiya
+function _aiCountryNameEn(uzName){
+  var t = (AI_TRANSPORT_TARGETS || []).find(function(t){ return t.name === uzName || t.nameEn === uzName || t.iso3 === uzName || t.code === uzName; });
+  return (t && t.nameEn) || uzName;
+}
 
 var AI_TRANSPORT_HUBS = {
   UZB:{name:'Navoi',lat:40.1039,lon:65.3686,profile:'regional'},
@@ -3118,7 +3129,8 @@ function buildAiTariffPromptLines(summary){
     }).sort(function(a, b){
       return Number(b.diff || 0) - Number(a.diff || 0);
     }).slice(0, 4).forEach(function(row){
-      var name = row.targetName || row.dest || 'target market';
+      // o'zbekcha davlat nomini inglizchaga aylantirish (Ozarbayjon → Azerbaijan)
+      var name = _aiCountryNameEn(row.targetName || row.dest || 'target market');
       lines.push('For ' + name + ', tariff from the company country is ' + aiFmtPct(row.sourceRate) + ' versus Uzbekistan ' + aiFmtPct(row.uzRate) + ', so Uzbekistan is lower by ' + aiFmtPct(row.diff) + (Number.isFinite(Number(row.diffPct)) ? ' (' + row.diffPct + '%).' : '.'));
     });
   }
@@ -3197,7 +3209,39 @@ function humaniseLetterBody(body){
   ];
   clicheMap.forEach(function(pair){ out = out.replace(pair[0], pair[1]); });
 
-  /* 3. Collapse any double spaces / commas introduced by the substitutions */
+  /* 3. Replace any Uzbek country/word leaks with English equivalents.
+        This is the final safety net — catches cases where Gemini fallback or
+        data fields leak Uzbek names into the English email body. */
+  var uzEnMap = [
+    [/\bOzarbayjon\b/g, 'Azerbaijan'],
+    [/\bGruziya\b/g, 'Georgia'],
+    [/\bArmaniston\b/g, 'Armenia'],
+    [/\bEron\b/g, 'Iran'],
+    [/\bTojikiston\b/g, 'Tajikistan'],
+    [/\bQirg['']iziston\b/g, 'Kyrgyzstan'],
+    [/\bQozog['']iston\b/g, 'Kazakhstan'],
+    [/\bTurkmaniston\b/g, 'Turkmenistan'],
+    [/\bPokiston\b/g, 'Pakistan'],
+    [/\bAfg['']oniston\b/g, 'Afghanistan'],
+    [/\bMonголiya\b/g, 'Mongolia'],
+    [/\bMongoliya\b/g, 'Mongolia'],
+    [/\bRossiya\b/g, 'Russia'],
+    [/\bTurkiya\b/g, 'Turkey'],
+    [/\bXitoy\b/g, 'China'],
+    [/\bHindiston\b/g, 'India'],
+    [/\bFransiya\b/g, 'France'],
+    [/\bGermaniya\b/g, 'Germany'],
+    [/\bYaponiya\b/g, 'Japan'],
+    [/\bKoreya\b/g, 'South Korea'],
+    [/\bBraziliya\b/g, 'Brazil'],
+    [/\bAvstraliya\b/g, 'Australia'],
+    [/\bBritaniya\b/g, 'United Kingdom'],
+    [/,\s*portlovchi\s+moddalar\b/gi, ''],  // "explosives, portlovchi moddalar" → "explosives"
+    [/,\s*[a-z\s']+lar\b(?=\s)/gi, function(m){ return /[а-яёА-ЯЁ]/.test(m) || /o'z|ish|lash/.test(m) ? '' : m; }]
+  ];
+  uzEnMap.forEach(function(pair){ out = out.replace(pair[0], pair[1]); });
+
+  /* 4. Collapse any double spaces / commas introduced by the substitutions */
   out = out.replace(/[ \t]+/g, ' ');
   out = out.replace(/ ,/g, ',');
   out = out.replace(/,\s*,/g, ',');
