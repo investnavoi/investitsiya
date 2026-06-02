@@ -2937,9 +2937,10 @@ function investAiInferTechnology(product){
    To'liq: yetarlicha uzun + oxirgi bo'limlar mavjud + to'g'ri tugagan (chala jumla emas). */
 function _isInvestAiReportComplete(md){
   var t = String(md || '').trim();
-  if(t.length < 1200) return false;
+  if(t.length < 800) return false; // qisqa hisobot ~350+ so'z (>2000 belgi), 800 — chala chegarasi
   var lower = t.toLowerCase();
-  var hasLateSection = /keyingi qadam|next step|tavsiya|risklar|risk va|xulosa|conclusion|mitigation|kamaytirish|yakuniy/i.test(lower);
+  // Oxirgi bo'lim: "Xavflar va tavsiya" / risklar / tavsiya
+  var hasLateSection = /tavsiya|xavf|risk|keyingi qadam|xulosa|next step|conclusion/i.test(lower);
   if(!hasLateSection) return false;
   var endsClean = /[.!?:)\]\}"'`”’–—]\s*$/.test(t) || /\n\s*[-*•|]?\s*$/.test(md);
   return endsClean;
@@ -4152,11 +4153,24 @@ async function exportInvestAiWorkbook(){
           ws2.getCell(r2, c2).value = null;
         }
       }
+      // Xomashyo HS kodi — raw.hs_code bo'sh bo'lsa, entrylar orasidan eng ko'p
+      // uchraydigan HS bo'lim (4-raqamli)dan vakil kod aniqlanadi (xomashyo odatda
+      // bitta aniq HS kodga ega emas — kategoriya, shuning uchun dominant bo'limni olamiz).
+      var _rawHs = (ctx.raw && ctx.raw.hs_code) ? String(ctx.raw.hs_code) : '';
+      if(!_rawHs){
+        var _hs4Counts = {};
+        ctx.entries.forEach(function(e){
+          var hs4 = String(e.hsCode || '').replace(/\D/g,'').slice(0,4);
+          if(hs4) _hs4Counts[hs4] = (_hs4Counts[hs4]||0)+1;
+        });
+        var _topHs4 = Object.keys(_hs4Counts).sort(function(a,b){ return _hs4Counts[b]-_hs4Counts[a]; })[0];
+        if(_topHs4) _rawHs = _topHs4; // masalan "2508" — gillar bo'limi
+      }
       ctx.entries.forEach(function(entry, idx){
         var rowIdx = 5 + idx;
         ws2.getCell('A' + rowIdx).value = idx + 1;
         ws2.getCell('B' + rowIdx).value = material;
-        ws2.getCell('C' + rowIdx).value = (ctx.raw && ctx.raw.hs_code) || '—';
+        ws2.getCell('C' + rowIdx).value = _rawHs || 'н/д';
         ws2.getCell('D' + rowIdx).value = entry.category || entry.level || '—';
         ws2.getCell('E' + rowIdx).value = entry.displayName || '—';
         ws2.getCell('F' + rowIdx).value = entry.hsCode || '—';
@@ -4247,8 +4261,15 @@ async function exportInvestAiWorkbook(){
         var rowIdx = 4 + idx;
         _investAiSetGeneral(ws4.getCell('A' + rowIdx), idx + 1);
         _investAiSetText(ws4.getCell('B' + rowIdx), co.name);
-        _investAiSetUsd(ws4.getCell('C' + rowIdx), co.total || null);
-        _investAiSetPct(ws4.getCell('D' + rowIdx), grandTotal > 0 ? (co.total / grandTotal) : 0);
+        if(!co.anyData){
+          // UN Comtrade'da bu davlat uchun ma'lumot yo'q (masalan Rossiya 2022 dan keyin
+          // hisobot bermaydi) — "$0" o'rniga "н/д" (нет данных) ko'rsatamiz, halol bo'lsin.
+          _investAiSetText(ws4.getCell('C' + rowIdx), 'н/д');
+          _investAiSetText(ws4.getCell('D' + rowIdx), 'н/д');
+        } else {
+          _investAiSetUsd(ws4.getCell('C' + rowIdx), co.total);
+          _investAiSetPct(ws4.getCell('D' + rowIdx), grandTotal > 0 ? (co.total / grandTotal) : 0);
+        }
       });
       var totalRow = 4 + moy4.length;
       _investAiSetText(ws4.getCell('A' + totalRow), 'РЕГИОНАЛЬНЫЙ ИТОГО');
@@ -4285,8 +4306,11 @@ async function exportInvestAiWorkbook(){
         _investAiSetText(ws5.getCell('A' + rowIdx), String(entry.priority || 'Priority D').replace('Priority ',''));
         _investAiSetText(ws5.getCell('B' + rowIdx), entry.hsCode || '—');
         _investAiSetText(ws5.getCell('C' + rowIdx), entry.displayName || '—');
-        _investAiSetUsd(ws5.getCell('D' + rowIdx), Number(entry.analysisValue) || 0);
-        _investAiSetUsd(ws5.getCell('E' + rowIdx), Number(entry.uzbValue) || 0);
+        // Regional jami 0 bo'lsa — ma'lumot yo'q (н/д), aks holda raqam
+        if(Number(entry.analysisValue) > 0) _investAiSetUsd(ws5.getCell('D' + rowIdx), Number(entry.analysisValue));
+        else _investAiSetText(ws5.getCell('D' + rowIdx), 'н/д');
+        if(Number(entry.uzbValue) > 0) _investAiSetUsd(ws5.getCell('E' + rowIdx), Number(entry.uzbValue));
+        else _investAiSetText(ws5.getCell('E' + rowIdx), 'н/д');
         _investAiSetText(ws5.getCell('F' + rowIdx), investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—'));
         _investAiSetPct(ws5.getCell('G' + rowIdx), entry.cagr != null ? Number(entry.cagr) : null);
         _investAiSetText(ws5.getCell('H' + rowIdx), entry.level || '—');
@@ -4765,33 +4789,26 @@ async function analyzeInvestmentMaterial(){
         throw new Error('Bu xomashyo uchun ma\'lumot topilmadi.');
       }
     }
-    // Step 1: try to get system prompt from proxy; fall back to built-in if proxy fails
-    var FALLBACK_SYSTEM_PROMPT = 'You are an expert investment analyst for Navoiy region of Uzbekistan. ' +
-      'Produce a Markdown-formatted investment analysis in Uzbek for the given raw material, using ONLY the UN Comtrade data provided in the context. ' +
-      'Required sections: 1) Executive summary 2) Top importing countries (table) 3) Trade trends (2021-2023) 4) Investment opportunities for Navoiy ' +
-      '5) Recommended downstream products (from context only) 6) Risks and mitigations 7) Next steps. ' +
-      'Use concrete numbers from the context. If data is missing, say it is missing. Keep it under 2000 words. Write in fluent Uzbek.';
+    // ═══ QISQA, JADVALSIZ, TUSHUNARLI hisobot ═══
+    // Foydalanuvchi so'rovi: o'rtacha uzunlikdagi, jadvalsiz, oddiy tilda umumiy tahlil.
+    // Proxy'dagi uzun-jadvalli prompt ishlatilmaydi — lokal qisqa prompt majburan ishlatiladi.
+    var systemPrompt =
+      'Siz O\'zbekiston Navoiy viloyati uchun tajribali investitsiya tahlilchisisiz. ' +
+      'Berilgan xomashyo bo\'yicha QISQA va TUSHUNARLI investitsiya tahlilini O\'ZBEK TILIDA yozing. ' +
+      'Faqat kontekstda berilgan UN Comtrade ma\'lumotlaridan foydalaning.\n\n' +
+      'QAT\'IY QOIDALAR:\n' +
+      '1. JADVAL ISHLATMANG. Hech qanday markdown jadval (| ... |) bo\'lmasin. Faqat oddiy matn va kerak bo\'lsa qisqa bullet ro\'yxat.\n' +
+      '2. UZUNLIK: o\'rtacha — 350-550 so\'z. Ortiqcha cho\'zmang. Suvli gaplar yo\'q.\n' +
+      '3. STRUKTURA (qisqa sarlavhalar bilan):\n' +
+      '   • **Qisqacha xulosa** — 2-3 jumla: bu xomashyodan nima ishlab chiqarib bo\'ladi va nega Navoiyga foydali.\n' +
+      '   • **Bozor talabi** — qaysi davlatlar ko\'p import qiladi, aniq raqamlar bilan (eng katta 3-4 ta).\n' +
+      '   • **Investitsiya imkoniyati** — Navoiyda qanday mahsulot ishlab chiqarish mantiqiy, qisqa.\n' +
+      '   • **Xavflar va tavsiya** — 2-3 jumla amaliy maslahat.\n' +
+      '4. Aniq raqamlardan foydalaning (kontekstdagi $ qiymatlar). Raqam yo\'q bo\'lsa "ma\'lumot yo\'q" deng, taxmin qilmang.\n' +
+      '5. Ravon, professional o\'zbek tilida yozing. Inglizcha so\'z aralashtirmang.';
 
-    if(!window._cachedSystemPrompt){
-      try {
-        var promptResp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ promptOnly: true })
-        });
-        if(promptResp.ok){
-          var promptData = await promptResp.json();
-          if(promptData && promptData.systemPrompt) window._cachedSystemPrompt = promptData.systemPrompt;
-        } else {
-          console.warn('Proxy system prompt failed ('+promptResp.status+') — using built-in fallback');
-        }
-      } catch(e){
-        console.warn('Proxy unreachable — using built-in system prompt:', e && e.message);
-      }
-      if(!window._cachedSystemPrompt) window._cachedSystemPrompt = FALLBACK_SYSTEM_PROMPT;
-    }
-    var systemPrompt = window._cachedSystemPrompt;
-    if(!systemPrompt) systemPrompt = FALLBACK_SYSTEM_PROMPT;
+    // Eski proxy prompt keshini tozalaymiz (u uzun-jadvalli formatni majbur qilardi)
+    window._cachedSystemPrompt = systemPrompt;
 
     // Step 2: TRIM tradeContext to fit free-tier 15K token/min limit
     // Strip large fields: full snapshot.countries arrays, full raw object, etc.
