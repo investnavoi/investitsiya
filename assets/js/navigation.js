@@ -219,7 +219,13 @@ function _showPageInner(id){
   else if(id==='materialai'){if(typeof renderInvestAiPage==='function')renderInvestAiPage();}
   else if(id==='finder'){if(typeof populateProductSelects==='function')populateProductSelects();if(typeof updateFinderModeUI==='function')updateFinderModeUI();if(typeof handleImportProductChange==='function')handleImportProductChange();}
   else if(id==='ailetter'){if(typeof populateProductSelects==='function')populateProductSelects();}
-  else if(id==='pipeline'){if(typeof renderCrmDashboard==='function')renderCrmDashboard();}
+  else if(id==='pipeline'){
+    // crmActivities kolleksiyasini yuklash (backend faoliyatlar uchun)
+    var _doCrm = function(){ if(typeof renderCrmDashboard==='function') renderCrmDashboard(); };
+    if(window.ensureCollectionLoaded){
+      window.ensureCollectionLoaded('crmActivities').then(_doCrm).catch(_doCrm);
+    } else { _doCrm(); }
+  }
   else if(id==='trade'){
     // Collection'larni preload qilamiz (manual qidiruv tez ishlashi uchun), lekin
     // avtomatik oxirgi qidiruvni TIKLAMAYMIZ — foydalanuvchi o'zi davlat tanlab

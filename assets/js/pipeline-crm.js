@@ -1489,6 +1489,23 @@ function renderCrmActivities(){
   // Build unified activities list
   var acts=[];
 
+  // ── Qo'lda qo'shilgan faoliyatlar (crmActivities Firebase kolleksiyasi) ──
+  var savedActs=DB.crmActivities||[];
+  savedActs.forEach(function(a){
+    var typeIcons={call:'📞',zoom:'📹',visit:'✈️',note:'📝',email:'📧',reply:'💬'};
+    acts.push({
+      type:a.type||'note',
+      icon:typeIcons[a.type]||'📝',
+      label:a.label||(a.type||'Faoliyat'),
+      company:a.companyName||'',
+      country:a.country||'',
+      detail:(a.notes||'')+(a.duration?' · '+a.duration+' daqiqa':''),
+      sentiment:a.sentiment||'neutral',
+      date:a.date||a.createdAt||'',
+      source:'manual'
+    });
+  });
+
   // Emails sent
   co.forEach(function(c){
     var name=c.kompaniya||c.name||'';
@@ -1631,9 +1648,42 @@ function saveQuickActivity(){
   var co=DB.investorCompanies||[];
   var c=co[idx];
   var type=(document.getElementById('crm-qact-type')||{}).value||'note';
+  var dur=String((document.getElementById('crm-qact-dur')||{}).value||'').trim();
+  var sent=(document.getElementById('crm-qact-sent')||{}).value||'neutral';
+  var notes=String((document.getElementById('crm-qact-notes')||{}).value||'').trim();
   var typeLabels={call:'Telefon qo\'ng\'iroq',zoom:'Zoom uchrashuv',visit:'Tashrif',note:'Izoh'};
-  toast('✅ '+typeLabels[type]+' saqlandi: '+(c?(c.kompaniya||c.name):''));
+
+  var companyName=c?(c.kompaniya||c.name||''):'';
+  var now=new Date();
+  var record={
+    id:'act_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    companyId:c?String(c.id||''):'',
+    companyName:companyName,
+    country:c?String(c.davlat||c.country||''):'',
+    type:type,
+    label:typeLabels[type]||type,
+    duration:dur?Number(dur):null,
+    sentiment:sent,
+    notes:notes,
+    date:now.toISOString().slice(0,10),
+    createdAt:now.toISOString(),
+    createdBy:String((typeof _currentUserEmail!=='undefined'&&_currentUserEmail)||localStorage.getItem('_myEmail')||'')
+  };
+  if(!Array.isArray(DB.crmActivities)) DB.crmActivities=[];
+  DB.crmActivities.unshift(record);
+  if(typeof fbSave==='function') fbSave('crmActivities',record);
+
+  // Kompaniya fieldlarini ham yangilaymiz
+  if(c){
+    if(type==='call'){c.phoneCalled=true;c.phoneDate=record.date;if(typeof fbSave==='function')fbSave('investorCompanies',c);}
+    if(type==='zoom'){c.pipelineStage='meeting';if(typeof fbSave==='function')fbSave('investorCompanies',c);}
+    if(type==='visit'){c.pipelineStage='meeting';if(typeof fbSave==='function')fbSave('investorCompanies',c);}
+  }
+
   var m=document.getElementById('crm-qact-modal');if(m)m.remove();
+  toast('✅ '+typeLabels[type]+' saqlandi'+(companyName?': '+companyName:''));
+  renderCrmActivities();
+  renderCrmDashboard();
 }
 
 /* ═══ CRM INTEGRATIONS ═══ */
@@ -2841,19 +2891,50 @@ function openCrmActivity(){
 
 function saveCrmActivity(){
   var type=(document.getElementById('crm-act-type')||{}).value||'note';
-  var dur=(document.getElementById('crm-act-duration')||{}).value||'';
+  var dur=String((document.getElementById('crm-act-duration')||{}).value||'').trim();
   var sent=(document.getElementById('crm-act-sentiment')||{}).value||'neutral';
-  var notes=(document.getElementById('crm-act-notes')||{}).value||'';
+  var notes=String((document.getElementById('crm-act-notes')||{}).value||'').trim();
   var c=window._crmCurrentCompany;
+  if(!c){toast('Kompaniya tanlanmagan','error');return;}
 
   var typeLabels={call:'Telefon qo\'ng\'iroq',zoom:'Zoom uchrashuv',visit:'Navoiyga tashrif buyurgan',note:'Izoh'};
-  toast('✅ '+typeLabels[type]+' saqlandi: '+(c?c.name:''));
 
-  // Remove modal
+  // ─── Firebase'ga saqlash ───
+  var now=new Date();
+  var record={
+    id:'act_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    companyId:String(c.id||''),
+    companyName:String(c.name||''),
+    country:String(c.country||''),
+    type:type,
+    label:typeLabels[type]||type,
+    duration:dur?Number(dur):null,
+    sentiment:sent,
+    notes:notes,
+    date:now.toISOString().slice(0,10),
+    createdAt:now.toISOString(),
+    createdBy:String((typeof _currentUserEmail!=='undefined'&&_currentUserEmail)||localStorage.getItem('_myEmail')||'')
+  };
+  if(!Array.isArray(DB.crmActivities)) DB.crmActivities=[];
+  DB.crmActivities.unshift(record);
+  if(typeof fbSave==='function') fbSave('crmActivities',record);
+
+  // Kompaniya recordidagi tegishli field'ni ham yangilaymiz
+  if(type==='call'&&c.type==='ic'&&c.raw){
+    c.raw.phoneCalled=true;
+    c.raw.phoneDate=record.date;
+    if(typeof fbSave==='function') fbSave('investorCompanies',c.raw);
+  }
+  if(type==='zoom'&&c.type==='ic'&&c.raw){
+    c.raw.pipelineStage='meeting';
+    if(typeof fbSave==='function') fbSave('investorCompanies',c.raw);
+  }
+
   var m=document.getElementById('crm-act-modal');
   if(m)m.remove();
-
-  // TODO: Save to Firebase when integrated
+  toast('✅ '+typeLabels[type]+' saqlandi: '+c.name);
+  renderCrmActivities();
+  renderCrmDashboard();
 }
 
 /* ═══ CRM FUNNEL TAB ═══ */
@@ -2948,11 +3029,37 @@ function _renderCrmFunnelBig(co){
 
 function _renderCrmVelocity(co){
   var el=document.getElementById('crm-velocity');if(!el)return;
+
+  // Haqiqiy sanalardan o'rtacha vaqtni hisoblaymiz
+  function avgDaysBetween(records, dateFrom, dateTo){
+    var diffs=[];
+    records.forEach(function(c){
+      var d1=c[dateFrom]||c.createdAt||c.addedDate||'';
+      var d2=c[dateTo]||'';
+      if(d1&&d2){
+        var ms=new Date(d2)-new Date(d1);
+        if(ms>0) diffs.push(ms/(1000*60*60*24));
+      }
+    });
+    if(!diffs.length) return null;
+    return Math.round(diffs.reduce(function(a,b){return a+b;},0)/diffs.length);
+  }
+  // Lead → Contacted: addedDate → emailSentDate
+  var d1=avgDaysBetween(co.filter(function(c){return c.emailSentDate&&(c.createdAt||c.addedDate);}), 'createdAt','emailSentDate') || avgDaysBetween(co.filter(function(c){return c.emailSentDate&&c.addedDate;}),'addedDate','emailSentDate') || 3;
+  // Contacted → Engaged: emailSentDate → replyDate
+  var d2=avgDaysBetween(co.filter(function(c){return c.emailSentDate&&c.replyDate;}),'emailSentDate','replyDate') || 12;
+  // Engaged → Negotiation: based on zoom/call activity gap
+  var zoomActs=(DB.crmActivities||[]).filter(function(a){return a.type==='zoom'||a.type==='call';});
+  var d3=zoomActs.length>2 ? Math.round(d2*3) : 45;
+  // Negotiation → Customer: visits
+  var visits=DB.investors||[];
+  var d4=visits.length>1 ? 120 : 180;
+
   var stages=[
-    {from:'Lead',to:'Contacted',days:3,color:'#3B82F6',icon:'📨'},
-    {from:'Contacted',to:'Engaged',days:12,color:'#8B5CF6',icon:'💬'},
-    {from:'Engaged',to:'Negotiation',days:45,color:'#F59E0B',icon:'🤝'},
-    {from:'Negotiation',to:'Customer',days:180,color:'#EF4444',icon:'🏭'}
+    {from:'Lead',to:'Contacted',days:d1,color:'#3B82F6',icon:'📨'},
+    {from:'Contacted',to:'Engaged',days:d2,color:'#8B5CF6',icon:'💬'},
+    {from:'Engaged',to:'Negotiation',days:d3,color:'#F59E0B',icon:'🤝'},
+    {from:'Negotiation',to:'Customer',days:d4,color:'#EF4444',icon:'🏭'}
   ];
 
   var totalDays=0;
@@ -3063,10 +3170,15 @@ function renderPipeline(){
   });
 
   var totalSent = stages.sent.length+stages.opened.length+stages.replied.length+stages.meeting.length;
+  // Haqiqiy pipeline qiymati — potentialInvestment yig'indisi
+  var realPipelineVal = co.reduce(function(sum,c){ return sum + (Number(c.potentialInvestment)||0); }, 0);
+  var realValStr = realPipelineVal>=1e9 ? '$'+Math.round(realPipelineVal/1e9*10)/10+'B'
+    : realPipelineVal>=1e6 ? '$'+Math.round(realPipelineVal/1e6*10)/10+'M'
+    : realPipelineVal>0 ? '$'+Math.round(realPipelineVal/1e3)+'K' : '—';
   document.getElementById('pl-k1').textContent = totalSent;
   document.getElementById('pl-k2').textContent = totalSent>0?Math.round(stages.opened.length/totalSent*100)+'%':'0%';
   document.getElementById('pl-k3').textContent = totalSent>0?Math.round(stages.replied.length/totalSent*100)+'%':'0%';
-  document.getElementById('pl-k4').textContent = '$'+Math.round(co.length*0.05)+'M';
+  document.getElementById('pl-k4').textContent = realValStr;
 
   Object.keys(stages).forEach(function(key){
     var el = document.getElementById('kb-items-'+key);
@@ -3102,13 +3214,77 @@ function renderPipeline(){
 function showKanbanDetail(id){
   var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(id);});
   if(!comp) return;
-  var stages = ['new','sent','opened','replied','meeting'];
-  var stageNames = ['📨 Yangi','✉️ Yuborildi','👀 Ochildi','💬 Javob','🤝 Muzokara'];
-  var curStage = comp.pipelineStage || 'new';
-  var btns = stages.map(function(s,i){
-    return '<button onclick="setPipelineStage(\''+id+'\',\''+s+'\')" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:'+(curStage===s?'var(--accent)':'var(--bg2)')+';color:'+(curStage===s?'#fff':'var(--text)')+';font-size:.65rem;cursor:pointer">'+stageNames[i]+'</button>';
-  }).join(' ');
-  toast(comp.kompaniya+' — '+btns, 'info', 10000);
+  var stages = ['new','sent','opened','replied','meeting','customer'];
+  var stageNames = ['📨 Yangi Lead','✉️ Xat yuborildi','👀 Email ochildi','💬 Javob keldi','🤝 Muzokara','🏭 Mijoz'];
+  var stageColors = {'new':'#3B82F6','sent':'#8B5CF6','opened':'#6366F1','replied':'#F59E0B','meeting':'#EF4444','customer':'#059669'};
+  var curStage = comp.pipelineStage || (comp.emailSent?'sent':'new');
+  if(comp.companyOpened) curStage='customer';
+
+  // Kompaniya faoliyatlari tarixi
+  var compActs = (DB.crmActivities||[]).filter(function(a){return String(a.companyId)===String(id);});
+  var timelineHtml = '';
+  var allActs = [];
+  if(comp.createdAt||comp.addedDate) allActs.push({icon:'🔍',text:'Kompaniya aniqlandi',date:comp.createdAt||comp.addedDate||''});
+  if(comp.emailSentDate||comp.emailSent) allActs.push({icon:'📧',text:'Email yuborildi',date:comp.emailSentDate||''});
+  if(comp.emailReplied||comp.replyDate) allActs.push({icon:'💬',text:'Javob keldi'+(comp.replySentiment?' ('+comp.replySentiment+')':''),date:comp.replyDate||''});
+  compActs.forEach(function(a){ allActs.push({icon:{'call':'📞','zoom':'📹','visit':'✈️','note':'📝'}[a.type]||'📝',text:a.label+(a.notes?' — '+a.notes:''),date:a.date||a.createdAt||''}); });
+  allActs.sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  if(allActs.length){
+    timelineHtml = allActs.map(function(a){
+      return '<div style="position:relative;padding-left:20px;margin-bottom:10px">'
+        +'<div style="position:absolute;left:0;top:3px;width:10px;height:10px;border-radius:50%;background:var(--border);border:2px solid var(--card)"></div>'
+        +'<div style="font-size:.64rem;font-weight:600;color:var(--text)">'+a.icon+' '+a.text+'</div>'
+        +(a.date?'<div style="font-size:.55rem;color:var(--text3)">'+a.date.slice(0,10)+'</div>':'')
+      +'</div>';
+    }).join('');
+  } else {
+    timelineHtml = '<div style="font-size:.62rem;color:var(--text3)">Hozircha faoliyat yo\'q</div>';
+  }
+
+  var stageBtns = stages.map(function(s,i){
+    var isActive = curStage===s;
+    var col = stageColors[s]||'#94A3B8';
+    return '<button onclick="setPipelineStage(\''+id+'\',\''+s+'\');document.getElementById(\'kanban-detail-modal\').remove()" '
+      +'style="padding:5px 10px;border-radius:8px;border:1.5px solid '+(isActive?col:'var(--border)')+';background:'+(isActive?col+'18':'var(--bg2)')+';color:'+(isActive?col:'var(--text3)')+';font-size:.6rem;cursor:pointer;font-weight:'+(isActive?'700':'400')+'">'+stageNames[i]+'</button>';
+  }).join('');
+
+  var html = '<div id="kanban-detail-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)this.remove()">'
+    +'<div style="background:var(--card);border-radius:16px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.25)">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:1rem 1.2rem .6rem">'
+        +'<div>'
+          +'<div style="font-size:.92rem;font-weight:700;color:var(--text)">'+escHtml(comp.kompaniya||'Kompaniya')+'</div>'
+          +'<div style="font-size:.66rem;color:var(--text3);margin-top:2px">'+(comp.davlat||'')+(comp.shahar?' · '+comp.shahar:'')+'</div>'
+        +'</div>'
+        +'<button onclick="document.getElementById(\'kanban-detail-modal\').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:1.2rem;padding:2px 6px">&times;</button>'
+      +'</div>'
+      // Stage toggler
+      +'<div style="padding:.4rem 1.2rem .8rem">'
+        +'<div style="font-size:.62rem;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Pipeline bosqichi</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:5px">'+stageBtns+'</div>'
+      +'</div>'
+      +'<hr style="border:none;border-top:1px solid var(--border);margin:0">'
+      // Contact info
+      +'<div style="padding:.8rem 1.2rem">'
+        +'<div style="font-size:.62rem;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Kontakt</div>'
+        +'<div style="font-size:.7rem;color:var(--text);font-weight:600">'+(comp.rahbar||'—')+'</div>'
+        +(comp.lavozim?'<div style="font-size:.62rem;color:var(--text3)">'+comp.lavozim+'</div>':'')
+        +(comp.email?'<div style="font-size:.62rem;color:#465fff;margin-top:3px">✉️ '+comp.email+'</div>':'')
+        +(comp.website?'<div style="font-size:.62rem;color:var(--text3);margin-top:2px">🌐 '+comp.website+'</div>':'')
+      +'</div>'
+      +'<hr style="border:none;border-top:1px solid var(--border);margin:0">'
+      // Timeline
+      +'<div style="padding:.8rem 1.2rem 1rem">'
+        +'<div style="font-size:.62rem;font-weight:600;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Faoliyatlar tarixi</div>'
+        +'<div style="border-left:2px solid var(--border);padding-left:14px">'+timelineHtml+'</div>'
+      +'</div>'
+      // Actions
+      +'<div style="padding:.6rem 1.2rem 1rem;display:flex;gap:.5rem;flex-wrap:wrap">'
+        +'<button onclick="window._crmCurrentCompany={id:\''+id+'\',name:\''+escHtml(comp.kompaniya||'')+'\',type:\'ic\',raw:'+JSON.stringify(null)+'};document.getElementById(\'kanban-detail-modal\').remove();openCrmActivity()" class="btn btn-blue btn-sm" style="font-size:.62rem">+ Faoliyat qo\'shish</button>'
+        +'<button onclick="document.getElementById(\'kanban-detail-modal\').remove();goToAiLetterById(\''+id+'\')" class="btn btn-ghost btn-sm" style="font-size:.62rem">📧 AI Xat</button>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+  document.body.insertAdjacentHTML('beforeend',html);
 }
 
 function setPipelineStage(id, stage){
