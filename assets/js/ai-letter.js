@@ -3270,6 +3270,8 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   var contactIdx = Number(opts.contactIdx || 0);
   var contactTotal = Number(opts.contactTotal || 1);
   var usedAngles = Array.isArray(opts.usedAngles) ? opts.usedAngles : [];
+  // Progress callback — funksiya boshiga ko'chirildi (scope xatosini bartaraf etish uchun)
+  var _onProg = (typeof opts.onProgress === 'function') ? opts.onProgress : null;
   var langName = getAiLangName(lang);
   // Reuse pre-computed analysis (saves quota when same company has multiple contacts)
   var analysis = sharedAnalysis || await fetchOfficialAiCountryAnalysis(comp);
@@ -3737,9 +3739,6 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       'ecosystem", "strategic alignment", em-dashes). You use only the figures provided. ' +
       'You write in the first person, you reference one specific decree or incentive, ' +
       'you make one concrete ask, and you stop.';
-
-    // Progress callback chaqirish (generateAiLetterForScope dan keladi)
-    var _onProg = (opts && typeof opts.onProgress === 'function') ? opts.onProgress : null;
 
     if(hasOpenAI){
       /* ── Stage 1: research THIS company specifically. We want concrete hooks to open with. ── */
