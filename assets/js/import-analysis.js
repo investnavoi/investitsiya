@@ -4599,6 +4599,46 @@ async function collectInvestAiTradeContext(material){
   };
 }
 
+/* ═══ AI Analysis Inline Progress Bar (mahsulot paneli uchun) ═══ */
+function _getOrCreateInlineProgress(){
+  var existing = document.getElementById('investAiInlineProgress');
+  if(existing) return existing;
+  var btn = document.getElementById('productRawAiAnalyzeBtn');
+  if(!btn) return null;
+  var wrap = document.createElement('div');
+  wrap.id = 'investAiInlineProgress';
+  wrap.className = 'ai-gen-progress';
+  wrap.innerHTML =
+    '<div class="ai-gen-progress-top">'
+    + '<span class="ai-gen-progress-label" id="investAiInlineLabel">Tayyorlanmoqda...</span>'
+    + '<span class="ai-gen-progress-pct" id="investAiInlinePct">0%</span>'
+    + '</div>'
+    + '<div class="ai-gen-progress-track"><div class="ai-gen-progress-fill" id="investAiInlineFill" style="width:0%"></div></div>'
+    + '<div class="ai-gen-progress-sub" id="investAiInlineSub">AI tahlil boshlanyapti</div>';
+  btn.parentNode.insertBefore(wrap, btn.nextSibling);
+  return wrap;
+}
+function _setInvestAiInlineProgress(pct, label){
+  var wrap = _getOrCreateInlineProgress();
+  if(!wrap) return;
+  wrap.classList.add('visible');
+  var safeP = Math.max(0, Math.min(100, Math.round(pct)));
+  var labelEl = document.getElementById('investAiInlineLabel');
+  var pctEl   = document.getElementById('investAiInlinePct');
+  var fillEl  = document.getElementById('investAiInlineFill');
+  if(labelEl) labelEl.textContent = label || 'Ishlanmoqda...';
+  if(pctEl)   pctEl.textContent   = safeP + '%';
+  if(fillEl)  fillEl.style.width  = safeP + '%';
+}
+function _resetInvestAiInlineProgress(){
+  var wrap = document.getElementById('investAiInlineProgress');
+  if(wrap) wrap.classList.remove('visible');
+  var fillEl = document.getElementById('investAiInlineFill');
+  var pctEl  = document.getElementById('investAiInlinePct');
+  if(fillEl) fillEl.style.width = '0%';
+  if(pctEl)  pctEl.textContent  = '0%';
+}
+
 function setInvestAiBusy(flag){
   _investAiBusy = !!flag;
   var btn = document.getElementById('materialAiAnalyzeBtn');
@@ -4612,11 +4652,12 @@ function setInvestAiBusy(flag){
   }
   if(inlineBtn){
     inlineBtn.disabled = _investAiBusy;
-    inlineBtn.textContent = _investAiBusy ? '⏳ AI tahlil qilinmoqda...' : '🧠 Shu xomashyoni tahlil qilish';
-    inlineBtn.style.opacity = _investAiBusy ? '.75' : '1';
+    // Button matnini o'zgartirmaymiz — progress bar uning yonida ko'rinadi
+    inlineBtn.style.opacity = _investAiBusy ? '.65' : '1';
     inlineBtn.style.cursor = _investAiBusy ? 'not-allowed' : 'pointer';
   }
   if(input) input.disabled = _investAiBusy;
+  if(!_investAiBusy) _resetInvestAiInlineProgress();
 }
 
 function extractGeminiStreamText(payload){
@@ -4687,6 +4728,7 @@ async function analyzeInvestmentMaterial(){
   _investAiTradeContext = null;
   _investAiPhase = 0;
   setInvestAiBusy(true);
+  _setInvestAiInlineProgress(0, '🔍 Mahsulot va HS kod aniqlanmoqda...');
   renderInvestAiProgress(0, false);
   updateInvestAiOutputMeta(material, new Date().toISOString());
   var outputCard = document.getElementById('materialAiOutputCard');
@@ -4704,9 +4746,13 @@ async function analyzeInvestmentMaterial(){
 
   try {
     toast('📊 UN Comtrade konteksti tekshirilmoqda...');
+    _setInvestAiInlineProgress(18, '📊 UN Comtrade ma\'lumotlari yuklanmoqda...');
     var tradeContext = await collectInvestAiTradeContext(material);
     if(tradeContext && tradeContext.officialDataAvailable){
       _investAiTradeContext = tradeContext;
+      _investAiPhase = 1;
+      renderInvestAiProgress(1, false);
+      _setInvestAiInlineProgress(35, '✅ Ma\'lumotlar topildi: ' + tradeContext.analyzedProducts.length + ' ta mahsulot');
       toast('✅ UN Comtrade konteksti topildi: ' + tradeContext.analyzedProducts.length + ' ta mahsulot');
     } else {
       if(tradeContext && tradeContext.reason === 'raw_not_found'){
@@ -4715,6 +4761,9 @@ async function analyzeInvestmentMaterial(){
       // Comtrade ma'lumoti yo'q bo'lsa ham raw/products bilan davom etamiz
       if(tradeContext && tradeContext.raw){
         _investAiTradeContext = tradeContext;
+        _investAiPhase = 1;
+        renderInvestAiProgress(1, false);
+        _setInvestAiInlineProgress(35, '⚠️ Mahsulot ma\'lumotlari bilan davom etilmoqda...');
         toast('⚠️ Comtrade ma\'lumoti topilmadi, mahsulot ma\'lumotlari bilan davom etilmoqda...');
       } else {
         throw new Error('Bu xomashyo uchun ma\'lumot topilmadi.');
@@ -4747,6 +4796,9 @@ async function analyzeInvestmentMaterial(){
     }
     var systemPrompt = window._cachedSystemPrompt;
     if(!systemPrompt) systemPrompt = FALLBACK_SYSTEM_PROMPT;
+    _investAiPhase = 2;
+    renderInvestAiProgress(2, false);
+    _setInvestAiInlineProgress(55, '🧠 AI tahlil yozilmoqda...');
 
     // Step 2: TRIM tradeContext to fit free-tier 15K token/min limit
     // Strip large fields: full snapshot.countries arrays, full raw object, etc.
@@ -4802,19 +4854,29 @@ async function analyzeInvestmentMaterial(){
       { role: 'user', content: contextText }
     ];
 
+    var _streamChars = 0;
+    var _TARGET_CHARS = 3000; // taxminiy to'liq tahlil uzunligi
     try {
       await callGeminiStream(geminiMessages, {
         temperature: 0.2,
         maxTokens: 4096
       }, function(textDelta){
         _investAiMarkdown += textDelta;
+        _streamChars += textDelta.length;
         renderInvestAiMarkdown(_investAiMarkdown);
-        // Matn oqib kela boshlashi bilanoq barcha fazalarni "Tayyor" deb belgilaymiz —
-        // foydalanuvchi "Jarayonda"da kutib qolmasin (hisobot baribir real vaqtda yozilib boradi).
-        if(_investAiPhase !== 3){
-          _investAiPhase = 3;
-          renderInvestAiProgress(3, true);
+
+        // Matn uzunligiga qarab faza va progress yangilash
+        // 55% (phase 2 boshlangan) → 90% (phase 3 yaqin) → 95% (tugayapti)
+        var streamPct = Math.min(88, 55 + Math.round((_streamChars / _TARGET_CHARS) * 33));
+        if(_streamChars > 200 && _investAiPhase < 2){
+          _investAiPhase = 2;
+          renderInvestAiProgress(2, false);
         }
+        if(_streamChars > 1500 && _investAiPhase < 3){
+          _investAiPhase = 3;
+          renderInvestAiProgress(3, false); // false = hali tugamagan (loading ring)
+        }
+        _setInvestAiInlineProgress(streamPct, '✍️ Tahlil yozilmoqda... (' + Math.round(_streamChars/1000*10)/10 + ' K belgi)');
       });
     } catch(e){
       console.warn('[analyze-material gemini] xato:', e && e.message);
@@ -4829,6 +4891,8 @@ async function analyzeInvestmentMaterial(){
     }
 
     renderInvestAiProgress(3, true);
+    _setInvestAiInlineProgress(100, '✅ Tahlil tayyor!');
+    setTimeout(function(){ _resetInvestAiInlineProgress(); }, 1800);
     // Excel notice (yuklab olish tugmasi bilan) faqat UN Comtrade ma'lumoti mavjud bo'lsa ko'rinadi
     var _hasOfficialData = !!(_investAiTradeContext && _investAiTradeContext.officialDataAvailable);
     if(notice) notice.style.display = _hasOfficialData ? 'block' : 'none';
@@ -4865,6 +4929,7 @@ async function analyzeInvestmentMaterial(){
     }
   } finally {
     setInvestAiBusy(false);
+    _resetInvestAiInlineProgress();
   }
 }
 
