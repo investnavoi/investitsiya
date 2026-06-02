@@ -2933,6 +2933,27 @@ function investAiInferTechnology(product){
   return 'Basic processing';
 }
 
+/* Hisobot to'liq yozilganini tekshirish — continuation loop uchun.
+   To'liq: yetarlicha uzun + oxirgi bo'limlar mavjud + to'g'ri tugagan (chala jumla emas). */
+function _isInvestAiReportComplete(md){
+  var t = String(md || '').trim();
+  if(t.length < 1200) return false;
+  var lower = t.toLowerCase();
+  var hasLateSection = /keyingi qadam|next step|tavsiya|risklar|risk va|xulosa|conclusion|mitigation|kamaytirish|yakuniy/i.test(lower);
+  if(!hasLateSection) return false;
+  var endsClean = /[.!?:)\]\}"'`”’–—]\s*$/.test(t) || /\n\s*[-*•|]?\s*$/.test(md);
+  return endsClean;
+}
+/* Davom ettirilgan segment boshidagi takror matnni kesib tashlash. */
+function _stripInvestAiOverlap(confirmed, segment){
+  var tail = confirmed.slice(-400);
+  for(var len = Math.min(300, tail.length, segment.length); len >= 20; len--){
+    if(tail.slice(-len) === segment.slice(0, len)) return segment.slice(len);
+  }
+  if(segment.trim().length < 200 && confirmed.indexOf(segment.trim().slice(0, 120)) !== -1) return '';
+  return segment;
+}
+
 function investAiPickAnalysisYear(entries){
   var years = ['2024','2023','2022','2021'];
   for(var i=0;i<years.length;i++){
@@ -2943,6 +2964,25 @@ function investAiPickAnalysisYear(entries){
     if(total > 0) return year;
   }
   return '2024';
+}
+
+/* Davlatning eng so'nggi mavjud yil import qiymatini qaytaradi.
+   preferYear (masalan 2024) bo'sh bo'lsa, 2023→2022→2021 ga qaytamiz.
+   Rossiya (2022 dan keyin Comtrade'ga hisobot bermaydi), Turkmaniston, Afg'oniston
+   kabi davlatlar uchun shu fallback ularning so'nggi haqiqiy raqamini ko'rsatadi. */
+function _investAiLatestYearVal(years, preferYear){
+  years = years || {};
+  if(preferYear && Number(years[preferYear] || 0) > 0) return Number(years[preferYear]) || 0;
+  return Number(years['2024'] || 0) || Number(years['2023'] || 0) ||
+         Number(years['2022'] || 0) || Number(years['2021'] || 0) || 0;
+}
+/* Qaysi yil ishlatilganini qaytaradi (label uchun) */
+function _investAiLatestYearLabel(years, preferYear){
+  years = years || {};
+  if(preferYear && Number(years[preferYear] || 0) > 0) return preferYear;
+  var order = ['2024','2023','2022','2021'];
+  for(var i=0;i<order.length;i++){ if(Number(years[order[i]] || 0) > 0) return order[i]; }
+  return preferYear || '2024';
 }
 
 function investAiInferPriority(entry){
@@ -3096,7 +3136,8 @@ function investAiBuildWorkbookContext(material, markdown){
   products = entries.map(function(entry){ return entry.product; });
   var analysisYear = investAiPickAnalysisYear(entries);
   entries.forEach(function(entry){
-    entry.analysisValue = Number((entry.totalsByYear || {})[analysisYear] || 0) || 0;
+    // Mahsulot regional jami — analysisYear bo'sh bo'lsa eng so'nggi mavjud yilga qaytamiz
+    entry.analysisValue = _investAiLatestYearVal((entry.totalsByYear || {}), analysisYear);
     // O'zbekiston importi — analysisYear bo'sh bo'lsa, mavjud eng so'nggi yilga
     // qaytamiz (UZ ko'pincha so'ralgan yil uchun Comtrade'ga ma'lumot bermaydi).
     var _uzYears = (((entry.countryMap || {}).UZ || {}).years) || {};
@@ -3106,7 +3147,8 @@ function investAiBuildWorkbookContext(material, markdown){
       return {
         code: code,
         name: entry.countryMap[code].name,
-        value: Number((entry.countryMap[code].years || {})[analysisYear] || 0) || 0
+        // Eng so'nggi mavjud yil (analysisYear bo'sh bo'lsa fallback)
+        value: _investAiLatestYearVal((entry.countryMap[code].years || {}), analysisYear)
       };
     }).sort(function(a,b){ return (b.value || 0) - (a.value || 0); });
     entry.topImporter = countries[0] || { code:'', name:'—', value:0 };
@@ -4183,19 +4225,22 @@ async function exportInvestAiWorkbook(){
           // bo'sh hujayralar jadvalda chiziq qoldirmasligi uchun)
         }
       }
-      // Davlat → jami import (2024)
-      var moy4 = TARGET_COUNTRIES.map(function(t){ return { code: t.code, name: investAiTranslateCountry(t.name), total: 0 }; });
+      // Davlat → jami import. Har davlat uchun ENG SO'NGGI mavjud yil ishlatiladi
+      // (Rossiya 2022, Turkmaniston/Afg'oniston turli yillar — 0 qoldirmaslik uchun).
+      var moy4 = TARGET_COUNTRIES.map(function(t){ return { code: t.code, name: investAiTranslateCountry(t.name), total: 0, anyData: false }; });
       ctx.entries.forEach(function(entry){
         moy4.forEach(function(co){
-          var v = Number((((entry.countryMap || {})[co.code] || {}).years || {})[ctx.analysisYear] || 0) || 0;
+          var yrs = (((entry.countryMap || {})[co.code] || {}).years) || {};
+          var v = _investAiLatestYearVal(yrs, ctx.analysisYear);
+          if(v > 0) co.anyData = true;
           co.total += v;
         });
       });
       moy4.sort(function(a,b){ return b.total - a.total; });
-      // Header
+      // Header — "so'nggi mavjud yil" (har davlat o'z so'nggi hisobot yilidan)
       ws4.getCell('A3').value = '№';
       ws4.getCell('B3').value = 'Страна';
-      ws4.getCell('C3').value = 'Импорт ' + ctx.analysisYear + ' ($)';
+      ws4.getCell('C3').value = 'Импорт (последние данные, $)';
       ws4.getCell('D3').value = 'Доля региона';
       var grandTotal = moy4.reduce(function(s, c){ return s + c.total; }, 0);
       moy4.forEach(function(co, idx){
@@ -4802,29 +4847,65 @@ async function analyzeInvestmentMaterial(){
       { role: 'user', content: contextText }
     ];
 
-    try {
-      await callGeminiStream(geminiMessages, {
-        temperature: 0.2,
-        maxTokens: 4096
-      }, function(textDelta){
-        _investAiMarkdown += textDelta;
-        renderInvestAiMarkdown(_investAiMarkdown);
-        // Matn oqib kela boshlashi bilanoq barcha fazalarni "Tayyor" deb belgilaymiz —
-        // foydalanuvchi "Jarayonda"da kutib qolmasin (hisobot baribir real vaqtda yozilib boradi).
-        if(_investAiPhase !== 3){
-          _investAiPhase = 3;
-          renderInvestAiProgress(3, true);
-        }
-      });
-    } catch(e){
-      console.warn('[analyze-material gemini] xato:', e && e.message);
-      // Stream o'rtada uzilib qisman matn yig'ilgan bo'lsa — uni saqlaymiz (outer catch)
-      if(!_investAiMarkdown || _investAiMarkdown.trim().length < 80){
-        throw new Error('Gemini tahlil xatosi: ' + (e && e.message ? e.message : 'noma\'lum xato'));
+    // ═══ CONTINUATION LOOP — tahlil chala qolsa avtomatik davom ettiramiz ═══
+    // Gemini ba'zan stream'ni o'rtada to'xtatadi (rate-limit yoki MAX_TOKENS) → hisobot
+    // o'rtada uzilib qoladi. Chala bo'lsa "qoldingjoydan davom et" so'rovi yuboriladi.
+    var _confirmedMd = '';   // tasdiqlangan to'liq matn (segmentlar yig'indisi)
+    var _contAttempt = 0, _MAX_CONT = 3, _streamErr = null;
+
+    while(_contAttempt <= _MAX_CONT){
+      var _isCont = _contAttempt > 0;
+      var _msgs = _isCont
+        ? [
+            { role:'system', content: systemPrompt },
+            { role:'user',   content: contextText },
+            { role:'user',   content: 'You already wrote this part of the report (Uzbek):\n\n"""' +
+              _confirmedMd.slice(-1500) + '"""\n\nCONTINUE from EXACTLY where it stopped. Do NOT repeat any sentence ' +
+              'you already wrote, do NOT restart. Just continue and finish ALL remaining sections ' +
+              '(including risks/risklar and next steps/keyingi qadamlar). Write in Uzbek.' }
+          ]
+        : [
+            { role:'system', content: systemPrompt },
+            { role:'user',   content: contextText }
+          ];
+
+      var _segRes = null;
+      try {
+        _segRes = await callGeminiStream(_msgs, { temperature: 0.2, maxTokens: 8192 }, function(textDelta, fullSoFar){
+          // fullSoFar = shu stream'ning to'liq matni (cross-model kontaminatsiya yo'q)
+          _investAiMarkdown = _confirmedMd + (fullSoFar || '');
+          renderInvestAiMarkdown(_investAiMarkdown);
+          // Eski xulq saqlanadi: birinchi matn kelishi bilan barcha fazalar "Tayyor"
+          if(_investAiPhase !== 3){ _investAiPhase = 3; renderInvestAiProgress(3, true); }
+        });
+      } catch(eSeg){
+        _streamErr = eSeg;
+        console.warn('[analyze-material gemini] segment xato:', eSeg && eSeg.message);
+        break;
       }
+
+      var _segText = (_segRes && _segRes.content) || '';
+      var _finish = (_segRes && _segRes.finishReason) || '';
+      if(!_segText.trim()) break;
+
+      if(_isCont && _confirmedMd){ _segText = _stripInvestAiOverlap(_confirmedMd, _segText); }
+      if(!_segText.trim()) break; // hammasi takror edi
+
+      var _sep = (_isCont && _confirmedMd && !/\s$/.test(_confirmedMd) && !/^\s/.test(_segText)) ? ' ' : '';
+      _confirmedMd += _sep + _segText;
+      _investAiMarkdown = _confirmedMd;
+      renderInvestAiMarkdown(_investAiMarkdown);
+
+      var _truncated = (_finish === 'MAX_TOKENS') || !_isInvestAiReportComplete(_confirmedMd);
+      if(!_truncated){ console.log('[analyze-material] hisobot to\'liq ('+_confirmedMd.length+' belgi, finish='+_finish+')'); break; }
+      console.log('[analyze-material] hisobot chala (finish='+_finish+') — davom #'+(_contAttempt+1));
+      _contAttempt++;
     }
 
+    _investAiMarkdown = _confirmedMd || _investAiMarkdown;
+
     if(!_investAiMarkdown.trim()){
+      if(_streamErr) throw new Error('Gemini tahlil xatosi: ' + (_streamErr.message || 'noma\'lum xato'));
       throw new Error('Gemini bo\'sh javob qaytardi. Qayta urinib ko\'ring.');
     }
 
