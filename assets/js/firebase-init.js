@@ -35,8 +35,7 @@ try {
 
 // Collections: investors, local, zoom, forums, investorCompanies
 // Critical — load immediately (small, needed for first paint)
-const COLLECTIONS_CRITICAL = ['investors','local','zoom','forums','investorCompanies','entrepreneurs','rawMaterials','products','investAiHistory'];
-// crmActivities — on-demand (pipeline sahifasiga kirganda yuklanadi)
+const COLLECTIONS_CRITICAL = ['investors','local','zoom','forums','investorCompanies','entrepreneurs','rawMaterials','products','investAiHistory','crmActivities'];
 // On-demand only — load WHEN user navigates to that page (huge: importSnapshots=512, tradeSnapshotChunks=80)
 const COLLECTIONS_LAZY = ['tradeData','tradeSnapshots','tradeSnapshotChunks','importSnapshots','taFirmSnapshots','embassyLetters'];
 const COLLECTIONS = COLLECTIONS_CRITICAL.concat(COLLECTIONS_LAZY);

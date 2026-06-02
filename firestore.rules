@@ -111,13 +111,6 @@ service cloud.firestore {
       allow write: if isAuthed();
     }
 
-    /* CRM Activities — barcha authenticated users yoza/o'qiy oladi
-       (pipeline CRM faoliyatlar logi: qo'ng'iroq, zoom, tashrif, izoh) */
-    match /crmActivities/{id} {
-      allow read: if isAuthed();
-      allow write: if isAuthed();
-    }
-
     /* API Keys — READ uchun har qanday auth qilingan foydalanuvchi (chatbot + AI email
        generatsiyasi kalitlarni o'qib olishi kerak). WRITE faqat admin uchun. Sayt faqat
        ruxsat etilgan login/parollar bilan kirilgani uchun risk past — har bir
