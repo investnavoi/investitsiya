@@ -4047,6 +4047,48 @@ function _investAiClearRange(ws, fromRow, toRow, fromCol, toCol){
   }
 }
 
+/* O'zbekiston importini har bir mahsulot HS kodi uchun Comtrade'dan olib, ctx.entries
+   dagi uzbValue (va countryMap.UZ.years) ni to'ldiradi. Snapshotda UZ bo'lmasa ham
+   Матрица "Узбекистан ($)" ustuni to'g'ri raqamni ko'rsatadi. */
+async function _ensureUzbForWorkbookCtx(ctx){
+  if(!ctx || !Array.isArray(ctx.entries) || !ctx.entries.length) return;
+  var year = ctx.analysisYear || '2024';
+  // UZ qiymati 0 bo'lgan mahsulotlar — unique HS kodlar
+  var hsSet = Object.create(null);
+  ctx.entries.forEach(function(e){
+    if(!(Number(e.uzbValue) > 0) && e.hsCode){ hsSet[String(e.hsCode)] = true; }
+  });
+  var hsList = Object.keys(hsSet);
+  if(!hsList.length) return;
+  console.log('[invest-ai] UZ to\'ldirilmoqda:', hsList.length, 'ta HS kod');
+  var _uzToast = (typeof toastLoading === 'function') ? toastLoading('🇺🇿 O\'zbekiston import ma\'lumotlari olinmoqda (' + hsList.length + ' ta mahsulot)...') : null;
+
+  async function _fetchOneUz(hs){
+    try {
+      var rows = await fetchComtrade(hs, 'multi', ['Uzbekistan'], 'comtrade');
+      var uz = (rows||[]).find(function(c){ return String(c.code||c.c||'').toUpperCase()==='UZ'; });
+      if(!uz) return;
+      var yi = uz.year_imports || uz.y || {};
+      var uzVal = Number(yi[year]||0) || Number(yi['2024']||0) || Number(yi['2023']||0) ||
+                  Number(yi['2022']||0) || Number(yi['2021']||0) || Number(uz.import_usd||uz.u||0) || 0;
+      if(!(uzVal > 0)) return;
+      ctx.entries.forEach(function(e){
+        if(String(e.hsCode) !== hs) return;
+        e.uzbValue = uzVal;
+        if(e.countryMap && e.countryMap.UZ){ e.countryMap.UZ.years = yi; }
+      });
+    } catch(_e){ /* bitta HS uchun xato — qolganlari davom etadi */ }
+  }
+
+  // Bounded concurrency (5 ta parallel) — tez bo'lishi uchun
+  var idx = 0;
+  async function _worker(){
+    while(idx < hsList.length){ var my = hsList[idx++]; await _fetchOneUz(my); }
+  }
+  await Promise.all(Array.from({length: Math.min(5, hsList.length)}, _worker));
+  if(_uzToast && typeof _uzToast.close === 'function') _uzToast.close();
+}
+
 async function exportInvestAiWorkbook(){
   if(typeof ExcelJS === 'undefined' || !ExcelJS){
     toast('⚠️ ExcelJS kutubxonasi topilmadi','error');
@@ -4064,6 +4106,12 @@ async function exportInvestAiWorkbook(){
   }
 
   var ctx = investAiBuildWorkbookContext(material, markdown);
+
+  // ═══ O'ZBEKISTON ustunini to'ldirish (Матрица E columni) ═══
+  // Snapshotlar finder tomonidan O'ZBEKISTONSIZ saqlangan (UZ target bozor emas) →
+  // uzbValue 0 chiqardi. Bu yerda har bir mahsulot HS kodi uchun O'zbekiston importini
+  // to'g'ridan-to'g'ri Comtrade'dan olib, uzbValue va countryMap.UZ ni to'ldiramiz.
+  try { await _ensureUzbForWorkbookCtx(ctx); } catch(_uze){ console.warn('[invest-ai] UZ to\'ldirish xato:', _uze && _uze.message); }
 
   // Mahsulot nomlarini ruschaga tarjima qilish (static map + Gemini fallback)
   var translatingToast = (typeof toastLoading === 'function') ? toastLoading('🔤 Mahsulot nomlari ruschaga tarjima qilinmoqda...') : null;
