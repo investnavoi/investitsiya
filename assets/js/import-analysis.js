@@ -4240,36 +4240,27 @@ async function exportInvestAiWorkbook(){
         }
       }
       // Davlat → jami import. Har davlat uchun ENG SO'NGGI mavjud yil ishlatiladi
-      // (Rossiya 2022, Turkmaniston/Afg'oniston turli yillar — 0 qoldirmaslik uchun).
-      var moy4 = TARGET_COUNTRIES.map(function(t){ return { code: t.code, name: investAiTranslateCountry(t.name), total: 0, anyData: false }; });
+      // (Rossiya 2022, Turkmaniston turli yillar — haqiqiy raqamni to'ldirish uchun).
+      var moy4 = TARGET_COUNTRIES.map(function(t){ return { code: t.code, name: investAiTranslateCountry(t.name), total: 0 }; });
       ctx.entries.forEach(function(entry){
         moy4.forEach(function(co){
           var yrs = (((entry.countryMap || {})[co.code] || {}).years) || {};
-          var v = _investAiLatestYearVal(yrs, ctx.analysisYear);
-          if(v > 0) co.anyData = true;
-          co.total += v;
+          co.total += _investAiLatestYearVal(yrs, ctx.analysisYear);
         });
       });
       moy4.sort(function(a,b){ return b.total - a.total; });
-      // Header — "so'nggi mavjud yil" (har davlat o'z so'nggi hisobot yilidan)
+      // Header — original format
       ws4.getCell('A3').value = '№';
       ws4.getCell('B3').value = 'Страна';
-      ws4.getCell('C3').value = 'Импорт (последние данные, $)';
+      ws4.getCell('C3').value = 'Импорт ' + ctx.analysisYear + ' ($)';
       ws4.getCell('D3').value = 'Доля региона';
       var grandTotal = moy4.reduce(function(s, c){ return s + c.total; }, 0);
       moy4.forEach(function(co, idx){
         var rowIdx = 4 + idx;
         _investAiSetGeneral(ws4.getCell('A' + rowIdx), idx + 1);
         _investAiSetText(ws4.getCell('B' + rowIdx), co.name);
-        if(!co.anyData){
-          // UN Comtrade'da bu davlat uchun ma'lumot yo'q (masalan Rossiya 2022 dan keyin
-          // hisobot bermaydi) — "$0" o'rniga "н/д" (нет данных) ko'rsatamiz, halol bo'lsin.
-          _investAiSetText(ws4.getCell('C' + rowIdx), 'н/д');
-          _investAiSetText(ws4.getCell('D' + rowIdx), 'н/д');
-        } else {
-          _investAiSetUsd(ws4.getCell('C' + rowIdx), co.total);
-          _investAiSetPct(ws4.getCell('D' + rowIdx), grandTotal > 0 ? (co.total / grandTotal) : 0);
-        }
+        _investAiSetUsd(ws4.getCell('C' + rowIdx), co.total || null);
+        _investAiSetPct(ws4.getCell('D' + rowIdx), grandTotal > 0 ? (co.total / grandTotal) : 0);
       });
       var totalRow = 4 + moy4.length;
       _investAiSetText(ws4.getCell('A' + totalRow), 'РЕГИОНАЛЬНЫЙ ИТОГО');
@@ -4306,11 +4297,8 @@ async function exportInvestAiWorkbook(){
         _investAiSetText(ws5.getCell('A' + rowIdx), String(entry.priority || 'Priority D').replace('Priority ',''));
         _investAiSetText(ws5.getCell('B' + rowIdx), entry.hsCode || '—');
         _investAiSetText(ws5.getCell('C' + rowIdx), entry.displayName || '—');
-        // Regional jami 0 bo'lsa — ma'lumot yo'q (н/д), aks holda raqam
-        if(Number(entry.analysisValue) > 0) _investAiSetUsd(ws5.getCell('D' + rowIdx), Number(entry.analysisValue));
-        else _investAiSetText(ws5.getCell('D' + rowIdx), 'н/д');
-        if(Number(entry.uzbValue) > 0) _investAiSetUsd(ws5.getCell('E' + rowIdx), Number(entry.uzbValue));
-        else _investAiSetText(ws5.getCell('E' + rowIdx), 'н/д');
+        _investAiSetUsd(ws5.getCell('D' + rowIdx), Number(entry.analysisValue) || 0);
+        _investAiSetUsd(ws5.getCell('E' + rowIdx), Number(entry.uzbValue) || 0);
         _investAiSetText(ws5.getCell('F' + rowIdx), investAiTranslateCountry((entry.topImporter && entry.topImporter.name) || '—'));
         _investAiSetPct(ws5.getCell('G' + rowIdx), entry.cagr != null ? Number(entry.cagr) : null);
         _investAiSetText(ws5.getCell('H' + rowIdx), entry.level || '—');
@@ -4497,6 +4485,19 @@ async function collectInvestAiTradeContext(material){
                (sn.countries||[]).length > 0;
       });
       if(anySnap) snapshot = anySnap;
+    }
+    // ═══ MUHIM: keshlangan snapshot O'ZBEKISTON ma'lumotisiz bo'lsa — qayta yuklaymiz ═══
+    // O'zbekiston importi tahlilning eng muhim ma'lumoti (mahalliy bozor hajmi). Eski
+    // snapshotlar UZ'siz saqlangan bo'lishi mumkin → "н/д" chiqardi. UZ yo'q yoki nol bo'lsa,
+    // snapshot'ni rad etib, jonli qayta yuklaymiz (yangi fetch UZ'ni ham oladi).
+    if(snapshot){
+      var _uzOk = (snapshot.countries||[]).some(function(c){
+        var code = String(c.c||c.code||'').toUpperCase();
+        if(code !== 'UZ') return false;
+        var y = c.y || c.year_imports || {};
+        return (Number(y['2021']||0)+Number(y['2022']||0)+Number(y['2023']||0)+Number(y['2024']||0)) > 0;
+      });
+      if(!_uzOk){ snapshot = null; } // UZ yo'q — qayta fetch kerak
     }
     if(!snapshot && !hsNeedsFetch[hsCode]) hsNeedsFetch[hsCode] = product;
     perProduct.push({ product: product, hsCode: hsCode, snapshot: snapshot });
