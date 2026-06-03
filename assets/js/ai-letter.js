@@ -2736,59 +2736,100 @@ async function _srLoadJson() {
   return _srJsonCache;
 }
 
+/* ── OpenAI freight fallback ──
+   Used ONLY when a rate is found in NEITHER JSON. Batches all missing routes
+   into ONE ChatGPT call for the most accurate door-to-door FCL 20ft estimate.
+   Results are cached in localStorage so a route is never re-asked. */
+async function _aiFreightBatch(routes) {
+  if (!routes || !routes.length) return {};
+  if (typeof callOpenAI !== 'function' || typeof getOpenAIKey !== 'function' || !getOpenAIKey()) return {};
+  var lines = routes.map(function(r, i){ return (i + 1) + '. ' + r.from + ' -> ' + r.to; }).join('\n');
+  var prompt =
+    'You are a senior international freight-pricing expert. For each origin→destination route below, ' +
+    'give the MOST ACCURATE current real-world estimate of the all-in cost (USD) to ship ONE standard ' +
+    '20ft FCL container door-to-door, and the typical transit time in days. Choose the realistic mode ' +
+    '(rail / road / sea / multimodal) for the actual geography (e.g. landlocked Central Asia is mostly ' +
+    'rail+road, not ocean). Base it on real market rates, not a generic formula.\n\n' +
+    'Return STRICT JSON ONLY: {"rates":[{"i":1,"rate_usd":1234,"transit_days":12}, ...]} — one object per route.\n\n' +
+    'Routes:\n' + lines;
+  try {
+    var resp = await callOpenAI([{ role: 'user', content: prompt }], { model: 'gpt-4o', jsonMode: true, maxTokens: 1200, temperature: 0.2, timeoutMs: 45000 });
+    var data = JSON.parse(resp.content || '{}');
+    var out = {};
+    (data.rates || []).forEach(function(row){
+      var idx = (Number(row.i) || 0) - 1;
+      var r = routes[idx];
+      if (r && Number(row.rate_usd) > 0) {
+        var result = { rate_usd: Math.round(Number(row.rate_usd)), transit_days: Math.round(Number(row.transit_days) || 0) || 7, source: 'openai' };
+        out[r.key] = result;
+        if (r.cacheKey) _srCacheSet(r.cacheKey, result);
+      }
+    });
+    return out;
+  } catch (e) { console.warn('[freight] OpenAI fallback error:', e && e.message); return {}; }
+}
+
 /* ── Main function: returns transport estimates for buildAiTransportAnalysis ──
-   {
-     byIso: { TUR: {navoiCost, navoiDays, navoiMode, dataSource}, ... },  // Number 2: Navoi -> neighbour (from JSON)
-     foreign: { cost, days, source } | null                               // Number 1: company country -> Navoi
-   }
-   Number 2 comes entirely from the JSON cache (no live calls). Number 1 comes
-   from the country JSON; if that country isn't cached, ONE live SeaRates call
-   (company hub -> Navoi) is made, capped by the trial quota; else formula. */
+   { byIso: { ISO3: {navoiCost, navoiDays, navoiMode, dataSource}, ... },
+     foreign: { cost, days, source } | null }
+   Rule (per the latest spec):
+     • Raqam 2 (Navoi → neighbour)   = JSON2 → else OpenAI
+     • Raqam 1 (company → Navoi)     = JSON1 → else OpenAI
+   SeaRates is NOT called live here — it only populates the JSON caches offline
+   (scripts/populate-searates.js). OpenAI is the ONLY runtime fallback. */
 async function fetchSeaRatesTransportEstimates(countryInfo) {
   var json = await _srLoadJson();
   var sourceHub = getAiTransportHub(countryInfo);
   var companyIso3 = String(sourceHub.iso3 || '').toUpperCase();
+  var companyName = String((countryInfo && countryInfo.display) || sourceHub.name || '').trim();
 
-  /* Number 2 — Navoi -> each neighbour from the JSON cache */
   var byIso = {};
-  var realCount = 0;
+  var missing = []; // routes to ask OpenAI for
+
+  /* Raqam 2 — Navoi -> each neighbour: JSON2 → localStorage(OpenAI) → batch OpenAI */
   AI_TRANSPORT_TARGETS.forEach(function(target) {
     var j = json.navoi[target.iso3];
     if (j && Number.isFinite(Number(j.rate_usd))) {
-      var isReal = j.source === 'searates';
-      byIso[target.iso3] = {
-        navoiCost:  Math.round(Number(j.rate_usd)),
-        navoiDays:  Math.round(Number(j.transit_days) || 0) || target.navoiDays,
-        navoiMode:  'FCL 20ft',
-        dataSource: isReal ? 'searates' : 'formula'
-      };
-      if (isReal) realCount++;
+      byIso[target.iso3] = { navoiCost: Math.round(Number(j.rate_usd)), navoiDays: Math.round(Number(j.transit_days) || 0) || target.navoiDays, navoiMode: 'FCL 20ft', dataSource: (j.source === 'searates' ? 'searates' : (j.source === 'openai' ? 'openai' : 'formula')) };
+      return;
     }
+    var ck = 'ai_navoi_' + target.iso3;
+    var hit = _srCacheGet(ck);
+    if (hit && Number.isFinite(Number(hit.rate_usd))) {
+      byIso[target.iso3] = { navoiCost: Math.round(Number(hit.rate_usd)), navoiDays: Math.round(Number(hit.transit_days) || 0) || target.navoiDays, navoiMode: 'FCL 20ft', dataSource: hit.source || 'openai' };
+      return;
+    }
+    missing.push({ from: 'Navoi, Uzbekistan', to: (target.nameEn || target.name), key: 'navoi_' + target.iso3, cacheKey: ck, kind: 'navoi', iso3: target.iso3, target: target });
   });
 
-  /* Number 1 — company country -> Navoi. JSON → live (capped) → null(=formula) */
+  /* Raqam 1 — company country -> Navoi: JSON1 → localStorage(OpenAI) → batch OpenAI */
   var foreign = null;
   var cj = json.country[companyIso3];
   if (cj && Number.isFinite(Number(cj.rate_usd))) {
-    foreign = { cost: Math.round(Number(cj.rate_usd)), days: Math.round(Number(cj.transit_days) || 0) || 7, source: cj.source === 'searates' ? 'searates' : 'formula' };
-  } else if (companyIso3 && companyIso3 !== 'UZB' && Number.isFinite(sourceHub.lat) && Number.isFinite(sourceHub.lon)) {
-    // Not in JSON → cache check, then one live SeaRates call (company hub -> Navoi)
-    var cacheKey = _srRouteKey(sourceHub.lat, sourceHub.lon, _SR_NAVOI_LAT, _SR_NAVOI_LNG);
-    var hit = _srCacheGet(cacheKey);
-    if (hit && Number.isFinite(Number(hit.rate_usd))) {
-      foreign = { cost: Math.round(Number(hit.rate_usd)), days: Math.round(Number(hit.transit_days) || 0) || 7, source: 'searates' };
-    } else if (_srSearchUsed() < _SR_SEARCH_CAP) {
-      var fetched = await _srBatchFetch([{ from_lat: sourceHub.lat, from_lng: sourceHub.lon, to_lat: _SR_NAVOI_LAT, to_lng: _SR_NAVOI_LNG, _iso3: companyIso3 }]);
-      var fr = fetched[companyIso3];
-      if (fr && Number.isFinite(Number(fr.rate_usd))) {
-        foreign = { cost: Math.round(Number(fr.rate_usd)), days: Math.round(Number(fr.transit_days) || 0) || 7, source: 'searates' };
-        _srSearchAdd(1);
-      }
+    foreign = { cost: Math.round(Number(cj.rate_usd)), days: Math.round(Number(cj.transit_days) || 0) || 7, source: (cj.source === 'searates' ? 'searates' : (cj.source === 'openai' ? 'openai' : 'formula')) };
+  } else if (companyIso3 && companyIso3 !== 'UZB' && companyName) {
+    var ckf = 'ai_toNavoi_' + companyIso3;
+    var hitf = _srCacheGet(ckf);
+    if (hitf && Number.isFinite(Number(hitf.rate_usd))) {
+      foreign = { cost: Math.round(Number(hitf.rate_usd)), days: Math.round(Number(hitf.transit_days) || 0) || 7, source: hitf.source || 'openai' };
+    } else {
+      missing.push({ from: companyName, to: 'Navoi, Uzbekistan', key: 'foreign', cacheKey: ckf, kind: 'foreign' });
     }
   }
 
-  console.log('[freight] JSON Navoi neighbours real:', realCount + '/' + AI_TRANSPORT_TARGETS.length,
-    '| company(' + companyIso3 + ')->Navoi:', foreign ? ('$' + foreign.cost + ' (' + foreign.source + ')') : 'formula');
+  /* Single OpenAI call for everything not found in the JSONs/cache */
+  if (missing.length) {
+    var aiOut = await _aiFreightBatch(missing);
+    missing.forEach(function(m) {
+      var r = aiOut[m.key];
+      if (!r) return;
+      if (m.kind === 'navoi') byIso[m.iso3] = { navoiCost: r.rate_usd, navoiDays: r.transit_days, navoiMode: 'FCL 20ft', dataSource: 'openai' };
+      else if (m.kind === 'foreign') foreign = { cost: r.cost || r.rate_usd, days: r.transit_days, source: 'openai' };
+    });
+  }
+
+  console.log('[freight] Navoi neighbours resolved:', Object.keys(byIso).length + '/' + AI_TRANSPORT_TARGETS.length,
+    '| company(' + companyIso3 + ')->Navoi:', foreign ? ('$' + foreign.cost + ' (' + foreign.source + ')') : 'none');
 
   return { byIso: byIso, foreign: foreign };
 }
@@ -2817,10 +2858,10 @@ async function buildAiTransportAnalysis(countryInfo, comp){
     // RAQAM 2 (navoi) — Navoiydan qo'shni bozorga. JSON keshidan (real SeaRates) yoki model.
     var navoiCost, navoiDays, navoiMode, navoiReal = false;
     if(nRow && Number.isFinite(Number(nRow.navoiCost))){
-      navoiCost = Math.round(Number(nRow.navoiCost));   // 🚢 JSON kesh (SeaRates)
+      navoiCost = Math.round(Number(nRow.navoiCost));   // JSON kesh (SeaRates) yoki OpenAI
       navoiDays = Math.max(1, Math.round(Number(nRow.navoiDays) || target.navoiDays || 1));
       navoiMode = String(nRow.navoiMode || target.navoiMode);
-      navoiReal = nRow.dataSource === 'searates';
+      navoiReal = (nRow.dataSource === 'searates' || nRow.dataSource === 'openai'); // ikkalasi ham real ma'lumot
     } else {
       navoiCost = target.navoiCost;
       navoiDays = target.navoiDays;
@@ -2859,11 +2900,15 @@ async function buildAiTransportAnalysis(countryInfo, comp){
   var volumeSpec = (Number.isFinite(taQty) && taQty > 0 && taUnit)
     ? ('Yillik ' + Math.round(taQty).toLocaleString('en-US') + ' ' + taUnit + ' hajmda')
     : '1 × 20ft konteyner (standart)';
+  // Manba taqsimoti — JSON (SeaRates) + OpenAI + model
+  var srCount = routes.filter(function(r){ return r.dataSource === 'searates'; }).length;
+  var aiCount = routes.filter(function(r){ return r.dataSource === 'openai'; }).length;
   var dataSourceBadge;
   if(realCount === routes.length){
-    dataSourceBadge = '🚢 SeaRates real FCL narxlari';
+    dataSourceBadge = (aiCount > 0 && srCount > 0) ? '🚢 SeaRates + 🤖 AI FCL narxlari'
+      : (srCount > 0 ? '🚢 SeaRates real FCL narxlari' : '🤖 AI baholangan FCL narxlari');
   } else if(realCount > 0){
-    dataSourceBadge = '🚢 SeaRates (' + realCount + '/' + routes.length + ' real) + 📐 model';
+    dataSourceBadge = '🚢 SeaRates ' + srCount + (aiCount ? ' + 🤖 AI ' + aiCount : '') + '/' + routes.length + ' + 📐 model';
   } else {
     dataSourceBadge = '📐 Koridor-model bahosi (taxminiy, ±35%)';
   }
