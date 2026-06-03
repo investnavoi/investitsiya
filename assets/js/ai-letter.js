@@ -2708,7 +2708,7 @@ async function _srBatchFetch(routes) {
    localStorage and refuse to fetch beyond _SR_SEARCH_CAP, so the trial can never
    be exhausted by accident. Cached routes (7-day TTL) do NOT count again. */
 var _SR_SEARCH_CAP = 12;            // trial buffer (~6 already used verifying the integration); raise after upgrading the plan
-var _SR_SEARCH_COUNT_KEY = '_srSearchCount';
+var _SR_SEARCH_COUNT_KEY = '_srSearchCount_v2'; // v2: reset counter (v1 counted broken-proxy attempts)
 function _srSearchUsed() {
   try { return parseInt(localStorage.getItem(_SR_SEARCH_COUNT_KEY) || '0', 10) || 0; } catch(e) { return 0; }
 }
@@ -2750,7 +2750,11 @@ async function fetchSeaRatesTransportEstimates(countryInfo) {
   var fetchedNavoi = {};
   if (navoiRoutes.length) {
     fetchedNavoi = await _srBatchFetch(navoiRoutes);
-    _srSearchAdd(navoiRoutes.length); // har yuborilgan yangi route = 1 search (xavfsiz hisob)
+    // Faqat MUVAFFAQIYATLI olingan (real rate qaytgan va keshlangan) routelarni
+    // hisoblaymiz — formula'ga tushgan yoki xato bergan urinishlar real search
+    // sarflamaydi (yoki keshlanmaydi → keyin qayta urinadi). Shu sababli faqat
+    // muvaffaqiyatlilarni sanaymiz (kesh to'ldirilishi = real search).
+    _srSearchAdd(Object.keys(fetchedNavoi).length);
   }
 
   var navoiMap = Object.assign({}, navoiCached, fetchedNavoi);
