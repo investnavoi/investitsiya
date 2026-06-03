@@ -4817,9 +4817,16 @@ async function runCompanyFinder(source){
           console.log('Top email fetch error for '+tpItem.kompaniya+':', emailErr && emailErr.message);
         }
       }
-      // Faqat haqiqiy email'i bor kompaniyalar qoldiriladi
-      top100Results = top100Results.filter(function(item){
-        return !!String(item.email || '').trim();
+      // Emaili bor kompaniyalarni AFZAL ko'ramiz, lekin emaili yo'qlarni ham QOLDIRAMIZ.
+      // Apollo ko'pincha "has_email:true" qaytaradi-yu, haqiqiy email "qulflangan" (unlock
+      // kredit talab qiladi). Avval emaili yo'qlarni butunlay olib tashlardik → ko'p mahsulot
+      // uchun (masalan kimyoviy "Urea resin") 0 natija chiqib, "topa olmadi" xatosi berardi.
+      // Endi: yirik kompaniyalar va ularning ma'lumotlari ko'rsatiladi, email keyin unlock qilinadi.
+      top100Results.sort(function(a, b){
+        var ae = String(a.email || '').trim() ? 1 : 0;
+        var be = String(b.email || '').trim() ? 1 : 0;
+        if(ae !== be) return be - ae;              // emaili borlar oldinda
+        return (Number(b.score) || 0) - (Number(a.score) || 0); // keyin score bo'yicha
       });
 
       // Add rank
@@ -4827,7 +4834,12 @@ async function runCompanyFinder(source){
 
       _finderResults = top100Results;
       if(!_finderResults.length){
-        throw new Error('Apollo Top '+TOP100_CAP+' qidiruvi email\'i bor kompaniya topa olmadi.' + (top100Errors.length ? ' Xatolar: '+top100Errors.slice(0,3).join(' | ') : ''));
+        throw new Error('Apollo Top '+TOP100_CAP+' qidiruvi "'+prod.name_en+'" bo\'yicha hech qanday kompaniya topa olmadi. ' +
+          'Mahsulot nomi yoki HS kodi juda spetsifik bo\'lishi mumkin.' + (top100Errors.length ? ' Xatolar: '+top100Errors.slice(0,3).join(' | ') : ''));
+      }
+      var _withEmail = top100Results.filter(function(it){ return !!String(it.email||'').trim(); }).length;
+      if(_withEmail === 0){
+        toast('ℹ️ '+top100Results.length+' ta yirik kompaniya topildi. Email\'lar qulflangan — har birini ochish uchun "Lead qidirish" tugmasini bosing.', 'info', 6000);
       }
     } else if(source==='apollo'){
       // Apollo proxy — organization search first, then people fallback
