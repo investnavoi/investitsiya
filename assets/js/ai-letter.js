@@ -2716,23 +2716,43 @@ function _srSearchAdd(n) {
   try { localStorage.setItem(_SR_SEARCH_COUNT_KEY, String(_srSearchUsed() + (n || 0))); } catch(e) {}
 }
 
-/* ── JSON rate caches (GitHub Pages static files) ──
-   navoi-to-neighbors: Number 2 — Navoi -> 12 neighbour markets (read-only).
-   country-to-navoi:   Number 1 — company country -> Navoi (45 countries).
-   Loaded once per session, kept in memory. */
+/* ── JSON rate tables (user-provided, GitHub-served static files) ──
+   transport-number1.json: Raqam 1 — company country -> Navoi (72 countries).
+   transport-number2.json: Raqam 2 — Navoi -> 12 neighbour markets.
+   Format: { routes: [ { country_code (ISO2), country, rate_usd, transit_days } ] }
+   transit_days may be a range string ("12-20") → parsed to the midpoint.
+   Built once per session into ISO2 + normalised-name lookup maps. */
 var _srJsonCache = null;
+function _srParseDays(v) {
+  if (typeof v === 'number') return Math.round(v) || 0;
+  var m = String(v || '').match(/\d+/g);
+  if (!m || !m.length) return 0;
+  var nums = m.map(Number);
+  return Math.round(nums.reduce(function(a, b){ return a + b; }, 0) / nums.length); // midpoint of range
+}
+function _srNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
 async function _srLoadJson() {
   if (_srJsonCache) return _srJsonCache;
+  var maps = { n1Iso2: {}, n1Name: {}, n2Iso2: {}, n2Name: {} };
   try {
     var results = await Promise.all([
-      fetch('assets/data/searates-navoi-to-neighbors.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }),
-      fetch('assets/data/searates-country-to-navoi.json',   { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
+      fetch('assets/data/transport-number1.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }),
+      fetch('assets/data/transport-number2.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
     ]);
-    _srJsonCache = {
-      navoi:   (results[0] && results[0].routes) || {},
-      country: (results[1] && results[1].routes) || {}
-    };
-  } catch (e) { _srJsonCache = { navoi: {}, country: {} }; }
+    ((results[0] && results[0].routes) || []).forEach(function(r) {
+      if (!(Number(r.rate_usd) > 0)) return;
+      var rec = { rate_usd: Math.round(Number(r.rate_usd)), transit_days: _srParseDays(r.transit_days), source: 'json' };
+      if (r.country_code) maps.n1Iso2[String(r.country_code).toUpperCase()] = rec;
+      if (r.country) maps.n1Name[_srNorm(r.country)] = rec;
+    });
+    ((results[1] && results[1].routes) || []).forEach(function(r) {
+      if (!(Number(r.rate_usd) > 0)) return;
+      var rec = { rate_usd: Math.round(Number(r.rate_usd)), transit_days: _srParseDays(r.transit_days), source: 'json' };
+      if (r.country_code) maps.n2Iso2[String(r.country_code).toUpperCase()] = rec;
+      if (r.country) maps.n2Name[_srNorm(r.country)] = rec;
+    });
+  } catch (e) { /* maps stay empty → OpenAI fallback */ }
+  _srJsonCache = maps;
   return _srJsonCache;
 }
 
@@ -2781,38 +2801,43 @@ async function fetchSeaRatesTransportEstimates(countryInfo) {
   var json = await _srLoadJson();
   var sourceHub = getAiTransportHub(countryInfo);
   var companyIso3 = String(sourceHub.iso3 || '').toUpperCase();
-  var companyName = String((countryInfo && countryInfo.display) || sourceHub.name || '').trim();
+  var companyName = String((countryInfo && countryInfo.display) || '').trim();
+  // company ISO2 — countryInfo'dan yoki iso3→iso2 mapdan
+  var companyIso2 = String((countryInfo && (countryInfo.iso2 || countryInfo.code)) || '').toUpperCase();
+  if (!companyIso2 && companyIso3 && typeof INVESTOR_GEO_ISO2_BY_ISO3 !== 'undefined' && INVESTOR_GEO_ISO2_BY_ISO3[companyIso3]) {
+    companyIso2 = INVESTOR_GEO_ISO2_BY_ISO3[companyIso3];
+  }
 
   var byIso = {};
   var missing = []; // routes to ask OpenAI for
 
-  /* Raqam 2 — Navoi -> each neighbour: JSON2 → localStorage(OpenAI) → batch OpenAI */
+  /* Raqam 2 — Navoi -> each neighbour: JSON2 (ISO2/name) → localStorage(OpenAI) → batch OpenAI */
   AI_TRANSPORT_TARGETS.forEach(function(target) {
-    var j = json.navoi[target.iso3];
-    if (j && Number.isFinite(Number(j.rate_usd))) {
-      byIso[target.iso3] = { navoiCost: Math.round(Number(j.rate_usd)), navoiDays: Math.round(Number(j.transit_days) || 0) || target.navoiDays, navoiMode: 'FCL 20ft', dataSource: (j.source === 'searates' ? 'searates' : (j.source === 'openai' ? 'openai' : 'formula')) };
+    var j = json.n2Iso2[String(target.code).toUpperCase()] || json.n2Name[_srNorm(target.nameEn || target.name)];
+    if (j && Number(j.rate_usd) > 0) {
+      byIso[target.iso3] = { navoiCost: j.rate_usd, navoiDays: j.transit_days || target.navoiDays, navoiMode: 'FCL 20ft', dataSource: 'json' };
       return;
     }
     var ck = 'ai_navoi_' + target.iso3;
     var hit = _srCacheGet(ck);
-    if (hit && Number.isFinite(Number(hit.rate_usd))) {
+    if (hit && Number(hit.rate_usd) > 0) {
       byIso[target.iso3] = { navoiCost: Math.round(Number(hit.rate_usd)), navoiDays: Math.round(Number(hit.transit_days) || 0) || target.navoiDays, navoiMode: 'FCL 20ft', dataSource: hit.source || 'openai' };
       return;
     }
     missing.push({ from: 'Navoi, Uzbekistan', to: (target.nameEn || target.name), key: 'navoi_' + target.iso3, cacheKey: ck, kind: 'navoi', iso3: target.iso3, target: target });
   });
 
-  /* Raqam 1 — company country -> Navoi: JSON1 → localStorage(OpenAI) → batch OpenAI */
+  /* Raqam 1 — company country -> Navoi: JSON1 (ISO2/name) → localStorage(OpenAI) → batch OpenAI */
   var foreign = null;
-  var cj = json.country[companyIso3];
-  if (cj && Number.isFinite(Number(cj.rate_usd))) {
-    foreign = { cost: Math.round(Number(cj.rate_usd)), days: Math.round(Number(cj.transit_days) || 0) || 7, source: (cj.source === 'searates' ? 'searates' : (cj.source === 'openai' ? 'openai' : 'formula')) };
-  } else if (companyIso3 && companyIso3 !== 'UZB' && companyName) {
-    var ckf = 'ai_toNavoi_' + companyIso3;
+  var cj = (companyIso2 && json.n1Iso2[companyIso2]) || (companyName && json.n1Name[_srNorm(companyName)]) || null;
+  if (cj && Number(cj.rate_usd) > 0) {
+    foreign = { cost: cj.rate_usd, days: cj.transit_days || 7, source: 'json' };
+  } else if ((companyName || companyIso2) && companyIso3 !== 'UZB') {
+    var ckf = 'ai_toNavoi_' + (companyIso2 || companyIso3 || _srNorm(companyName));
     var hitf = _srCacheGet(ckf);
-    if (hitf && Number.isFinite(Number(hitf.rate_usd))) {
+    if (hitf && Number(hitf.rate_usd) > 0) {
       foreign = { cost: Math.round(Number(hitf.rate_usd)), days: Math.round(Number(hitf.transit_days) || 0) || 7, source: hitf.source || 'openai' };
-    } else {
+    } else if (companyName) {
       missing.push({ from: companyName, to: 'Navoi, Uzbekistan', key: 'foreign', cacheKey: ckf, kind: 'foreign' });
     }
   }
@@ -2861,7 +2886,7 @@ async function buildAiTransportAnalysis(countryInfo, comp){
       navoiCost = Math.round(Number(nRow.navoiCost));   // JSON kesh (SeaRates) yoki OpenAI
       navoiDays = Math.max(1, Math.round(Number(nRow.navoiDays) || target.navoiDays || 1));
       navoiMode = String(nRow.navoiMode || target.navoiMode);
-      navoiReal = (nRow.dataSource === 'searates' || nRow.dataSource === 'openai'); // ikkalasi ham real ma'lumot
+      navoiReal = (nRow.dataSource && nRow.dataSource !== 'formula'); // json/searates/openai — barchasi real ma'lumot
     } else {
       navoiCost = target.navoiCost;
       navoiDays = target.navoiDays;
@@ -2900,15 +2925,15 @@ async function buildAiTransportAnalysis(countryInfo, comp){
   var volumeSpec = (Number.isFinite(taQty) && taQty > 0 && taUnit)
     ? ('Yillik ' + Math.round(taQty).toLocaleString('en-US') + ' ' + taUnit + ' hajmda')
     : '1 × 20ft konteyner (standart)';
-  // Manba taqsimoti — JSON (SeaRates) + OpenAI + model
-  var srCount = routes.filter(function(r){ return r.dataSource === 'searates'; }).length;
+  // Manba taqsimoti — JSON narx bazasi + OpenAI + model
+  var jsonCount = routes.filter(function(r){ return r.dataSource === 'json'; }).length;
   var aiCount = routes.filter(function(r){ return r.dataSource === 'openai'; }).length;
   var dataSourceBadge;
   if(realCount === routes.length){
-    dataSourceBadge = (aiCount > 0 && srCount > 0) ? '🚢 SeaRates + 🤖 AI FCL narxlari'
-      : (srCount > 0 ? '🚢 SeaRates real FCL narxlari' : '🤖 AI baholangan FCL narxlari');
+    dataSourceBadge = (aiCount > 0 && jsonCount > 0) ? '🚢 Narx bazasi + 🤖 AI (FCL 20ft)'
+      : (jsonCount > 0 ? '🚢 SeaRates narx bazasi (FCL 20ft)' : '🤖 AI baholangan FCL narxlari');
   } else if(realCount > 0){
-    dataSourceBadge = '🚢 SeaRates ' + srCount + (aiCount ? ' + 🤖 AI ' + aiCount : '') + '/' + routes.length + ' + 📐 model';
+    dataSourceBadge = '🚢 Baza ' + jsonCount + (aiCount ? ' + 🤖 AI ' + aiCount : '') + '/' + routes.length + ' + 📐 model';
   } else {
     dataSourceBadge = '📐 Koridor-model bahosi (taxminiy, ±35%)';
   }
