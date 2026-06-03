@@ -2716,95 +2716,111 @@ function _srSearchAdd(n) {
   try { localStorage.setItem(_SR_SEARCH_COUNT_KEY, String(_srSearchUsed() + (n || 0))); } catch(e) {}
 }
 
-/* ── Main function: returns byIso map for buildAiTransportAnalysis ──
-   Format: { TUR: {navoiCost, navoiDays, navoiMode}, ... } — REAL SeaRates rate
-   for the Navoi → target route (the key figure for our pitch). Foreign (source
-   country) cost stays as the corridor formula so the trial quota is preserved.
-   The 13 Navoi routes are FIXED, so they are fetched ONCE and cached for 7 days,
-   then reused for every email (0 further searches).
-   Returns null if SeaRates is unavailable → formula used for everything. */
-async function fetchSeaRatesTransportEstimates(countryInfo) {
-  /* Only the Navoi → target routes are fetched from SeaRates (fixed origin,
-     fully cacheable). Source-country routes are NOT fetched (formula), to keep
-     within the trial search quota. */
-  var navoiRoutes = [];
-  var navoiCached = {};
-
-  AI_TRANSPORT_TARGETS.forEach(function(target) {
-    var nCacheKey = _srRouteKey(_SR_NAVOI_LAT, _SR_NAVOI_LNG, target.lat, target.lon);
-    var nHit = _srCacheGet(nCacheKey);
-    if (nHit) { navoiCached[target.iso3] = nHit; }
-    else { navoiRoutes.push({ from_lat: _SR_NAVOI_LAT, from_lng: _SR_NAVOI_LNG, to_lat: target.lat, to_lng: target.lon, _iso3: target.iso3 }); }
-  });
-
-  /* Quota guard — only fetch as many NEW routes as the remaining budget allows */
-  var remaining = Math.max(0, _SR_SEARCH_CAP - _srSearchUsed());
-  if (navoiRoutes.length > remaining) {
-    console.warn('[freight] trial quota: ' + _srSearchUsed() + '/' + _SR_SEARCH_CAP + ' used, fetching only ' + remaining + ' of ' + navoiRoutes.length + ' new routes (rest = formula)');
-    navoiRoutes = navoiRoutes.slice(0, remaining);
-  }
-
-  console.log('[freight] Navoi cache hit:', Object.keys(navoiCached).length + '/' + AI_TRANSPORT_TARGETS.length +
-    ' | fetching ' + navoiRoutes.length + ' new | trial used ' + _srSearchUsed() + '/' + _SR_SEARCH_CAP);
-
-  var fetchedNavoi = {};
-  if (navoiRoutes.length) {
-    fetchedNavoi = await _srBatchFetch(navoiRoutes);
-    // Faqat MUVAFFAQIYATLI olingan (real rate qaytgan va keshlangan) routelarni
-    // hisoblaymiz — formula'ga tushgan yoki xato bergan urinishlar real search
-    // sarflamaydi (yoki keshlanmaydi → keyin qayta urinadi). Shu sababli faqat
-    // muvaffaqiyatlilarni sanaymiz (kesh to'ldirilishi = real search).
-    _srSearchAdd(Object.keys(fetchedNavoi).length);
-  }
-
-  var navoiMap = Object.assign({}, navoiCached, fetchedNavoi);
-
-  /* Build byIso — navoiCost is REAL SeaRates; foreignCost left undefined (formula) */
-  var byIso = {};
-  var successCount = 0;
-  AI_TRANSPORT_TARGETS.forEach(function(target) {
-    var nRes = navoiMap[target.iso3];
-    var navoiCost = nRes && Number.isFinite(Number(nRes.rate_usd)) ? Number(nRes.rate_usd) : null;
-    if (!navoiCost) return;
-    byIso[target.iso3] = {
-      navoiCost:  Math.round(navoiCost),
-      navoiDays:  Math.round(Number(nRes.transit_days) || 0) || 3,
-      navoiMode:  nRes.mode || 'FCL 20ft',
-      dataSource: nRes.source || 'SeaRates'
+/* ── JSON rate caches (GitHub Pages static files) ──
+   navoi-to-neighbors: Number 2 — Navoi -> 12 neighbour markets (read-only).
+   country-to-navoi:   Number 1 — company country -> Navoi (45 countries).
+   Loaded once per session, kept in memory. */
+var _srJsonCache = null;
+async function _srLoadJson() {
+  if (_srJsonCache) return _srJsonCache;
+  try {
+    var results = await Promise.all([
+      fetch('assets/data/searates-navoi-to-neighbors.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }),
+      fetch('assets/data/searates-country-to-navoi.json',   { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
+    ]);
+    _srJsonCache = {
+      navoi:   (results[0] && results[0].routes) || {},
+      country: (results[1] && results[1].routes) || {}
     };
-    successCount++;
+  } catch (e) { _srJsonCache = { navoi: {}, country: {} }; }
+  return _srJsonCache;
+}
+
+/* ── Main function: returns transport estimates for buildAiTransportAnalysis ──
+   {
+     byIso: { TUR: {navoiCost, navoiDays, navoiMode, dataSource}, ... },  // Number 2: Navoi -> neighbour (from JSON)
+     foreign: { cost, days, source } | null                               // Number 1: company country -> Navoi
+   }
+   Number 2 comes entirely from the JSON cache (no live calls). Number 1 comes
+   from the country JSON; if that country isn't cached, ONE live SeaRates call
+   (company hub -> Navoi) is made, capped by the trial quota; else formula. */
+async function fetchSeaRatesTransportEstimates(countryInfo) {
+  var json = await _srLoadJson();
+  var sourceHub = getAiTransportHub(countryInfo);
+  var companyIso3 = String(sourceHub.iso3 || '').toUpperCase();
+
+  /* Number 2 — Navoi -> each neighbour from the JSON cache */
+  var byIso = {};
+  var realCount = 0;
+  AI_TRANSPORT_TARGETS.forEach(function(target) {
+    var j = json.navoi[target.iso3];
+    if (j && Number.isFinite(Number(j.rate_usd))) {
+      var isReal = j.source === 'searates';
+      byIso[target.iso3] = {
+        navoiCost:  Math.round(Number(j.rate_usd)),
+        navoiDays:  Math.round(Number(j.transit_days) || 0) || target.navoiDays,
+        navoiMode:  'FCL 20ft',
+        dataSource: isReal ? 'searates' : 'formula'
+      };
+      if (isReal) realCount++;
+    }
   });
 
-  console.log('[freight] SeaRates Navoi rates resolved:', successCount + '/' + AI_TRANSPORT_TARGETS.length);
-  return successCount > 0 ? byIso : null;
+  /* Number 1 — company country -> Navoi. JSON → live (capped) → null(=formula) */
+  var foreign = null;
+  var cj = json.country[companyIso3];
+  if (cj && Number.isFinite(Number(cj.rate_usd))) {
+    foreign = { cost: Math.round(Number(cj.rate_usd)), days: Math.round(Number(cj.transit_days) || 0) || 7, source: cj.source === 'searates' ? 'searates' : 'formula' };
+  } else if (companyIso3 && companyIso3 !== 'UZB' && Number.isFinite(sourceHub.lat) && Number.isFinite(sourceHub.lon)) {
+    // Not in JSON → cache check, then one live SeaRates call (company hub -> Navoi)
+    var cacheKey = _srRouteKey(sourceHub.lat, sourceHub.lon, _SR_NAVOI_LAT, _SR_NAVOI_LNG);
+    var hit = _srCacheGet(cacheKey);
+    if (hit && Number.isFinite(Number(hit.rate_usd))) {
+      foreign = { cost: Math.round(Number(hit.rate_usd)), days: Math.round(Number(hit.transit_days) || 0) || 7, source: 'searates' };
+    } else if (_srSearchUsed() < _SR_SEARCH_CAP) {
+      var fetched = await _srBatchFetch([{ from_lat: sourceHub.lat, from_lng: sourceHub.lon, to_lat: _SR_NAVOI_LAT, to_lng: _SR_NAVOI_LNG, _iso3: companyIso3 }]);
+      var fr = fetched[companyIso3];
+      if (fr && Number.isFinite(Number(fr.rate_usd))) {
+        foreign = { cost: Math.round(Number(fr.rate_usd)), days: Math.round(Number(fr.transit_days) || 0) || 7, source: 'searates' };
+        _srSearchAdd(1);
+      }
+    }
+  }
+
+  console.log('[freight] JSON Navoi neighbours real:', realCount + '/' + AI_TRANSPORT_TARGETS.length,
+    '| company(' + companyIso3 + ')->Navoi:', foreign ? ('$' + foreign.cost + ' (' + foreign.source + ')') : 'formula');
+
+  return { byIso: byIso, foreign: foreign };
 }
 
 async function buildAiTransportAnalysis(countryInfo, comp){
   var sourceHub = getAiTransportHub(countryInfo);
   // SeaRates + Freightos real freight rates via navoiy-api-proxy.
   // Falls back to haversine formula if API unavailable or returns 0 routes.
-  var geminiMap = await fetchSeaRatesTransportEstimates(countryInfo).catch(function(){ return null; });
+  var srData = await fetchSeaRatesTransportEstimates(countryInfo).catch(function(){ return null; });
+  var navoiMap = (srData && srData.byIso) || {};
+  var foreign = srData && srData.foreign; // Raqam 1: kompaniya davlati -> Navoiy (import xarajati)
   var routes = AI_TRANSPORT_TARGETS.map(function(target){
-    var gRow = geminiMap && geminiMap[target.iso3];
-    // Foreign (source country → target) — always corridor formula (trial quota saqlanadi).
-    // Agar gRow real foreignCost bersa (kelajakda), undan foydalanamiz.
+    var nRow = navoiMap[target.iso3];
+    // RAQAM 1 (foreign) — kompaniya davlatidan O'zbekistongacha (Navoiy). Barcha qatorlar
+    // uchun bir xil import-baza. JSON/SeaRates'dan kelsa real, aks holda korridor formula.
     var estimate;
-    if(gRow && Number.isFinite(Number(gRow.foreignCost))){
+    if(foreign && Number.isFinite(Number(foreign.cost))){
       estimate = {
-        foreignCost: Math.round(Number(gRow.foreignCost)),
-        foreignDays: Math.max(1, Math.round(Number(gRow.foreignDays) || 1)),
-        foreignMode: String(gRow.foreignMode || '—')
+        foreignCost: Math.round(Number(foreign.cost)),
+        foreignDays: Math.max(1, Math.round(Number(foreign.days) || 7)),
+        foreignMode: 'FCL 20ft (→Navoiy)'
       };
     } else {
       estimate = estimateAiExportRoute(sourceHub, target);
     }
-    // Navoi → target — REAL SeaRates narxi (mavjud bo'lsa), aks holda model qiymati.
+    // RAQAM 2 (navoi) — Navoiydan qo'shni bozorga. JSON keshidan (real SeaRates) yoki model.
     var navoiCost, navoiDays, navoiMode, navoiReal = false;
-    if(gRow && Number.isFinite(Number(gRow.navoiCost))){
-      navoiCost = Math.round(Number(gRow.navoiCost));   // 🚢 SeaRates real
-      navoiDays = Math.max(1, Math.round(Number(gRow.navoiDays) || target.navoiDays || 1));
-      navoiMode = String(gRow.navoiMode || target.navoiMode);
-      navoiReal = true;
+    if(nRow && Number.isFinite(Number(nRow.navoiCost))){
+      navoiCost = Math.round(Number(nRow.navoiCost));   // 🚢 JSON kesh (SeaRates)
+      navoiDays = Math.max(1, Math.round(Number(nRow.navoiDays) || target.navoiDays || 1));
+      navoiMode = String(nRow.navoiMode || target.navoiMode);
+      navoiReal = nRow.dataSource === 'searates';
     } else {
       navoiCost = target.navoiCost;
       navoiDays = target.navoiDays;
