@@ -2707,7 +2707,7 @@ async function _srBatchFetch(routes) {
    consume 1 SeaRates search. We track total NEW (uncached) routes ever sent in
    localStorage and refuse to fetch beyond _SR_SEARCH_CAP, so the trial can never
    be exhausted by accident. Cached routes (7-day TTL) do NOT count again. */
-var _SR_SEARCH_CAP = 18;            // leave buffer under the 20-search trial
+var _SR_SEARCH_CAP = 12;            // trial buffer (~6 already used verifying the integration); raise after upgrading the plan
 var _SR_SEARCH_COUNT_KEY = '_srSearchCount';
 function _srSearchUsed() {
   try { return parseInt(localStorage.getItem(_SR_SEARCH_COUNT_KEY) || '0', 10) || 0; } catch(e) { return 0; }
