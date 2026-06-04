@@ -2235,6 +2235,9 @@ function goToFinder(prodId, countryCode){
 ═══════════════════════════════════════ */
 var AI_TRADE_ANALYZER_API_BASE = 'https://navoiy-api-proxy.vercel.app/api';
 var INVEST_AI_HISTORY_KEY = '_invest_ai_history_v1';
+// Mahsulot prioritetlari uchun ALOHIDA, ishonchli kesh (investAiHistory/Firebase
+// lifecycle'iga bog'liq emas). Hisoblangan zahoti sinxron yoziladi, dropdown to'g'ridan o'qiydi.
+var INVEST_AI_PRIORITY_MAP_KEY = '_invest_ai_priority_map_v1';
 var _investAiBusy = false;
 var _investAiPhase = -1;
 var _investAiMarkdown = '';
@@ -2535,12 +2538,41 @@ function investAiComputeProductPriorities(material, markdown){
   } catch(e){ console.warn('[invest-ai] priority compute failed', e); return []; }
 }
 
-// Barcha tahlil tarixidan productId → prioritet (A/B/C/D) lug'atini quramiz.
-// Eng so'nggi tahlil ustun (investAiHistory unshift bilan saqlanadi, [0] eng yangi).
-// Ham productId, ham HS-kod (6 raqam) bo'yicha lug'at — moslashtirish ishonchli bo'lishi uchun.
+// ── Alohida prioritet keshi (localStorage + in-memory) ──
+function _loadInvestAiPriorityCache(){
+  if(window._investAiPriorityCache && window._investAiPriorityCache.byId) return window._investAiPriorityCache;
+  var c = { byId: {}, byHs: {} };
+  try {
+    var raw = localStorage.getItem(INVEST_AI_PRIORITY_MAP_KEY);
+    if(raw){ var parsed = JSON.parse(raw); if(parsed && parsed.byId && parsed.byHs) c = parsed; }
+  } catch(e){}
+  window._investAiPriorityCache = c;
+  return c;
+}
+function _saveInvestAiPriorityCache(c){
+  window._investAiPriorityCache = c;
+  try { localStorage.setItem(INVEST_AI_PRIORITY_MAP_KEY, JSON.stringify(c)); } catch(e){}
+}
+// Hisoblangan prioritetlarni keshga sinxron qo'shamiz (productId va HS-kod bo'yicha)
+function mergeInvestAiPrioritiesIntoCache(priorities){
+  if(!Array.isArray(priorities) || !priorities.length) return;
+  var c = _loadInvestAiPriorityCache();
+  priorities.forEach(function(p){
+    if(!p || !p.priority) return;
+    var letter = String(p.priority).toUpperCase();
+    if(p.productId) c.byId[String(p.productId)] = letter;
+    if(p.hsCode){ var hs6 = String(p.hsCode).replace(/\D/g,'').slice(0,6); if(hs6) c.byHs[hs6] = letter; }
+  });
+  _saveInvestAiPriorityCache(c);
+}
+
+// productId/HS-kod → prioritet (A/B/C/D) lug'ati.
+// Avval alohida keshdan o'qiymiz (ishonchli), keyin investAiHistory'dan to'ldiramiz
+// (boshqa qurilmadan sinxronlangan eski tahlillar uchun).
 function getProductPriorityMap(){
-  var byId = Object.create(null);
-  var byHs = Object.create(null);
+  var cache = _loadInvestAiPriorityCache();
+  var byId = Object.assign(Object.create(null), cache.byId || {});
+  var byHs = Object.assign(Object.create(null), cache.byHs || {});
   var hist = (typeof window.DB !== 'undefined' && Array.isArray(window.DB.investAiHistory))
     ? window.DB.investAiHistory : getInvestAiHistory();
   // Teskari tartibda yuramiz (eng eski → eng yangi) — yangi qiymat eskini yozadi
@@ -2607,7 +2639,9 @@ function saveInvestAiHistory(material, markdown, tradeContext){
   // Har mahsulot uchun prioritetni hisoblab, record ichida saqlaymiz (Kompaniya
   // qidiruvi dropdownida ko'rsatish uchun — alohida Firebase kolleksiyasiz)
   var productPriorities = investAiComputeProductPriorities(material, markdown);
-  console.log('[invest-ai priority] "'+material+'" uchun '+productPriorities.length+' ta mahsulot prioriteti hisoblandi:', productPriorities);
+  // Alohida ishonchli keshga sinxron yozamiz (investAiHistory/Firebase'ga bog'liq emas)
+  mergeInvestAiPrioritiesIntoCache(productPriorities);
+  console.log('[invest-ai priority] "'+material+'" uchun '+productPriorities.length+' ta mahsulot prioriteti hisoblandi (keshga yozildi):', productPriorities);
   var record = {
     id: 'ai_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
     material: material,
@@ -5153,6 +5187,7 @@ function renderInvestAiPage(){
 window.getProductPriorityMap = getProductPriorityMap;
 window.getProductPriorityLetter = getProductPriorityLetter;
 window.renderProductPriorityBadge = renderProductPriorityBadge;
+window.mergeInvestAiPrioritiesIntoCache = mergeInvestAiPrioritiesIntoCache;
 window.investAiPriorityUzLabel = investAiPriorityUzLabel;
 window.investAiPriorityColor = investAiPriorityColor;
 
