@@ -2686,6 +2686,25 @@ function _refreshProductChipsWithAi(){
       window.renderProducts();
     }
   } catch(e){ /* silent */ }
+  // Kompaniya qidiruvi dropdownini ham qayta quramiz — tahlil oqimi finder
+  // sahifasida turganda tugasa ham, prioritet badge'lari darrov chiqishi uchun.
+  // (Aks holda dropdown tahlildan oldin qurilgani uchun badge'siz qoladi.)
+  try {
+    if(typeof window.populateProductSelects === 'function' && document.getElementById('finder-dropdown')){
+      var _dd = document.getElementById('finder-dropdown');
+      var _wasOpen = _dd && _dd.classList.contains('open');
+      var _filterInput = document.getElementById('finder-dropdown-filter');
+      var _filterVal = _filterInput ? _filterInput.value : '';
+      window.populateProductSelects();
+      // Ochiq holat va qidiruv matnini tiklaymiz (foydalanuvchi interaksiyasini buzmaslik uchun)
+      if(_wasOpen){
+        var _dd2 = document.getElementById('finder-dropdown');
+        if(_dd2) _dd2.classList.add('open');
+        var _fi2 = document.getElementById('finder-dropdown-filter');
+        if(_fi2 && _filterVal){ _fi2.value = _filterVal; if(typeof window.filterFinderDropdown === 'function') window.filterFinderDropdown(_filterVal); }
+      }
+    }
+  } catch(e){ /* silent */ }
 }
 
 function renderInvestAiHistory(){
