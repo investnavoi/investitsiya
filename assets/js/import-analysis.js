@@ -2537,8 +2537,10 @@ function investAiComputeProductPriorities(material, markdown){
 
 // Barcha tahlil tarixidan productId → prioritet (A/B/C/D) lug'atini quramiz.
 // Eng so'nggi tahlil ustun (investAiHistory unshift bilan saqlanadi, [0] eng yangi).
+// Ham productId, ham HS-kod (6 raqam) bo'yicha lug'at — moslashtirish ishonchli bo'lishi uchun.
 function getProductPriorityMap(){
-  var map = Object.create(null);
+  var byId = Object.create(null);
+  var byHs = Object.create(null);
   var hist = (typeof window.DB !== 'undefined' && Array.isArray(window.DB.investAiHistory))
     ? window.DB.investAiHistory : getInvestAiHistory();
   // Teskari tartibda yuramiz (eng eski → eng yangi) — yangi qiymat eskini yozadi
@@ -2546,24 +2548,50 @@ function getProductPriorityMap(){
     var rec = hist[i];
     if(!rec || !Array.isArray(rec.productPriorities)) continue;
     rec.productPriorities.forEach(function(p){
-      if(p && p.productId && p.priority){
-        map[String(p.productId)] = String(p.priority).toUpperCase();
+      if(!p || !p.priority) return;
+      var letter = String(p.priority).toUpperCase();
+      if(p.productId) byId[String(p.productId)] = letter;
+      if(p.hsCode){
+        var hs6 = String(p.hsCode).replace(/\D/g,'').slice(0,6);
+        if(hs6) byHs[hs6] = letter;
       }
     });
   }
-  return map;
+  return { byId: byId, byHs: byHs };
 }
 
-// Bitta mahsulot uchun prioritet harfi (yo'q bo'lsa '')
-function getProductPriorityLetter(productId){
-  if(!productId) return '';
-  var map = getProductPriorityMap();
-  return map[String(productId)] || '';
+// Bitta mahsulot uchun prioritet harfi. productId yoki product obyektini qabul qiladi.
+// Avval productId bo'yicha, topilmasa HS-kod (6 raqam) bo'yicha qidiradi.
+function getProductPriorityLetter(productOrId){
+  if(!productOrId) return '';
+  var maps = getProductPriorityMap();
+  var pid = '', hs = '';
+  if(typeof productOrId === 'object'){
+    pid = String(productOrId.id || '');
+    hs = String(productOrId.hs_code || '');
+  } else {
+    pid = String(productOrId);
+    // Faqat ID berilgan bo'lsa — DB.products dan HS kodni topishga urinamiz
+    var _prod = (typeof DB !== 'undefined' && Array.isArray(DB.products))
+      ? DB.products.find(function(p){ return String(p.id) === pid; }) : null;
+    if(_prod) hs = String(_prod.hs_code || '');
+  }
+  if(pid && maps.byId[pid]) return maps.byId[pid];
+  var hs6 = hs.replace(/\D/g,'').slice(0,6);
+  if(hs6 && maps.byHs[hs6]) return maps.byHs[hs6];
+  // 4-raqamli HS prefiks bilan ham urinamiz (mahsulot va snapshot HS uzunligi farq qilsa)
+  if(hs6.length >= 4){
+    var hs4 = hs6.slice(0,4);
+    var hit = Object.keys(maps.byHs).find(function(k){ return k.slice(0,4) === hs4; });
+    if(hit) return maps.byHs[hit];
+  }
+  return '';
 }
 
 // Dropdown/ro'yxat uchun tayyor badge HTML (prioritet yo'q bo'lsa bo'sh string)
-function renderProductPriorityBadge(productId){
-  var letter = getProductPriorityLetter(productId);
+// productOrId — product obyekti (afzal) yoki productId.
+function renderProductPriorityBadge(productOrId){
+  var letter = getProductPriorityLetter(productOrId);
   if(!letter) return '';
   var color = investAiPriorityColor(letter);
   var label = investAiPriorityUzLabel(letter);
@@ -2579,6 +2607,7 @@ function saveInvestAiHistory(material, markdown, tradeContext){
   // Har mahsulot uchun prioritetni hisoblab, record ichida saqlaymiz (Kompaniya
   // qidiruvi dropdownida ko'rsatish uchun — alohida Firebase kolleksiyasiz)
   var productPriorities = investAiComputeProductPriorities(material, markdown);
+  console.log('[invest-ai priority] "'+material+'" uchun '+productPriorities.length+' ta mahsulot prioriteti hisoblandi:', productPriorities);
   var record = {
     id: 'ai_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
     material: material,
