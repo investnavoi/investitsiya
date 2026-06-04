@@ -2499,10 +2499,86 @@ function _migrateLocalInvestAiToFirebase(){
   }, 500);
 })();
 
+/* ═══ MAHSULOT PRIORITETLARI ═══
+   AI tahlildan keyin har mahsulot uchun hisoblangan prioritet (A/B/C/D) saqlanadi
+   va Kompaniya qidiruvi dropdownida mahsulot nomidan keyin ko'rsatiladi. */
+
+// Prioritet harfi → o'zbekcha qisqa label (badge tooltip uchun)
+function investAiPriorityUzLabel(letter){
+  var L = String(letter || '').toUpperCase();
+  if(L === 'A') return 'Strategik';
+  if(L === 'B') return 'Yuqori';
+  if(L === 'C') return "O'rta";
+  if(L === 'D') return 'Past';
+  return '';
+}
+// Prioritet harfi → badge rangi
+function investAiPriorityColor(letter){
+  var L = String(letter || '').toUpperCase();
+  if(L === 'A') return '#059669'; // yashil — strategik
+  if(L === 'B') return '#465fff'; // ko'k — yuqori
+  if(L === 'C') return '#d97706'; // sariq — o'rta
+  if(L === 'D') return '#94a3b8'; // kulrang — past
+  return '#94a3b8';
+}
+
+// Tahlil kontekstidan har mahsulot uchun {productId, hsCode, priority} ro'yxatini hisoblaymiz
+function investAiComputeProductPriorities(material, markdown){
+  try {
+    var ctx = investAiBuildWorkbookContext(material, markdown);
+    if(!ctx || !Array.isArray(ctx.entries)) return [];
+    return ctx.entries.map(function(entry){
+      var pid = entry.product && entry.product.id;
+      var letter = String(entry.priority || '').replace('Priority ', '').trim();
+      return { productId: String(pid || ''), hsCode: String(entry.hsCode || ''), priority: letter };
+    }).filter(function(p){ return p.productId && p.priority; });
+  } catch(e){ console.warn('[invest-ai] priority compute failed', e); return []; }
+}
+
+// Barcha tahlil tarixidan productId → prioritet (A/B/C/D) lug'atini quramiz.
+// Eng so'nggi tahlil ustun (investAiHistory unshift bilan saqlanadi, [0] eng yangi).
+function getProductPriorityMap(){
+  var map = Object.create(null);
+  var hist = (typeof window.DB !== 'undefined' && Array.isArray(window.DB.investAiHistory))
+    ? window.DB.investAiHistory : getInvestAiHistory();
+  // Teskari tartibda yuramiz (eng eski → eng yangi) — yangi qiymat eskini yozadi
+  for(var i = hist.length - 1; i >= 0; i--){
+    var rec = hist[i];
+    if(!rec || !Array.isArray(rec.productPriorities)) continue;
+    rec.productPriorities.forEach(function(p){
+      if(p && p.productId && p.priority){
+        map[String(p.productId)] = String(p.priority).toUpperCase();
+      }
+    });
+  }
+  return map;
+}
+
+// Bitta mahsulot uchun prioritet harfi (yo'q bo'lsa '')
+function getProductPriorityLetter(productId){
+  if(!productId) return '';
+  var map = getProductPriorityMap();
+  return map[String(productId)] || '';
+}
+
+// Dropdown/ro'yxat uchun tayyor badge HTML (prioritet yo'q bo'lsa bo'sh string)
+function renderProductPriorityBadge(productId){
+  var letter = getProductPriorityLetter(productId);
+  if(!letter) return '';
+  var color = investAiPriorityColor(letter);
+  var label = investAiPriorityUzLabel(letter);
+  return '<span class="prod-priority-badge" title="Investitsiya prioriteti: '+letter+' — '+label+'" ' +
+    'style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:.66rem;font-weight:800;' +
+    'color:#fff;background:'+color+';vertical-align:middle;letter-spacing:.3px">'+letter+' · '+label+'</span>';
+}
+
 function saveInvestAiHistory(material, markdown, tradeContext){
   var headline = String(markdown || '').split(/\r?\n/).map(function(line){
     return String(line || '').replace(/^#+\s*/, '').trim();
   }).find(function(line){ return !!line; }) || investAiT('emptyHeadline');
+  // Har mahsulot uchun prioritetni hisoblab, record ichida saqlaymiz (Kompaniya
+  // qidiruvi dropdownida ko'rsatish uchun — alohida Firebase kolleksiyasiz)
+  var productPriorities = investAiComputeProductPriorities(material, markdown);
   var record = {
     id: 'ai_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
     material: material,
@@ -2511,6 +2587,8 @@ function saveInvestAiHistory(material, markdown, tradeContext){
     savedAt: new Date().toISOString(),
     // Xomashyo ID — "Oxirgi tahlilni ochish" aniq topishi uchun (material nomiga tayanmaymiz)
     rawId: (tradeContext && tradeContext.raw && tradeContext.raw.id) || _investAiActiveRawId || '',
+    // Mahsulot prioritetlari (A/B/C/D) — Kompaniya qidiruvi dropdownida ko'rsatiladi
+    productPriorities: productPriorities,
     tradeContext: tradeContext || null
   };
 
@@ -2558,6 +2636,7 @@ function saveInvestAiHistory(material, markdown, tradeContext){
         headline: record.headline,
         savedAt: record.savedAt,
         rawId: record.rawId || '',
+        productPriorities: Array.isArray(record.productPriorities) ? record.productPriorities : [],
         tradeContext: slimTradeContext
       };
       window.fbSave('investAiHistory', slimRecord);
@@ -5021,4 +5100,11 @@ function renderInvestAiPage(){
   renderInvestAiHistory();
   if(_investAiBusy) renderInvestAiProgress(_investAiPhase < 0 ? 0 : _investAiPhase, false);
 }
+
+/* Global eksport — Kompaniya qidiruvi (products.js) prioritet badge'ini chizishi uchun */
+window.getProductPriorityMap = getProductPriorityMap;
+window.getProductPriorityLetter = getProductPriorityLetter;
+window.renderProductPriorityBadge = renderProductPriorityBadge;
+window.investAiPriorityUzLabel = investAiPriorityUzLabel;
+window.investAiPriorityColor = investAiPriorityColor;
 

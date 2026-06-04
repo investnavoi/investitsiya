@@ -794,7 +794,8 @@ function populateProductSelects(){
         html += '<div class="csd-group-items csd-raw-items">';
         if(rawProds.length){
           rawProds.forEach(function(p){
-            html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+'</div>';
+            var _prBadge = (typeof renderProductPriorityBadge === 'function') ? renderProductPriorityBadge(p.id) : '';
+            html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+_prBadge+'</div>';
           });
         } else {
           html += '<div class="csd-item" style="cursor:default;color:var(--text3)">Mahsulot topilmadi</div>';
@@ -810,7 +811,8 @@ function populateProductSelects(){
         html += '<div class="csd-group-head csd-raw-head" onclick="toggleCsdGroup(this)"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#465fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Boshqa mahsulotlar</span><span class="csd-count">'+orphans.length+'</span><span class="csd-caret">▾</span></div>';
         html += '<div class="csd-group-items csd-raw-items">';
         orphans.forEach(function(p){
-          html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+'</div>';
+          var _prBadge = (typeof renderProductPriorityBadge === 'function') ? renderProductPriorityBadge(p.id) : '';
+          html += '<div class="csd-item" data-pid="'+p.id+'" onclick="selectCsdItem(this,\''+p.id+'\')">'+escapeHtmlText(formatBilingualProductName(p))+(p.hs_code?' ('+escapeHtmlText(p.hs_code)+')':'')+_prBadge+'</div>';
         });
         html += '</div></div>';
       }
@@ -849,7 +851,11 @@ function renderFinderProductPicker(){
   }
   var product = (DB.products || []).find(function(p){ return String(p.id) === pid; });
   if(product){
-    display.textContent = formatBilingualProductName(product) + (product.hs_code ? ' (' + product.hs_code + ')' : '');
+    var _prBadge = (typeof renderProductPriorityBadge === 'function') ? renderProductPriorityBadge(product.id) : '';
+    var _baseTxt = formatBilingualProductName(product) + (product.hs_code ? ' (' + product.hs_code + ')' : '');
+    // Badge HTML bo'lsa innerHTML, aks holda matn (XSS xavfsiz — badge ichki funksiyadan)
+    if(_prBadge){ display.innerHTML = escapeHtmlText(_baseTxt) + _prBadge; }
+    else { display.textContent = _baseTxt; }
     display.classList.remove('is-placeholder');
     if(dd){
       dd.querySelectorAll('.csd-item').forEach(function(item){
