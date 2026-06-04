@@ -771,6 +771,21 @@ function populateProductSelects(){
   var prods = DB.products||[];
   var raws = DB.rawMaterials||[];
 
+  // DIAGNOSTIKA — prioritet lug'ati dropdown qurilganda to'lganmi tekshirish
+  try {
+    if(typeof getProductPriorityMap === 'function'){
+      var _pm = getProductPriorityMap();
+      var _byIdN = Object.keys(_pm.byId || {}).length;
+      var _byHsN = Object.keys(_pm.byHs || {}).length;
+      console.log('[priority dropdown v24] map byId='+_byIdN+' byHs='+_byHsN, _pm);
+      // Bitta namuna mahsulot uchun test lookup
+      var _sample = (DB.products||[]).find(function(p){ return String(p.hs_code||'').replace(/\D/g,'').slice(0,6)==='251611'; });
+      if(_sample) console.log('[priority dropdown v24] namuna 251611 → letter:', getProductPriorityLetter(_sample), 'id:', _sample.id, 'hs:', _sample.hs_code);
+    } else {
+      console.warn('[priority dropdown v24] getProductPriorityMap funksiyasi YO\'Q — eski import-analysis.js yuklangan?');
+    }
+  } catch(_pe){ console.warn('[priority dropdown v24] diagnostika xato:', _pe); }
+
   // ═══ Custom collapsible dropdown uchun ═══
   var dd = document.getElementById('finder-dropdown');
   if(dd){
