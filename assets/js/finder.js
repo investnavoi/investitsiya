@@ -4301,18 +4301,35 @@ async function runCompanyFinder(source){
   var requestedCount = countSettings.count;
   var strategy = getFinderStrategyFilters();
 
-  // ═══ TOP 100 GLOBAL MODE — Apollo always runs in Top 100 mode (country filter ignored) ═══
-  var isTop100Global = (source === 'apollo');
-  var TOP100_CAP = 10;
+  // ═══ APOLLO MODE SELECTION ═══
+  // Foydalanuvchi "Eksportyor davlatlar" filtri bilan ANIQ davlat tanlagan bo'lsa:
+  //   → per-country mode (apolloFinderSearchCountry) — har davlatdan alohida qidirish
+  // Tanlangan bo'lmasa (Barchasi):
+  //   → global Top mode — mahsulot bo'yicha dunyo bo'yicha qidirish
+  // window._importTopExporterCountries avtomatik ishlatilmaydi — bu import tahlilisiz
+  //   ishlaganda bo'sh yoki noto'g'ri davlatlar bilan per-country ni trigger qilardi.
+  var apolloExporterCountries = []; // per-country Apollo search uchun
+  if(source === 'apollo' && sourceScope.effectiveCountries && sourceScope.effectiveCountries.length > 0){
+    // Faqat foydalanuvchi "Eksportyor davlatlar" filtri bilan ANIQ tanlagan bo'lsa
+    apolloExporterCountries = sourceScope.effectiveCountries.slice();
+  }
+
+  var isTop100Global = (source === 'apollo') && !apolloExporterCountries.length;
+  var isApolloPerCountry = (source === 'apollo') && apolloExporterCountries.length > 0;
+  var TOP100_CAP = 10; // global rejim: eski qiymat (email filter bilan 10 tani topish yetarli)
+  var APOLLO_PER_COUNTRY_CAP = 3; // per-country rejim: har bir eksportyor davlatdan nechta kompaniya
   if(isTop100Global){
     requestedCount = TOP100_CAP;
   }
 
-  var effectiveRequestedCount = (source === 'apollo' && !isTop100Global) ? Math.min(2, Math.max(1, requestedCount || 2)) : requestedCount;
-  var requestPerCountry = countSettings.mode === 'total'
-    ? Math.max(1, Math.ceil(effectiveRequestedCount / Math.max((meta.mode === 'exporters' ? (sourceScope.effectiveCountries || []).length : (_finderTargetCountries || []).length), 1)))
-    : effectiveRequestedCount;
-  if(source === 'apollo' && !isTop100Global){
+  var effectiveRequestedCount = isTop100Global ? TOP100_CAP
+    : (isApolloPerCountry ? (apolloExporterCountries.length * APOLLO_PER_COUNTRY_CAP)
+    : requestedCount);
+  var requestPerCountry = isApolloPerCountry ? APOLLO_PER_COUNTRY_CAP
+    : (countSettings.mode === 'total'
+      ? Math.max(1, Math.ceil(effectiveRequestedCount / Math.max((meta.mode === 'exporters' ? (sourceScope.effectiveCountries || []).length : (_finderTargetCountries || []).length), 1)))
+      : effectiveRequestedCount);
+  if(source === 'apollo' && !isTop100Global && !isApolloPerCountry){
     requestPerCountry = Math.min(2, Math.max(1, requestPerCountry));
   }
   var finalDisplayLimit = source === 'tradeatlas'
@@ -4321,11 +4338,13 @@ async function runCompanyFinder(source){
 
   // Get selected target countries
   var targetCountries = (_finderTargetCountries || []).slice();
-  if(!isTop100Global && !targetCountries.length){ toast('⚠️ Kamida bitta davlat tanlang','error'); return; }
-  var searchCountries = meta.mode === 'exporters'
-    ? (sourceScope.effectiveCountries || []).slice()
-    : targetCountries.slice();
-  if(meta.mode === 'exporters' && !searchCountries.length && source !== 'tradeatlas' && !isTop100Global){
+  if(!isTop100Global && !isApolloPerCountry && !targetCountries.length){ toast('⚠️ Kamida bitta davlat tanlang','error'); return; }
+  var searchCountries = isApolloPerCountry
+    ? apolloExporterCountries.slice()   // eksportyor davlatlar filtri tanlangan yoki importdan olingan
+    : (meta.mode === 'exporters'
+        ? (sourceScope.effectiveCountries || []).slice()
+        : targetCountries.slice());
+  if(meta.mode === 'exporters' && !searchCountries.length && source !== 'tradeatlas' && !isTop100Global && !isApolloPerCountry){
     toast('⚠️ Eksportyor kompaniyalar uchun avval "Eksportyor manbasi" bo\'limidan qit\'a yoki davlat tanlang','error');
     return;
   }
@@ -4798,9 +4817,16 @@ async function runCompanyFinder(source){
           console.log('Top email fetch error for '+tpItem.kompaniya+':', emailErr && emailErr.message);
         }
       }
-      // Faqat haqiqiy email'i bor kompaniyalar qoldiriladi
-      top100Results = top100Results.filter(function(item){
-        return !!String(item.email || '').trim();
+      // Emaili bor kompaniyalarni AFZAL ko'ramiz, lekin emaili yo'qlarni ham QOLDIRAMIZ.
+      // Apollo ko'pincha "has_email:true" qaytaradi-yu, haqiqiy email "qulflangan" (unlock
+      // kredit talab qiladi). Avval emaili yo'qlarni butunlay olib tashlardik → ko'p mahsulot
+      // uchun (masalan kimyoviy "Urea resin") 0 natija chiqib, "topa olmadi" xatosi berardi.
+      // Endi: yirik kompaniyalar va ularning ma'lumotlari ko'rsatiladi, email keyin unlock qilinadi.
+      top100Results.sort(function(a, b){
+        var ae = String(a.email || '').trim() ? 1 : 0;
+        var be = String(b.email || '').trim() ? 1 : 0;
+        if(ae !== be) return be - ae;              // emaili borlar oldinda
+        return (Number(b.score) || 0) - (Number(a.score) || 0); // keyin score bo'yicha
       });
 
       // Add rank
@@ -4808,7 +4834,12 @@ async function runCompanyFinder(source){
 
       _finderResults = top100Results;
       if(!_finderResults.length){
-        throw new Error('Apollo Top '+TOP100_CAP+' qidiruvi email\'i bor kompaniya topa olmadi.' + (top100Errors.length ? ' Xatolar: '+top100Errors.slice(0,3).join(' | ') : ''));
+        throw new Error('Apollo Top '+TOP100_CAP+' qidiruvi "'+prod.name_en+'" bo\'yicha hech qanday kompaniya topa olmadi. ' +
+          'Mahsulot nomi yoki HS kodi juda spetsifik bo\'lishi mumkin.' + (top100Errors.length ? ' Xatolar: '+top100Errors.slice(0,3).join(' | ') : ''));
+      }
+      var _withEmail = top100Results.filter(function(it){ return !!String(it.email||'').trim(); }).length;
+      if(_withEmail === 0){
+        toast('ℹ️ '+top100Results.length+' ta yirik kompaniya topildi. Email\'lar qulflangan — har birini ochish uchun "Lead qidirish" tugmasini bosing.', 'info', 6000);
       }
     } else if(source==='apollo'){
       // Apollo proxy — organization search first, then people fallback

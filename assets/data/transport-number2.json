@@ -1,0 +1,116 @@
+{
+  "origin": "Navoi, Uzbekistan",
+  "container_type": "20HQ / 20ft container",
+  "currency": "USD",
+  "rate_basis": "estimated most-likely market freight rate, freight only",
+  "routes": [
+    {
+      "country_code": "TM",
+      "country": "Turkmenistan",
+      "destination_hub": "Ashgabat",
+      "recommended_mode": "truck",
+      "estimated_distance_km": 900,
+      "transit_days": "3-5",
+      "rate_usd": 1800
+    },
+    {
+      "country_code": "TJ",
+      "country": "Tajikistan",
+      "destination_hub": "Dushanbe",
+      "recommended_mode": "truck",
+      "estimated_distance_km": 690,
+      "transit_days": "2-4",
+      "rate_usd": 1370
+    },
+    {
+      "country_code": "KG",
+      "country": "Kyrgyzstan",
+      "destination_hub": "Bishkek",
+      "recommended_mode": "truck",
+      "estimated_distance_km": 1110,
+      "transit_days": "3-6",
+      "rate_usd": 1950
+    },
+    {
+      "country_code": "KZ",
+      "country": "Kazakhstan",
+      "destination_hub": "Almaty",
+      "recommended_mode": "truck + railway",
+      "estimated_distance_km": 1320,
+      "transit_days": "4-7",
+      "rate_usd": 1650
+    },
+    {
+      "country_code": "MN",
+      "country": "Mongolia",
+      "destination_hub": "Ulaanbaatar",
+      "recommended_mode": "truck + railway",
+      "estimated_distance_km": 4900,
+      "transit_days": "18-26",
+      "rate_usd": 7200
+    },
+    {
+      "country_code": "RU",
+      "country": "Russia",
+      "destination_hub": "Moscow",
+      "recommended_mode": "truck + railway",
+      "estimated_distance_km": 3750,
+      "transit_days": "9-15",
+      "rate_usd": 4400
+    },
+    {
+      "country_code": "AZ",
+      "country": "Azerbaijan",
+      "destination_hub": "Baku / Alat",
+      "recommended_mode": "truck + railway + Caspian ferry",
+      "estimated_distance_km": 1650,
+      "transit_days": "8-14",
+      "rate_usd": 3800
+    },
+    {
+      "country_code": "GE",
+      "country": "Georgia",
+      "destination_hub": "Tbilisi",
+      "recommended_mode": "truck + railway + Caspian ferry",
+      "estimated_distance_km": 2250,
+      "transit_days": "11-18",
+      "rate_usd": 5000
+    },
+    {
+      "country_code": "AM",
+      "country": "Armenia",
+      "destination_hub": "Yerevan",
+      "recommended_mode": "truck + railway via Turkmenistan/Iran",
+      "estimated_distance_km": 2900,
+      "transit_days": "12-20",
+      "rate_usd": 6100
+    },
+    {
+      "country_code": "IR",
+      "country": "Iran",
+      "destination_hub": "Tehran",
+      "recommended_mode": "truck + railway",
+      "estimated_distance_km": 1750,
+      "transit_days": "6-10",
+      "rate_usd": 3200
+    },
+    {
+      "country_code": "AF",
+      "country": "Afghanistan",
+      "destination_hub": "Kabul",
+      "recommended_mode": "truck",
+      "estimated_distance_km": 1180,
+      "transit_days": "6-12",
+      "rate_usd": 3100
+    },
+    {
+      "country_code": "PK",
+      "country": "Pakistan",
+      "destination_hub": "Karachi",
+      "recommended_mode": "truck + railway",
+      "estimated_distance_km": 2850,
+      "transit_days": "12-22",
+      "rate_usd": 6400
+    }
+  ]
+}

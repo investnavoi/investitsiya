@@ -1029,8 +1029,8 @@ setTimeout(function(){
           <div style="width:32px;height:32px;background:linear-gradient(135deg,#10b981,#059669);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 12h19M12 2.5c2.4 2.7 3.8 6 3.8 9.5s-1.4 6.8-3.8 9.5c-2.4-2.7-3.8-6-3.8-9.5s1.4-6.8 3.8-9.5z" stroke="currentColor" stroke-width="1.7"/></svg>
           </div>
-          <div style="min-width:0">
-            <div style="font-size:.62rem;color:var(--text2);font-weight:700;line-height:1">Jahon Savdosi</div>
+          <div style="min-width:0;max-width:72px">
+            <div style="font-size:.62rem;color:var(--text2);font-weight:700;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">JTS</div>
             <div style="font-size:.95rem;font-weight:800;color:var(--text);line-height:1.15"><span id="ic-k-jts">0</span> <span style="font-size:.6rem;font-weight:600;color:var(--text3)">ta</span></div>
           </div>
         </div>
@@ -1174,7 +1174,15 @@ setTimeout(function(){
               <option value="zh">中文</option><option value="fr">Français</option><option value="fa">فارسی</option>
             </select>
           </div>
-          <button class="btn btn-blue" type="button" onclick="generateInvestorAiLetter()">🤖 AI Xat Yozish</button>
+          <button class="btn btn-blue" type="button" id="invAiLetterBtn" onclick="generateInvestorAiLetter()">🤖 AI Xat Yozish</button>
+          <div class="ai-gen-progress" id="invAiGenProgress">
+            <div class="ai-gen-progress-top">
+              <span class="ai-gen-progress-label" id="invAiGenLabel">Tayyorlanmoqda...</span>
+              <span class="ai-gen-progress-pct" id="invAiGenPct">0%</span>
+            </div>
+            <div class="ai-gen-progress-track"><div class="ai-gen-progress-fill" id="invAiGenFill" style="width:0%"></div></div>
+            <div class="ai-gen-progress-sub" id="invAiGenSub">AI tahlil boshlanyapti</div>
+          </div>
           <button class="btn btn-ghost btn-sm" type="button" onclick="closeInvestorAiWorkspace()">✕ Yopish</button>
         </div>
       </div>
@@ -1710,28 +1718,6 @@ setTimeout(function(){
                 </table>
               </div>
             </div>
-            <div class="ta-card" style="margin-bottom:1rem">
-              <div class="ta-card-head">
-                <div class="ta-card-title" id="wbSectionTitle">🏦 Tanlangan Davlatlar Iqtisodiy Ko'rsatkichlari (World Bank)</div>
-                <div style="display:flex;gap:.5rem">
-                  <button class="ta-btn ta-btn-primary ta-btn-sm" onclick="loadWorldBankData()">🔄 Yangilash</button>
-                  <button class="ta-btn ta-btn-danger ta-btn-sm" onclick="clearWorldBankData()">🗑</button>
-                </div>
-              </div>
-              <div id="wbLoading" style="display:none;padding:1rem;text-align:center;color:var(--text3)">⏳ World Bank API'dan ma'lumot olmoqda...</div>
-              <div id="wbData" style="display:none">
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;padding:1rem" id="wbKpiGrid"></div>
-                <div class="tscroll"><table>
-                  <thead><tr>
-                    <th>#</th><th>Davlat</th><th>YaIM/kishi ($)</th><th>Sanoat (%)</th>
-                    <th>O'rt. ish haqi ($)</th><th>Elektr ($/kWh)</th><th>Aholi (mln)</th><th>Navoiyga nisbat</th>
-                  </tr></thead>
-                  <tbody id="wb-tbody"></tbody>
-                </table></div>
-                <div style="padding:.5rem 1rem;font-size:.58rem;color:var(--text3);text-align:right">📊 Manba: World Bank Open Data API + ILOSTAT API | O'zbekiston qiymatlari Navoiy IEZ tariflari</div>
-              </div>
-              <div id="wbEmpty" class="tc-empty" style="padding:2rem"><div class="tc-empty-icon">🏦</div><p>"🔄 Yangilash" bosing — tanlangan davlatlar iqtisodiy ma'lumotlari yuklanadi</p></div>
-            </div>
           </div>
         </div>
 
@@ -2014,7 +2000,15 @@ setTimeout(function(){
           </select>
         </div>
         <div class="form-group" style="flex:0 0 auto">
-          <button class="btn btn-blue" onclick="generateAiLetter()">🤖 AI Xat Yozish</button>
+          <button class="btn btn-blue" id="pageAiLetterBtn" onclick="generateAiLetter()">🤖 AI Xat Yozish</button>
+          <div class="ai-gen-progress" id="pageAiGenProgress">
+            <div class="ai-gen-progress-top">
+              <span class="ai-gen-progress-label" id="pageAiGenLabel">Tayyorlanmoqda...</span>
+              <span class="ai-gen-progress-pct" id="pageAiGenPct">0%</span>
+            </div>
+            <div class="ai-gen-progress-track"><div class="ai-gen-progress-fill" id="pageAiGenFill" style="width:0%"></div></div>
+            <div class="ai-gen-progress-sub" id="pageAiGenSub">AI tahlil boshlanyapti</div>
+          </div>
         </div>
       </div>
     </div>

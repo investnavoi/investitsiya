@@ -131,15 +131,200 @@ function getAiCompanyProductInfo(comp){
     }) || null;
   }
   var hsCode = rawHs || String((product && product.hs_code) || '').replace(/\D/g,'');
+  // Email prompt uchun FAQAT inglizcha nom — bilingualdan o'zbek qismi olib tashlanadi
+  // ("explosives, portlovchi moddalar" → "explosives" kabi)
   var displayName = product
-    ? formatBilingualProductName(product)
+    ? (String(product.name_en || product.name || '').trim() || formatBilingualProductName(product))
     : (productName || '—');
+  // Bilingualdan ingliz qismini ajratib olish: verguldan oldingi qism odatda inglizcha
+  if(displayName && displayName.indexOf(',') !== -1 && product && product.name_en){
+    displayName = String(product.name_en).trim() || displayName;
+  }
   return {
     product: product,
     productId: product ? String(product.id || '') : productId,
     hsCode: hsCode ? hsCode.slice(0,6) : '',
     displayName: displayName
   };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   13-davlat import jami (2021-2024) — kompaniya qidiruvi bo'limidagi
+   importSnapshots'dan o'qiladi. Email ¶1 da ushbu 2 raqam ishlatiladi:
+     • O'zbekistonning 4-yillik jami import hajmi
+     • Qolgan 12 davlatning 4-yillik jami import hajmi
+   ═══════════════════════════════════════════════════════════════ */
+function getCompanyProductImportTotals(productInfo, comp){
+  try {
+    if(!productInfo) return null;
+    var snapshots = (typeof DB !== 'undefined' && DB.importSnapshots) || [];
+    if(!snapshots.length) return null;
+    var pid = String(productInfo.productId || '').trim();
+    var hs6 = String(productInfo.hsCode || '').replace(/\D/g,'').slice(0,6);
+    var hs4 = hs6.slice(0,4);
+    var hs2 = hs6.slice(0,2);
+
+    /* Avval productId bo'yicha aniq mos, keyin HS6, keyin HS4, keyin HS2 bo'yicha izlaymiz.
+       Eng so'nggi snapshot (updatedAt) ustun keladi. */
+    var matches = snapshots.filter(function(s){
+      if(!s || !s.countries || !s.countries.length) return false;
+      if(pid && String(s.productId||'') === pid) return true;
+      var sHs = String(s.hsCode||'').replace(/\D/g,'').slice(0,6);
+      if(hs6 && sHs && sHs === hs6) return true;
+      if(hs4 && sHs && sHs.slice(0,4) === hs4) return true;
+      return false;
+    });
+    if(!matches.length && hs2){
+      matches = snapshots.filter(function(s){
+        if(!s || !s.countries || !s.countries.length) return false;
+        var sHs = String(s.hsCode||'').replace(/\D/g,'').slice(0,2);
+        return sHs && sHs === hs2;
+      });
+    }
+    if(!matches.length) return null;
+
+    matches.sort(function(a,b){ return String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')); });
+    var snap = matches[0];
+
+    var uzbekistanUsd = 0;
+    var otherTwelveUsd = 0;
+    var otherCountries = [];
+    var allCountries = snap.countries || [];
+
+    allCountries.forEach(function(c){
+      /* c.u = import_usd (2021-2024 jami). c.y = {year: usd, ...} per-yillik.
+         Agar c.u nol bo'lsa, c.y dan yig'indini hisoblaymiz (eski snapshot'lar uchun). */
+      var baseUsd = Number(c.u||0) || 0;
+      if(!baseUsd && c.y && typeof c.y === 'object'){
+        ['2021','2022','2023','2024'].forEach(function(yr){
+          baseUsd += Number((c.y)[yr] || 0) || 0;
+        });
+      }
+      var usd = baseUsd;
+      var code = String(c.c||'').toUpperCase();
+      if(code === 'UZ'){
+        uzbekistanUsd += usd;
+      } else {
+        otherTwelveUsd += usd;
+        if(usd > 0) otherCountries.push({name: c.n || code, usd: usd});
+      }
+    });
+
+    /* Agar UZ ma'lumoti yo'q bo'lsa (TARGET_COUNTRIES da UZ yo'q edi) yoki ikkisi ham nol —
+       null qaytaramiz va fetchProductImportTotalsLive ishga tushsin. */
+    if(uzbekistanUsd <= 0 || otherTwelveUsd <= 0) return null;
+
+    /* Top 3 boshqa davlatlarni ham qaytaramiz, prompt'da kontekst uchun foydali. */
+    otherCountries.sort(function(a,b){ return b.usd - a.usd; });
+    var topOthers = otherCountries.slice(0,3);
+
+    return {
+      uzbekistanUsd: uzbekistanUsd,
+      otherTwelveUsd: otherTwelveUsd,
+      combinedUsd: uzbekistanUsd + otherTwelveUsd,
+      topOthers: topOthers,
+      productName: snap.productName || productInfo.displayName || '',
+      hsCode: snap.hsCode || productInfo.hsCode || '',
+      source: snap.source || 'UN Comtrade',
+      period: '2021-2024',
+      countryCount: allCountries.length
+    };
+  } catch(e){
+    console.warn('[getCompanyProductImportTotals] xato:', e && e.message);
+    return null;
+  }
+}
+
+/* USD raqamini "$48.2M" / "$1.4B" kabi qisqa shaklga aylantirish (email ichida). */
+function _formatImportUsdShort(usd){
+  var n = Number(usd||0) || 0;
+  if(n >= 1e9) return '$' + (n/1e9).toFixed(2).replace(/\.?0+$/,'') + 'B';
+  if(n >= 1e6) return '$' + (n/1e6).toFixed(1).replace(/\.0$/,'') + 'M';
+  if(n >= 1e3) return '$' + (n/1e3).toFixed(0) + 'K';
+  return '$' + Math.round(n);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   JONLI UN COMTRADE: agar snapshot mavjud bo'lmasa, 13 davlat × 4 yil
+   import ma'lumotlarini comtrade.js proxy yordamida BITTA so'rovda olamiz.
+   Bu usul trade.js orqali 13 ta alohida so'rov yuborishdan samaraliroq —
+   quota kamroq sarflanadi va O'zbekiston ham kiritilgan (snapshot'larda yo'q).
+   ═══════════════════════════════════════════════════════════════ */
+async function fetchProductImportTotalsLive(productInfo, comp){
+  try {
+    if(!productInfo) return null;
+    var hsCode = String(productInfo.hsCode || '').replace(/\D/g,'').slice(0,6);
+    if(!hsCode || hsCode.length < 2) return null;
+
+    var BASE = 'https://navoiy-api-proxy.vercel.app';
+
+    /* comtrade.js proxy — 13 davlatni bitta so'rovda qaytaradi, UZ ham bor.
+       Bu so'rov YEARS=[2021,2022,2023,2024] ni avtomatik yig'adi. */
+    var countries13Names = 'Uzbekistan|Russia|Kazakhstan|Kyrgyzstan|Tajikistan|Turkmenistan|Azerbaijan|Georgia|Armenia|Afghanistan|Iran|Pakistan|Mongolia';
+    var comtradeUrl = BASE + '/api/comtrade?hs=' + encodeURIComponent(hsCode)
+      + '&countries=' + encodeURIComponent(countries13Names) + '&flow=M';
+
+    var respData = null;
+    try {
+      var fetchOpts = {};
+      if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout){
+        fetchOpts.signal = AbortSignal.timeout(35000);
+      }
+      var r = await fetch(comtradeUrl, fetchOpts);
+      if(r.ok){
+        respData = await r.json();
+      }
+    } catch(e1){ console.warn('[fetchProductImportTotalsLive] comtrade.js so\'rovi xato:', e1 && e1.message); }
+
+    if(!respData || !Array.isArray(respData.countries) || !respData.countries.length){
+      console.warn('[fetchProductImportTotalsLive] comtrade.js null/bo\'sh qaytardi');
+      return null;
+    }
+
+    /* 13 davlat natijasini parse qilish */
+    var uzUsd = 0, otherUsd = 0;
+    var otherCountries = [];
+    respData.countries.forEach(function(c){
+      /* import_usd = 2021-2024 yig'indisi (comtrade.js da totalValue sifatida hisoblanadi) */
+      var usd = Number(c.import_usd || 0) || 0;
+      if(!usd && c.year_imports && typeof c.year_imports === 'object'){
+        ['2021','2022','2023','2024'].forEach(function(yr){
+          usd += Number(c.year_imports[yr] || 0) || 0;
+        });
+      }
+      var code = String(c.code || '').toUpperCase();
+      if(code === 'UZ'){
+        uzUsd = usd;
+      } else {
+        otherUsd += usd;
+        if(usd > 0) otherCountries.push({ name: c.name, usd: usd });
+      }
+    });
+
+    if(uzUsd <= 0 && otherUsd <= 0){
+      console.warn('[fetchProductImportTotalsLive] barcha 13 davlat uchun 0 USD');
+      return null;
+    }
+
+    otherCountries.sort(function(a,b){ return b.usd - a.usd; });
+
+    return {
+      uzbekistanUsd: uzUsd,
+      otherTwelveUsd: otherUsd,
+      combinedUsd: uzUsd + otherUsd,
+      topOthers: otherCountries.slice(0, 3),
+      productName: productInfo.displayName || '',
+      hsCode: hsCode,
+      source: 'UN Comtrade (live)',
+      period: '2021-2024',
+      countryCount: 13,
+      isLive: true
+    };
+
+  } catch(e){
+    console.warn('[fetchProductImportTotalsLive] xato:', e && e.message);
+    return null;
+  }
 }
 
 // Barcha davlatlar uchun rasmiy mehnat haqi ma'lumotlari (USD/oy, manufacturing avg)
@@ -1030,19 +1215,24 @@ async function fetchOfficialAiTariffSummary(comp, analysis){
       '- Uzbekistan is NOT in the EU. It is in CIS. CIS FTA may apply for CIS countries.\n' +
       '- Uzbekistan average MFN tariff is ~8-10%. Rates range from 0% (equipment/pharmaceuticals) to 30-50% (food/tobacco/cars).\n' +
       '- A flat 1.2% for all products is WRONG. Use the actual HS-specific rate.\n\n' +
-      'Required (2023–2025 data):\n' +
-      '1. Uzbekistan MFN import duty for this HS code (check WTO Tariff Download Facility or customs.uz)\n' +
+      'Required (2023–2025 data) — be PRECISE, use the actual HS heading rate, not a chapter average:\n' +
+      '1. Uzbekistan MFN import duty for THIS exact HS code. Prefer the official customs tariff\n' +
+      '   (customs.uz / lex.uz Customs Tariff of the Republic of Uzbekistan) or WTO Tariff Download\n' +
+      '   Facility / Macmap.org. Cite the specific source you used in the "source" field, including the\n' +
+      '   HS heading you read and the year. If the rate is a band, give the rate for this 6-digit line.\n' +
       '2. Does ' + countryName + ' have a CIS FTA, SCO trade arrangement, or bilateral FTA with Uzbekistan?\n' +
-      '3. Preferential rate under that agreement if applicable\n' +
-      '4. Key NTB notes (certification, labeling, quotas)\n\n' +
+      '3. Preferential rate under that agreement if applicable (CIS FTA members often get 0%).\n' +
+      '4. Note any excise/VAT or NTB (certification, labeling, quotas) that materially changes landed cost.\n' +
+      '5. Set "confidence" to "high" ONLY if you found the rate on an official/WTO source for this exact\n' +
+      '   HS line; "medium" if inferred from chapter/neighbouring lines; "low" if uncertain.\n\n' +
       'Respond ONLY with valid JSON:\n' +
       '{\n' +
       '  "uzMfnRate": <number, verified MFN% Uzbekistan charges for this HS code>,\n' +
       '  "preferentialRate": <number or null>,\n' +
       '  "ftaName": "<agreement name or null>",\n' +
       '  "effectiveRate": <number, preferential if FTA applies, else MFN>,\n' +
-      '  "ntbNotes": "<brief notes, max 80 chars>",\n' +
-      '  "source": "<source + year>",\n' +
+      '  "ntbNotes": "<brief notes incl. excise/VAT if relevant, max 90 chars>",\n' +
+      '  "source": "<specific source + HS heading + year, e.g. customs.uz Tariff HS 2516 (2024)>",\n' +
       '  "confidence": "high|medium|low"\n' +
       '}';
     var tariffAiResult = await callOpenAI(
@@ -1817,9 +2007,9 @@ function renderAiAnalysis(analysis, scope){
   if(transportSummary && transportSummary.routes && transportSummary.routes.length){
     grid.push(buildAiMetricCard(
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M1 3h15v13H1zM16 8h4l3 4v5h-7V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/></svg>',
-      'Transport kalkulyatori 🤖 AI',
+      'Transport — o\'rtacha tejamkorlik',
       aiFmtTransportUsd(transportSummary.avgSaving) + ' (' + transportSummary.avgSavingPct + '%)',
-      (transportSummary.volumeSpec || '13 davlat bo\'yicha') + ' · ' + (transportSummary.dataSourceBadge || '🤖 AI tahlil'),
+      'Navoiydan 13 bozorga arzonroq · ' + (transportSummary.dataSourceBadge || '📐 model'),
       '#D97706',
       { scope: scope, metricKey: 'transportSummary', selected: selectedMetric === 'transportSummary', countryVal: transportSummary.avgForeign, uzVal: transportSummary.avgNavoi, countryLabel: aiFmtTransportUsd(transportSummary.avgForeign), uzLabel: aiFmtTransportUsd(transportSummary.avgNavoi) }
     ));
@@ -1880,7 +2070,7 @@ function renderAiAnalysis(analysis, scope){
     '</div>';
   }
 
-  // === Navoiy iqtisodiy foyda hisoblash ===
+  // === Navoiy birlik narxlari taqqosi (investitsiya miqdoridan mustaqil) ===
   var profitEl = dom.profitEstimate;
   if(profitEl){
     var comp = null;
@@ -1890,76 +2080,117 @@ function renderAiAnalysis(analysis, scope){
       var selId = ((document.getElementById('ailetter-company-select')||{}).value || '');
       if(selId) comp = (DB.investorCompanies||[]).find(function(c){ return String(c.id) === String(selId); });
     }
+    // investSum faqat embassy cache uchun — displayda ko'rsatilmaydi
     var investSum = comp ? (parseFloat(comp.summa) || 0) : 0;
-    if(investSum <= 0) investSum = 10000000; // default $10M agar summa yo'q bo'lsa
+    if(investSum <= 0) investSum = 10000000;
 
-    var savingsBreakdown = [];
+    var savingsBreakdown = []; // embassy.js cache uchun saqlanadi
     var totalAnnualSaving = 0;
+    var unitItems = []; // birlik narxlari taqqosi uchun
 
-    // 1. Soliq tejamkorlik (tax saving)
-    // Foyda daromadi: investitsiyaning taxminan 12% (konservativ manufacturing margin)
-    // Faqat ≥3 percentage-point farqda ko'rsatiladi — marginal farq noise bo'ladi
+    var svgIcons = {
+      'Soliq tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 14l-4-4m0 0l4-4m-4 4h11a4 4 0 010 8h-1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'Mehnat narxi tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm11 0l-3 3m0 0l-3-3m3 3V4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'Elektr energiya tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'Tabiiy gaz tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C8 6 4 10.5 4 14a8 8 0 0016 0c0-3.5-4-8-8-12z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      'Transport logistika tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 3h15v13H1zM16 8h4l3 4v5h-7V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/></svg>'
+    };
+
+    // 1. Soliq yuklamasi
     var taxC = Number(tax.country), taxU = Number(tax.uzbekistan);
     if(Number.isFinite(taxC) && Number.isFinite(taxU) && taxC > taxU && (taxC - taxU) >= 3){
-      var taxSaving = investSum * 0.12 * ((taxC - taxU) / 100); // 12% annual profit margin (konservativ)
+      var taxDiff = taxC - taxU;
+      var taxSaving = investSum * 0.12 * (taxDiff / 100);
       totalAnnualSaving += taxSaving;
-      savingsBreakdown.push({label:'Soliq tejamkorlik', value:taxSaving, pct:((taxC-taxU).toFixed(1))+'pp', color:'#7C3AED', desc:'Soliq yuklamasi: '+taxC.toFixed(1)+'% → '+taxU.toFixed(1)+'% (12% profit margin asosida)'});
+      savingsBreakdown.push({label:'Soliq tejamkorlik', value:taxSaving, pct:taxDiff.toFixed(1)+'pp', color:'#7C3AED', desc:'Soliq yuklamasi: '+taxC.toFixed(1)+'% → '+taxU.toFixed(1)+'%'});
+      unitItems.push({
+        label: 'Soliq yuklamasi',
+        iconKey: 'Soliq tejamkorlik',
+        color: '#7C3AED',
+        uzLabel: taxU.toFixed(1) + '%',
+        cLabel: taxC.toFixed(1) + '%',
+        unit: 'foyda solig\'i (profit tax burden, % foydadan)',
+        pctNum: Math.min(99, Math.round((taxDiff / taxC) * 100)),
+        pctText: taxDiff.toFixed(1) + 'pp past'
+      });
     }
 
-    // 2. Mehnat narxi tejamkorlik (labor cost saving)
-    // Ishchi soni: $300K ga taxminan 1 ishchi (manufacturing); max 150 ishchi (hiperestimatsiyadan saqlanish uchun)
+    // 2. Mehnat narxi (oylik, manufacturing)
     var wageC = Number(wage.country), wageU = Number(wage.uzbekistan);
     if(Number.isFinite(wageC) && Number.isFinite(wageU) && wageC > wageU){
       var wageRelDiff = wageC > 0 ? ((wageC - wageU) / wageC) : 0;
-      if(wageRelDiff >= 0.15){ // faqat ≥15% farqda hisoblab ko'rsatamiz
+      if(wageRelDiff >= 0.15){
         var workerCount = Math.min(150, Math.max(20, Math.round(investSum / 300000)));
         var annualWageSaving = (wageC - wageU) * 12 * workerCount;
         totalAnnualSaving += annualWageSaving;
-        savingsBreakdown.push({label:'Mehnat narxi tejamkorlik', value:annualWageSaving, pct:Math.round(wageRelDiff*100)+'%', color:'#059669', desc:workerCount+' ishchi (taxm.) × $'+Math.round(wageC-wageU)+'/oy farq'});
+        savingsBreakdown.push({label:'Mehnat narxi tejamkorlik', value:annualWageSaving, pct:Math.round(wageRelDiff*100)+'%', color:'#059669', desc:workerCount+' ishchi × $'+Math.round(wageC-wageU)+'/oy farq'});
+        unitItems.push({
+          label: 'Mehnat narxi',
+          iconKey: 'Mehnat narxi tejamkorlik',
+          color: '#059669',
+          uzLabel: '$' + Math.round(wageU) + '/oy',
+          cLabel: '$' + Math.round(wageC) + '/oy',
+          unit: 'o\'rtacha ishlab chiqarish sektori ish haqi (oylik, USD)',
+          pctNum: Math.round(wageRelDiff * 100),
+          pctText: Math.round(wageRelDiff * 100) + '% arzon'
+        });
       }
     }
 
-    // 3. Elektr energiya tejamkorlik (faqat ≥15% va ≥$5/MWh farqda)
+    // 3. Elektr energiya ($/MWh, faqat ≥15% va ≥$5/MWh farqda)
     var elC = Number(electricity.country), elU = Number(electricity.uzbekistan);
     if(Number.isFinite(elC) && Number.isFinite(elU) && elC > elU){
       var elRelDiff = elC > 0 ? ((elC - elU) / elC) : 0;
       var elAbsDiff = elC - elU;
       if(elRelDiff >= 0.15 && elAbsDiff >= 5){
-        var annualMwh = investSum / 1500; // taxminiy yillik energiya sarfi MWh
+        var annualMwh = investSum / 1500;
         var elSaving = elAbsDiff * annualMwh;
         totalAnnualSaving += elSaving;
-        savingsBreakdown.push({label:'Elektr energiya tejamkorlik', value:elSaving, pct:Math.round(elRelDiff*100)+'%', color:'#DC2626', desc:Math.round(annualMwh)+' MWh × $'+elAbsDiff.toFixed(1)+' farq'});
+        savingsBreakdown.push({label:'Elektr energiya tejamkorlik', value:elSaving, pct:Math.round(elRelDiff*100)+'%', color:'#DC2626', desc:'$'+elU.toFixed(1)+'/MWh vs $'+elC.toFixed(1)+'/MWh'});
+        unitItems.push({
+          label: 'Elektr energiya',
+          iconKey: 'Elektr energiya tejamkorlik',
+          color: '#DC2626',
+          uzLabel: '$' + elU.toFixed(1) + '/MWh',
+          cLabel: '$' + elC.toFixed(1) + '/MWh',
+          unit: 'sanoat elektr energiya tarifi (kWh emas, MWh)',
+          pctNum: Math.round(elRelDiff * 100),
+          pctText: Math.round(elRelDiff * 100) + '% arzon'
+        });
       }
     }
 
-    // 4. Tabiiy gaz tejamkorlik
+    // 4. Tabiiy gaz ($/MWh)
     var gasC = Number(gas.country), gasU = Number(gas.uzbekistan);
     if(Number.isFinite(gasC) && Number.isFinite(gasU) && gasC > gasU){
-      /* Anti-hype: agar UZ gaz $5/MWh dan past bo'lsa, IEA ma'lumotida noaniqlik bor —
-         davlat subsidiyasi sababli rasmiy ko'rsatkich noto'liq. Bunday holda
-         realistic minimum sifatida $8/MWh ishlatamiz (taqqoslash uchun mintaqaviy
-         baseline). "100% cheaper" kabi hype yozilmasin uchun. */
       var gasU_adj = gasU < 5 ? 8 : gasU;
-      var gasC_adj = Math.max(gasC, gasU_adj + 0.5); // bo'sh farq bo'lib qolmasin
+      var gasC_adj = Math.max(gasC, gasU_adj + 0.5);
       var annualGasMwh = investSum / 3000;
       var gasSaving = (gasC_adj - gasU_adj) * annualGasMwh;
-      var gasPct = Math.min(70, Math.round((1 - gasU_adj/gasC_adj) * 100)); // max 70% — "100%" hype emas
-      var gasDesc = (gasU < 5)
-        ? 'Davlat subsidiyali narx — taxminiy $'+gasU_adj.toFixed(1)+'/MWh dan hisoblangan'
-        : Math.round(annualGasMwh)+' MWh × $'+((gasC_adj-gasU_adj).toFixed(1))+' farq';
+      var gasPct = Math.min(70, Math.round((1 - gasU_adj/gasC_adj) * 100));
+      var gasDescCache = (gasU < 5)
+        ? 'Davlat subsidiyali narx — taxminiy $'+gasU_adj.toFixed(1)+'/MWh'
+        : '$'+gasU.toFixed(1)+'/MWh vs $'+gasC.toFixed(1)+'/MWh';
       totalAnnualSaving += gasSaving;
-      savingsBreakdown.push({label:'Tabiiy gaz tejamkorlik', value:gasSaving, pct:gasPct+'%', color:'#F59E0B', desc:gasDesc});
+      savingsBreakdown.push({label:'Tabiiy gaz tejamkorlik', value:gasSaving, pct:gasPct+'%', color:'#F59E0B', desc:gasDescCache});
+      unitItems.push({
+        label: 'Tabiiy gaz',
+        iconKey: 'Tabiiy gaz tejamkorlik',
+        color: '#F59E0B',
+        uzLabel: (gasU < 5 ? '~$' : '$') + gasU_adj.toFixed(1) + '/MWh',
+        cLabel: '$' + gasC.toFixed(1) + '/MWh',
+        unit: gasU < 5 ? 'davlat subsidiyali narx (taxminiy minimum)' : 'sanoat gaz tarifi',
+        pctNum: gasPct,
+        pctText: gasPct + '% arzon'
+      });
     }
 
-    // 5. Transport tejamkorlik — faqat Navoiy net ustunlikka ega yo'nalishlar bo'yicha
+    // 5. Transport logistika — faqat Navoiy ustunlikka ega yo'nalishlar
     if(transportSummary && transportSummary.routes && transportSummary.routes.length){
       var favRoutes = transportSummary.routes.filter(function(r){ return r.saving > 0; });
-      if(favRoutes.length >= 3){ // kamida 3 ta yo'nalishda arzon bo'lsa hisoblash mantiqiy
+      if(favRoutes.length >= 3){
         var favAvgSaving = Math.round(favRoutes.reduce(function(s,r){ return s+r.saving; },0) / favRoutes.length);
-        var favAvgPct = favRoutes.length > 0
-          ? Math.round(favRoutes.reduce(function(s,r){ return s+r.savingPct; },0) / favRoutes.length)
-          : 0;
-        // Shipment soni: yiliga taxminan. $500K har bir shipment uchun, max 24 shipment/yil
+        var favAvgPct = Math.round(favRoutes.reduce(function(s,r){ return s+r.savingPct; },0) / favRoutes.length);
         var shipments = Math.min(24, Math.max(4, Math.round(investSum / 500000)));
         var trSaving = favAvgSaving * shipments;
         totalAnnualSaving += trSaving;
@@ -1968,12 +2199,22 @@ function renderAiAnalysis(analysis, scope){
           value: trSaving,
           pct: favAvgPct+'%',
           color:'#D97706',
-          desc: shipments+' jo\'natma × $'+favAvgSaving.toLocaleString()+' ('+favRoutes.length+' ta qulay yo\'nalish bo\'yicha o\'rtacha)'
+          desc: favRoutes.length+' ta yo\'nalishda o\'rtacha $'+favAvgSaving.toLocaleString()+' arzonroq/jo\'natma'
+        });
+        unitItems.push({
+          label: 'Transport (logistika)',
+          iconKey: 'Transport logistika tejamkorlik',
+          color: '#D97706',
+          uzLabel: '$' + favAvgSaving.toLocaleString() + ' tejamkorlik/jo\'natma',
+          cLabel: countryName + ' ga nisbatan',
+          unit: favRoutes.length + ' ta yo\'nalishda Navoiy arzonroq · o\'rtacha farq',
+          pctNum: Math.min(99, favAvgPct),
+          pctText: favAvgPct + '% arzon'
         });
       }
     }
 
-    // Embassy letter uchun cache — har country bo'yicha savingsBreakdown saqlanadi
+    // Embassy letter uchun cache
     try {
       if(!window._aiSavingsCache) window._aiSavingsCache = {};
       var _cacheKey = String(countryName || '').toLowerCase().trim();
@@ -1989,75 +2230,61 @@ function renderAiAnalysis(analysis, scope){
       }
     } catch(_e){}
 
-    if(totalAnnualSaving > 0){
+    if(unitItems.length > 0){
       profitEl.style.display = 'block';
-      var mln = totalAnnualSaving / 1000000;
 
-      var svgIcons = {
-        'Soliq tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 14l-4-4m0 0l4-4m-4 4h11a4 4 0 010 8h-1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        'Mehnat narxi tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm11 0l-3 3m0 0l-3-3m3 3V4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        'Elektr energiya tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        'Tabiiy gaz tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C8 6 4 10.5 4 14a8 8 0 0016 0c0-3.5-4-8-8-12z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        'Transport logistika tejamkorlik': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 3h15v13H1zM16 8h4l3 4v5h-7V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/></svg>'
-      };
-
-      var savingsRows = savingsBreakdown.map(function(s){
-        var sMln = s.value / 1000000;
-        var barWidth = Math.min(100, Math.round((s.value / totalAnnualSaving) * 100));
-        var valStr = sMln >= 0.01 ? ('$' + sMln.toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + ' mln') : ('$' + (s.value/1000).toFixed(0) + 'K');
-        var ico = svgIcons[s.label] || '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
-          '<div style="width:34px;height:34px;border-radius:10px;background:' + s.color + '15;color:' + s.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">' + ico + '</div>' +
-          '<div style="flex:1;min-width:0">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">' +
-              '<span style="font-size:.74rem;font-weight:700;color:var(--text)">' + escapeHtmlText(s.label) + '</span>' +
-              '<span style="font-family:\'Sora\',sans-serif;font-size:.78rem;font-weight:800;color:' + s.color + '">' + valStr + '</span>' +
+      var unitRows = unitItems.map(function(item){
+        var barW = Math.min(99, Math.max(5, item.pctNum));
+        var ico = svgIcons[item.iconKey] || '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        return (
+          '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+            '<div style="width:34px;height:34px;border-radius:10px;background:' + item.color + '15;color:' + item.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">' + ico + '</div>' +
+            '<div style="flex:1;min-width:0">' +
+              /* Label + badge */
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px">' +
+                '<span style="font-size:.74rem;font-weight:700;color:var(--text)">' + escapeHtmlText(item.label) + '</span>' +
+                '<span style="font-size:.68rem;font-weight:800;color:' + item.color + ';background:' + item.color + '15;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0">↓ ' + escapeHtmlText(item.pctText) + '</span>' +
+              '</div>' +
+              /* UZ vs Country values */
+              '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;flex-wrap:wrap">' +
+                '<span style="font-family:\'Sora\',sans-serif;font-size:.76rem;font-weight:800;color:#fff;background:#059669;padding:2px 9px;border-radius:6px">O\'Z: ' + escapeHtmlText(item.uzLabel) + '</span>' +
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;color:var(--text3)"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+                '<span style="font-size:.73rem;font-weight:600;color:var(--text2)">' + escapeHtmlText(item.cLabel) + '</span>' +
+              '</div>' +
+              /* Unit description */
+              '<div style="font-size:.61rem;color:var(--text3);margin-bottom:5px">' + escapeHtmlText(item.unit) + '</div>' +
+              /* Advantage bar */
+              '<div style="height:5px;background:var(--bg);border-radius:20px;overflow:hidden">' +
+                '<div style="height:100%;width:' + barW + '%;background:linear-gradient(90deg,' + item.color + ',' + item.color + 'aa);border-radius:20px;transition:width 1.2s cubic-bezier(.4,0,.2,1)"></div>' +
+              '</div>' +
             '</div>' +
-            '<div style="font-size:.64rem;color:var(--text3);margin-bottom:5px">' + escapeHtmlText(s.desc) + ' · <span style="color:' + s.color + ';font-weight:600">↓ ' + escapeHtmlText(s.pct) + ' arzon</span></div>' +
-            '<div style="height:5px;background:var(--bg);border-radius:20px;overflow:hidden">' +
-              '<div style="height:100%;width:' + barWidth + '%;background:linear-gradient(90deg,' + s.color + ',' + s.color + 'aa);border-radius:20px;transition:width 1.2s cubic-bezier(.4,0,.2,1)"></div>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
+          '</div>'
+        );
       });
 
-      var investLabel = investSum >= 1000000 ? ('$' + (investSum/1000000).toFixed(1).replace(/\.0$/,'') + ' mln') : ('$' + (investSum/1000).toFixed(0) + 'K');
-
-      profitEl.innerHTML = '<div style="margin-top:.6rem;background:var(--card);border-radius:16px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(58,87,232,.06);overflow:hidden;animation:aiDonutFadeIn .6s ease both">' +
-        /* Header */
-        '<div style="padding:1rem 1.2rem;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;gap:12px">' +
-          '<div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
-            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      profitEl.innerHTML = (
+        '<div style="margin-top:.6rem;background:var(--card);border-radius:16px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(58,87,232,.06);overflow:hidden;animation:aiDonutFadeIn .6s ease both">' +
+          /* Header */
+          '<div style="padding:1rem 1.2rem;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;gap:12px">' +
+            '<div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
+              '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h12M3 18h8" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>' +
+            '</div>' +
+            '<div style="flex:1">' +
+              '<div style="font-family:\'Sora\',sans-serif;font-size:.88rem;font-weight:800;color:#fff">Navoiy vs ' + escapeHtmlText(countryName) + ' · Birlik narxlari</div>' +
+              '<div style="font-size:.66rem;color:rgba(255,255,255,.8);margin-top:2px">' + unitItems.length + ' ta ko\'rsatkichda Navoiy arzonroq · rasmiy API ma\'lumotlari</div>' +
+            '</div>' +
           '</div>' +
-          '<div style="flex:1">' +
-            '<div style="font-family:\'Sora\',sans-serif;font-size:.88rem;font-weight:800;color:#fff">Navoiyda loyiha qilgandagi yillik iqtisod</div>' +
-            '<div style="font-size:.66rem;color:rgba(255,255,255,.75);margin-top:2px">Investitsiya: ' + investLabel + ' · ' + escapeHtmlText(countryName) + ' bilan taqqoslaganda</div>' +
+          /* Unit comparison rows */
+          '<div style="padding:.8rem 1.2rem">' +
+            unitRows.join('') +
           '</div>' +
-        '</div>' +
-        /* Main values */
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">' +
-          '<div style="padding:1rem 1.2rem;text-align:center;border-right:1px solid var(--border)">' +
-            '<div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.35rem">Yillik tejamkorlik</div>' +
-            '<div style="font-family:\'Sora\',sans-serif;font-size:1.65rem;font-weight:900;color:#059669;line-height:1.1">$' + mln.toFixed(2) + '</div>' +
-            '<div style="font-size:.62rem;font-weight:600;color:#059669;opacity:.7;margin-top:2px">million / yil</div>' +
+          /* Footer note */
+          '<div style="padding:.6rem 1.2rem;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;margin-top:1px;color:var(--text3)"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" stroke-width="2"/><path d="M12 8v4m0 4h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+            '<div style="font-size:.62rem;color:var(--text3);line-height:1.55"><b style="color:var(--text2)">Eslatma:</b> Birlik narxlari World Bank/ILOSTAT/IEA rasmiy API ma\'lumotlari asosida. Haqiqiy tejamkorlik investitsiya hajmi, soha va mahsulotga qarab farq qiladi. FEZ soliq ta\'tili inobatga olinmagan — bu alohida va qo\'shimcha imtiyozdir.</div>' +
           '</div>' +
-          '<div style="padding:1rem 1.2rem;text-align:center">' +
-            '<div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.35rem">5 yillik prognoz</div>' +
-            '<div style="font-family:\'Sora\',sans-serif;font-size:1.65rem;font-weight:900;color:#4361EE;line-height:1.1">$' + (mln*5).toFixed(1) + '</div>' +
-            '<div style="font-size:.62rem;font-weight:600;color:#4361EE;opacity:.7;margin-top:2px">million / 5 yil</div>' +
-          '</div>' +
-        '</div>' +
-        /* Breakdown */
-        '<div style="padding:.8rem 1.2rem">' +
-          '<div style="font-size:.64rem;font-weight:700;color:var(--text2);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.06em">Tejamkorlik tarkibi</div>' +
-          savingsRows.join('') +
-        '</div>' +
-        /* Footer note */
-        '<div style="padding:.6rem 1.2rem;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">' +
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;margin-top:1px;color:var(--text3)"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" stroke-width="2"/><path d="M12 8v4m0 4h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
-          '<div style="font-size:.62rem;color:var(--text3);line-height:1.55"><b style="color:var(--text2)">Eslatma:</b> Taxminiy hisob-kitob — faqat World Bank/ILOSTAT/IEA rasmiy API ma\'lumotlari asosida. Quyidagi taxminlar qo\'llanilgan: foyda margini 12%, ishchi soni investitsiyaga mutanosib, energiya sarfi sanoat o\'rtachasiga ko\'ra. FEZ soliq ta\'tili bu hisob-kitobda inobatga olinmagan — u alohida va qo\'shimcha imtiyozdir. Haqiqiy tejamkorlik loyiha, soha va mahsulotga qarab farq qiladi.</div>' +
-        '</div>' +
-      '</div>';
+        '</div>'
+      );
     } else {
       profitEl.style.display = 'none';
     }
@@ -2242,20 +2469,25 @@ function detectContactPersona(position){
    "UZB" olib tashlandi (Navoi → O'zbekiston = mahalliy, tashqi mijoz emas).
    O'rniga Türkiye qo'shildi — bu Uzbekistondan asosiy eksport partnyori. */
 var AI_TRANSPORT_TARGETS = [
-  { iso3:'TUR', code:'TR', name:'Turkiya', lat:39.9334, lon:32.8597, navoiCost:2400, navoiDays:7, navoiMode:'Avto + multimodal' },
-  { iso3:'TKM', code:'TM', name:'Turkmaniston', lat:37.9601, lon:58.3261, navoiCost:900, navoiDays:2, navoiMode:'Avto' },
-  { iso3:'TJK', code:'TJ', name:'Tojikiston', lat:38.5598, lon:68.7870, navoiCost:800, navoiDays:2, navoiMode:'Avto' },
-  { iso3:'KGZ', code:'KG', name:"Qirg'iziston", lat:42.8746, lon:74.5698, navoiCost:1400, navoiDays:3, navoiMode:'Avto' },
-  { iso3:'KAZ', code:'KZ', name:"Qozog'iston", lat:43.2389, lon:76.8897, navoiCost:1200, navoiDays:2, navoiMode:'Avto + temir yo\'l' },
-  { iso3:'MNG', code:'MN', name:'Mongoliya', lat:47.8864, lon:106.9057, navoiCost:2600, navoiDays:6, navoiMode:'Temir yo\'l + avto' },
-  { iso3:'RUS', code:'RU', name:'Rossiya', lat:55.7558, lon:37.6173, navoiCost:2500, navoiDays:7, navoiMode:'Temir yo\'l + avto' },
-  { iso3:'AZE', code:'AZ', name:'Ozarbayjon', lat:40.4093, lon:49.8671, navoiCost:2200, navoiDays:5, navoiMode:'Avto + multimodal' },
-  { iso3:'GEO', code:'GE', name:'Gruziya', lat:41.7151, lon:44.8271, navoiCost:2400, navoiDays:6, navoiMode:'Avto + multimodal' },
-  { iso3:'ARM', code:'AM', name:'Armaniston', lat:40.1792, lon:44.4991, navoiCost:2500, navoiDays:6, navoiMode:'Avto + multimodal' },
-  { iso3:'IRN', code:'IR', name:'Eron', lat:35.6892, lon:51.3890, navoiCost:1500, navoiDays:4, navoiMode:'Avto + temir yo\'l' },
-  { iso3:'AFG', code:'AF', name:"Afg'oniston", lat:34.5553, lon:69.2075, navoiCost:1100, navoiDays:3, navoiMode:'Avto' },
-  { iso3:'PAK', code:'PK', name:'Pokiston', lat:31.5204, lon:74.3587, navoiCost:1800, navoiDays:5, navoiMode:'Avto + multimodal' }
+  { iso3:'TUR', code:'TR', name:'Turkiya',       nameEn:'Turkey',      lat:39.9334, lon:32.8597, navoiCost:2400, navoiDays:7, navoiMode:'Avto + multimodal' },
+  { iso3:'TKM', code:'TM', name:'Turkmaniston',  nameEn:'Turkmenistan',lat:37.9601, lon:58.3261, navoiCost:900,  navoiDays:2, navoiMode:'Avto' },
+  { iso3:'TJK', code:'TJ', name:'Tojikiston',    nameEn:'Tajikistan',  lat:38.5598, lon:68.7870, navoiCost:800,  navoiDays:2, navoiMode:'Avto' },
+  { iso3:'KGZ', code:'KG', name:"Qirg'iziston",  nameEn:'Kyrgyzstan',  lat:42.8746, lon:74.5698, navoiCost:1400, navoiDays:3, navoiMode:'Avto' },
+  { iso3:'KAZ', code:'KZ', name:"Qozog'iston",   nameEn:'Kazakhstan',  lat:43.2389, lon:76.8897, navoiCost:1200, navoiDays:2, navoiMode:'Avto + temir yo\'l' },
+  { iso3:'MNG', code:'MN', name:'Mongoliya',     nameEn:'Mongolia',    lat:47.8864, lon:106.9057,navoiCost:2600, navoiDays:6, navoiMode:'Temir yo\'l + avto' },
+  { iso3:'RUS', code:'RU', name:'Rossiya',       nameEn:'Russia',      lat:55.7558, lon:37.6173, navoiCost:2500, navoiDays:7, navoiMode:'Temir yo\'l + avto' },
+  { iso3:'AZE', code:'AZ', name:'Ozarbayjon',    nameEn:'Azerbaijan',  lat:40.4093, lon:49.8671, navoiCost:2200, navoiDays:5, navoiMode:'Avto + multimodal' },
+  { iso3:'GEO', code:'GE', name:'Gruziya',       nameEn:'Georgia',     lat:41.7151, lon:44.8271, navoiCost:2400, navoiDays:6, navoiMode:'Avto + multimodal' },
+  { iso3:'ARM', code:'AM', name:'Armaniston',    nameEn:'Armenia',     lat:40.1792, lon:44.4991, navoiCost:2500, navoiDays:6, navoiMode:'Avto + multimodal' },
+  { iso3:'IRN', code:'IR', name:'Eron',          nameEn:'Iran',        lat:35.6892, lon:51.3890, navoiCost:1500, navoiDays:4, navoiMode:'Avto + temir yo\'l' },
+  { iso3:'AFG', code:'AF', name:"Afg'oniston",   nameEn:'Afghanistan', lat:34.5553, lon:69.2075, navoiCost:1100, navoiDays:3, navoiMode:'Avto' },
+  { iso3:'PAK', code:'PK', name:'Pokiston',      nameEn:'Pakistan',    lat:31.5204, lon:74.3587, navoiCost:1800, navoiDays:5, navoiMode:'Avto + multimodal' }
 ];
+// Email promtida faqat inglizcha davlat nomi ishlatilishi uchun yordamchi funksiya
+function _aiCountryNameEn(uzName){
+  var t = (AI_TRANSPORT_TARGETS || []).find(function(t){ return t.name === uzName || t.nameEn === uzName || t.iso3 === uzName || t.code === uzName; });
+  return (t && t.nameEn) || uzName;
+}
 
 var AI_TRANSPORT_HUBS = {
   UZB:{name:'Navoi',lat:40.1039,lon:65.3686,profile:'regional'},
@@ -2298,15 +2530,32 @@ var AI_TRANSPORT_HUBS = {
   PAK:{name:'Lahore',lat:31.5204,lon:74.3587,profile:'southAsia'}
 };
 
+/* Door-to-door 20ft FCL cost model, calibrated to real 2024-2025 corridor benchmarks
+   (Drewry/Freightos WCI ocean + Middle Corridor rail + inland trucking). Used ONLY as a
+   fallback when real SeaRates rates are unavailable for a route. Distance is haversine
+   (straight-line), so per-km is deliberately conservative and a fixed corridor base carries
+   most of the cost — real freight is dominated by origin/destination handling, not pure km. */
+/* Ocean/rail freight cost is largely FLAT per corridor (dominated by handling + line-haul),
+   so the fixed "base" carries most of the cost and per-km is a small modifier — a pure
+   distance model would wildly overcharge coastal destinations. Calibrated to 2024-2025
+   Drewry/Freightos WCI + Middle Corridor rail benchmarks for a 20ft FCL, door-to-door. */
 var AI_TRANSPORT_PROFILE_CFG = {
-  regional:{base:180,perKm:0.82,border:80,dayDiv:450,dayBase:1,mode:'Avto / temir yo\'l'},
-  middle:{base:320,perKm:0.90,border:140,dayDiv:550,dayBase:2,mode:'Avto + temir yo\'l'},
-  southAsia:{base:340,perKm:0.80,border:160,dayDiv:580,dayBase:2,mode:'Avto + multimodal'},
-  europe:{base:420,perKm:0.95,border:180,dayDiv:650,dayBase:3,mode:'Temir yo\'l + avto'},
-  europeAsia:{base:300,perKm:0.88,border:120,dayDiv:620,dayBase:2,mode:'Temir yo\'l + avto'},
-  eastAsia:{base:650,perKm:1.00,border:220,dayDiv:720,dayBase:4,mode:'Temir yo\'l + dengiz'},
-  americas:{base:1200,perKm:0.55,border:240,dayDiv:900,dayBase:8,mode:'Dengiz + avto'},
-  oceania:{base:1400,perKm:0.58,border:260,dayDiv:950,dayBase:9,mode:'Dengiz + avto'}
+  regional:{base:700,perKm:0.55,border:150,dayDiv:450,dayBase:1,mode:'Avto / temir yo\'l'},
+  middle:{base:1500,perKm:0.22,border:220,dayDiv:550,dayBase:3,mode:'Avto + temir yo\'l'},
+  southAsia:{base:1700,perKm:0.16,border:260,dayDiv:580,dayBase:4,mode:'Dengiz + avto'},
+  europe:{base:2200,perKm:0.16,border:260,dayDiv:650,dayBase:5,mode:'Temir yo\'l + avto'},
+  europeAsia:{base:1400,perKm:0.20,border:180,dayDiv:620,dayBase:4,mode:'Temir yo\'l + avto'},
+  eastAsia:{base:2300,perKm:0.18,border:300,dayDiv:720,dayBase:6,mode:'Temir yo\'l + dengiz'},
+  americas:{base:3800,perKm:0.10,border:380,dayDiv:900,dayBase:10,mode:'Dengiz + temir yo\'l'},
+  oceania:{base:4200,perKm:0.10,border:400,dayDiv:950,dayBase:12,mode:'Dengiz + temir yo\'l'}
+};
+
+/* Landlocked destination markets need an extra last-leg transshipment (sea/rail port → inland).
+   The premium depends on the origin profile: ocean origins (Americas/Oceania) pay the most;
+   rail-reachable origins (Europe/East Asia/South Asia/Middle East) pay a smaller inland leg. */
+var AI_LANDLOCKED_TARGETS = { TKM:1, TJK:1, KGZ:1, KAZ:1, MNG:1, AFG:1, ARM:1 };
+var AI_LANDLOCKED_PREMIUM = {
+  americas:5500, oceania:5500, eastAsia:2400, europe:2400, southAsia:2600, middle:1200, europeAsia:1200
 };
 
 function aiFmtTransportUsd(value){
@@ -2350,13 +2599,20 @@ function estimateAiExportRoute(sourceHub, target){
   var cfg = AI_TRANSPORT_PROFILE_CFG[sourceHub.profile] || AI_TRANSPORT_PROFILE_CFG.regional;
   var km = aiTransportHaversineKm(sourceHub.lat, sourceHub.lon, target.lat, target.lon);
   var border = cfg.border;
-  if(target.iso3 === 'AFG') border += 220;
+  if(target.iso3 === 'AFG') border += 350;   // extra security/handling surcharge
   if(target.iso3 === 'PAK') border += 180;
-  if(target.iso3 === 'MNG') border += 120;
-  if(target.iso3 === 'RUS') border += 90;
-  if(target.iso3 === 'IRN') border += 60;
-  var foreignCost = Math.round(cfg.base + (km * cfg.perKm) + border);
-  var foreignDays = Math.max(1, Math.round((km / cfg.dayDiv) + cfg.dayBase));
+  if(target.iso3 === 'MNG') border += 200;
+  if(target.iso3 === 'RUS') border += 120;
+  if(target.iso3 === 'IRN') border += 120;   // sanctions-related routing/banking friction
+  // Landlocked destination → extra last-leg transshipment (port/rail hub → inland), by origin type.
+  var landlockedPremium = 0;
+  var extraDays = 0;
+  if(AI_LANDLOCKED_TARGETS[target.iso3]){
+    landlockedPremium = AI_LANDLOCKED_PREMIUM[sourceHub.profile] || 0;
+    extraDays = landlockedPremium >= 3000 ? 6 : (landlockedPremium > 0 ? 3 : 0);
+  }
+  var foreignCost = Math.round(cfg.base + (km * cfg.perKm) + border + landlockedPremium);
+  var foreignDays = Math.max(1, Math.round((km / cfg.dayDiv) + cfg.dayBase + extraDays));
   return {
     foreignCost: foreignCost,
     foreignDays: foreignDays,
@@ -2364,168 +2620,274 @@ function estimateAiExportRoute(sourceHub, target){
   };
 }
 
-// Gemini-powered transport estimates — live AI research per source country.
-// Cached to localStorage for 7 days (freight corridors change slowly).
-var AI_TRANSPORT_GEMINI_CACHE = {};
-var AI_TRANSPORT_GEMINI_TTL = 7 * 24 * 60 * 60 * 1000;
-(function hydrateTransportCache(){
+/* ═══════════════════════════════════════════════════════════════════════
+   REAL FREIGHT RATES — SeaRates Logistics Explorer API v2 (GraphQL)
+   + Freightos public fallback
+   Proxy endpoint: navoiy-api-proxy /api/freight
+   Container: FCL 20ft standard (ST20)
+   Cache: localStorage, 7 days per route pair
+   ═══════════════════════════════════════════════════════════════════════ */
+
+var _SR_FREIGHT_STORE_KEY = '_srFreightCache';
+var _SR_FREIGHT_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+var _SR_NAVOI_LAT = 40.1039, _SR_NAVOI_LNG = 65.3686;
+
+/* ── localStorage helpers ── */
+function _srCacheGet(key) {
   try {
-    var raw = localStorage.getItem('_aiTransportCache');
-    if(!raw) return;
-    var parsed = JSON.parse(raw);
+    var raw = localStorage.getItem(_SR_FREIGHT_STORE_KEY);
+    if (!raw) return null;
+    var store = JSON.parse(raw);
+    var entry = store[key];
+    if (!entry || !entry._ts || (Date.now() - entry._ts) > _SR_FREIGHT_TTL) return null;
+    return entry.data;
+  } catch(e) { return null; }
+}
+function _srCacheSet(key, data) {
+  try {
+    var raw = localStorage.getItem(_SR_FREIGHT_STORE_KEY);
+    var store = raw ? JSON.parse(raw) : {};
+    // Evict expired keys to keep localStorage size manageable
     var now = Date.now();
-    Object.keys(parsed || {}).forEach(function(k){
-      var entry = parsed[k];
-      if(entry && entry._ts && (now - entry._ts) < AI_TRANSPORT_GEMINI_TTL){
-        AI_TRANSPORT_GEMINI_CACHE[k] = entry.data;
-      }
+    Object.keys(store).forEach(function(k) {
+      if (!store[k]._ts || (now - store[k]._ts) > _SR_FREIGHT_TTL) delete store[k];
     });
-  } catch(e){}
-})();
-function persistTransportCache(){
-  try {
-    var out = {};
-    Object.keys(AI_TRANSPORT_GEMINI_CACHE).forEach(function(k){
-      out[k] = { _ts: Date.now(), data: AI_TRANSPORT_GEMINI_CACHE[k] };
-    });
-    localStorage.setItem('_aiTransportCache', JSON.stringify(out));
-  } catch(e){}
+    store[key] = { _ts: now, data: data };
+    localStorage.setItem(_SR_FREIGHT_STORE_KEY, JSON.stringify(store));
+  } catch(e) {}
+}
+function _srRouteKey(fromLat, fromLng, toLat, toLng) {
+  return [fromLat.toFixed(2), fromLng.toFixed(2), toLat.toFixed(2), toLng.toFixed(2)].join('_');
 }
 
-/* NOTE: Despite the legacy name, OpenAI (gpt-4o / gpt-4o-search-preview) is tried FIRST.
-   Gemini is only used as fallback when the OpenAI key is missing or the call fails. */
-async function fetchAiTransportEstimatesFromGemini(countryInfo, comp){
-  var sourceName = String((countryInfo && (countryInfo.display || countryInfo.name)) || '').trim();
-  var sourceIso3 = String((countryInfo && countryInfo.iso3) || '').toUpperCase();
-  if(!sourceName || !sourceIso3) return null;
-
-  // Extract TradeAtlas annual export volume if available
-  var taQuantity = comp ? Number(comp._tradeAtlasQuantity || 0) : 0;
-  var taUnit = comp ? String(comp._tradeAtlasQuantityUnit || '').trim() : '';
-  var taValue = comp ? Number(comp._tradeAtlasTradeValue || 0) : 0;
-  var hasVolume = Number.isFinite(taQuantity) && taQuantity > 0 && taUnit;
-
-  // Cache key includes volume signature so different companies get distinct results
-  var cacheKey = sourceIso3 + (hasVolume ? ('|'+Math.round(taQuantity)+taUnit) : '');
-  if(AI_TRANSPORT_GEMINI_CACHE[cacheKey]) return AI_TRANSPORT_GEMINI_CACHE[cacheKey];
-
-  var hasOpenAI = (typeof callOpenAI === 'function') && (typeof getOpenAIKey === 'function') && getOpenAIKey();
-  var hasGemini = (typeof callGemini === 'function');
-  if(!hasOpenAI && !hasGemini) return null;
-
-  var targetList = AI_TRANSPORT_TARGETS.map(function(t){ return '- '+t.iso3+' ('+t.name+')'; }).join('\n');
-  var volumeSpec;
-  if(hasVolume){
-    volumeSpec = 'CARGO VOLUME: '+taQuantity.toLocaleString('en-US')+' '+taUnit+' per year '+
-      (taValue > 0 ? '(total trade value ~$'+Math.round(taValue).toLocaleString('en-US')+'/year)' : '')+'.\n' +
-      'Calculate cost for shipping THIS TOTAL annual volume to each destination — break into realistic shipment batches (20ft/40ft containers, truckloads, rail wagons, or bulk) as appropriate. Return TOTAL annual freight cost per route, not per-container.';
-  } else {
-    volumeSpec = 'CARGO VOLUME: 1 standard 20ft container of general cargo (~20 tonnes / ~33m³).';
-  }
-
-  var prompt = 'You are a freight logistics expert. Provide ACCURATE, honest, unbiased freight cost estimates for 2024-2025.\n' +
-    'Reference: Drewry WCI, Xeneta, Freightos Baltic Index, major forwarder rate sheets.\n' +
-    'Do NOT inflate or deflate numbers to make either origin look better. If Navoi is more expensive for some destinations, say so.\n\n' +
-    volumeSpec + '\n\n' +
-    'ORIGIN A: '+sourceName+' ('+sourceIso3+') — use the main industrial export hub/port for this country.\n' +
-    'ORIGIN B: Navoi, Uzbekistan (UZB) — landlocked Central Asia. Main corridors: rail via Kazakhstan to Russia/China, road via Turkmenistan to Iran/Turkey, Navoi International Airport (ICAO: UTNN) for air cargo.\n\n' +
-    'Destinations (13):\n' + targetList + '\n\n' +
-    'For EACH destination output: foreignCost (USD, total for the volume), foreignDays (transit days door-to-door), foreignMode (mode description), navoiCost (USD from Navoi), navoiDays, navoiMode.\n\n' +
-    'ACCURACY RULES — read carefully:\n' +
-    '1. Base EVERY number on actual market rates and real corridors. Do not guess.\n' +
-    '2. Navoi reference benchmarks (20ft container): TUR ~$2,000-3,000, RUS ~$1,800-2,500, KAZ ~$800-1,200, IRN ~$1,200-1,800, AFG ~$900-1,400, TJK ~$700-1,000, TKM ~$800-1,100, PAK ~$1,500-2,200.\n' +
-    '3. For sea-accessible destinations from Origin A with direct port access (TUR, RUS, CHN, EUR...) — the foreign origin will often be cheaper. REPORT THIS HONESTLY.\n' +
-    '4. Navoi advantages are REAL for CIS/Central Asia neighbours and where the Middle Corridor rail gives a genuine edge. Do not fabricate advantages elsewhere.\n' +
-    '5. Round to nearest $50. Stay within realistic freight market ranges — do not output $200 or $50,000 for a container.\n' +
-    '6. Output ONLY the 13 destinations listed. No extras. No UZB (domestic).\n\n' +
-    'Return ONLY valid JSON:\n' +
-    '{"routes":[{"iso3":"TUR","foreignCost":3200,"foreignDays":18,"foreignMode":"Sea + truck","navoiCost":2400,"navoiDays":7,"navoiMode":"Rail + road"}, ...]}';
-
-  /* Try OpenAI (web search preferred) first, then Gemini as fallback. */
-  async function tryOpenAi(){
-    var resp = await callOpenAI([
-      { role:'system', content:'You are a freight logistics expert. Always reply with valid JSON only.' },
-      { role:'user', content: prompt }
-    ], {
-      model: (hasVolume ? (window.OPENAI_MODEL_SEARCH || 'gpt-4o-search-preview') : (window.OPENAI_MODEL_DEFAULT || 'gpt-4o')),
-      temperature: 0.2,
-      maxTokens: 4096,
-      webSearch: !!hasVolume,
-      jsonMode: !hasVolume  /* jsonMode and webSearch are mutually exclusive */
-    });
-    return resp.content;
-  }
-  async function tryGemini(){
-    var resp = await callGemini({
-      contents: [{ role:'user', parts:[{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
-    });
-    return (resp && resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts && resp.candidates[0].content.parts[0] && resp.candidates[0].content.parts[0].text) || '';
-  }
+/* ── Batch fetch from Vercel proxy → SeaRates/Freightos ──
+   routes: [{from_lat, from_lng, to_lat, to_lng, _iso3}, ...]
+   Returns: {iso3: {rate_usd, transit_days, mode, source}, ...}
+*/
+async function _srBatchFetch(routes) {
+  var PROXY = 'https://navoiy-api-proxy.vercel.app/api/ai-country-analysis?mode=freight';
+  var out = {};
+  if (!routes || !routes.length) return out;
 
   try {
-    var text = '';
-    if(hasOpenAI){
-      try { text = await tryOpenAi(); }
-      catch(eo){ console.warn('OpenAI transport estimate failed, trying Gemini:', eo && eo.message); }
+    var fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+      fetchOpts.signal = AbortSignal.timeout(35000);
     }
-    if(!text && hasGemini){ text = await tryGemini(); }
-    if(!text) return null;
-
-    var parsed = (typeof safeParseOpenAIJson === 'function' ? safeParseOpenAIJson(text) : safeParseJSON(text));
-    var arr = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.routes) ? parsed.routes : null);
-    if(!Array.isArray(arr)) return null;
-
-    // Sanity-check clipping: reject routes with obviously hype/implausible costs.
-    // Single 20ft container should be $300–$25,000; transit 1–90 days.
-    var byIso = {};
-    arr.forEach(function(row){
-      if(!row || !row.iso3) return;
-      var fCost = Number(row.foreignCost);
-      var nCost = Number(row.navoiCost);
-      var fDays = Number(row.foreignDays);
-      var nDays = Number(row.navoiDays);
-      // Clip costs to plausible range
-      if(!Number.isFinite(fCost) || fCost < 200 || fCost > 30000) return; // skip implausible
-      if(!Number.isFinite(nCost) || nCost < 200 || nCost > 30000) return;
-      if(!Number.isFinite(fDays) || fDays < 1) row.foreignDays = 1;
-      if(!Number.isFinite(nDays) || nDays < 1) row.navoiDays = 1;
-      // Cap Navoi costs at reference benchmarks +50% to prevent AI inflation
-      var navoiBenchmark = {TUR:3000,RUS:2500,KAZ:1200,IRN:1800,AFG:1400,TJK:1000,TKM:1100,PAK:2200,KGZ:1200,MNG:3500,AZE:2800,GEO:2800,ARM:2800}[String(row.iso3).toUpperCase()];
-      if(navoiBenchmark && nCost > navoiBenchmark * 1.5){
-        row.navoiCost = navoiBenchmark * 1.5;
-      }
-      byIso[String(row.iso3).toUpperCase()] = row;
+    fetchOpts.body = JSON.stringify({
+      routes: routes.map(function(r) {
+        return { from_lat: r.from_lat, from_lng: r.from_lng, to_lat: r.to_lat, to_lng: r.to_lng };
+      })
     });
-    if(!Object.keys(byIso).length) return null; // all rows were invalid
-    AI_TRANSPORT_GEMINI_CACHE[cacheKey] = byIso;
-    persistTransportCache();
-    return byIso;
-  } catch(e){
-    console.warn('Transport estimate failed:', e && e.message);
-    return null;
+
+    var resp = await fetch(PROXY, fetchOpts);
+    if (!resp.ok) { console.warn('[freight] proxy HTTP', resp.status); return out; }
+
+    var json = await resp.json();
+    if (!Array.isArray(json.results)) { console.warn('[freight] bad response', json); return out; }
+
+    json.results.forEach(function(result, i) {
+      var route = routes[i];
+      if (!route || !result || result.error || !result.rate_usd) return;
+      var rate = Number(result.rate_usd);
+      if (!Number.isFinite(rate) || rate < 150 || rate > 50000) return; // sanity check
+      out[route._iso3] = result;
+      // Save to cache
+      var cacheKey = _srRouteKey(route.from_lat, route.from_lng, route.to_lat, route.to_lng);
+      _srCacheSet(cacheKey, result);
+    });
+  } catch(e) {
+    console.warn('[freight] batch fetch error:', e && e.message);
   }
+  return out;
+}
+
+/* ── Trial search-quota guard ──
+   SeaRates trial = limited searches (e.g. 20). Each route sent to the proxy may
+   consume 1 SeaRates search. We track total NEW (uncached) routes ever sent in
+   localStorage and refuse to fetch beyond _SR_SEARCH_CAP, so the trial can never
+   be exhausted by accident. Cached routes (7-day TTL) do NOT count again. */
+var _SR_SEARCH_CAP = 12;            // trial buffer (~6 already used verifying the integration); raise after upgrading the plan
+var _SR_SEARCH_COUNT_KEY = '_srSearchCount_v2'; // v2: reset counter (v1 counted broken-proxy attempts)
+function _srSearchUsed() {
+  try { return parseInt(localStorage.getItem(_SR_SEARCH_COUNT_KEY) || '0', 10) || 0; } catch(e) { return 0; }
+}
+function _srSearchAdd(n) {
+  try { localStorage.setItem(_SR_SEARCH_COUNT_KEY, String(_srSearchUsed() + (n || 0))); } catch(e) {}
+}
+
+/* ── JSON rate tables (user-provided, GitHub-served static files) ──
+   transport-number1.json: Raqam 1 — company country -> Navoi (72 countries).
+   transport-number2.json: Raqam 2 — Navoi -> 12 neighbour markets.
+   Format: { routes: [ { country_code (ISO2), country, rate_usd, transit_days } ] }
+   transit_days may be a range string ("12-20") → parsed to the midpoint.
+   Built once per session into ISO2 + normalised-name lookup maps. */
+var _srJsonCache = null;
+function _srParseDays(v) {
+  if (typeof v === 'number') return Math.round(v) || 0;
+  var m = String(v || '').match(/\d+/g);
+  if (!m || !m.length) return 0;
+  var nums = m.map(Number);
+  return Math.round(nums.reduce(function(a, b){ return a + b; }, 0) / nums.length); // midpoint of range
+}
+function _srNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+async function _srLoadJson() {
+  if (_srJsonCache) return _srJsonCache;
+  var maps = { n1Iso2: {}, n1Name: {}, n2Iso2: {}, n2Name: {} };
+  try {
+    var results = await Promise.all([
+      fetch('assets/data/transport-number1.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }),
+      fetch('assets/data/transport-number2.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
+    ]);
+    ((results[0] && results[0].routes) || []).forEach(function(r) {
+      if (!(Number(r.rate_usd) > 0)) return;
+      var rec = { rate_usd: Math.round(Number(r.rate_usd)), transit_days: _srParseDays(r.transit_days), source: 'json' };
+      if (r.country_code) maps.n1Iso2[String(r.country_code).toUpperCase()] = rec;
+      if (r.country) maps.n1Name[_srNorm(r.country)] = rec;
+    });
+    ((results[1] && results[1].routes) || []).forEach(function(r) {
+      if (!(Number(r.rate_usd) > 0)) return;
+      var rec = { rate_usd: Math.round(Number(r.rate_usd)), transit_days: _srParseDays(r.transit_days), source: 'json' };
+      if (r.country_code) maps.n2Iso2[String(r.country_code).toUpperCase()] = rec;
+      if (r.country) maps.n2Name[_srNorm(r.country)] = rec;
+    });
+  } catch (e) { /* maps stay empty → OpenAI fallback */ }
+  _srJsonCache = maps;
+  return _srJsonCache;
+}
+
+/* ── OpenAI freight fallback ──
+   Used ONLY when a rate is found in NEITHER JSON. Batches all missing routes
+   into ONE ChatGPT call for the most accurate door-to-door FCL 20ft estimate.
+   Results are cached in localStorage so a route is never re-asked. */
+async function _aiFreightBatch(routes) {
+  if (!routes || !routes.length) return {};
+  if (typeof callOpenAI !== 'function' || typeof getOpenAIKey !== 'function' || !getOpenAIKey()) return {};
+  var lines = routes.map(function(r, i){ return (i + 1) + '. ' + r.from + ' -> ' + r.to; }).join('\n');
+  var prompt =
+    'You are a senior international freight-pricing expert. For each origin→destination route below, ' +
+    'give the MOST ACCURATE current real-world estimate of the all-in cost (USD) to ship ONE standard ' +
+    '20ft FCL container door-to-door, and the typical transit time in days. Choose the realistic mode ' +
+    '(rail / road / sea / multimodal) for the actual geography (e.g. landlocked Central Asia is mostly ' +
+    'rail+road, not ocean). Base it on real market rates, not a generic formula.\n\n' +
+    'Return STRICT JSON ONLY: {"rates":[{"i":1,"rate_usd":1234,"transit_days":12}, ...]} — one object per route.\n\n' +
+    'Routes:\n' + lines;
+  try {
+    var resp = await callOpenAI([{ role: 'user', content: prompt }], { model: 'gpt-4o', jsonMode: true, maxTokens: 1200, temperature: 0.2, timeoutMs: 45000 });
+    var data = JSON.parse(resp.content || '{}');
+    var out = {};
+    (data.rates || []).forEach(function(row){
+      var idx = (Number(row.i) || 0) - 1;
+      var r = routes[idx];
+      if (r && Number(row.rate_usd) > 0) {
+        var result = { rate_usd: Math.round(Number(row.rate_usd)), transit_days: Math.round(Number(row.transit_days) || 0) || 7, source: 'openai' };
+        out[r.key] = result;
+        if (r.cacheKey) _srCacheSet(r.cacheKey, result);
+      }
+    });
+    return out;
+  } catch (e) { console.warn('[freight] OpenAI fallback error:', e && e.message); return {}; }
+}
+
+/* ── Main function: returns transport estimates for buildAiTransportAnalysis ──
+   { byIso: { ISO3: {navoiCost, navoiDays, navoiMode, dataSource}, ... },
+     foreign: { cost, days, source } | null }
+   Rule (per the latest spec):
+     • Raqam 2 (Navoi → neighbour)   = JSON2 → else OpenAI
+     • Raqam 1 (company → Navoi)     = JSON1 → else OpenAI
+   SeaRates is NOT called live here — it only populates the JSON caches offline
+   (scripts/populate-searates.js). OpenAI is the ONLY runtime fallback. */
+async function fetchSeaRatesTransportEstimates(countryInfo) {
+  var json = await _srLoadJson();
+  var sourceHub = getAiTransportHub(countryInfo);
+  var companyIso3 = String(sourceHub.iso3 || '').toUpperCase();
+  var companyName = String((countryInfo && countryInfo.display) || '').trim();
+  // company ISO2 — countryInfo'dan yoki iso3→iso2 mapdan
+  var companyIso2 = String((countryInfo && (countryInfo.iso2 || countryInfo.code)) || '').toUpperCase();
+  if (!companyIso2 && companyIso3 && typeof INVESTOR_GEO_ISO2_BY_ISO3 !== 'undefined' && INVESTOR_GEO_ISO2_BY_ISO3[companyIso3]) {
+    companyIso2 = INVESTOR_GEO_ISO2_BY_ISO3[companyIso3];
+  }
+
+  var byIso = {};
+  var missing = []; // routes to ask OpenAI for
+
+  /* Raqam 2 — Navoi -> each neighbour: JSON2 (ISO2/name) → localStorage(OpenAI) → batch OpenAI */
+  AI_TRANSPORT_TARGETS.forEach(function(target) {
+    var j = json.n2Iso2[String(target.code).toUpperCase()] || json.n2Name[_srNorm(target.nameEn || target.name)];
+    if (j && Number(j.rate_usd) > 0) {
+      byIso[target.iso3] = { navoiCost: j.rate_usd, navoiDays: j.transit_days || target.navoiDays, navoiMode: 'FCL 20ft', dataSource: 'json' };
+      return;
+    }
+    var ck = 'ai_navoi_' + target.iso3;
+    var hit = _srCacheGet(ck);
+    if (hit && Number(hit.rate_usd) > 0) {
+      byIso[target.iso3] = { navoiCost: Math.round(Number(hit.rate_usd)), navoiDays: Math.round(Number(hit.transit_days) || 0) || target.navoiDays, navoiMode: 'FCL 20ft', dataSource: hit.source || 'openai' };
+      return;
+    }
+    missing.push({ from: 'Navoi, Uzbekistan', to: (target.nameEn || target.name), key: 'navoi_' + target.iso3, cacheKey: ck, kind: 'navoi', iso3: target.iso3, target: target });
+  });
+
+  /* Raqam 1 — company country -> Navoi: JSON1 (ISO2/name) → localStorage(OpenAI) → batch OpenAI */
+  var foreign = null;
+  var cj = (companyIso2 && json.n1Iso2[companyIso2]) || (companyName && json.n1Name[_srNorm(companyName)]) || null;
+  if (cj && Number(cj.rate_usd) > 0) {
+    foreign = { cost: cj.rate_usd, days: cj.transit_days || 7, source: 'json' };
+  } else if ((companyName || companyIso2) && companyIso3 !== 'UZB') {
+    var ckf = 'ai_toNavoi_' + (companyIso2 || companyIso3 || _srNorm(companyName));
+    var hitf = _srCacheGet(ckf);
+    if (hitf && Number(hitf.rate_usd) > 0) {
+      foreign = { cost: Math.round(Number(hitf.rate_usd)), days: Math.round(Number(hitf.transit_days) || 0) || 7, source: hitf.source || 'openai' };
+    } else if (companyName) {
+      missing.push({ from: companyName, to: 'Navoi, Uzbekistan', key: 'foreign', cacheKey: ckf, kind: 'foreign' });
+    }
+  }
+
+  /* Single OpenAI call for everything not found in the JSONs/cache */
+  if (missing.length) {
+    var aiOut = await _aiFreightBatch(missing);
+    missing.forEach(function(m) {
+      var r = aiOut[m.key];
+      if (!r) return;
+      if (m.kind === 'navoi') byIso[m.iso3] = { navoiCost: r.rate_usd, navoiDays: r.transit_days, navoiMode: 'FCL 20ft', dataSource: 'openai' };
+      else if (m.kind === 'foreign') foreign = { cost: r.cost || r.rate_usd, days: r.transit_days, source: 'openai' };
+    });
+  }
+
+  console.log('[freight] Navoi neighbours resolved:', Object.keys(byIso).length + '/' + AI_TRANSPORT_TARGETS.length,
+    '| company(' + companyIso3 + ')->Navoi:', foreign ? ('$' + foreign.cost + ' (' + foreign.source + ')') : 'none');
+
+  return { byIso: byIso, foreign: foreign };
 }
 
 async function buildAiTransportAnalysis(countryInfo, comp){
   var sourceHub = getAiTransportHub(countryInfo);
-  // Try Gemini first (real market-informed estimates), fall back to formula
-  var geminiMap = await fetchAiTransportEstimatesFromGemini(countryInfo, comp).catch(function(){ return null; });
+  // SeaRates + Freightos real freight rates via navoiy-api-proxy.
+  // Falls back to haversine formula if API unavailable or returns 0 routes.
+  var srData = await fetchSeaRatesTransportEstimates(countryInfo).catch(function(){ return null; });
+  var navoiMap = (srData && srData.byIso) || {};
+  var foreign = srData && srData.foreign; // Raqam 1: kompaniya davlati -> Navoiy (import xarajati)
   var routes = AI_TRANSPORT_TARGETS.map(function(target){
-    var gRow = geminiMap && geminiMap[target.iso3];
+    var nRow = navoiMap[target.iso3];
+    // RAQAM 1 (foreign) — kompaniya davlatidan O'zbekistongacha (Navoiy). Barcha qatorlar
+    // uchun bir xil import-baza. JSON/SeaRates'dan kelsa real, aks holda korridor formula.
     var estimate;
-    var navoiCost, navoiDays, navoiMode;
-    if(gRow && Number.isFinite(Number(gRow.foreignCost)) && Number.isFinite(Number(gRow.navoiCost))){
+    if(foreign && Number.isFinite(Number(foreign.cost))){
       estimate = {
-        foreignCost: Math.round(Number(gRow.foreignCost)),
-        foreignDays: Math.max(1, Math.round(Number(gRow.foreignDays) || 1)),
-        foreignMode: String(gRow.foreignMode || '—')
+        foreignCost: Math.round(Number(foreign.cost)),
+        foreignDays: Math.max(1, Math.round(Number(foreign.days) || 7)),
+        foreignMode: 'FCL 20ft (→Navoiy)'
       };
-      navoiCost = Math.round(Number(gRow.navoiCost));
-      navoiDays = Math.max(1, Math.round(Number(gRow.navoiDays) || 1));
-      navoiMode = String(gRow.navoiMode || target.navoiMode);
     } else {
       estimate = estimateAiExportRoute(sourceHub, target);
+    }
+    // RAQAM 2 (navoi) — Navoiydan qo'shni bozorga. JSON keshidan (real SeaRates) yoki model.
+    var navoiCost, navoiDays, navoiMode, navoiReal = false;
+    if(nRow && Number.isFinite(Number(nRow.navoiCost))){
+      navoiCost = Math.round(Number(nRow.navoiCost));   // JSON kesh (SeaRates) yoki OpenAI
+      navoiDays = Math.max(1, Math.round(Number(nRow.navoiDays) || target.navoiDays || 1));
+      navoiMode = String(nRow.navoiMode || target.navoiMode);
+      navoiReal = (nRow.dataSource && nRow.dataSource !== 'formula'); // json/searates/openai — barchasi real ma'lumot
+    } else {
       navoiCost = target.navoiCost;
       navoiDays = target.navoiDays;
       navoiMode = target.navoiMode;
@@ -2544,9 +2906,10 @@ async function buildAiTransportAnalysis(countryInfo, comp){
       navoiMode: navoiMode,
       saving: saving,
       savingPct: savingPct,
-      dataSource: gRow ? 'gemini' : 'formula'
+      dataSource: navoiReal ? 'searates' : 'formula'
     };
   });
+  var realCount = routes.filter(function(r){ return r.dataSource === 'searates'; }).length;
   var totalForeign = routes.reduce(function(sum, row){ return sum + row.foreignCost; }, 0);
   var totalNavoi = routes.reduce(function(sum, row){ return sum + row.navoiCost; }, 0);
   var totalSaving = totalForeign - totalNavoi;
@@ -2562,8 +2925,20 @@ async function buildAiTransportAnalysis(countryInfo, comp){
   var volumeSpec = (Number.isFinite(taQty) && taQty > 0 && taUnit)
     ? ('Yillik ' + Math.round(taQty).toLocaleString('en-US') + ' ' + taUnit + ' hajmda')
     : '1 × 20ft konteyner (standart)';
-  var dataSourceBadge = geminiMap ? '🤖 AI tahlil' : '📐 Formula (fallback)';
+  // Manba taqsimoti — JSON narx bazasi + OpenAI + model
+  var jsonCount = routes.filter(function(r){ return r.dataSource === 'json'; }).length;
+  var aiCount = routes.filter(function(r){ return r.dataSource === 'openai'; }).length;
+  var dataSourceBadge;
+  if(realCount === routes.length){
+    dataSourceBadge = (aiCount > 0 && jsonCount > 0) ? '🚢 Narx bazasi + 🤖 AI (FCL 20ft)'
+      : (jsonCount > 0 ? '🚢 SeaRates narx bazasi (FCL 20ft)' : '🤖 AI baholangan FCL narxlari');
+  } else if(realCount > 0){
+    dataSourceBadge = '🚢 Baza ' + jsonCount + (aiCount ? ' + 🤖 AI ' + aiCount : '') + '/' + routes.length + ' + 📐 model';
+  } else {
+    dataSourceBadge = '📐 Koridor-model bahosi (taxminiy, ±35%)';
+  }
   return {
+    realCount: realCount,
     sourceCountry: String((countryInfo && countryInfo.display) || sourceHub.name || 'Tanlangan davlat'),
     sourceHub: sourceHub,
     routes: routes,
@@ -2606,7 +2981,7 @@ function buildAiTransportDetail(summary){
         '</tr>';
       }).join('') +
     '</tbody></table></div>' +
-    '<div style="padding:0 1rem 1rem;font-size:.72rem;line-height:1.6;color:var(--text2)"><strong>Logistika modeli:</strong><br>• Kompaniya joylashgan davlat uchun markaziy logistika hub: ' + escapeHtmlText(summary.sourceHub.name) + '.<br>• Narxlar 1 ta 40ft konteyner bo\'yicha taxminiy multimodal eksport modeli asosida hisoblandi.<br>• Navoiy narxlari ichki koridor benchmarklari, qolganlari esa masofa + koridor profili bo\'yicha modellashtirildi.' + (summary.fastestNavoi ? '<br>• Eng tez Navoiy yo\'nalishi: ' + escapeHtmlText(summary.fastestNavoi.name) + ' (~' + summary.fastestNavoi.navoiDays + ' kun).' : '') + '</div>' +
+    '<div style="padding:0 1rem 1rem;font-size:.72rem;line-height:1.6;color:var(--text2)"><strong>Logistika modeli:</strong><br>• Kompaniya joylashgan davlat uchun markaziy logistika hub: ' + escapeHtmlText(summary.sourceHub.name) + '.<br>• Narxlar 1 ta 20ft standart konteyner (FCL) bo\'yicha eshikdan-eshikgacha hisoblandi.<br>• Navoiy narxlari ichki koridor benchmarklari, qolganlari SeaRates real narxi yoki masofa + koridor modeli bo\'yicha.' + (summary.fastestNavoi ? '<br>• Eng tez Navoiy yo\'nalishi: ' + escapeHtmlText(summary.fastestNavoi.name) + ' (~' + summary.fastestNavoi.navoiDays + ' kun).' : '') + '</div>' +
   '</div>';
 }
 
@@ -2651,48 +3026,70 @@ function renderAiTransportAnalysis(summary, scope){
     '</tr>';
   }).join('');
 
-  var srcBadge = summary.dataSourceBadge || '📐 Formula (fallback)';
+  var srcBadge = summary.dataSourceBadge || '📐 Koridor-model bahosi';
+  var isReal = (summary.realCount || 0) > 0;
   metaEl.style.display = 'block';
   metaEl.innerHTML = '<div style="padding-top:.3rem;border-top:1px dashed rgba(16,185,129,.28)">' +
-    '<strong>Logistika modeli (' + escapeHtmlText(srcBadge) + '):</strong><br>' +
-    '• Eksport hub: ' + escapeHtmlText(summary.sourceHub.name) + ' → 13 bozorga solishtirildi.<br>' +
-    '• Narxlar: ' + (srcBadge.indexOf('AI') !== -1 ? 'OpenAI tahlili (Drewry/Xeneta/Freightos ko\'rsatkichlari asosida). Aniq taklif uchun freight forwarder bilan muzokaraning kerak.' : 'Masofa + koridor profili formulasi (fallback). AI tahlili mavjud bo\'lganda yangilanadi.') + '<br>' +
-    '• Navoiy − Markaziy Osiyo mamlakatlariga quruqlik koridori orqali raqobatbardosh. Dengizga yaqin davlatlar uchun manba davlat arzonroq bo\'lishi mumkin — bu normal.' +
-    (summary.fastestNavoi ? '<br>• Eng tez yo\'nalish: ' + escapeHtmlText(summary.fastestNavoi.name) + ' (~' + summary.fastestNavoi.navoiDays + ' kun).' : '') +
+    '<strong>Ma\'lumot manbasi: ' + escapeHtmlText(srcBadge) + '</strong><br>' +
+    '• <strong>Birlik:</strong> 1 × 20ft standart konteyner (FCL), eshikdan-eshikgacha (door-to-door).<br>' +
+    '• <strong>Solishtirish:</strong> ' + escapeHtmlText(summary.sourceHub.name) + ' (kompaniya davlati) va Navoiydan har bir 13 bozorga eksport narxi.<br>' +
+    (isReal
+      ? '• <strong>Real narxlar:</strong> SeaRates Logistics Explorer API\'dan jonli FCL stavkalari (' + (summary.realCount||0) + '/' + summary.routes.length + ' yo\'nalish). Qolgani koridor-model bilan to\'ldirilgan.<br>'
+      : '• <strong>Koridor-model:</strong> SeaRates real narx topilmagan yo\'nalishlar uchun masofa + koridor profili (Drewry/Freightos benchmarklari bilan kalibrlangan). Bu taxminiy baho (±35%), aniq taklif uchun freight forwarder bilan tasdiqlang.<br>') +
+    '• <strong>Navoiy ustunligi:</strong> Markaziy Osiyo va CIS bozorlariga quruqlik koridori (Trans-Kaspiy / O\'rta yo\'lak) orqali qisqaroq masofa. Dengiz portiga yaqin davlatlar uchun manba davlat ba\'zan arzonroq bo\'lishi mumkin — bu normal va halol ko\'rsatiladi.' +
+    (summary.fastestNavoi ? '<br>• <strong>Eng tez Navoiy yo\'nalishi:</strong> ' + escapeHtmlText(summary.fastestNavoi.name) + ' (~' + summary.fastestNavoi.navoiDays + ' kun).' : '') +
     '</div>';
   /* card stays hidden until user clicks transport metric card in analysis section */
 }
 
 function buildAiTransportPromptLines(summary){
-  if(!summary || !summary.routes || !summary.routes.length) return [];
-  // Only emit transport lines when Navoi has a net advantage — negative avgSaving
-  // would mean Navoi is MORE expensive on average and must not be cited as an advantage.
-  var favorableRoutes = summary.routes.filter(function(r){ return r.saving > 0; });
-  if(favorableRoutes.length === 0) return [];
-  var topRoutes = favorableRoutes.slice().sort(function(a, b){ return b.saving - a.saving; }).slice(0, 4);
+  /* Transport cost PERCENTAGES are NOT included in the email prompt because they are
+     distance-formula estimates (±30%) and would read as fabricated precision.
+     Instead, we emit FACTUAL infrastructure statements about Navoi connectivity
+     that the AI can cite without risk of hallucination or exaggeration.
+     These facts are verifiable and stable (airport ICAO code, rail corridors, transit times). */
   var lines = [];
-  // Only quote averages when there are 3+ favorable routes (otherwise one outlier drives the claim)
-  if(favorableRoutes.length >= 3){
-    var favAvgForeign = Math.round(favorableRoutes.reduce(function(s,r){ return s+r.foreignCost; },0) / favorableRoutes.length);
-    var favAvgNavoi  = Math.round(favorableRoutes.reduce(function(s,r){ return s+r.navoiCost;  },0) / favorableRoutes.length);
-    var favAvgSaving = favAvgForeign - favAvgNavoi;
-    var favAvgPct    = favAvgForeign > 0 ? Math.round((favAvgSaving / favAvgForeign) * 100) : 0;
-    lines.push(
-      'Logistics comparison (estimated 40ft container export cost, ' + favorableRoutes.length + ' of 13 target markets where Navoi has a cost advantage): ' +
-      'average from ' + summary.sourceCountry + ' is ' + aiFmtTransportUsd(favAvgForeign) + ' vs average from Navoi ' + aiFmtTransportUsd(favAvgNavoi) +
-      ' — Navoi is ~' + favAvgPct + '% cheaper on these routes.'
-    );
+
+  // 1. Navoi International Airport — factual cargo hub statement
+  lines.push(
+    'Navoi International Airport (ICAO: UTNN) operates direct cargo connections to ' +
+    'Seoul Incheon (ICN), Frankfurt (FRA), Dubai (DXB), and Mumbai (BOM). ' +
+    'It is Central Asia\'s largest cargo airport by annual throughput volume.'
+  );
+
+  // 2. Rail connectivity — Trans-Caspian / Middle Corridor
+  lines.push(
+    'Rail connectivity: Trans-Caspian International Transport Route (Middle Corridor) ' +
+    'links Navoi to Turkey (approx. 7 days), Russia (approx. 7 days), and China ' +
+    'without sea transhipment. Kazakhstan is approx. 2 days by rail/road.'
+  );
+
+  // 3. Road corridors to immediate neighbours — these are reliable geographic facts
+  var roadNeighbours = [];
+  if(summary && summary.routes){
+    var roadTargets = { TJK:'Tajikistan', TKM:'Turkmenistan', AFG:'Afghanistan', KGZ:'Kyrgyzstan', IRN:'Iran', KAZ:'Kazakhstan' };
+    summary.routes.forEach(function(r){
+      if(roadTargets[r.iso3] && r.navoiDays <= 4 && r.dataSource !== 'gemini'){
+        roadNeighbours.push(roadTargets[r.iso3] + ' (~' + r.navoiDays + ' days by road)');
+      }
+    });
   }
-  if(summary.fastestNavoi){
-    lines.push('Fastest Navoi export market in this set: ' + summary.fastestNavoi.name + ' in about ' + summary.fastestNavoi.navoiDays + ' days (vs ' + (summary.fastestNavoi.foreignDays || '?') + ' days from ' + summary.sourceCountry + ').');
+  if(roadNeighbours.length >= 2){
+    lines.push('Direct road corridors: ' + roadNeighbours.join(', ') + '.');
   }
-  topRoutes.forEach(function(route){
-    lines.push(
-      'For ' + route.name + ': from ' + summary.sourceCountry + ' costs ~' + aiFmtTransportUsd(route.foreignCost) +
-      ' vs from Navoi ~' + aiFmtTransportUsd(route.navoiCost) +
-      ' — Navoi cheaper by ' + aiFmtTransportUsd(route.saving) + ' (' + route.savingPct + '%).'
-    );
-  });
+
+  // 4. If source country has favorable routes, state the count but NOT the percentage
+  if(summary && summary.routes){
+    var favCount = summary.routes.filter(function(r){ return r.saving > 0; }).length;
+    if(favCount >= 3){
+      lines.push(
+        'Out of the 13 regional target markets analysed, Navoi has a geographic freight ' +
+        'cost advantage over ' + summary.sourceCountry + ' on ' + favCount + ' routes ' +
+        '(distance-based estimate — exact rates vary by cargo type and forwarder).'
+      );
+    }
+  }
+
   return lines;
 }
 
@@ -2787,17 +3184,30 @@ function renderAiTariffAnalysis(summary, scope){
     '</tr>';
   }).join('');
 
+  // Plain-language explanation block: distinguish the TWO different tariff concepts so the
+  // "0%" headline next to a "2.7% vs 1.2%" comparison is not confusing.
+  var hsChapter = String((summary.productInfo || {}).hsCode || summary.hsCode || '').replace(/\D/g,'').slice(0,2);
+  var uzImp = (dr && dr.uzMfnRate !== null && Number.isFinite(Number(dr.uzMfnRate))) ? Number(dr.uzMfnRate)
+            : (Number.isFinite(Number(summary.uzbImportMfnRate)) ? Number(summary.uzbImportMfnRate) : null);
+  var uzImpSource = dr ? (dr.source || 'AI web-search (customs.uz/WTO)') : 'O\'zbekiston MFN bojxona jadvali (HS bob darajasi)';
+  var prefBlock = (dr && dr.preferentialRate !== null && Number.isFinite(Number(dr.preferentialRate)))
+    ? ' Imtiyozli (FTA' + (dr.ftaName ? ' · ' + escapeHtmlText(dr.ftaName) : '') + '): <strong>' + aiFmtPct(dr.preferentialRate) + '</strong>.'
+    : '';
   metaEl.style.display = 'block';
   metaEl.innerHTML =
     '<div style="padding-top:.3rem;border-top:1px dashed rgba(124,58,237,.25)">' +
-      '<strong>✅ Rasmiy manba — WITS · UNCTAD · TRAINS</strong> (Jahon Banki + UNCTAD + WTO hamkorligi, gold-standard)<br>' +
-      '• Reporter = maqsad import bozori, partner = kompaniya davlati yoki O\'zbekiston.<br>' +
-      '• Mahsulot HS kodi: ' + escapeHtmlText(String((summary.productInfo || {}).hsCode || summary.hsCode || '—')) + '.<br>' +
-      '• AHS = Applied (bilateral), MFN = Most-Favoured-Nation (umumiy).<br>' +
-      '• 0% qiymati — FTA (erkin savdo) natijasi yoki o\'sha davlat uchun bojxona yo\'q degani.<br>' +
-      '• Musbat farq = O\'zbekiston uchun pastroq bojxona tarifi.<br>' +
-      '• Ma\'lumot yili ustunda — WITS ~1-2 yil lag bilan yangilanadi.' +
-      (dr ? '<br>• <strong>🤖 AI deep-research</strong>: ' + escapeHtmlText(dr.source || 'OpenAI web search') + ' (ishonch: ' + (dr.confidence||'medium') + ')' : '') +
+      '<div style="background:rgba(5,150,105,.06);border-radius:10px;padding:.7rem .8rem;margin-bottom:.7rem">' +
+        '<div style="font-weight:800;color:var(--text);margin-bottom:4px">1️⃣ O\'zbekiston import boji (asosiy raqam)</div>' +
+        'Bu — O\'zbekiston ushbu mahsulotni (' + escapeHtmlText(((summary.productInfo||{}).displayName) || ('HS ' + hsChapter)) + ', HS ' + escapeHtmlText(hsChapter) + '-bob) chetdan olib kelishda oladigan bojxona tarifi: ' +
+        (uzImp !== null ? '<strong>' + aiFmtPct(uzImp) + '</strong>.' : '<strong>aniqlanmadi</strong>.') + prefBlock + '<br>' +
+        '<span style="font-size:.7rem;color:var(--text3)">Manba: ' + escapeHtmlText(uzImpSource) + '. Investor uchun ma\'no: xom-ashyo/uskuna keltirishda to\'lanadigan boj. 0% — ko\'p sanoat xom-ashyosi va uskunalar uchun normal (qonuniy imtiyoz).</span>' +
+      '</div>' +
+      '<div style="background:rgba(37,99,235,.06);border-radius:10px;padding:.7rem .8rem;margin-bottom:.7rem">' +
+        '<div style="font-weight:800;color:var(--text);margin-bottom:4px">2️⃣ Eksport bozori tariflari (pastdagi jadval)</div>' +
+        '13 ta mintaqaviy bozor ushbu mahsulotni import qilishda <strong>' + escapeHtmlText(summary.sourceCountry || 'kompaniya davlati') + '</strong>dan (o\'rtacha ' + aiFmtPct(summary.avgSourceRate) + ') va <strong>O\'zbekiston</strong>dan (o\'rtacha ' + aiFmtPct(summary.avgUzRate) + ') qancha boj olishini solishtiradi.<br>' +
+        '<span style="font-size:.7rem;color:var(--text3)">Manba: WITS · UNCTAD TRAINS (Jahon Banki gold-standard, ~1-2 yil lag). AHS = bilateral amaldagi, MFN = umumiy stavka. Musbat farq = O\'zbekistondan eksportga pastroq boj.</span>' +
+      '</div>' +
+      (dr ? '<div style="font-size:.72rem;color:var(--text2)">🤖 Tekshiruv: AI web-search (' + escapeHtmlText(dr.source || 'customs.uz/WTO') + ') · ishonch: <strong>' + (dr.confidence||'o\'rta') + '</strong>' + (dr.ntbNotes ? ' · norasmiy to\'siqlar: ' + escapeHtmlText(dr.ntbNotes) : '') + '</div>' : '') +
     '</div>';
   /* tariff card stays hidden until user clicks tariff metric */
 }
@@ -2817,7 +3227,8 @@ function buildAiTariffPromptLines(summary){
     }).sort(function(a, b){
       return Number(b.diff || 0) - Number(a.diff || 0);
     }).slice(0, 4).forEach(function(row){
-      var name = row.targetName || row.dest || 'target market';
+      // o'zbekcha davlat nomini inglizchaga aylantirish (Ozarbayjon → Azerbaijan)
+      var name = _aiCountryNameEn(row.targetName || row.dest || 'target market');
       lines.push('For ' + name + ', tariff from the company country is ' + aiFmtPct(row.sourceRate) + ' versus Uzbekistan ' + aiFmtPct(row.uzRate) + ', so Uzbekistan is lower by ' + aiFmtPct(row.diff) + (Number.isFinite(Number(row.diffPct)) ? ' (' + row.diffPct + '%).' : '.'));
     });
   }
@@ -2896,7 +3307,39 @@ function humaniseLetterBody(body){
   ];
   clicheMap.forEach(function(pair){ out = out.replace(pair[0], pair[1]); });
 
-  /* 3. Collapse any double spaces / commas introduced by the substitutions */
+  /* 3. Replace any Uzbek country/word leaks with English equivalents.
+        This is the final safety net — catches cases where Gemini fallback or
+        data fields leak Uzbek names into the English email body. */
+  var uzEnMap = [
+    [/\bOzarbayjon\b/g, 'Azerbaijan'],
+    [/\bGruziya\b/g, 'Georgia'],
+    [/\bArmaniston\b/g, 'Armenia'],
+    [/\bEron\b/g, 'Iran'],
+    [/\bTojikiston\b/g, 'Tajikistan'],
+    [/\bQirg['']iziston\b/g, 'Kyrgyzstan'],
+    [/\bQozog['']iston\b/g, 'Kazakhstan'],
+    [/\bTurkmaniston\b/g, 'Turkmenistan'],
+    [/\bPokiston\b/g, 'Pakistan'],
+    [/\bAfg['']oniston\b/g, 'Afghanistan'],
+    [/\bMonголiya\b/g, 'Mongolia'],
+    [/\bMongoliya\b/g, 'Mongolia'],
+    [/\bRossiya\b/g, 'Russia'],
+    [/\bTurkiya\b/g, 'Turkey'],
+    [/\bXitoy\b/g, 'China'],
+    [/\bHindiston\b/g, 'India'],
+    [/\bFransiya\b/g, 'France'],
+    [/\bGermaniya\b/g, 'Germany'],
+    [/\bYaponiya\b/g, 'Japan'],
+    [/\bKoreya\b/g, 'South Korea'],
+    [/\bBraziliya\b/g, 'Brazil'],
+    [/\bAvstraliya\b/g, 'Australia'],
+    [/\bBritaniya\b/g, 'United Kingdom'],
+    [/,\s*portlovchi\s+moddalar\b/gi, ''],  // "explosives, portlovchi moddalar" → "explosives"
+    [/,\s*[a-z\s']+lar\b(?=\s)/gi, function(m){ return /[а-яёА-ЯЁ]/.test(m) || /o'z|ish|lash/.test(m) ? '' : m; }]
+  ];
+  uzEnMap.forEach(function(pair){ out = out.replace(pair[0], pair[1]); });
+
+  /* 4. Collapse any double spaces / commas introduced by the substitutions */
   out = out.replace(/[ \t]+/g, ' ');
   out = out.replace(/ ,/g, ',');
   out = out.replace(/,\s*,/g, ',');
@@ -2925,6 +3368,8 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   var contactIdx = Number(opts.contactIdx || 0);
   var contactTotal = Number(opts.contactTotal || 1);
   var usedAngles = Array.isArray(opts.usedAngles) ? opts.usedAngles : [];
+  // Progress callback — funksiya boshiga ko'chirildi (scope xatosini bartaraf etish uchun)
+  var _onProg = (typeof opts.onProgress === 'function') ? opts.onProgress : null;
   var langName = getAiLangName(lang);
   // Reuse pre-computed analysis (saves quota when same company has multiple contacts)
   var analysis = sharedAnalysis || await fetchOfficialAiCountryAnalysis(comp);
@@ -2955,8 +3400,11 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       tariffSummary = getAiTariffUnavailableSummary(comp, analysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
     }
   }
-  var productLabel = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || 'selected product';
-  var industryLabel = comp.mahsulotNomi || comp.soha || productLabel || 'Manufacturing';
+  // Only use the English display name from the products database.
+  // comp.mahsulotNomi and comp.soha are Uzbek-language fields — never pass them into
+  // an English email prompt or they will leak as "explosives - portlovchi moddalar" artefacts.
+  var productLabel = (productInfo && productInfo.displayName) || 'selected product';
+  var industryLabel = productLabel; // always derived from English source, never from Uzbek fields
 
   // Persona-based prompt tailoring
   var persona = detectContactPersona(comp.lavozim || comp.title || '');
@@ -3000,10 +3448,80 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
   var taxHolidayYearsForSubject = _fezM >= 10 ? 10 : _fezM >= 5 ? 7 : _fezM >= 3 ? 5 : 3;
 
   var _noCountry = !!(analysis && analysis._noCountry);
+
+  /* 13-davlat import totallarini (2021-2024) avval snapshotdan, agar topilmasa
+     jonli ravishda UN Comtrade'dan olamiz. Bu raqamlar ¶1 da bozor talabini
+     "between X and Y" diapazon emas, EXACT raqamlar bilan ko'rsatish uchun. */
+  // Firebase'dan importSnapshots'ni yuklaymiz (agar oldin yuklanmagan bo'lsa)
+  try {
+    if(typeof ensureCollectionLoaded === 'function'){
+      await ensureCollectionLoaded('importSnapshots');
+    }
+  } catch(eEnsure){ console.warn('[email] importSnapshots yuklash xato:', eEnsure && eEnsure.message); }
+
+  var _importTotals = getCompanyProductImportTotals(productInfo, comp);
+  if(_importTotals){
+    console.log('[email] snapshot topildi:', _importTotals.uzbekistanUsd, _importTotals.otherTwelveUsd);
+  } else {
+    console.log('[email] snapshot topilmadi, UN Comtrade jonli so\'rov...');
+    try {
+      _importTotals = await fetchProductImportTotalsLive(productInfo, comp);
+      if(_importTotals) console.log('[email] jonli Comtrade muvaffaqiyatli:', _importTotals.uzbekistanUsd, _importTotals.otherTwelveUsd);
+      else console.warn('[email] jonli Comtrade null qaytardi');
+    } catch(eL){
+      console.warn('[email] jonli Comtrade xato:', eL && eL.message);
+    }
+  }
+  var importTotalsBlock = '';
+  if(_importTotals && (_importTotals.uzbekistanUsd > 0 || _importTotals.otherTwelveUsd > 0)){
+    var _uzShort = _formatImportUsdShort(_importTotals.uzbekistanUsd);
+    var _otShort = _formatImportUsdShort(_importTotals.otherTwelveUsd);
+    var _allShort = _formatImportUsdShort(_importTotals.combinedUsd);
+    var _topOthersStr = (_importTotals.topOthers || []).map(function(o){
+      return o.name + ' (' + _formatImportUsdShort(o.usd) + ')';
+    }).join(', ');
+    importTotalsBlock =
+      '13-MARKET IMPORT TOTALS for ' + (_importTotals.productName || productLabel) +
+      ' (HS ' + (_importTotals.hsCode || 'n/a') + '), period ' + _importTotals.period +
+      ' (source: ' + _importTotals.source + ') — THESE TWO FIGURES ARE MANDATORY IN ¶1:\n' +
+      '• Uzbekistan total imports 2021–2024: ' + _uzShort +
+      ' (USD ' + Math.round(_importTotals.uzbekistanUsd).toLocaleString('en-US') + ')\n' +
+      '• Other 12 regional markets combined total imports 2021–2024: ' + _otShort +
+      ' (USD ' + Math.round(_importTotals.otherTwelveUsd).toLocaleString('en-US') + ')\n' +
+      '• Combined 13-market total 2021–2024: ' + _allShort + '\n' +
+      (_topOthersStr ? '• Top 3 within the other 12: ' + _topOthersStr + '\n' : '') +
+      'RULE: ¶1 of the email MUST cite BOTH the Uzbekistan figure (' + _uzShort + ') AND the other-12 ' +
+      'figure (' + _otShort + ') explicitly, with the 2021–2024 period and the UN Comtrade source. ' +
+      'These two numbers are the entire reason this product matters for Navoi — they quantify the ' +
+      'addressable regional demand. Do NOT round them away, do NOT skip either one. ' +
+      'Use the exact short-form values shown above (' + _uzShort + ' and ' + _otShort + ') — DO NOT ' +
+      'invent placeholder text like "$X million" or "$Y million".';
+  } else {
+    // Snapshot YOQ va jonli olib kelish ham ishlamadi — AI placeholder yozmasligi uchun
+    // aniq ko'rsatma. ¶1 struktura(a/b/c)dan foydalanish shart.
+    importTotalsBlock =
+      '13-MARKET IMPORT TOTALS: NOT AVAILABLE (UN Comtrade data not yet loaded for this HS code). ' +
+      'STRICT RULES for ¶1 when import totals are unavailable:\n' +
+      '1. ABSOLUTELY NO placeholder text: no "$X million", "$Y million", "[amount]", "[USD]", ' +
+      '"approximately $X", "X/Y/Z" stand-ins. Any invented figure is a hard fail.\n' +
+      '2. ABSOLUTELY NO banned adjectives: "rich deposits", "significant mineral reserves", ' +
+      '"robust industrial infrastructure", "advanced infrastructure", "highly developed", ' +
+      '"abundant resources". These are marketing clichés — do not use them.\n' +
+      '3. USE structure (b) from ¶1 guidance: Uzbekistan has upstream inputs or raw materials ' +
+      'for this product — name them specifically and factually (e.g. Navoi mines gold at ~100 t/yr, ' +
+      'or produces gas-condensate for energy-intensive processes) with the figure from verified data.\n' +
+      '4. Then write ONE connector sentence linking the recipient company\'s actual product line ' +
+      'and their country to the Navoi opportunity — no flattery, just the factual link.\n' +
+      '5. The paragraph still needs at least 3 numerical figures: use FEZ scale (564 hectares), ' +
+      'investment threshold ($300K USD for 3-year tax holiday), and one specific Navoi resource ' +
+      'figure (e.g. airport throughput, rail transit days, or a specific mineral output volume).';
+  }
+
   var dataBlock =
     'VERIFIED DATA (the ONLY numbers you are allowed to cite — do not invent any other figure or year):\n\n' +
     'COVERAGE RULE: Every bullet point in this data block MUST appear somewhere in the email body. ' +
     'Do not skip any metric. Use all of them.\n\n' +
+    (importTotalsBlock ? importTotalsBlock + '\n\n' : '') +
     fezBlock +
     '\n\n' +
     (_noCountry
@@ -3017,15 +3535,26 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     (transportLines.length ? '\n\nLOGISTICS / TRANSPORT (estimated costs, cite as approximate — include ALL of these in the email):\n' + transportLines.map(function(line){ return '• ' + line; }).join('\n') : '') +
     (!_noCountry && tariffLines.length ? '\n\nTARIFFS (WITS/UNCTAD official data — include ALL of these in the email):\n' + tariffLines.map(function(line){ return '• ' + line; }).join('\n') : '');
 
+  // Ism bo'sh bo'lsa "the recipient" o'rniga mos fallback ishlatamiz
+  var _recipientName = String(comp.rahbar || '').trim();
+  var _recipientNameForPrompt = _recipientName
+    || ('the team at ' + (comp.kompaniya || 'your company'));
+  var _salutationNote = _recipientName
+    ? '' // ism bor — oddiy "Dear Mr./Ms. [Surname]"
+    : '\n• SALUTATION NOTE: No individual name is available. Use "Dear Sir or Madam," ' +
+      'as the salutation — NEVER write "Dear the recipient" or "Dear the team at [Company]". ' +
+      '"Dear Sir or Madam," is the correct diplomatic form when the contact name is unknown.';
+
   var personaBlock =
     'RECIPIENT PROFILE:\n' +
-    '• Name: ' + (comp.rahbar || 'the recipient') + '\n' +
+    '• Name: ' + _recipientNameForPrompt + '\n' +
     '• Title: ' + (comp.lavozim || 'Manager') + '\n' +
     '• Company: ' + (comp.kompaniya || 'their company') + '\n' +
     '• Country: ' + (_noCountry ? 'unknown (do not guess or mention a country)' : (comp.davlat || 'abroad')) + '\n' +
     '• Product line in scope: ' + productLabel + ' (industry: ' + industryLabel + ')\n' +
     '• Persona class: ' + persona.toUpperCase() + ' → angle to emphasise: ' + pc.angle + '\n' +
-    '• Hook: ' + pc.hook;
+    '• Hook: ' + pc.hook +
+    _salutationNote;
 
   var styleBlock =
     'HOW THIS EMAIL MUST FEEL — read this before drafting:\n\n' +
@@ -3035,9 +3564,13 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     'recipient enough to be precise, concise, and direct. A diplomat who writes well is specific and unhurried — ' +
     'never flattering, never vague, never offering a menu of options.\n\n' +
     'STRUCTURE GUIDANCE (adapt to flow naturally — not a rigid template):\n' +
-    '  SALUTATION (mandatory, line 1 of the body): "Dear Mr. [Surname]," or "Dear Ms. [Surname]," using ' +
-    '       the recipient\'s actual surname from the recipient profile. If only a single name is available, ' +
-    '       use "Dear [FullName],". After the comma, leave a blank line, then continue.\n' +
+    '  SALUTATION (mandatory, line 1 of the body):\n' +
+    '       IF recipient name is known: "Dear Mr. [Surname]," or "Dear Ms. [Surname]," (use actual\n' +
+    '       surname from the Name field). If only a single full name is available, use "Dear [FullName],".\n' +
+    '       IF recipient name is NOT known / blank: use exactly "Dear Sir or Madam," — this is the\n' +
+    '       correct diplomatic form. NEVER write "Dear the recipient", "Dear the team at [Company]",\n' +
+    '       or "Dear [Company] Team" — these are not acceptable diplomatic salutations.\n' +
+    '       After the salutation comma, leave one blank line, then continue.\n' +
     '  BRIEF IDENTIFICATION (mandatory, 1 short sentence, before ¶1): Diplomatic protocol requires that ' +
     '       you state who you are and the institutional context in one concise sentence — not a pitch, ' +
     '       not a hedge, just identification. Acceptable forms (adapt, do not copy verbatim):\n' +
@@ -3054,35 +3587,79 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       [sector]") is required and expected. Then a blank line, then ¶1.\n' +
     '  ¶1 — NAVOI SUPPLY-AND-DEMAND REALITY for this specific product. This paragraph is the entire ' +
     '       reason you are writing — it must answer "how big is the market gap, and why Navoi?" with ' +
-    '       NUMBERS, not adjectives. THIS PARAGRAPH MUST CONTAIN AT LEAST 3 QUANTITATIVE FIGURES from ' +
-    '       the intelligence block: (i) current Navoi/Uzbekistan supply in tons/units/m²/$, (ii) ' +
-    '       Uzbek import volume OR 13-country regional demand in tons AND USD, (iii) the unmet-demand ' +
-    '       gap a new facility would absorb in tons/year AND $/year. Banned phrasing: "rich deposits", ' +
+    '       NUMBERS, not adjectives. \n' +
+    '       MANDATORY TWO-FIGURE RULE: If a "13-MARKET IMPORT TOTALS" block is present in the VERIFIED ' +
+    '       DATA above, ¶1 MUST cite BOTH the "Uzbekistan total imports 2021–2024" figure AND the ' +
+    '       "Other 12 regional markets combined total imports 2021–2024" figure, explicitly, with the ' +
+    '       period and source. These two numbers are the quantitative core of ¶1 — they show the ' +
+    '       recipient how big the addressable market is. Cite them as cumulative 2021–2024 totals ' +
+    '       (e.g. "Uzbekistan imported [$X] of [product] in 2021–2024, while the other twelve regional ' +
+    '       markets combined imported [$Y] over the same period (UN Comtrade)"). Round them no further ' +
+    '       than the data block already does — do not say "around $50M" if the block says "$48.2M".\n' +
+    '       In addition, ¶1 SHOULD also contain figures for: (i) current Navoi/Uzbekistan supply ' +
+    '       (tons/units/m²/$), (ii) the unmet-demand gap a new facility would absorb, when available ' +
+    '       from the COMPANY & RECIPIENT INTELLIGENCE block. Total numerical figures in ¶1 must be ' +
+    '       3 or more. Banned phrasing: "rich deposits", ' +
     '       "advanced infrastructure", "viable location", "feasible to target", "promising market", ' +
     '       "significant potential" — these are adjectives, not facts. Required phrasing uses figures ' +
-    '       with sources. Three valid structures (choose the one your intelligence supports):\n' +
-    '       (a) IF Navoi already produces at scale → "Navoi Region currently produces ~[X tons]/year ' +
-    '           of [product] across [N] facilities. Uzbekistan still imports ~[Y tons / $Z M] annually ' +
-    '           (UN Comtrade [year]), and the 13-country regional market consumes an estimated ' +
-    '           [W tons / $V M] per year. A new line would absorb the [Y+regional gap] tons/year ' +
-    '           currently sourced from outside the region."\n' +
-    '       (b) IF only upstream inputs exist locally → "Navoi mines ~[X kt]/year of [feedstock — gold, ' +
-    '           copper, marble, etc.] but has no integrated [product] line. Uzbekistan imported ' +
-    '           ~[Y tons / $Z M] of finished [product] in [year] (UN Comtrade), with regional demand ' +
-    '           at roughly [W tons / $V M] per year. A finishing facility of [up to N kt/year] would ' +
-    '           convert local feedstock into export-grade output."\n' +
-    '       (c) IF no current production at scale → "Navoi has no current [product] production at ' +
-    '           scale. Uzbekistan imported ~[Y tons / $Z M] in [year] (UN Comtrade [year]), and the ' +
-    '           combined 13-country regional market consumes ~[W tons / $V M] per year, growing at ' +
-    '           ~[CAGR]% (source). [Specific resource A], [resource B] and Trans-Caspian rail access ' +
-    '           support a greenfield facility of up to [N tons]/year — enough to displace ~[%] of ' +
-    '           Uzbek imports alone."\n' +
-    '       After the supply-and-demand picture, ONE short connector sentence linking the recipient ' +
-    '       company\'s existing activity in [their country] to this Navoi opportunity (e.g. "Cornerstone\'s ' +
-    '       Double-Lok™ line at [facility] is the production profile a Navoi facility would mirror"). ' +
+    '       with sources. This paragraph is what an investor cares about most: OUR resources and OUR ' +
+    '       market. Pick the ONE structure below that matches the real production status of this ' +
+    '       product in Uzbekistan (use the COMPANY & RECIPIENT INTELLIGENCE block and Navoi resource ' +
+    '       facts to decide):\n' +
+    '       (a) IF the product is ALREADY made in Uzbekistan/Navoi but NOT yet at mass-production ' +
+    '           scale, while demand is large → say so plainly with numbers: "Uzbekistan already ' +
+    '           produces [product] at [N facilities / ~X tons/year], but not yet at mass-production ' +
+    '           scale. Even so, the country imported [$Z exact UZ total] in 2021-2024 (UN Comtrade), ' +
+    '           and the other twelve regional markets a further [$Y exact total]. The resource base ' +
+    '           and existing know-how are already here; what is missing is scale." Make clear the ' +
+    '           opportunity is to industrialise an existing capability into mass output.\n' +
+    '       (b) IF the finished product is NOT made in Uzbekistan, but its inputs, components or ' +
+    '           feedstock ALREADY exist in Navoi → name those local elements explicitly (the specific ' +
+    '           mineral, intermediate good, or existing plant): "Uzbekistan does not yet manufacture ' +
+    '           [product], yet [specific local input A] and [input B] are already produced/mined in ' +
+    '           Navoi at [figure]. The finished product is still imported: [$Z exact UZ total] in ' +
+    '           2021-2024, with [$Y exact total] more across the other twelve markets (UN Comtrade). ' +
+    '           A facility here would convert local inputs into finished, export-grade output."\n' +
+    '       (c) IF there is no current production AND no obvious local inputs → greenfield framing: ' +
+    '           "Uzbekistan imported [$Z exact UZ total] of [product] in 2021-2024, and the other ' +
+    '           twelve regional markets a combined [$Y exact total] (UN Comtrade). [Specific Navoi ' +
+    '           resource A], [resource B] and Trans-Caspian rail access support a new facility of up ' +
+    '           to [N tons]/year, enough to displace a meaningful share of those imports."\n' +
+    '       In ALL three structures the two exact 2021-2024 import totals are mandatory and must be ' +
+    '       copied verbatim from the data block. Choose import-side framing (demand a Navoi facility ' +
+    '       would serve) by default; use export-side framing only if the data block is explicitly ' +
+    '       about Uzbek export capacity for this product.\n' +
+    '       DEMAND ON A YEARLY BASIS: in addition to the cumulative 2021-2024 totals, also express the ' +
+    '       demand as an approximate annual run-rate so the recipient grasps the yearly scale — divide ' +
+    '       the cumulative figure by the number of years (e.g. "$8.4M over 2021-2024, roughly $2.1M a ' +
+    '       year"). This is allowed arithmetic on the supplied figure, not a new invented number. Do ' +
+    '       this for BOTH the Uzbekistan total and the 12-market total where it reads naturally.\n' +
+    '       UZBEK PRODUCTION / LOCAL INPUTS: if the intelligence shows Uzbekistan can already make this ' +
+    '       product, or already mines/produces its raw inputs or components in Navoi, state that plainly ' +
+    '       with the figure — it is the core of our pitch (we have the resource, you have the demand/' +
+    '       capability).\n' +
+    '       RECIPIENT-FIT OPPORTUNITY (this is the persuasive heart — get it RIGHT for THIS recipient, ' +
+    '       1-2 sentences after the supply/demand picture). Read the COMPANY & RECIPIENT INTELLIGENCE ' +
+    '       block and pick the ONE angle that actually fits what this company does. The message should ' +
+    '       feel like "what only you can bring meets what only Navoi can offer":\n' +
+    '         • IF the recipient is an established MANUFACTURER / EXPORTER of this product → invite them ' +
+    '           to build or expand a production line in Navoi, closer to this regional demand and at ' +
+    '           lower operating cost (e.g. "A [product] line in the Navoi FEZ would put your output ' +
+    '           inside a [$Y/year] regional market while cutting energy and labour costs to the figures ' +
+    '           below").\n' +
+    '         • IF the recipient BUYS this product or its inputs from elsewhere, especially at a higher ' +
+    '           price → point out that Navoi has the specific resource/input available locally and ' +
+    '           cheaper, with the number (e.g. "Navoi mines [input] at [figure], so sourcing here would ' +
+    '           replace your current [origin] supply at a lower landed cost").\n' +
+    '         • IF the recipient is an INVESTOR / FUND → frame a concrete buildable project: build a ' +
+    '           [product] facility from [specific local Navoi input] to serve the [$Y] regional gap.\n' +
+    '       RELEVANCE IS MANDATORY: the angle and the product must match what the recipient actually ' +
+    '       does. Never pitch an unrelated product (do NOT write about cement to a lime producer, or ' +
+    '       about a product they have no connection to). If unsure which angle fits, default to the ' +
+    '       manufacturer angle using the recipient\'s real product line. ' +
     '       NEVER flatter, NEVER hype, NEVER use the banned adjectives above. If a specific figure is ' +
     '       marked "unknown" in the intelligence block, omit it and use a different valid figure — do ' +
-    '       NOT invent. 3–5 sentences total. If the paragraph contains fewer than 3 numerical figures, ' +
+    '       NOT invent. 4–6 sentences total. If the paragraph contains fewer than 3 numerical figures, ' +
     '       it is wrong and must be rewritten.\n' +
     '  ¶2 — COST AND ECONOMIC ADVANTAGES: Cover EVERY entry in the COMPARATIVE ADVANTAGES section ' +
     '       of the VERIFIED DATA block. Do not skip any metric. For each advantage, state BOTH the ' +
@@ -3101,10 +3678,14 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       and transport data from the LOGISTICS section, and ALL tariff advantages from the TARIFFS ' +
     '       section. Every line in the data block must appear in the email — either in ¶2 or ¶3. ' +
     '       Frame the whole paragraph as legal certainty and infrastructure fact, not a sales claim.\n' +
-    '  ¶4 — One clear invitation. Do NOT offer multiple options — that is a menu, not a decision. ' +
-    '       Choose exactly one: either a named colleague who can send a two-page cost-comparison ' +
-    '       summary within 5 business days, OR an in-person visit to Navoi with logistics covered. ' +
-    '       State it as a confident, specific offer. Then stop.\n\n' +
+    '  ¶4 — One clear, open invitation to continue the conversation. NEVER name a colleague or any ' +
+    '       individual (no "my colleague", no "Mr. X", no "Senior Investment Advisor"). NEVER promise ' +
+    '       a "two-page financial model", a "cost-comparison summary", or any specific deliverable ' +
+    '       within a fixed number of days — those named-person / fixed-deliverable offers are banned. ' +
+    '       Instead, invite the recipient to contact the Department directly with any questions, and ' +
+    '       state plainly that we are ready to provide further figures, a detailed cost breakdown, or ' +
+    '       arrange a visit to Navoi should they wish. Frame it as: any question they have, we can ' +
+    '       answer. One or two sentences, warm and professional. Then stop.\n\n' +
     'WRITING VOICE — what makes this sound human:\n' +
     '  • Vary sentence length aggressively. Mix 4–6 word punches with 20–25 word detail sentences.\n' +
     '  • Use contractions sparingly but naturally where the language allows (we\'re, it\'s).\n' +
@@ -3147,15 +3728,45 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     ' 15. GOVERNMENT REGISTER: You represent a public institution. State the legal/regulatory framework ' +
     '     with precision. Reference specific decree numbers (e.g. "Decree No. 820"), not vague ' +
     '     "current Presidential Decrees". Confidence comes from verified facts, not enthusiasm.\n' +
-    ' 16. COVERAGE IS MANDATORY: Before finalising the email, check that EVERY bullet point from the ' +
+    ' 16. ENGLISH ONLY: The email body must be written entirely in English. Never include words from ' +
+    '     Uzbek, Russian, or any other language — not even in parentheses or as a gloss. If the data ' +
+    '     block contains Uzbek field values (mahsulotNomi, soha, lavozim, etc.), translate them or ' +
+    '     skip them. An email containing "portlovchi moddalar", "kimyoviy", or similar Uzbek terms ' +
+    '     is a hard fail and will be rejected automatically.\n' +
+    ' 17. COVERAGE IS MANDATORY: Before finalising the email, check that EVERY bullet point from the ' +
     '     VERIFIED DATA block appears in the text. If a metric is in the data, it must be in the email. ' +
     '     Skipping any advantage is not acceptable.\n' +
-    ' 17. ¶1 QUANTITATIVE TEST: ¶1 must contain at least 3 numerical figures with units (tons, m², ' +
+    ' 18. ¶1 QUANTITATIVE TEST: ¶1 must contain at least 3 numerical figures with units (tons, m², ' +
     '     USD, %). Count them before finalising. If ¶1 has 0–2 numbers, the paragraph is invalid and ' +
     '     must be rewritten using the SUPPLY/DEMAND/GAP data from the intelligence block. Banned ' +
     '     in ¶1: "rich deposits", "advanced infrastructure", "viable location", "feasible to target", ' +
     '     "promising market", "significant potential", "strategic location" — these are adjectives ' +
-    '     dressed as facts. Replace them with figures.\n\n' +
+    '     dressed as facts. Replace them with figures.\n' +
+    ' 19. TWO IMPORT TOTALS MANDATORY: If the VERIFIED DATA contains a "13-MARKET IMPORT TOTALS" ' +
+    '     block, ¶1 MUST cite both the Uzbekistan 2021–2024 total AND the other-12-markets 2021–2024 ' +
+    '     total verbatim from the data block, with the period and "UN Comtrade" source. Skipping ' +
+    '     either of these two figures is a hard fail — the entire ¶1 is invalid and must be ' +
+    '     rewritten. These two numbers quantify the addressable regional demand and are the reason ' +
+    '     the recipient should care about this product in Navoi.\n' +
+    ' 20. ABSOLUTE BAN ON HEDGE-AWAY LANGUAGE AND APPROXIMATE RANGES FOR THE 13-MARKET TOTALS: ' +
+    '     The email body MUST NEVER contain any of these phrases or their close translations:\n' +
+    '       "unspecified", "remain unspecified", "not specified", "not available", "unknown", ' +
+    '       "no data", "no specific data", "no precise figure", "exact figure unknown", "no exact ' +
+    '       figure", "while specific figures...remain", "while exact numbers are not available", ' +
+    '       "details are limited", "concrete figures are limited", "estimated between X and Y", ' +
+    '       "ranges from X to Y" (when applied to the two MANDATORY 2021–2024 import totals).\n' +
+    '     The two MANDATORY import totals (Uzbekistan 2021–2024 cumulative AND other-12-markets ' +
+    '     2021–2024 cumulative) are SUPPLIED AS EXACT NUMBERS in the VERIFIED DATA block. You MUST ' +
+    '     copy them verbatim — never round them into ranges. Citing "between $15M and $25M" instead ' +
+    '     of the exact figure provided is a hard fail.\n' +
+    '     Order of preference for ALL numerical claims in ¶1:\n' +
+    '       (a) Exact figure from VERIFIED DATA block ("13-MARKET IMPORT TOTALS") — ALWAYS preferred.\n' +
+    '       (b) Researched figure from COMPANY & RECIPIENT INTELLIGENCE block (web search result).\n' +
+    '       (c) ONLY for non-mandatory secondary figures (capacity ceiling, growth rate, etc.) may ' +
+    '           a sourced range be used. NEVER for the two cumulative 2021–2024 import totals.\n' +
+    '     If you genuinely cannot produce any defensible figure for ¶1 after using both data sources, ' +
+    '     replace ¶1 with a Navoi-resource fact (mineral reserves, FEZ output, existing plants) plus ' +
+    '     the FEZ scale figure — but NEVER write "unspecified" or "unknown".\n\n' +
     'EXAMPLES — calibrate your voice from these (DO NOT copy the wording):\n' +
     '  Weak (AI-sounding, full of clichés):\n' +
     '    "I hope this email finds you well. I am writing to introduce the Navoi Free Economic Zone, ' +
@@ -3174,8 +3785,9 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     at 80% load saves approximately $[X]K per year versus the [country] grid rate. Under ' +
     '     Presidential Decree No. [X], corporate income tax is zero for the first [N] years from ' +
     '     commencement of production, with no property tax and 0% import duty on process equipment.\n\n' +
-    '     My colleague Sh. Toshmatov can send a two-page cost-comparison summary within five business ' +
-    '     days if you would like the figures reviewed against your own model."\n\n' +
+    '     Should any of these figures be useful to review against your own projections, I would be glad ' +
+    '     to provide a detailed breakdown. Please do not hesitate to contact our Department directly ' +
+    '     with any questions, and we will be happy to answer them."\n\n' +
     'SIGN-OFF — use this format exactly (no bold, no extra blank lines):\n' +
     '  Yours sincerely,\n' +
     '  E. I. Gafforov\n' +
@@ -3228,10 +3840,11 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
 
     if(hasOpenAI){
       /* ── Stage 1: research THIS company specifically. We want concrete hooks to open with. ── */
+      if(_onProg) _onProg(10, '🔍 Kompaniya tadqiqoti (internet)...');
       var marketCtx = '';
       try{
         var compCountryName = comp.davlat || getAiCompanyCountry(comp) || '';
-        var productLabel2 = (productInfo && productInfo.displayName) || comp.mahsulotNomi || comp.soha || '';
+        var productLabel2 = (productInfo && productInfo.displayName) || ''; // English only — never Uzbek fields
         var companyName2 = comp.kompaniya || '';
         var recipientName2 = comp.rahbar || '';
         /* Focused query: company-specific facts FIRST, country context SECOND. The model's reasoning
@@ -3253,11 +3866,20 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
           '   regulation) that might make them open to relocating part of production.\n' +
           '5. Anything personal/professional about ' + (recipientName2 || 'the contact') + ' that is ' +
           'publicly documented (recent interviews, conference speeches, named projects). Only verifiable facts.\n' +
+          '5b. RECIPIENT ROLE & SOURCING (needed so the email picks the right pitch) — classify this ' +
+          'company as ONE of: (A) a MANUFACTURER/EXPORTER that produces ' + (productLabel2 || 'this product') + ', ' +
+          '(B) a BUYER/IMPORTER that purchases this product or its raw inputs from suppliers, or (C) an ' +
+          'INVESTOR / holding / fund. If they buy or import, note WHERE they currently source from and at ' +
+          'roughly what cost/price if public. If they manufacture, note their plant locations and capacity. ' +
+          'This determines whether we pitch "build a plant in Navoi", "source the input cheaper from Navoi", ' +
+          'or "invest in a Navoi project". State the classification explicitly (A/B/C) with the evidence.\n' +
           '6. NAVOI / UZBEKISTAN SUPPLY-AND-DEMAND for ' + (productLabel2 || 'this product') + ' — THIS IS ' +
           'THE HIGHEST-PRIORITY SECTION. The email must OPEN with these facts, and EVERY bullet below ' +
-          'must come back with a NUMBER (tons/year, USD/year) or an explicit "unknown". Qualitative ' +
-          'language ("rich deposits", "advanced infrastructure", "feasible to target") is forbidden — ' +
-          'only quantitative answers are useful. Research and return:\n' +
+          'must come back with a NUMBER (tons/year, USD/year) or a defensible sourced range. The word ' +
+          '"unknown" is NOT acceptable for any of these bullets — if you cannot find an exact figure, ' +
+          'provide a sourced estimate range using UN Comtrade chapter totals, WITS, or World Bank data ' +
+          'and label it "approximate". Qualitative language ("rich deposits", "advanced infrastructure", ' +
+          '"feasible to target") is forbidden — only quantitative answers are useful. Research and return:\n' +
           '   • SUPPLY: Current production of ' + (productLabel2 || 'the product') + ' in Navoi Region / ' +
           'Uzbekistan — volume in tons (or m², units) per year, number of facilities, names of operating ' +
           'plants if any. If zero, say "zero" explicitly.\n' +
@@ -3278,17 +3900,27 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
           '   • Realistic CAPACITY CEILING (tons/year) for a greenfield facility in Navoi, based on ' +
           'resource availability and FEZ land allocations.\n' +
           '   Cite every figure (uzstat.uz, stat.uz, gov.uz, navoifez.uz, navoi.gov.uz, UN Comtrade, WITS, ' +
-          'World Bank, IFC, ADB, presidential decrees, trade publications). If a number is genuinely ' +
-          'unknown after research, say "unknown" — do not invent.\n\n' +
+          'World Bank, IFC, ADB, presidential decrees, trade publications).\n' +
+          '   CRITICAL RULE FOR NUMBERS: An exact figure is preferred. If you cannot find an exact ' +
+          'figure for the Uzbek import or 13-market regional demand after genuine research, you MUST ' +
+          'still provide a defensible SOURCED ESTIMATE RANGE (e.g. "approximately $15-25 million per ' +
+          'year for Uzbekistan imports of HS [chapter], based on UN Comtrade chapter-level totals ' +
+          '2021-2024" — use the most relevant chapter total and divide proportionally). The downstream ' +
+          'email writer MUST cite a number; "unknown" answers force the email to hedge and fail. So ' +
+          'for the 4 critical figures — (a) Uzbekistan 2021-2024 cumulative imports, (b) 12-other-market ' +
+          '2021-2024 cumulative imports, (c) unmet-demand gap, (d) capacity ceiling — ALWAYS return a ' +
+          'specific figure or a tight sourced range. Mark estimates clearly as "approximately" / ' +
+          '"range" with the source methodology.\n\n' +
           'Output a short, scannable briefing (400-600 words). Use plain prose with short labelled sections. ' +
           'If something is unknown, say "unknown" — do NOT guess. Cite sources inline like (source: domain.com).';
         var sResp = await callOpenAI(
           [{ role:'user', content: searchQuery }],
-          { model: 'gpt-4o-search-preview', webSearch: true, maxTokens: 900, timeoutMs: 75000 }
+          { model: 'gpt-4o-search-preview', webSearch: true, maxTokens: 1400, timeoutMs: 75000 }
         );
         if(sResp && sResp.content) marketCtx = sResp.content;
       }catch(eSearch){ console.warn('Letter web-search stage skipped:', eSearch && eSearch.message); }
 
+      if(_onProg) _onProg(45, '✍️ AI xat yozmoqda...');
       /* ── Stage 2: write the email using o4-mini (deep reasoning), fallback to gpt-4o ── */
       var fullUserPrompt = letterPrompt +
         (marketCtx
@@ -3303,29 +3935,112 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
         { role:'user',   content: fullUserPrompt }
       ];
 
-      /* Try o4-mini with high reasoning effort first (best quality + most human prose) */
+      /* Hedge-phrase detector — Hard Rule 19. Hech qachon "unspecified/unknown/not available"
+         kabi iboralar emailda paydo bo'lmasligi kerak. Topilsa bir marta qayta yozishni so'raymiz. */
+      var _HEDGE_BAN_RX = /\b(unspecified|remain unspecified|not specified|specific figures[^.]{0,80}(?:remain|are not|not yet)|exact (?:figures?|numbers?)[^.]{0,40}(?:not (?:yet )?available|unavailable)|no (?:specific|precise|exact) (?:data|figure|number|figures|numbers)|details are limited|concrete figures are limited|figures are limited|exact (?:numbers|figures) are not (?:yet )?available|are currently unknown|remain unknown)\b/i;
+      /* Agar VERIFIED DATA da raqamlar BOR bo'lsa va email diapazon ishlatsa — yomon. */
+      var _hasTotalsData = !!(_importTotals && (_importTotals.uzbekistanUsd > 0 || _importTotals.otherTwelveUsd > 0));
+      var _RANGE_OR_SINGLE_YEAR_RX = /\b(?:estimated between|ranges? from|between\s*\$?\d+(?:\.\d+)?[KM]?(?:\s*million)?\s*(?:to|and)\s*\$?\d+(?:\.\d+)?[KM]?(?:\s*million)?|in 20(?:21|22|23|24)[,.\s]+(?:Uzbekistan|the (?:other|12|thirteen)))\b/i;
+      /* PLACEHOLDER (eng zararli): "$X million", "$Y million", "[amount]", "[USD]" va shu kabilar.
+         Bular emailda BO'LISHI MUMKIN EMAS — modeli aniq raqam qo'yishi yoki butun jumlani olib
+         tashlashi kerak. */
+      var _PLACEHOLDER_RX = /(\$\s*[XYZ](?:\.[XYZ]+)?\s*(?:million|M|billion|B|K)?\b|\bapproximately\s+\$\s*[XYZ]\b|\[(?:amount|usd|value|x|y|z|figure|number|cost|price|insert[^\]]*)\]|\b[XYZ]\s*(?:million|M|billion|B)\s+worth\b|\$\s*[XYZ]{1,3}[,.]?\d*\s*[KMB]?\b)/i;
+      var _maybeRetryHedged = async function(content, modelOpts){
+        if(!content) return content;
+        var hedgeMatch = _HEDGE_BAN_RX.test(content);
+        var rangeMatch = _hasTotalsData && _RANGE_OR_SINGLE_YEAR_RX.test(content);
+        var placeholderMatch = _PLACEHOLDER_RX.test(content);
+        if(!hedgeMatch && !rangeMatch && !placeholderMatch) return content;
+        var problem = '';
+        if(placeholderMatch){
+          var mp = content.match(_PLACEHOLDER_RX);
+          problem += 'PLACEHOLDER TEXT found in email: "' + (mp ? mp[0] : 'placeholder') +
+            '" — this is the worst kind of failure. You wrote "$X" / "$Y" / "[amount]" as a literal ' +
+            'stand-in for a number. Either copy the real number from the VERIFIED DATA block, or ' +
+            'remove the entire sentence and rewrite ¶1 with Navoi-side facts only. ';
+        }
+        if(hedgeMatch){
+          var m = content.match(_HEDGE_BAN_RX);
+          problem += 'Forbidden hedge phrase: "' + (m ? m[0] : 'hedge') + '". ';
+        }
+        if(rangeMatch){
+          var m2 = content.match(_RANGE_OR_SINGLE_YEAR_RX);
+          problem += 'Forbidden range/single-year phrase: "' + (m2 ? m2[0] : 'range') +
+            '" — VERIFIED DATA has EXACT 2021-2024 cumulative totals that must be copied verbatim.';
+        }
+        console.warn('[email] validator triggered, retrying:', problem);
+        var dataAvailableNote = _hasTotalsData
+          ? 'The VERIFIED DATA block DOES contain the exact 13-MARKET IMPORT TOTALS. Copy them ' +
+            'verbatim into ¶1: the Uzbekistan 2021–2024 total and the other-12-markets 2021–2024 ' +
+            'total, both with the UN Comtrade source.'
+          : 'The VERIFIED DATA block does NOT contain 13-market import totals for this product. ' +
+            'You MUST NOT mention any Uzbekistan 4-year cumulative import figure or 13-market ' +
+            'regional demand figure in ¶1. Replace that material entirely with Navoi-side facts ' +
+            '(FEZ scale of 564 hectares, mineral reserves, existing industrial output, upstream ' +
+            'raw materials) and a connector to the recipient company. Do NOT use placeholders.';
+        var fixupPrompt =
+          problem + '\n\n' + dataAvailableNote + '\n\n' +
+          'Hard Rules 18 and 19 forbid: hedges ("unspecified", "unknown"), ranges ("between $X and ' +
+          '$Y"), single-year framing ("in 2024"), and ESPECIALLY placeholders ("$X million", ' +
+          '"[amount]"). Rewrite the ENTIRE email.\n\n' +
+          'Output the rewritten email in the same "subject\\n===BODY===\\nbody" format.';
+        try {
+          var retry = await callOpenAI(msgs.concat([
+            { role:'assistant', content: content },
+            { role:'user',      content: fixupPrompt }
+          ]), modelOpts);
+          if(retry && retry.content && retry.content.trim().length > 80){
+            var stillBad = _HEDGE_BAN_RX.test(retry.content)
+              || (_hasTotalsData && _RANGE_OR_SINGLE_YEAR_RX.test(retry.content))
+              || _PLACEHOLDER_RX.test(retry.content);
+            if(!stillBad){
+              console.log('[email] validator-retry succeeded');
+              return retry.content;
+            }
+            console.warn('[email] retry still flagged');
+            // Placeholderlar HALI HAM bo'lsa, ularni butunlay olib tashlaymiz
+            if(_PLACEHOLDER_RX.test(retry.content)){
+              return retry.content.replace(/[^.]*?\$\s*[XYZ][^.]*?\./gi, '').replace(/[^.]*?\[(?:amount|usd|value|x|y|z|figure|number|insert[^\]]*)\][^.]*?\./gi, '').replace(/\s+/g,' ');
+            }
+            return retry.content;
+          }
+        } catch(eR){ console.warn('[email] validator-retry call failed:', eR && eR.message); }
+        return content;
+      };
+
+      /* Try o4-mini — 'medium' reasoning effort is enough for email writing and leaves
+         plenty of room for output. 'high' eats ~3k reasoning tokens, truncating the letter.
+         max_completion_tokens covers BOTH reasoning + output so must be generous.         */
       try{
-        var r1 = await callOpenAI(msgs, {
+        var _o4Opts = {
           model: (window.OPENAI_MODEL_REASONING || 'o4-mini'),
-          reasoningEffort: 'high',
-          maxTokens: 3500,
+          reasoningEffort: 'medium',
+          maxTokens: 8000,
           timeoutMs: 120000
-        });
-        if(r1 && r1.content && r1.content.trim().length > 80) return r1.content;
+        };
+        var r1 = await callOpenAI(msgs, _o4Opts);
+        if(r1 && r1.content && r1.content.trim().length > 80){
+          var cleaned1 = await _maybeRetryHedged(r1.content, _o4Opts);
+          return cleaned1;
+        }
         throw new Error('o4-mini returned empty or too-short content');
       }catch(e1){
         console.warn('o4-mini letter failed, falling back to gpt-4o:', e1 && e1.message);
       }
 
-      /* Fallback to gpt-4o with higher temperature for more natural prose */
+      /* Fallback to gpt-4o — generous token budget; a full 4-para letter is ~700 words / ~1000 tokens */
       try{
-        var r2 = await callOpenAI(msgs, {
+        var _gpt4oOpts = {
           model: (window.OPENAI_MODEL_DEFAULT || 'gpt-4o'),
           temperature: 0.75,
-          maxTokens: 2800,
+          maxTokens: 4000,
           timeoutMs: 90000
-        });
-        if(r2 && r2.content && r2.content.trim().length > 80) return r2.content;
+        };
+        var r2 = await callOpenAI(msgs, _gpt4oOpts);
+        if(r2 && r2.content && r2.content.trim().length > 80){
+          var cleaned2 = await _maybeRetryHedged(r2.content, _gpt4oOpts);
+          return cleaned2;
+        }
       }catch(e2){
         console.warn('gpt-4o letter failed, falling back to Gemini:', e2 && e2.message);
       }
@@ -3382,9 +4097,22 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     }
   }
 
+  /* ── Truncation guard — if body doesn't end with sign-off it was cut off; throw so the
+       caller shows an error rather than saving a half-written email.                       */
+  var _signOffRx = /(?:Yours sincerely|Respectfully|Kind regards|Best regards|Sincerely)\s*,?\s*\n/i;
+  var _signOffSimple = /Gafforov|info@navoi\.uz/i;
+  if(letterBody && letterBody.trim().length > 100 &&
+     !_signOffRx.test(letterBody) && !_signOffSimple.test(letterBody)){
+    throw new Error(
+      'Email chala generatsiya qilindi (token limit). Qayta urinib ko\'ring. ' +
+      '(Truncated at ' + letterBody.trim().split(/\s+/).length + ' words)'
+    );
+  }
+
   /* ── Humanizer post-processing — strip residual AI tells the model might have slipped in ── */
   letterBody = humaniseLetterBody(letterBody);
   letterSubject = humaniseLetterSubject(letterSubject);
+  if(_onProg) _onProg(95, '✅ Xat sayqallanmoqda...');
 
   return {
     analysis: analysis,
@@ -3442,6 +4170,58 @@ function hydrateAiScope(scope, comp, payload){
   if(dom.emptyCard) dom.emptyCard.style.display = 'none';
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   AI LETTER GENERATION PROGRESS BAR
+   Button o'rniga 0→100% progress bar ko'rsatadi.
+   _setAiProgress(pct, label, sublabel, scope) — istalgan joydan chaqirish mumkin.
+═══════════════════════════════════════════════════════════════ */
+function _setAiProgress(pct, label, sublabel, scope){
+  var prefix = scope === 'investor' ? 'invAi' : 'pageAi';
+  var btnId   = scope === 'investor' ? 'invAiLetterBtn' : 'pageAiLetterBtn';
+  var progId  = prefix + 'GenProgress';
+  var labelId = prefix + 'GenLabel';
+  var pctId   = prefix + 'GenPct';
+  var fillId  = prefix + 'GenFill';
+  var subId   = prefix + 'GenSub';
+
+  var btn  = document.getElementById(btnId);
+  var prog = document.getElementById(progId);
+  if(!prog) return;
+
+  var safeP = Math.max(0, Math.min(100, Math.round(pct)));
+
+  if(btn)  btn.style.display  = 'none';
+  prog.classList.add('visible');
+
+  var labelEl = document.getElementById(labelId);
+  var pctEl   = document.getElementById(pctId);
+  var fillEl  = document.getElementById(fillId);
+  var subEl   = document.getElementById(subId);
+
+  if(labelEl) labelEl.textContent = label   || 'Ishlanmoqda...';
+  if(pctEl)   pctEl.textContent   = safeP + '%';
+  if(fillEl)  fillEl.style.width  = safeP + '%';
+  if(subEl)   subEl.textContent   = sublabel || '';
+}
+
+function _resetAiProgress(scope){
+  var prefix = scope === 'investor' ? 'invAi' : 'pageAi';
+  var btnId  = scope === 'investor' ? 'invAiLetterBtn' : 'pageAiLetterBtn';
+  var progId = prefix + 'GenProgress';
+
+  var btn  = document.getElementById(btnId);
+  var prog = document.getElementById(progId);
+
+  if(btn){ btn.style.display = ''; }
+  if(prog){ prog.classList.remove('visible'); }
+
+  // Fill ni 0 ga qaytarish (keyingi animatsiya uchun)
+  var fillEl = document.getElementById(prefix + 'GenFill');
+  var pctEl  = document.getElementById(prefix + 'GenPct');
+  if(fillEl) fillEl.style.width = '0%';
+  if(pctEl)  pctEl.textContent  = '0%';
+}
+
 async function generateAiLetterForScope(scope){
   var dom = getAiScopeDom(scope);
   var compId = scope === 'investor'
@@ -3450,8 +4230,6 @@ async function generateAiLetterForScope(scope){
   if(!compId){ toast('⚠️ Kompaniya tanlang','error'); return; }
   var comp = (DB.investorCompanies||[]).find(function(c){return String(c.id)===String(compId);});
   if(!comp){ toast('⚠️ Kompaniya topilmadi','error'); return; }
-  // No country is fine — email will rely on FEZ incentives + Navoi logistics data instead
-  // of country-vs-UZ economic comparisons.
 
   var lang = dom.lang ? dom.lang.value : 'en';
 
@@ -3460,61 +4238,93 @@ async function generateAiLetterForScope(scope){
   var allContacts = (DB.investorCompanies||[]).filter(function(c){
     return getInvestorCompanyGroupKey(c) === companyKey;
   });
+  var n = allContacts.length;
 
-  var lt = toastLoading('⏳ AI xat tayyorlanmoqda: ' + escHtml(comp.kompaniya || '') + ' (' + allContacts.length + ' ta kontakt) — 2 bosqich: qidiruv + chuqur tahlil...');
+  // Progress bar boshlash
+  _setAiProgress(3, '🔍 Kompaniya tadqiqoti...', comp.kompaniya || '', scope);
+
+  var lt = toastLoading('⏳ AI xat: ' + escHtml(comp.kompaniya || '') + ' — ' + n + ' ta kontakt');
 
   try {
-    // Generate letters for all contacts — analysis runs ONCE per company (shared across contacts)
     window._aiContactLetters = {};
     var sharedAnalysis = null;
     var sharedTariff = null;
-    var usedAngles = []; // track persona/hook already used to avoid repeating across contacts
-    for(var ci=0; ci<allContacts.length; ci++){
+    var usedAngles = [];
+
+    for(var ci=0; ci<n; ci++){
       var contact = allContacts[ci];
-      // First contact: full pipeline (country analysis + tariff). Subsequent: reuse, only letter regenerated.
+      // Per-contact progress offset: each contact gets equal slice of 70–95% range
+      var contactBase = 70 + (ci / n) * 25;   // e.g. 3 contacts: 70, 78, 87
+      var contactSpan = 25 / n;
+
       if(ci === 0){
+        // Stage 1: web search + company research (0→20%)
+        _setAiProgress(8, '🔍 Kompaniya tadqiqoti...', (comp.davlat ? comp.davlat + ' · ' : '') + (comp.kompaniya || ''), scope);
         sharedAnalysis = await fetchOfficialAiCountryAnalysis(contact);
+
+        // Stage 2: iqtisodiy tahlil (20→40%)
+        _setAiProgress(22, '📊 Iqtisodiy tahlil...', 'Davlat iqtisodiy ko\'rsatkichlari', scope);
+
+        // Stage 3: tarif (40→55%)
+        _setAiProgress(42, '📋 Tarif tahlili...', 'WITS/UNCTAD bojxona tariflari', scope);
         try {
           sharedTariff = await fetchOfficialAiTariffSummary(contact, sharedAnalysis);
         } catch(err){
           console.warn('AI tariff analysis skipped:', err && err.message ? err.message : err);
-          sharedTariff = getAiTariffUnavailableSummary(contact, sharedAnalysis, err && err.message ? err.message : 'Tarif ma\'lumoti topilmadi');
+          sharedTariff = getAiTariffUnavailableSummary(contact, sharedAnalysis, err && err.message ? err.message : 'Tarif topilmadi');
         }
+
+        // Stage 4: import data (55→70%)
+        _setAiProgress(57, '📦 Import ma\'lumotlari...', 'UN Comtrade 2021-2024', scope);
       } else {
-        toast('🔁 ' + (contact.rahbar || 'kontakt') + ': tahlil qayta o\'tkazilmadi, faqat xat yangilanmoqda');
+        _setAiProgress(contactBase, '✍️ Xat yozilmoqda...', (ci+1)+'/'+n+' kontakt: '+(contact.rahbar||'kontakt'), scope);
       }
+
       var persona = detectContactPersona(contact.lavozim || contact.title || '');
+
+      // Stage 5: letter writing (70→95% — per contact)
+      _setAiProgress(Math.round(contactBase), '✍️ Xat yozilmoqda...', (ci+1)+'/'+n+': '+(contact.rahbar||contact.lavozim||'kontakt'), scope);
+
       var payload = await buildAiLetterPackage(contact, lang, sharedAnalysis, sharedTariff, {
         contactIdx: ci,
-        contactTotal: allContacts.length,
-        usedAngles: usedAngles.slice()
+        contactTotal: n,
+        usedAngles: usedAngles.slice(),
+        onProgress: function(subPct, subLabel){
+          // buildAiLetterPackage ichidagi mayda bosqichlar (0-100) → contactBase+0..contactSpan
+          var mapped = contactBase + (subPct / 100) * contactSpan;
+          _setAiProgress(Math.round(mapped), '✍️ Xat yozilmoqda...', subLabel || '', scope);
+        }
       });
       usedAngles.push(persona);
       saveAiLetterPackage(contact, payload);
       window._aiContactLetters[String(contact.id)] = {contact: contact, payload: payload};
     }
 
+    // 100%
+    _setAiProgress(100, '✅ Tayyor!', n + ' ta kontakt uchun xat tayyor', scope);
+
     // Show contacts list
     renderAiContactsList(allContacts, scope);
-
-    // Hydrate with first contact
     hydrateAiScope(scope, allContacts[0], window._aiContactLetters[String(allContacts[0].id)].payload);
 
-    toastDone(lt, '✅ AI xat tayyor! ' + escHtml(comp.kompaniya || '') + ' — ' + allContacts.length + ' ta kontakt');
+    toastDone(lt, '✅ AI xat tayyor! ' + escHtml(comp.kompaniya || '') + ' — ' + n + ' ta kontakt');
 
-    // Push to AI bell — visible even if user navigated away
     try {
       pushAiReadyNotification({
         companyId: String(comp.id),
         companyName: String(comp.kompaniya || ''),
-        contactCount: allContacts.length,
+        contactCount: n,
         scope: scope
       });
     } catch(e){}
 
+    // Tugagandan 1.5 soniya keyin buttonni qaytarish
+    setTimeout(function(){ _resetAiProgress(scope); }, 1500);
+
   } catch(e){
     toastDone(lt, '❌ Xato: '+e.message,'error');
     console.error(e);
+    _resetAiProgress(scope); // Xato bo'lsa ham buttonni qaytarish
   }
 }
 

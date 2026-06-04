@@ -282,7 +282,7 @@ var INVESTOR_GEO_HUBS = {
   BRA:{name:'Brazil',lat:-14.2350,lon:-51.9253},
   MEX:{name:'Mexico',lat:23.6345,lon:-102.5528},
   SGP:{name:'Singapore',lat:1.3521,lon:103.8198},
-  RUS:{name:'Russia',lat:61.5240,lon:105.3188},
+  RUS:{name:'Russia',lat:61.0,lon:85.0},
   KAZ:{name:'Kazakhstan',lat:48.0196,lon:66.9237},
   KGZ:{name:'Kyrgyzstan',lat:41.2044,lon:74.7661},
   TJK:{name:'Tajikistan',lat:38.8610,lon:71.2761},
@@ -293,14 +293,41 @@ var INVESTOR_GEO_HUBS = {
   ARM:{name:'Armenia',lat:40.0691,lon:45.0382},
   IRN:{name:'Iran',lat:32.4279,lon:53.6880},
   AFG:{name:'Afghanistan',lat:33.9391,lon:67.7100},
-  PAK:{name:'Pakistan',lat:30.3753,lon:69.3451}
+  PAK:{name:'Pakistan',lat:30.3753,lon:69.3451},
+  EGY:{name:'Egypt',lat:26.8206,lon:30.8025},
+  ZAF:{name:'South Africa',lat:-30.5595,lon:22.9375},
+  PRT:{name:'Portugal',lat:39.3999,lon:-8.2245},
+  GRC:{name:'Greece',lat:39.0742,lon:21.8243},
+  MAR:{name:'Morocco',lat:31.7917,lon:-7.0926},
+  DZA:{name:'Algeria',lat:28.0339,lon:1.6596},
+  TUN:{name:'Tunisia',lat:33.8869,lon:9.5375},
+  PER:{name:'Peru',lat:-9.1900,lon:-75.0152},
+  PHL:{name:'Philippines',lat:12.8797,lon:121.7740},
+  SWE:{name:'Sweden',lat:60.1282,lon:18.6435},
+  TWN:{name:'Taiwan',lat:23.6978,lon:120.9605},
+  NZL:{name:'New Zealand',lat:-40.9006,lon:174.8860},
+  THA:{name:'Thailand',lat:15.8700,lon:100.9925},
+  VNM:{name:'Vietnam',lat:14.0583,lon:108.2772},
+  IDN:{name:'Indonesia',lat:-0.7893,lon:113.9213},
+  MYS:{name:'Malaysia',lat:4.2105,lon:101.9758},
+  UKR:{name:'Ukraine',lat:48.3794,lon:31.1656},
+  BLR:{name:'Belarus',lat:53.7098,lon:27.9534},
+  ROU:{name:'Romania',lat:45.9432,lon:24.9668},
+  ISR:{name:'Israel',lat:31.0461,lon:34.8516},
+  JOR:{name:'Jordan',lat:30.5852,lon:36.2384},
+  ARG:{name:'Argentina',lat:-38.4161,lon:-63.6167},
+  CHL:{name:'Chile',lat:-35.6751,lon:-71.5430},
+  COL:{name:'Colombia',lat:4.5709,lon:-74.2973}
 };
 
 var INVESTOR_GEO_ISO2_BY_ISO3 = {
   UZB:'UZ', CHN:'CN', USA:'US', DEU:'DE', FRA:'FR', ITA:'IT', ESP:'ES', GBR:'GB', NLD:'NL', BEL:'BE',
   CHE:'CH', AUT:'AT', POL:'PL', TUR:'TR', ARE:'AE', SAU:'SA', QAT:'QA', JPN:'JP', KOR:'KR', IND:'IN',
   CAN:'CA', AUS:'AU', BRA:'BR', MEX:'MX', SGP:'SG', RUS:'RU', KAZ:'KZ', KGZ:'KG', TJK:'TJ', TKM:'TM',
-  MNG:'MN', AZE:'AZ', GEO:'GE', ARM:'AM', IRN:'IR', AFG:'AF', PAK:'PK'
+  MNG:'MN', AZE:'AZ', GEO:'GE', ARM:'AM', IRN:'IR', AFG:'AF', PAK:'PK',
+  EGY:'EG', ZAF:'ZA', PRT:'PT', GRC:'GR', MAR:'MA', DZA:'DZ', TUN:'TN', PER:'PE', PHL:'PH',
+  SWE:'SE', TWN:'TW', NZL:'NZ', THA:'TH', VNM:'VN', IDN:'ID', MYS:'MY', UKR:'UA', BLR:'BY',
+  ROU:'RO', ISR:'IL', JOR:'JO', ARG:'AR', CHL:'CL', COL:'CO'
 };
 
 var INVESTOR_GEO_ISO2_ALIASES = {
@@ -310,7 +337,7 @@ var INVESTOR_GEO_ISO2_ALIASES = {
   kyrgyzstan:'KG', "qirg'iziston":'KG', qirgiziston:'KG',
   kazakhstan:'KZ', "qozog'iston":'KZ', qozogiston:'KZ',
   mongolia:'MN', mongoliya:'MN',
-  russia:'RU', rossiya:'RU',
+  russia:'RU', rossiya:'RU', 'russian federation':'RU', 'russian fed':'RU', 'russia (russian federation)':'RU',
   azerbaijan:'AZ', ozarbayjon:'AZ',
   georgia:'GE', gruziya:'GE',
   armenia:'AM', armaniston:'AM',
@@ -322,7 +349,8 @@ var INVESTOR_GEO_ISO2_ALIASES = {
   france:'FR', fransiya:'FR',
   italy:'IT', italiya:'IT',
   spain:'ES', ispaniya:'ES',
-  "united kingdom":'GB', britain:'GB', england:'GB',
+  "united kingdom":'GB', "uk":'GB', britain:'GB', england:'GB', "great britain":'GB',
+  "united states":'US', "usa":'US', "united states of america":'US', "u.s.a.":'US',
   netherlands:'NL', nederland:'NL',
   belgium:'BE', belgiya:'BE',
   switzerland:'CH', shveytsariya:'CH',
@@ -330,16 +358,29 @@ var INVESTOR_GEO_ISO2_ALIASES = {
   poland:'PL', polsha:'PL',
   turkey:'TR', turkiye:'TR', turkiya:'TR',
   "united arab emirates":'AE', uae:'AE', baa:'AE',
-  "saudi arabia":'SA',
+  "saudi arabia":'SA', saudi:'SA',
   qatar:'QA',
   japan:'JP', yaponiya:'JP',
-  "south korea":'KR', korea:'KR', koreya:'KR',
+  "south korea":'KR', "republic of korea":'KR', "korea, republic of":'KR', korea:'KR', koreya:'KR',
   india:'IN', hindiston:'IN',
   canada:'CA',
   australia:'AU', avstraliya:'AU',
   brazil:'BR', braziliya:'BR',
   mexico:'MX', meksika:'MX',
-  singapore:'SG', singapur:'SG'
+  singapore:'SG', singapur:'SG',
+  "czech republic":'CZ', czechia:'CZ',
+  'tuerkiye':'TR', 'türkiye':'TR', turkiye:'TR',
+  egypt:'EG', misr:'EG', "south africa":'ZA', "janubiy afrika":'ZA',
+  portugal:'PT', portugaliya:'PT', greece:'GR', gretsiya:'GR', yunoniston:'GR',
+  morocco:'MA', marokash:'MA', algeria:'DZ', jazoir:'DZ', tunisia:'TN', tunis:'TN',
+  peru:'PE', philippines:'PH', filippin:'PH', sweden:'SE', shvetsiya:'SE',
+  taiwan:'TW', tayvan:'TW', "new zealand":'NZ', "yangi zelandiya":'NZ',
+  thailand:'TH', tailand:'TH', vietnam:'VN', vyetnam:'VN',
+  indonesia:'ID', indoneziya:'ID', malaysia:'MY', malayziya:'MY',
+  ukraine:'UA', ukraina:'UA', belarus:'BY', "belorussiya":'BY',
+  romania:'RO', ruminiya:'RO', israel:'IL', isroil:'IL',
+  jordan:'JO', iordaniya:'JO', argentina:'AR', chile:'CL', chili:'CL',
+  colombia:'CO', kolumbiya:'CO'
 };
 
 var INVESTOR_GEO_ALIASES = {
@@ -349,7 +390,7 @@ var INVESTOR_GEO_ALIASES = {
   kyrgyzstan:'KGZ', "qirg'iziston":'KGZ', "qirgiziston":'KGZ',
   kazakhstan:'KAZ', "qozog'iston":'KAZ', qozogiston:'KAZ',
   mongolia:'MNG', mongoliya:'MNG',
-  russia:'RUS', rossiya:'RUS',
+  russia:'RUS', rossiya:'RUS', 'russian federation':'RUS', 'russian fed':'RUS', 'russia (russian federation)':'RUS',
   azerbaijan:'AZE', ozarbayjon:'AZE',
   georgia:'GEO', gruziya:'GEO',
   armenia:'ARM', armaniston:'ARM',
@@ -361,7 +402,12 @@ var INVESTOR_GEO_ALIASES = {
   france:'FRA', fransiya:'FRA',
   italy:'ITA', italiya:'ITA',
   spain:'ESP', ispaniya:'ESP',
-  "united kingdom":'GBR', britain:'GBR', england:'GBR',
+  "united kingdom":'GBR', "uk":'GBR', britain:'GBR', england:'GBR', "great britain":'GBR',
+  "united states":'USA', "usa":'USA', "united states of america":'USA', "u.s.a.":'USA',
+  "republic of korea":'KOR', "korea, republic of":'KOR',
+  "united arab emirates":'ARE', "uae":'ARE',
+  "saudi arabia":'SAU', "saudi":'SAU',
+  "czech republic":'CZE', czechia:'CZE',
   netherlands:'NLD', nederland:'NLD',
   belgium:'BEL', belgiya:'BEL',
   switzerland:'CHE', shveytsariya:'CHE',
@@ -378,7 +424,19 @@ var INVESTOR_GEO_ALIASES = {
   australia:'AUS', avstraliya:'AUS',
   brazil:'BRA', braziliya:'BRA',
   mexico:'MEX', meksika:'MEX',
-  singapore:'SGP', singapur:'SGP'
+  singapore:'SGP', singapur:'SGP',
+  turkey:'TUR', 'tuerkiye':'TUR', 'türkiye':'TUR', turkiye:'TUR',
+  egypt:'EGY', misr:'EGY', "south africa":'ZAF', "janubiy afrika":'ZAF',
+  portugal:'PRT', portugaliya:'PRT', greece:'GRC', gretsiya:'GRC', yunoniston:'GRC',
+  morocco:'MAR', marokash:'MAR', algeria:'DZA', jazoir:'DZA', tunisia:'TUN', tunis:'TUN',
+  peru:'PER', philippines:'PHL', filippin:'PHL', sweden:'SWE', shvetsiya:'SWE',
+  taiwan:'TWN', tayvan:'TWN', "new zealand":'NZL', "yangi zelandiya":'NZL',
+  thailand:'THA', tailand:'THA', vietnam:'VNM', vyetnam:'VNM',
+  indonesia:'IDN', indoneziya:'IDN', malaysia:'MYS', malayziya:'MYS',
+  ukraine:'UKR', ukraina:'UKR', belarus:'BLR', "belorussiya":'BLR',
+  romania:'ROU', ruminiya:'ROU', israel:'ISR', isroil:'ISR',
+  jordan:'JOR', iordaniya:'JOR', argentina:'ARG', chile:'CHL', chili:'CHL',
+  colombia:'COL', kolumbiya:'COL'
 };
 
 function normalizeInvestorGeoCountry(value){
@@ -388,6 +446,12 @@ function normalizeInvestorGeoCountry(value){
     .replace(/^[a-z]{2}\s+/,'')
     .replace(/\s+/g,' ');
 }
+
+// ISO2 → ISO3 reverse map (built from INVESTOR_GEO_ISO2_BY_ISO3)
+var INVESTOR_GEO_ISO3_BY_ISO2 = (function(){
+  var m = {}; Object.keys(INVESTOR_GEO_ISO2_BY_ISO3).forEach(function(iso3){ m[INVESTOR_GEO_ISO2_BY_ISO3[iso3]] = iso3; });
+  return m;
+})();
 
 function getInvestorGeoHub(rec){
   rec = rec || {};
@@ -401,6 +465,21 @@ function getInvestorGeoHub(rec){
   if(aliasIso && INVESTOR_GEO_HUBS[aliasIso]){
     return Object.assign({ iso3: aliasIso, display: rawCountry || INVESTOR_GEO_HUBS[aliasIso].name }, INVESTOR_GEO_HUBS[aliasIso]);
   }
+  // Cyrillic name → ISO2 → ISO3
+  var cyrIso2 = (typeof INVESTOR_GEO_CYRILLIC !== 'undefined') ? INVESTOR_GEO_CYRILLIC[normalized] : '';
+  if(cyrIso2 && INVESTOR_GEO_ISO3_BY_ISO2[cyrIso2] && INVESTOR_GEO_HUBS[INVESTOR_GEO_ISO3_BY_ISO2[cyrIso2]]){
+    var ci3 = INVESTOR_GEO_ISO3_BY_ISO2[cyrIso2];
+    return Object.assign({ iso3: ci3, display: rawCountry || INVESTOR_GEO_HUBS[ci3].name }, INVESTOR_GEO_HUBS[ci3]);
+  }
+  // Raw value may itself be an ISO2 ("RU") or ISO3 ("RUS") code
+  var rawUpper = String(rawCountry || '').trim().toUpperCase();
+  if(rawUpper.length === 3 && INVESTOR_GEO_HUBS[rawUpper]){
+    return Object.assign({ iso3: rawUpper, display: INVESTOR_GEO_HUBS[rawUpper].name }, INVESTOR_GEO_HUBS[rawUpper]);
+  }
+  if(rawUpper.length === 2 && INVESTOR_GEO_ISO3_BY_ISO2[rawUpper] && INVESTOR_GEO_HUBS[INVESTOR_GEO_ISO3_BY_ISO2[rawUpper]]){
+    var r3 = INVESTOR_GEO_ISO3_BY_ISO2[rawUpper];
+    return Object.assign({ iso3: r3, display: INVESTOR_GEO_HUBS[r3].name }, INVESTOR_GEO_HUBS[r3]);
+  }
   var matchedIso = Object.keys(INVESTOR_GEO_HUBS).find(function(key){
     return normalizeInvestorGeoCountry(INVESTOR_GEO_HUBS[key].name) === normalized;
   });
@@ -410,15 +489,37 @@ function getInvestorGeoHub(rec){
   return null;
 }
 
+// Cyrillic country names → ISO2 (Apollo/manual entries sometimes use Russian)
+var INVESTOR_GEO_CYRILLIC = {
+  'россия':'RU','российская федерация':'RU','рф':'RU',
+  'узбекистан':'UZ','казахстан':'KZ','киргизия':'KG','кыргызстан':'KG',
+  'таджикистан':'TJ','туркменистан':'TM','азербайджан':'AZ','грузия':'GE',
+  'армения':'AM','иран':'IR','афганистан':'AF','пакистан':'PK','китай':'CN',
+  'турция':'TR','германия':'DE','франция':'FR','италия':'IT','испания':'ES',
+  'индия':'IN','япония':'JP','южная корея':'KR','корея':'KR','сша':'US',
+  'канада':'CA','бразилия':'BR','мексика':'MX','польша':'PL'
+};
+// All known ISO2 codes (from the ISO3→ISO2 map values) for direct-code detection
+var INVESTOR_GEO_KNOWN_ISO2 = (function(){
+  var s = {}; Object.keys(INVESTOR_GEO_ISO2_BY_ISO3).forEach(function(k){ s[INVESTOR_GEO_ISO2_BY_ISO3[k]] = true; });
+  return s;
+})();
+
 function getInvestorGeoStateCode(rec, stateSpecific){
   rec = rec || {};
   var rawIso2 = String(rec.iso2 || rec.countryIso2 || rec.country_iso2 || '').trim().toUpperCase();
   if(rawIso2 && stateSpecific && stateSpecific[rawIso2]) return rawIso2;
+  if(rawIso2 && INVESTOR_GEO_KNOWN_ISO2[rawIso2]) return rawIso2;
   var hub = getInvestorGeoHub(rec);
   if(hub && hub.iso3 && INVESTOR_GEO_ISO2_BY_ISO3[hub.iso3]) return INVESTOR_GEO_ISO2_BY_ISO3[hub.iso3];
   var rawCountry = getInvestorGeoCountrySource(rec);
   var normalized = normalizeInvestorGeoCountry(rawCountry);
   if(INVESTOR_GEO_ISO2_ALIASES[normalized]) return INVESTOR_GEO_ISO2_ALIASES[normalized];
+  if(INVESTOR_GEO_CYRILLIC[normalized]) return INVESTOR_GEO_CYRILLIC[normalized];
+  // Raw value may itself be an ISO2 ("RU") or ISO3 ("RUS") code
+  var rawUpper = String(rawCountry || '').trim().toUpperCase();
+  if(rawUpper.length === 2 && INVESTOR_GEO_KNOWN_ISO2[rawUpper]) return rawUpper;
+  if(rawUpper.length === 3 && INVESTOR_GEO_ISO2_BY_ISO3[rawUpper]) return INVESTOR_GEO_ISO2_BY_ISO3[rawUpper];
   if(stateSpecific){
     var found = Object.keys(stateSpecific).find(function(code){
       return normalizeInvestorGeoCountry(stateSpecific[code].name) === normalized;
@@ -939,13 +1040,23 @@ function renderInvestorGeoCard(companies){
 
   // Re-render bubbles on zoom/pan
   if(window._investorGeoJvInstance){
-    var mapInstance = window._investorGeoJvInstance;
-    var origZoomIn = mapInstance.zoomIn ? mapInstance.zoomIn.bind(mapInstance) : null;
-    var origZoomOut = mapInstance.zoomOut ? mapInstance.zoomOut.bind(mapInstance) : null;
-    // Observe SVG transform changes via MutationObserver
+    // Avvalgi observerni uzamiz — har renderdan keyin yangisi qo'shilib ketmasligi uchun
+    // (aks holda har zoom/pan'da bir nechta observer barobar ishlab, lag chiqaradi).
+    if(window._investorGeoObserver){
+      try{ window._investorGeoObserver.disconnect(); }catch(e){}
+      window._investorGeoObserver = null;
+    }
+    // Observe SVG transform changes via MutationObserver — rAF bilan throttle qilamiz
     var svgG = mapEl.querySelector('svg g[transform]');
     if(svgG){
-      var obs = new MutationObserver(function(){ _renderInvestorGeoBubbles(); });
+      var _bubbleRaf = 0;
+      var obs = new MutationObserver(function(){
+        if(_bubbleRaf) return; // bu kadr uchun allaqachon rejalashtirilgan
+        _bubbleRaf = requestAnimationFrame(function(){
+          _bubbleRaf = 0;
+          _renderInvestorGeoBubbles();
+        });
+      });
       obs.observe(svgG, { attributes: true, attributeFilter: ['transform'] });
       window._investorGeoObserver = obs;
     }
@@ -2457,7 +2568,8 @@ var _icRenderTimer = null;
 var _icGeoHash = '';
 function renderInvestorCompanies(){
   if(_icRenderTimer) clearTimeout(_icRenderTimer);
-  _icRenderTimer = setTimeout(_renderInvestorCompaniesNow, 60);
+  // 250ms debounce: bir vaqtda 17 ta call kelsa faqat 1 ta render bo'ladi
+  _icRenderTimer = setTimeout(_renderInvestorCompaniesNow, 250);
 }
 /* Apollo / TradeAtlas KPI kartochkasi bosilganda manbasiga qarab filter qo'llash (toggle).
    source = null bo'lsa filter butunlay olib tashlanadi (Jami bosilganda chaqiriladi) */
@@ -2624,15 +2736,34 @@ _renderInvestorCompaniesMain = function(){
   var _apolloBaseTotal = Object.keys(_apolloBaseGroupKeys).length;
   var _taBaseTotal = Object.keys(_taBaseGroupKeys).length;
 
-  const co = allCo.filter(function(r){
+  var co = allCo.filter(function(r){
     if(_isImporterRec(r)) return false;
     if(_investorGeoFilterStateCode){
-      if(getInvestorGeoStateCode(r, window._investorGeoStateStats || {}) !== _investorGeoFilterStateCode) return false;
+      // {} ishlatamiz — xarita statsByCountry'ni qurganda ham {} ishlatadi, mos kelishi shart
+      if(getInvestorGeoStateCode(r, {}) !== _investorGeoFilterStateCode) return false;
     }
     if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
     if(!_matchesSourceFilter(r)) return false;
     return true;
   });
+
+  // ═══ Geo filter aktiv, lekin 0 ta eksportyor topildi → importyorlarni ham qo'shamiz ═══
+  // Foydalanuvchi davlatni bossa, o'sha davlatdagi BARCHA kompaniyalarni ko'rishi kerak
+  // (rol importer bo'lsa ham). Aks holda "0 ta kontakt" chiqib qolardi.
+  if(_investorGeoFilterStateCode && co.length === 0){
+    var _allRolesForCountry = allCo.filter(function(r){
+      if(getInvestorGeoStateCode(r, {}) !== _investorGeoFilterStateCode) return false;
+      if(productFilter && !investorCompanyMatchesProductFilter(r, productFilter)) return false;
+      if(!_matchesSourceFilter(r)) return false;
+      return true;
+    });
+    // Diagnostika — qaysi recordlar bor, qaysi roli bilan
+    console.warn('[geo-click] ' + _investorGeoFilterStateCode + ': eksportyor=0, barcha rollar=' +
+      _allRolesForCountry.length, _allRolesForCountry.slice(0,8).map(function(r){
+        return { kompaniya: r.kompaniya, davlat: r.davlat, finderMode: r.finderMode || r.role || '', importer: _isImporterRec(r) };
+      }));
+    if(_allRolesForCountry.length){ co = _allRolesForCountry; }
+  }
 
   var allGroupMap = Object.create(null);
   var apolloGroups = Object.create(null);
@@ -2833,30 +2964,38 @@ _renderInvestorCompaniesMain = function(){
     });
   }
 
-  // ═══ Filter bypass: xarita davlat filtri tufayli o'tib ketgan PARENT (eksportyor) recordlarini ham qo'shamiz ═══
-  // FAQAT geo filter aktiv BO'LMAGANDA bypass ishlaydi.
-  // Geo filter aktiv bo'lsa — boshqa davlat parent'larini olmaymiz (foydalanuvchi tanlovi bo'yicha)
-  if(!_investorGeoFilterStateCode){
+  // ═══ Filter bypass: hamkor (partner) kompaniyalarni co'ga qo'shamiz ═══
+  // Geo filter YO'Q: barcha bog'langan partnerlarni qo'shamiz (xarita to'liq ko'rinadi).
+  // Geo filter BOR: BARCHA eksportyorlarning partnerlarini skanlab, FAQAT tanlangan
+  //   davlatga mos partnerlarni qo'shamiz — shunda xaritadagi son va jadval mos keladi
+  //   (ilgari filter bor bo'lsa bypass o'tkazib yuborilardi → "0 ta kontakt" xatosi).
+  (function(){
     var _coKeysSet = Object.create(null);
     co.forEach(function(r){
       var k = String(r.kompaniya || '').trim().toLowerCase();
       if(k) _coKeysSet[k] = true;
     });
-    var _coSnapshot = co.slice();
-    _coSnapshot.forEach(function(rec){
+    // Filter aktiv bo'lsa — barcha eksportyorlarning partnerlarini skanlaymiz (allCo),
+    // aks holda faqat co ichidagilarni.
+    var _scanSource = _investorGeoFilterStateCode
+      ? allCo.filter(function(r){ return !_isImporterRec(r); })
+      : co.slice();
+    _scanSource.forEach(function(rec){
       var linked = [];
       (rec._partners || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
       (rec._partnerOf || []).forEach(function(p){ if(p && p.kompaniya) linked.push(String(p.kompaniya).trim().toLowerCase()); });
       linked.forEach(function(nm){
         if(!nm || _coKeysSet[nm]) return;
         var existingRec = _existingNamesLower[nm];
-        if(existingRec){
-          co.push(existingRec);
-          _coKeysSet[nm] = true;
-        }
+        if(!existingRec) return;
+        // Geo filter aktiv bo'lsa — faqat tanlangan davlatga mos partnerni qo'shamiz
+        if(_investorGeoFilterStateCode &&
+           getInvestorGeoStateCode(existingRec, {}) !== _investorGeoFilterStateCode) return;
+        co.push(existingRec);
+        _coKeysSet[nm] = true;
       });
     });
-  }
+  })();
 
   var groupedMap = Object.create(null);
   var grouped = [];
@@ -3201,6 +3340,7 @@ _renderInvestorCompaniesMain = function(){
   var vTayyor = 0, vEmailSent = 0, vHasEmail = 0;
   var vEmailSentGroups = Object.create(null);
   var vHasEmailGroups = Object.create(null);
+  var vTayyorGroups = Object.create(null); // group-level count, not record-level
   var visibleRecords = []; // pie chart va geo karta uchun
   visibleGroups.forEach(function(g){
     if(!Array.isArray(g.records)) return;
@@ -3209,13 +3349,14 @@ _renderInvestorCompaniesMain = function(){
       var src = String(rec.manba || rec.source || '').toLowerCase().trim();
       if(src.indexOf('apollo') !== -1) visibleApolloGroups[g.key] = true;
       if(src.indexOf('tradeatlas') !== -1 || src.indexOf('trade atlas') !== -1 || src === 'trade' || src === 'ta') visibleTaGroups[g.key] = true;
-      if(rec.holat === 'Tayyor') vTayyor++;
+      if(rec.holat === 'Tayyor') vTayyorGroups[g.key] = true; // count per company, not per contact
       if(rec.emailSent) vEmailSentGroups[g.key] = true;
       if(rec.email) vHasEmailGroups[g.key] = true;
     });
   });
   vEmailSent = Object.keys(vEmailSentGroups).length;
   vHasEmail = Object.keys(vHasEmailGroups).length;
+  vTayyor = Object.keys(vTayyorGroups).length; // companies (groups) with Tayyor status
   // "Jami" KPI — keyinroq _icStats yig'ilgandan keyin yangilanadi (pastki blok'da)
   var ic1El = document.getElementById('ic-k1');
   var ic2El = document.getElementById('ic-k2');
@@ -3285,16 +3426,22 @@ _renderInvestorCompaniesMain = function(){
   var statsBySource = { apollo: 0, tradeatlas: 0, other: 0 };
   var statsByRole = { exporters: 0, importers: 0, unknown: 0 };
   // ═══ byCountry — `co` (filter qo'llangan, parent-child reorderdan oldin) bo'yicha ═══
-  // Faqat eksportyor — Jami = xarita yig'indisi
+  // Xarita BARCHA kompaniyalarni ko'rsatadi (importer + exporter) — "Kompaniyalar geografiyasi"
+  // 388 ta kompaniya · N ta davlat sarlavhasiga mos bo'lishi uchun.
+  // _exporterGroupKeys alohida — faqat eksportyorlarni sanaydi (boshqa joyda ishlatiladi).
   var _byCountrySeenGroups = Object.create(null);
   var _exporterGroupKeys = Object.create(null); // jami eksportyor sonini hisoblash
+  var _failedGeoNames = Object.create(null); // resolve bo'lmagan davlat nomlari (diagnostika)
   co.forEach(function(rec){
-    if(_isImporterRec(rec)) return;
     var code = (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(rec, {}) : '';
     var groupKey = (typeof getInvestorCompanyGroupKey === 'function') ? getInvestorCompanyGroupKey(rec) : String(rec.kompaniya || '').toLowerCase();
     if(!groupKey) return;
-    _exporterGroupKeys[groupKey] = true;
-    if(!code) return;
+    if(!_isImporterRec(rec)) _exporterGroupKeys[groupKey] = true; // eksportyor total o'zgarmaydi
+    if(!code){
+      var _raw = (typeof getInvestorGeoCountrySource === 'function') ? getInvestorGeoCountrySource(rec) : '';
+      if(_raw) _failedGeoNames[_raw] = (_failedGeoNames[_raw] || 0) + 1;
+      return;
+    }
     if(!_byCountrySeenGroups[code]) _byCountrySeenGroups[code] = Object.create(null);
     if(_byCountrySeenGroups[code][groupKey]) return;
     _byCountrySeenGroups[code][groupKey] = true;
@@ -3314,6 +3461,10 @@ _renderInvestorCompaniesMain = function(){
     statsByCountryName[statsByCountry[code].name] = (statsByCountryName[statsByCountry[code].name] || 0) + 1;
   });
   var _exporterTotal = Object.keys(_exporterGroupKeys).length;
+  // Diagnostika — qaysi davlat nomlari xaritaga tushmadi (resolve bo'lmadi)
+  if(Object.keys(_failedGeoNames).length){
+    console.warn('[geo] Resolve bo\'lmagan davlat nomlari (xaritada ko\'rinmaydi):', _failedGeoNames);
+  }
 
   // visibleGroups loop — role va source uchun saqlandi
   visibleGroups.forEach(function(g){
@@ -3951,9 +4102,14 @@ function saveIcCheck(cb){
   });
 }
 function restoreIcChecks(){
-  document.querySelectorAll('.ic-check').forEach(function(cb){
+  // querySelectorAll bir marta, natijani cache qilamiz — 6 ta alohida DOM scan o'rniga 1 ta
+  var checks = document.querySelectorAll('.ic-check');
+  if(!checks.length) return;
+  var selectedIds = window._icSelectedIds;
+  if(!selectedIds || !selectedIds.size){ return; } // hech narsa tanlangan emas — skip
+  checks.forEach(function(cb){
     var ids = String(cb.dataset.ids || cb.dataset.id || '').split(',').map(function(s){return s.trim();}).filter(Boolean);
-    cb.checked = ids.some(function(id){ return window._icSelectedIds.has(id); });
+    cb.checked = ids.some(function(id){ return selectedIds.has(id); });
   });
 }
 window.saveIcCheck = saveIcCheck;

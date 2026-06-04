@@ -941,9 +941,11 @@ select,.form-select{outline:none !important;}
 .page.active{will-change:auto;}
 /* Page switching — smooth transition identical to first load */
 .page{display:none;padding:0;max-width:1600px;margin:0 auto;}
-.page.active{display:block;animation:pageEnter 1s cubic-bezier(.25,.46,.45,.94) both;}
+.page.active{display:block;}
+/* page-anim-restart class triggers animation without forced reflow */
+.page.active.page-anim-restart{animation:pageEnter .45s cubic-bezier(.25,.46,.45,.94) both;}
 @keyframes pageEnter{
-  from{opacity:0;transform:translateY(18px)}
+  from{opacity:0;transform:translateY(14px)}
   to{opacity:1;transform:translateY(0)}
 }
 /* Hope UI body override for SPA */
@@ -1652,6 +1654,21 @@ body{padding:0!important;}
 [data-bs-theme="dark"] .import-map-wrap{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.06);}
 .import-map-wrap .jvm-container{height:380px !important;}
 #investorGeoJvMap .jvm-container{height:100% !important;}
+/* jsVectorMap zoom +/- buttons — default ko'rinish xunuk (qora kvadrat), chiroyli qilamiz */
+.import-map-wrap .jvm-zoom-btn{
+  width:26px;height:26px;border-radius:8px;background:#fff;color:#4361EE;
+  border:1px solid var(--ta-gray-200);box-shadow:0 2px 6px rgba(15,23,42,.10);
+  font-size:15px;font-weight:700;line-height:24px;text-align:center;
+  display:flex;align-items:center;justify-content:center;
+  left:10px;transition:background .15s,color .15s,transform .1s;
+}
+.import-map-wrap .jvm-zoom-btn:hover{background:#4361EE;color:#fff;transform:translateY(-1px);}
+.import-map-wrap .jvm-zoom-btn.jvm-zoomin{top:10px;}
+.import-map-wrap .jvm-zoom-btn.jvm-zoomout{top:42px;}
+[data-bs-theme="dark"] .import-map-wrap .jvm-zoom-btn{
+  background:rgba(30,41,59,.92);color:#93b4ff;border-color:rgba(255,255,255,.10);
+}
+[data-bs-theme="dark"] .import-map-wrap .jvm-zoom-btn:hover{background:#4361EE;color:#fff;}
 .investor-geo-bubble{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(70,95,255,.82);color:#fff;font-weight:800;font-size:.7rem;box-shadow:0 2px 8px rgba(70,95,255,.35);border:2px solid #fff;min-width:28px;min-height:28px;line-height:1;}
 .import-map-wrap svg{display:block;margin:0 auto;}
 .import-country-list{padding:0 1.5rem 1.25rem;display:flex;flex-direction:column;gap:1rem;}
@@ -1775,6 +1792,26 @@ body{padding:0!important;}
 /* App-specific button variants (won't override Bootstrap .btn) */
 .btn.btn-blue{background:#465fff;color:#fff;box-shadow:0 1px 3px rgba(70,95,255,.2);border-radius:8px;font-size:.72rem;font-weight:500;letter-spacing:.01em;}
 .btn.btn-blue:hover{background:#3b50e0;box-shadow:0 3px 10px rgba(70,95,255,.3);transform:translateY(-1px);}
+
+/* ═══ AI Letter Generation Progress Bar ═══ */
+.ai-gen-progress{
+  display:none;flex-direction:column;gap:6px;
+  min-width:220px;max-width:340px;
+  background:linear-gradient(135deg,rgba(70,95,255,.08),rgba(70,95,255,.04));
+  border:1.5px solid rgba(70,95,255,.25);
+  border-radius:12px;padding:10px 14px;
+  animation:aiProgFadeIn .25s ease;
+}
+@keyframes aiProgFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.ai-gen-progress.visible{display:flex;}
+.ai-gen-progress-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.ai-gen-progress-label{font-size:.72rem;font-weight:600;color:#465fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
+.ai-gen-progress-pct{font-size:.72rem;font-weight:800;color:#465fff;flex-shrink:0;}
+.ai-gen-progress-track{width:100%;height:6px;background:rgba(70,95,255,.15);border-radius:99px;overflow:hidden;}
+.ai-gen-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#465fff,#7b93ff);transition:width .4s cubic-bezier(.4,0,.2,1);will-change:width;}
+.ai-gen-progress-sub{font-size:.62rem;color:var(--text3);line-height:1.35;margin-top:1px;}
+[data-bs-theme="dark"] .ai-gen-progress{background:rgba(70,95,255,.1);border-color:rgba(70,95,255,.3);}
+[data-bs-theme="dark"] .ai-gen-progress-track{background:rgba(70,95,255,.2);}
 .btn.btn-green{background:linear-gradient(135deg,#059669,#06D6A0);color:#fff;box-shadow:0 3px 10px rgba(6,214,160,.3);border-radius:20px;font-size:.68rem;font-weight:600;}
 .btn.btn-green:hover{transform:translateY(-1px);}
 .btn.btn-ghost{background:var(--card);color:var(--text3);border:1px solid var(--border);border-radius:8px;font-size:.72rem;font-weight:500;}

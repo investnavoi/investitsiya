@@ -1150,7 +1150,9 @@ function hashTargetList(items){
 function buildImportSnapshotId(prod, hsCode, targetCountries, source){
   var sourceScope = getImportAnalysisSourceScopeState();
   var year = (typeof getImportAnalysisSelectedYear === 'function') ? getImportAnalysisSelectedYear() : 'all';
-  return ['importv6', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries), 'y' + year]
+  // v7: yillik import qiymatlari tuzatildi (har yil alohida raqam)
+  // v6 snapshot'lar barcha yillarda bir xil raqam saqlagan — ular e'tiborsiz qoldiriladi
+  return ['importv7', getImportAnalysisFinderMode(), getImportAnalysisSnapshotSourceKey(source), sourceScope.cacheKey, (prod&&prod.id)||'na', hsCode||'na', buildImportTargetKey(targetCountries), 'y' + year]
     .join('_')
     .replace(/[^a-zA-Z0-9_-]/g,'_');
 }
@@ -1914,11 +1916,15 @@ function renderImportResults(countries, prod, source, targetCountries){
       exporterTotals[exporterName].value += exporterValue;
     });
   });
-  var topPartner = Object.keys(exporterTotals).map(function(name){
+  var topPartnersSorted = Object.keys(exporterTotals).map(function(name){
     return exporterTotals[name];
   }).sort(function(a, b){
     return (b.value || 0) - (a.value || 0);
-  })[0] || null;
+  });
+  // Apollo uchun: top eksportyor davlatlar globally saqlanadi
+  // (finder.js Apollo qidiruvi bu ro'yxatni ishlatadi)
+  window._importTopExporterCountries = topPartnersSorted.slice(0, 8).map(function(e){ return e.name; });
+  var topPartner = topPartnersSorted[0] || null;
   var topPartnerShare = total > 0 && topPartner && topPartner.value ? Math.round((topPartner.value / total) * 100) : 0;
   var topReporter = biggest;
   var topReporterShare = total > 0 && topReporter.import_usd ? Math.round((topReporter.import_usd / total) * 100) : 0;
@@ -2927,6 +2933,28 @@ function investAiInferTechnology(product){
   return 'Basic processing';
 }
 
+/* Hisobot to'liq yozilganini tekshirish — continuation loop uchun.
+   To'liq: yetarlicha uzun + oxirgi bo'limlar mavjud + to'g'ri tugagan (chala jumla emas). */
+function _isInvestAiReportComplete(md){
+  var t = String(md || '').trim();
+  if(t.length < 800) return false; // qisqa hisobot ~350+ so'z (>2000 belgi), 800 — chala chegarasi
+  var lower = t.toLowerCase();
+  // Oxirgi bo'lim: "Xavflar va tavsiya" / risklar / tavsiya
+  var hasLateSection = /tavsiya|xavf|risk|keyingi qadam|xulosa|next step|conclusion/i.test(lower);
+  if(!hasLateSection) return false;
+  var endsClean = /[.!?:)\]\}"'`”’–—]\s*$/.test(t) || /\n\s*[-*•|]?\s*$/.test(md);
+  return endsClean;
+}
+/* Davom ettirilgan segment boshidagi takror matnni kesib tashlash. */
+function _stripInvestAiOverlap(confirmed, segment){
+  var tail = confirmed.slice(-400);
+  for(var len = Math.min(300, tail.length, segment.length); len >= 20; len--){
+    if(tail.slice(-len) === segment.slice(0, len)) return segment.slice(len);
+  }
+  if(segment.trim().length < 200 && confirmed.indexOf(segment.trim().slice(0, 120)) !== -1) return '';
+  return segment;
+}
+
 function investAiPickAnalysisYear(entries){
   var years = ['2024','2023','2022','2021'];
   for(var i=0;i<years.length;i++){
@@ -2937,6 +2965,25 @@ function investAiPickAnalysisYear(entries){
     if(total > 0) return year;
   }
   return '2024';
+}
+
+/* Davlatning eng so'nggi mavjud yil import qiymatini qaytaradi.
+   preferYear (masalan 2024) bo'sh bo'lsa, 2023→2022→2021 ga qaytamiz.
+   Rossiya (2022 dan keyin Comtrade'ga hisobot bermaydi), Turkmaniston, Afg'oniston
+   kabi davlatlar uchun shu fallback ularning so'nggi haqiqiy raqamini ko'rsatadi. */
+function _investAiLatestYearVal(years, preferYear){
+  years = years || {};
+  if(preferYear && Number(years[preferYear] || 0) > 0) return Number(years[preferYear]) || 0;
+  return Number(years['2024'] || 0) || Number(years['2023'] || 0) ||
+         Number(years['2022'] || 0) || Number(years['2021'] || 0) || 0;
+}
+/* Qaysi yil ishlatilganini qaytaradi (label uchun) */
+function _investAiLatestYearLabel(years, preferYear){
+  years = years || {};
+  if(preferYear && Number(years[preferYear] || 0) > 0) return preferYear;
+  var order = ['2024','2023','2022','2021'];
+  for(var i=0;i<order.length;i++){ if(Number(years[order[i]] || 0) > 0) return order[i]; }
+  return preferYear || '2024';
 }
 
 function investAiInferPriority(entry){
@@ -3090,7 +3137,8 @@ function investAiBuildWorkbookContext(material, markdown){
   products = entries.map(function(entry){ return entry.product; });
   var analysisYear = investAiPickAnalysisYear(entries);
   entries.forEach(function(entry){
-    entry.analysisValue = Number((entry.totalsByYear || {})[analysisYear] || 0) || 0;
+    // Mahsulot regional jami — analysisYear bo'sh bo'lsa eng so'nggi mavjud yilga qaytamiz
+    entry.analysisValue = _investAiLatestYearVal((entry.totalsByYear || {}), analysisYear);
     // O'zbekiston importi — analysisYear bo'sh bo'lsa, mavjud eng so'nggi yilga
     // qaytamiz (UZ ko'pincha so'ralgan yil uchun Comtrade'ga ma'lumot bermaydi).
     var _uzYears = (((entry.countryMap || {}).UZ || {}).years) || {};
@@ -3100,7 +3148,8 @@ function investAiBuildWorkbookContext(material, markdown){
       return {
         code: code,
         name: entry.countryMap[code].name,
-        value: Number((entry.countryMap[code].years || {})[analysisYear] || 0) || 0
+        // Eng so'nggi mavjud yil (analysisYear bo'sh bo'lsa fallback)
+        value: _investAiLatestYearVal((entry.countryMap[code].years || {}), analysisYear)
       };
     }).sort(function(a,b){ return (b.value || 0) - (a.value || 0); });
     entry.topImporter = countries[0] || { code:'', name:'—', value:0 };
@@ -3998,6 +4047,48 @@ function _investAiClearRange(ws, fromRow, toRow, fromCol, toCol){
   }
 }
 
+/* O'zbekiston importini har bir mahsulot HS kodi uchun Comtrade'dan olib, ctx.entries
+   dagi uzbValue (va countryMap.UZ.years) ni to'ldiradi. Snapshotda UZ bo'lmasa ham
+   Матрица "Узбекистан ($)" ustuni to'g'ri raqamni ko'rsatadi. */
+async function _ensureUzbForWorkbookCtx(ctx){
+  if(!ctx || !Array.isArray(ctx.entries) || !ctx.entries.length) return;
+  var year = ctx.analysisYear || '2024';
+  // UZ qiymati 0 bo'lgan mahsulotlar — unique HS kodlar
+  var hsSet = Object.create(null);
+  ctx.entries.forEach(function(e){
+    if(!(Number(e.uzbValue) > 0) && e.hsCode){ hsSet[String(e.hsCode)] = true; }
+  });
+  var hsList = Object.keys(hsSet);
+  if(!hsList.length) return;
+  console.log('[invest-ai] UZ to\'ldirilmoqda:', hsList.length, 'ta HS kod');
+  var _uzToast = (typeof toastLoading === 'function') ? toastLoading('🇺🇿 O\'zbekiston import ma\'lumotlari olinmoqda (' + hsList.length + ' ta mahsulot)...') : null;
+
+  async function _fetchOneUz(hs){
+    try {
+      var rows = await fetchComtrade(hs, 'multi', ['Uzbekistan'], 'comtrade');
+      var uz = (rows||[]).find(function(c){ return String(c.code||c.c||'').toUpperCase()==='UZ'; });
+      if(!uz) return;
+      var yi = uz.year_imports || uz.y || {};
+      var uzVal = Number(yi[year]||0) || Number(yi['2024']||0) || Number(yi['2023']||0) ||
+                  Number(yi['2022']||0) || Number(yi['2021']||0) || Number(uz.import_usd||uz.u||0) || 0;
+      if(!(uzVal > 0)) return;
+      ctx.entries.forEach(function(e){
+        if(String(e.hsCode) !== hs) return;
+        e.uzbValue = uzVal;
+        if(e.countryMap && e.countryMap.UZ){ e.countryMap.UZ.years = yi; }
+      });
+    } catch(_e){ /* bitta HS uchun xato — qolganlari davom etadi */ }
+  }
+
+  // Bounded concurrency (5 ta parallel) — tez bo'lishi uchun
+  var idx = 0;
+  async function _worker(){
+    while(idx < hsList.length){ var my = hsList[idx++]; await _fetchOneUz(my); }
+  }
+  await Promise.all(Array.from({length: Math.min(5, hsList.length)}, _worker));
+  if(_uzToast && typeof _uzToast.close === 'function') _uzToast.close();
+}
+
 async function exportInvestAiWorkbook(){
   if(typeof ExcelJS === 'undefined' || !ExcelJS){
     toast('⚠️ ExcelJS kutubxonasi topilmadi','error');
@@ -4015,6 +4106,12 @@ async function exportInvestAiWorkbook(){
   }
 
   var ctx = investAiBuildWorkbookContext(material, markdown);
+
+  // ═══ O'ZBEKISTON ustunini to'ldirish (Матрица E columni) ═══
+  // Snapshotlar finder tomonidan O'ZBEKISTONSIZ saqlangan (UZ target bozor emas) →
+  // uzbValue 0 chiqardi. Bu yerda har bir mahsulot HS kodi uchun O'zbekiston importini
+  // to'g'ridan-to'g'ri Comtrade'dan olib, uzbValue va countryMap.UZ ni to'ldiramiz.
+  try { await _ensureUzbForWorkbookCtx(ctx); } catch(_uze){ console.warn('[invest-ai] UZ to\'ldirish xato:', _uze && _uze.message); }
 
   // Mahsulot nomlarini ruschaga tarjima qilish (static map + Gemini fallback)
   var translatingToast = (typeof toastLoading === 'function') ? toastLoading('🔤 Mahsulot nomlari ruschaga tarjima qilinmoqda...') : null;
@@ -4104,11 +4201,24 @@ async function exportInvestAiWorkbook(){
           ws2.getCell(r2, c2).value = null;
         }
       }
+      // Xomashyo HS kodi — raw.hs_code bo'sh bo'lsa, entrylar orasidan eng ko'p
+      // uchraydigan HS bo'lim (4-raqamli)dan vakil kod aniqlanadi (xomashyo odatda
+      // bitta aniq HS kodga ega emas — kategoriya, shuning uchun dominant bo'limni olamiz).
+      var _rawHs = (ctx.raw && ctx.raw.hs_code) ? String(ctx.raw.hs_code) : '';
+      if(!_rawHs){
+        var _hs4Counts = {};
+        ctx.entries.forEach(function(e){
+          var hs4 = String(e.hsCode || '').replace(/\D/g,'').slice(0,4);
+          if(hs4) _hs4Counts[hs4] = (_hs4Counts[hs4]||0)+1;
+        });
+        var _topHs4 = Object.keys(_hs4Counts).sort(function(a,b){ return _hs4Counts[b]-_hs4Counts[a]; })[0];
+        if(_topHs4) _rawHs = _topHs4; // masalan "2508" — gillar bo'limi
+      }
       ctx.entries.forEach(function(entry, idx){
         var rowIdx = 5 + idx;
         ws2.getCell('A' + rowIdx).value = idx + 1;
         ws2.getCell('B' + rowIdx).value = material;
-        ws2.getCell('C' + rowIdx).value = (ctx.raw && ctx.raw.hs_code) || '—';
+        ws2.getCell('C' + rowIdx).value = _rawHs || 'н/д';
         ws2.getCell('D' + rowIdx).value = entry.category || entry.level || '—';
         ws2.getCell('E' + rowIdx).value = entry.displayName || '—';
         ws2.getCell('F' + rowIdx).value = entry.hsCode || '—';
@@ -4177,16 +4287,17 @@ async function exportInvestAiWorkbook(){
           // bo'sh hujayralar jadvalda chiziq qoldirmasligi uchun)
         }
       }
-      // Davlat → jami import (2024)
+      // Davlat → jami import. Har davlat uchun ENG SO'NGGI mavjud yil ishlatiladi
+      // (Rossiya 2022, Turkmaniston turli yillar — haqiqiy raqamni to'ldirish uchun).
       var moy4 = TARGET_COUNTRIES.map(function(t){ return { code: t.code, name: investAiTranslateCountry(t.name), total: 0 }; });
       ctx.entries.forEach(function(entry){
         moy4.forEach(function(co){
-          var v = Number((((entry.countryMap || {})[co.code] || {}).years || {})[ctx.analysisYear] || 0) || 0;
-          co.total += v;
+          var yrs = (((entry.countryMap || {})[co.code] || {}).years) || {};
+          co.total += _investAiLatestYearVal(yrs, ctx.analysisYear);
         });
       });
       moy4.sort(function(a,b){ return b.total - a.total; });
-      // Header
+      // Header — original format
       ws4.getCell('A3').value = '№';
       ws4.getCell('B3').value = 'Страна';
       ws4.getCell('C3').value = 'Импорт ' + ctx.analysisYear + ' ($)';
@@ -4423,6 +4534,19 @@ async function collectInvestAiTradeContext(material){
       });
       if(anySnap) snapshot = anySnap;
     }
+    // ═══ MUHIM: keshlangan snapshot O'ZBEKISTON ma'lumotisiz bo'lsa — qayta yuklaymiz ═══
+    // O'zbekiston importi tahlilning eng muhim ma'lumoti (mahalliy bozor hajmi). Eski
+    // snapshotlar UZ'siz saqlangan bo'lishi mumkin → "н/д" chiqardi. UZ yo'q yoki nol bo'lsa,
+    // snapshot'ni rad etib, jonli qayta yuklaymiz (yangi fetch UZ'ni ham oladi).
+    if(snapshot){
+      var _uzOk = (snapshot.countries||[]).some(function(c){
+        var code = String(c.c||c.code||'').toUpperCase();
+        if(code !== 'UZ') return false;
+        var y = c.y || c.year_imports || {};
+        return (Number(y['2021']||0)+Number(y['2022']||0)+Number(y['2023']||0)+Number(y['2024']||0)) > 0;
+      });
+      if(!_uzOk){ snapshot = null; } // UZ yo'q — qayta fetch kerak
+    }
     if(!snapshot && !hsNeedsFetch[hsCode]) hsNeedsFetch[hsCode] = product;
     perProduct.push({ product: product, hsCode: hsCode, snapshot: snapshot });
   }
@@ -4432,6 +4556,10 @@ async function collectInvestAiTradeContext(material){
   //    for materials with many products. Now up to CONCURRENCY HS codes run at
   //    once, each fetching its 4 years in parallel. ──
   function mergeYearRows(perYearResults){
+    // perYearResults[yi] — yr=YEARS_TO_FETCH[yi] uchun kelgan array.
+    // MUHIM: proxy yil parametrini e'tiborsiz qoldiradi va BARCHA yillarni qaytaradi.
+    // Shuning uchun c.import_usd = 4 yillik JAMI, har yil uchun yozib bo'lmaydi.
+    // Buning o'rniga c.year_imports[yr] dan foydalanamiz (u to'g'ri yillik qiymat).
     var byCode = Object.create(null);
     perYearResults.forEach(function(rows, yi){
       if(!rows || !rows.length) return;
@@ -4452,7 +4580,12 @@ async function collectInvestAiTradeContext(material){
             status: 'ok'
           };
         }
-        var v = Number(c.import_usd || c.u || 0) || 0;
+        // Avvalgi kod: c.import_usd ishlatardi (jami) → barcha yil bir xil chiqardi
+        // Tuzatma: year_imports[yr] dan olamiz (to'g'ri yillik qiymat)
+        var yi_data = c.year_imports || c.y || {};
+        var v = Number(yi_data[yr] || 0) || 0;
+        // Agar proxy year_imports bermagan bo'lsa (eski format) — jami ishlatamiz (1 yil uchun)
+        if(!v) v = Number(c.import_usd || c.u || 0) || 0;
         if(v) byCode[code].year_imports[yr] = v;
         byCode[code].year_statuses[yr] = c.status || 'ok';
         if(c.volume_tons || c.v) byCode[code].volume_tons = Math.max(byCode[code].volume_tons, Number(c.volume_tons || c.v || 0) || 0);
@@ -4460,26 +4593,48 @@ async function collectInvestAiTradeContext(material){
     });
     return Object.keys(byCode).map(function(k){
       var co = byCode[k];
-      // Set import_usd to latest available year (2024 -> 2023 -> 2022 -> 2021)
       co.import_usd = Number(co.year_imports['2024'] || co.year_imports['2023'] || co.year_imports['2022'] || co.year_imports['2021'] || 0) || 0;
       return co;
     });
   }
   async function fetchOneHs(hsCode){
     try{
-      var perYearResults = await Promise.all(YEARS_TO_FETCH.map(function(yr){
-        return fetchComtrade(hsCode, yr).catch(function(){ return null; });
-      }));
-      // Diagnostika — har yil RU importi (proxy yilni hisobga olyaptimi tekshirish)
-      try {
-        var _dbg = YEARS_TO_FETCH.map(function(yr, yi){
-          var rows = perYearResults[yi] || [];
-          var ru = rows.find(function(r){ return String(r.code||r.c||'').toUpperCase()==='RU'; });
-          return yr + '=' + (ru ? Number(ru.import_usd||ru.u||0) : 'null') + '(' + rows.length + ')';
-        });
-        console.log('[fetchOneHs '+hsCode+'] RU per-year:', _dbg.join(' | '));
-      } catch(_de){}
-      var liveCountries = mergeYearRows(perYearResults);
+      // Proxy bir so'rovda BARCHA yillarni qaytaradi (year_imports = {2021: X, 2022: Y, ...}).
+      // Avval 4 marta alohida chaqirilardi: har call c.import_usd (4 yillik jami!) ni
+      // yil uyasiga yozardi → barcha yillarda bir xil raqam chiqardi.
+      // Endi: BITTA chaqiruv, year_imports dan to'g'ridan-to'g'ri foydalanamiz.
+      var rawCountries = await fetchComtrade(hsCode, 'multi').catch(function(){ return null; });
+      if(!rawCountries || !rawCountries.length) return;
+
+      var liveCountries = rawCountries.map(function(c){
+        // year_imports proxy dan keladi: { '2021': N, '2022': N, '2023': N, '2024': N }
+        // import_usd — barcha yillar jami (eski bug: shu raqam har yil uchun ishlatilgan)
+        var yi = c.year_imports || c.y || {};
+        // agar yillik ma'lumot bo'lmasa — jami to'rtga bo'lib bo'g'laymiz (taxminiy)
+        var yearsWithData = YEARS_TO_FETCH.filter(function(yr){ return Number(yi[yr]||0) > 0; });
+        if(!yearsWithData.length && Number(c.import_usd||0) > 0){
+          var approxPerYear = Math.round(Number(c.import_usd) / YEARS_TO_FETCH.length);
+          YEARS_TO_FETCH.forEach(function(yr){ yi[yr] = approxPerYear; });
+        }
+        // import_usd: so'nggi mavjud yil qiymati (total emas)
+        var latestImport = Number(yi['2024']||0) || Number(yi['2023']||0) || Number(yi['2022']||0) || Number(yi['2021']||0) || 0;
+        return {
+          code:         c.code || c.c || '',
+          name:         c.name || c.n || '',
+          flag:         c.flag || c.f || '',
+          import_usd:   latestImport,
+          trend_pct:    typeof (c.trend_pct||c.t) === 'number' ? (c.trend_pct||c.t) : null,
+          volume_tons:  Number(c.volume_tons||c.v||0)||0,
+          year_imports: yi,
+          year_statuses:c.year_statuses||c.s||{},
+          status:       c.status||c.st||'ok'
+        };
+      }).filter(function(c){ return c.code; });
+
+      // Diagnostika
+      var ru = liveCountries.find(function(c){ return c.code.toUpperCase()==='RU'; });
+      if(ru) console.log('[fetchOneHs '+hsCode+'] RU year_imports:', JSON.stringify(ru.year_imports));
+
       if(liveCountries.length){
         liveByHs[hsCode] = liveCountries;
         saveImportSnapshot(hsNeedsFetch[hsCode], hsCode, liveCountries, 'UN Comtrade (real, multi-year)');
@@ -4683,33 +4838,26 @@ async function analyzeInvestmentMaterial(){
         throw new Error('Bu xomashyo uchun ma\'lumot topilmadi.');
       }
     }
-    // Step 1: try to get system prompt from proxy; fall back to built-in if proxy fails
-    var FALLBACK_SYSTEM_PROMPT = 'You are an expert investment analyst for Navoiy region of Uzbekistan. ' +
-      'Produce a Markdown-formatted investment analysis in Uzbek for the given raw material, using ONLY the UN Comtrade data provided in the context. ' +
-      'Required sections: 1) Executive summary 2) Top importing countries (table) 3) Trade trends (2021-2023) 4) Investment opportunities for Navoiy ' +
-      '5) Recommended downstream products (from context only) 6) Risks and mitigations 7) Next steps. ' +
-      'Use concrete numbers from the context. If data is missing, say it is missing. Keep it under 2000 words. Write in fluent Uzbek.';
+    // ═══ QISQA, JADVALSIZ, TUSHUNARLI hisobot ═══
+    // Foydalanuvchi so'rovi: o'rtacha uzunlikdagi, jadvalsiz, oddiy tilda umumiy tahlil.
+    // Proxy'dagi uzun-jadvalli prompt ishlatilmaydi — lokal qisqa prompt majburan ishlatiladi.
+    var systemPrompt =
+      'Siz O\'zbekiston Navoiy viloyati uchun tajribali investitsiya tahlilchisisiz. ' +
+      'Berilgan xomashyo bo\'yicha QISQA va TUSHUNARLI investitsiya tahlilini O\'ZBEK TILIDA yozing. ' +
+      'Faqat kontekstda berilgan UN Comtrade ma\'lumotlaridan foydalaning.\n\n' +
+      'QAT\'IY QOIDALAR:\n' +
+      '1. JADVAL ISHLATMANG. Hech qanday markdown jadval (| ... |) bo\'lmasin. Faqat oddiy matn va kerak bo\'lsa qisqa bullet ro\'yxat.\n' +
+      '2. UZUNLIK: o\'rtacha — 350-550 so\'z. Ortiqcha cho\'zmang. Suvli gaplar yo\'q.\n' +
+      '3. STRUKTURA (qisqa sarlavhalar bilan):\n' +
+      '   • **Qisqacha xulosa** — 2-3 jumla: bu xomashyodan nima ishlab chiqarib bo\'ladi va nega Navoiyga foydali.\n' +
+      '   • **Bozor talabi** — qaysi davlatlar ko\'p import qiladi, aniq raqamlar bilan (eng katta 3-4 ta).\n' +
+      '   • **Investitsiya imkoniyati** — Navoiyda qanday mahsulot ishlab chiqarish mantiqiy, qisqa.\n' +
+      '   • **Xavflar va tavsiya** — 2-3 jumla amaliy maslahat.\n' +
+      '4. Aniq raqamlardan foydalaning (kontekstdagi $ qiymatlar). Raqam yo\'q bo\'lsa "ma\'lumot yo\'q" deng, taxmin qilmang.\n' +
+      '5. Ravon, professional o\'zbek tilida yozing. Inglizcha so\'z aralashtirmang.';
 
-    if(!window._cachedSystemPrompt){
-      try {
-        var promptResp = await fetch(AI_TRADE_ANALYZER_API_BASE + '/analyze-material', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ promptOnly: true })
-        });
-        if(promptResp.ok){
-          var promptData = await promptResp.json();
-          if(promptData && promptData.systemPrompt) window._cachedSystemPrompt = promptData.systemPrompt;
-        } else {
-          console.warn('Proxy system prompt failed ('+promptResp.status+') — using built-in fallback');
-        }
-      } catch(e){
-        console.warn('Proxy unreachable — using built-in system prompt:', e && e.message);
-      }
-      if(!window._cachedSystemPrompt) window._cachedSystemPrompt = FALLBACK_SYSTEM_PROMPT;
-    }
-    var systemPrompt = window._cachedSystemPrompt;
-    if(!systemPrompt) systemPrompt = FALLBACK_SYSTEM_PROMPT;
+    // Eski proxy prompt keshini tozalaymiz (u uzun-jadvalli formatni majbur qilardi)
+    window._cachedSystemPrompt = systemPrompt;
 
     // Step 2: TRIM tradeContext to fit free-tier 15K token/min limit
     // Strip large fields: full snapshot.countries arrays, full raw object, etc.
@@ -4765,29 +4913,65 @@ async function analyzeInvestmentMaterial(){
       { role: 'user', content: contextText }
     ];
 
-    try {
-      await callGeminiStream(geminiMessages, {
-        temperature: 0.2,
-        maxTokens: 4096
-      }, function(textDelta){
-        _investAiMarkdown += textDelta;
-        renderInvestAiMarkdown(_investAiMarkdown);
-        // Matn oqib kela boshlashi bilanoq barcha fazalarni "Tayyor" deb belgilaymiz —
-        // foydalanuvchi "Jarayonda"da kutib qolmasin (hisobot baribir real vaqtda yozilib boradi).
-        if(_investAiPhase !== 3){
-          _investAiPhase = 3;
-          renderInvestAiProgress(3, true);
-        }
-      });
-    } catch(e){
-      console.warn('[analyze-material gemini] xato:', e && e.message);
-      // Stream o'rtada uzilib qisman matn yig'ilgan bo'lsa — uni saqlaymiz (outer catch)
-      if(!_investAiMarkdown || _investAiMarkdown.trim().length < 80){
-        throw new Error('Gemini tahlil xatosi: ' + (e && e.message ? e.message : 'noma\'lum xato'));
+    // ═══ CONTINUATION LOOP — tahlil chala qolsa avtomatik davom ettiramiz ═══
+    // Gemini ba'zan stream'ni o'rtada to'xtatadi (rate-limit yoki MAX_TOKENS) → hisobot
+    // o'rtada uzilib qoladi. Chala bo'lsa "qoldingjoydan davom et" so'rovi yuboriladi.
+    var _confirmedMd = '';   // tasdiqlangan to'liq matn (segmentlar yig'indisi)
+    var _contAttempt = 0, _MAX_CONT = 3, _streamErr = null;
+
+    while(_contAttempt <= _MAX_CONT){
+      var _isCont = _contAttempt > 0;
+      var _msgs = _isCont
+        ? [
+            { role:'system', content: systemPrompt },
+            { role:'user',   content: contextText },
+            { role:'user',   content: 'You already wrote this part of the report (Uzbek):\n\n"""' +
+              _confirmedMd.slice(-1500) + '"""\n\nCONTINUE from EXACTLY where it stopped. Do NOT repeat any sentence ' +
+              'you already wrote, do NOT restart. Just continue and finish ALL remaining sections ' +
+              '(including risks/risklar and next steps/keyingi qadamlar). Write in Uzbek.' }
+          ]
+        : [
+            { role:'system', content: systemPrompt },
+            { role:'user',   content: contextText }
+          ];
+
+      var _segRes = null;
+      try {
+        _segRes = await callGeminiStream(_msgs, { temperature: 0.2, maxTokens: 8192 }, function(textDelta, fullSoFar){
+          // fullSoFar = shu stream'ning to'liq matni (cross-model kontaminatsiya yo'q)
+          _investAiMarkdown = _confirmedMd + (fullSoFar || '');
+          renderInvestAiMarkdown(_investAiMarkdown);
+          // Eski xulq saqlanadi: birinchi matn kelishi bilan barcha fazalar "Tayyor"
+          if(_investAiPhase !== 3){ _investAiPhase = 3; renderInvestAiProgress(3, true); }
+        });
+      } catch(eSeg){
+        _streamErr = eSeg;
+        console.warn('[analyze-material gemini] segment xato:', eSeg && eSeg.message);
+        break;
       }
+
+      var _segText = (_segRes && _segRes.content) || '';
+      var _finish = (_segRes && _segRes.finishReason) || '';
+      if(!_segText.trim()) break;
+
+      if(_isCont && _confirmedMd){ _segText = _stripInvestAiOverlap(_confirmedMd, _segText); }
+      if(!_segText.trim()) break; // hammasi takror edi
+
+      var _sep = (_isCont && _confirmedMd && !/\s$/.test(_confirmedMd) && !/^\s/.test(_segText)) ? ' ' : '';
+      _confirmedMd += _sep + _segText;
+      _investAiMarkdown = _confirmedMd;
+      renderInvestAiMarkdown(_investAiMarkdown);
+
+      var _truncated = (_finish === 'MAX_TOKENS') || !_isInvestAiReportComplete(_confirmedMd);
+      if(!_truncated){ console.log('[analyze-material] hisobot to\'liq ('+_confirmedMd.length+' belgi, finish='+_finish+')'); break; }
+      console.log('[analyze-material] hisobot chala (finish='+_finish+') — davom #'+(_contAttempt+1));
+      _contAttempt++;
     }
 
+    _investAiMarkdown = _confirmedMd || _investAiMarkdown;
+
     if(!_investAiMarkdown.trim()){
+      if(_streamErr) throw new Error('Gemini tahlil xatosi: ' + (_streamErr.message || 'noma\'lum xato'));
       throw new Error('Gemini bo\'sh javob qaytardi. Qayta urinib ko\'ring.');
     }
 

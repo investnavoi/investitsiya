@@ -148,6 +148,7 @@ async function callGeminiStream(messages, opts, onChunk){
         var decoder = new TextDecoder();
         var full = '';
         var buf = '';
+        var finishReason = '';
         resetIdle();
         while(true){
           var chunk = await reader.read();
@@ -163,16 +164,18 @@ async function callGeminiStream(messages, opts, onChunk){
             if(!dataStr) continue;
             try {
               var payload = JSON.parse(dataStr);
-              var parts = (((payload.candidates || [])[0] || {}).content || {}).parts || [];
+              var cand0 = (payload.candidates || [])[0] || {};
+              var parts = ((cand0.content || {}).parts) || [];
               var delta = parts.map(function(p){ return (p && p.text) || ''; }).join('');
+              if(cand0.finishReason) finishReason = String(cand0.finishReason);
               if(delta){ full += delta; if(typeof onChunk === 'function') onChunk(delta, full); }
             } catch(_pe){ /* malformed chunk — skip */ }
           }
         }
         clearTimeout(overallTimer); if(idleTimer) clearTimeout(idleTimer);
         if(full && full.trim()){
-          console.log('[callGeminiStream] OK model: '+modelName+' (key #'+(ki+1)+')');
-          return { content: full, model: modelName };
+          console.log('[callGeminiStream] OK model: '+modelName+' (key #'+(ki+1)+') finishReason='+(finishReason||'?'));
+          return { content: full, model: modelName, finishReason: finishReason };
         }
         // bo'sh javob — keyingi modelni sinaymiz
         lastErr = new Error(modelName + ' bo\'sh javob qaytardi');

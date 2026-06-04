@@ -3659,13 +3659,35 @@ function renderTradeResults(countryName, flowName, year, hsFilter){
     var valStr = formatTradeMoney(r.value);
     var colors = ['#4361EE','#059669','#F59E0B','#EF233C','#8B5CF6','#14B8A6','#F97316','#EC4899','#6366F1','#10B981'];
     var color = colors[i%colors.length];
-    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'+
-      '<div style="width:60px;font-size:.55rem;text-align:right;color:var(--text3);flex-shrink:0">'+r.hsCode+'</div>'+
-      '<div style="flex:1;height:22px;background:var(--border);border-radius:3px;overflow:hidden;position:relative">'+
-        '<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:3px"></div>'+
-        '<div style="position:absolute;left:4px;top:2px;font-size:.55rem;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.5)">'+translateHS(r.hsCode,r.description).slice(0,40)+'</div>'+
+    var label = translateHS(r.hsCode, r.description);
+    // Separate Uzbek category tag from English description
+    var categoryTag = '';
+    var engPart = label;
+    // If label contains parenthetical English (e.g. "Dori-darmonlar (Blood, human...")
+    var parenIdx = label.indexOf(' (');
+    if(parenIdx > 0){
+      categoryTag = label.slice(0, parenIdx);
+      engPart = label.slice(parenIdx + 2).replace(/\)$/, '');
+    } else {
+      // pure Uzbek label — use the raw engDesc for the secondary line
+      categoryTag = label;
+      engPart = (r.description || '').slice(0, 55);
+    }
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+      // Left: HS code + Uzbek category badge
+      '<div style="width:72px;flex-shrink:0;text-align:right">'+
+        '<div style="font-size:.5rem;color:var(--text3);font-family:monospace;margin-bottom:2px">'+r.hsCode+'</div>'+
+        '<span style="display:inline-block;background:'+color+';color:#fff;padding:1px 6px;border-radius:999px;font-size:.48rem;font-weight:700;white-space:nowrap;max-width:72px;overflow:hidden;text-overflow:ellipsis" title="'+categoryTag+'">'+categoryTag+'</span>'+
       '</div>'+
-      '<div style="width:70px;font-size:.6rem;font-weight:700;color:var(--text);text-align:right">'+valStr+'</div>'+
+      // Middle: label text + progress bar
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:.55rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px" title="'+(r.description||'')+'">'+engPart.slice(0,60)+'</div>'+
+        '<div style="height:10px;background:var(--border);border-radius:3px;overflow:hidden">'+
+          '<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:3px;transition:width .3s"></div>'+
+        '</div>'+
+      '</div>'+
+      // Right: value
+      '<div style="width:62px;font-size:.62rem;font-weight:700;color:var(--text);text-align:right;flex-shrink:0">'+valStr+'</div>'+
     '</div>';
   }).join('');
   var chartMeta = document.getElementById('tradeChartMeta');
