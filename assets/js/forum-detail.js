@@ -691,7 +691,8 @@ window.showInvestorCountryPriority = async function(stateCode){
         regional = Number(totals.regionalLatestUsd || 0) || 0;
         uz = Number(totals.uzbLatestUsd || 0) || 0;
         year = totals.latestYear || '';
-        if(!(regional > 0)) regional = Number(totals.combinedUsd || 0) / 4;
+        // Fallback: per-yillik ma'lumot yo'q bo'lsa, 12 qo'shni totalini 4 ga bo'lamiz (UZ siz)
+        if(!(regional > 0)) regional = Number(totals.otherTwelveUsd || 0) / 4;
         hasData = regional > 0;
       }
     } catch(_e){}

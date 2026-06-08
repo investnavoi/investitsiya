@@ -192,8 +192,10 @@ function getCompanyProductImportTotals(productInfo, comp){
     var allCountries = snap.countries || [];
     // Per-yillik jamilar — Приоритет (Excel "Главная панель") bir yillik raqamga
     // tayanadi, shu sabab bu yerda ham eng so'nggi mavjud yilni hisoblaymiz.
+    // nbYearTotals — 12 qo'shni davlat FAQAT (UZ chiqarib), Excel analysisValue bilan identik.
     var yearTotals = {'2021':0,'2022':0,'2023':0,'2024':0};
     var uzYearVals = {'2021':0,'2022':0,'2023':0,'2024':0};
+    var nbYearTotals = {'2021':0,'2022':0,'2023':0,'2024':0}; // 12 qo'shnilar (UZ siz)
 
     allCountries.forEach(function(c){
       /* c.u = import_usd (2021-2024 jami). c.y = {year: usd, ...} per-yillik.
@@ -206,12 +208,16 @@ function getCompanyProductImportTotals(productInfo, comp){
       }
       var usd = baseUsd;
       var code = String(c.c||'').toUpperCase();
-      // Per-yillik yig'indilar (barcha 13 davlat, UZ ham)
+      // Per-yillik yig'indilar
       if(c.y && typeof c.y === 'object'){
         ['2021','2022','2023','2024'].forEach(function(yr){
           var yv = Number((c.y)[yr] || 0) || 0;
           yearTotals[yr] += yv;
-          if(code === 'UZ') uzYearVals[yr] += yv;
+          if(code === 'UZ'){
+            uzYearVals[yr] += yv;
+          } else {
+            nbYearTotals[yr] += yv; // 12 qo'shnilar faqat (Excel bilan identik)
+          }
         });
       }
       if(code === 'UZ'){
@@ -222,23 +228,24 @@ function getCompanyProductImportTotals(productInfo, comp){
       }
     });
 
-    // Eng so'nggi mavjud yil (2024→2021) — regional jami shu yil uchun > 0 bo'lgan yil
-    var _latestYear = ['2024','2023','2022','2021'].filter(function(y){ return yearTotals[y] > 0; })[0] || '';
+    // Eng so'nggi mavjud yil (2024→2021) — 12 qo'shni importi > 0 bo'lgan yil
+    var _latestYear = ['2024','2023','2022','2021'].filter(function(y){ return nbYearTotals[y] > 0; })[0] || '';
     var regionalLatestUsd, uzbLatestUsd, latestYearLabel;
     if(_latestYear){
-      regionalLatestUsd = yearTotals[_latestYear];                 // analysisValue ekvivalenti (UZ ham ichida)
-      uzbLatestUsd = Number(uzYearVals[_latestYear] || 0) || 0;    // uzbValue ekvivalenti
+      regionalLatestUsd = nbYearTotals[_latestYear]; // 12 qo'shnilar faqat — Excel analysisValue bilan identik
+      uzbLatestUsd = Number(uzYearVals[_latestYear] || 0) || 0;
       latestYearLabel = _latestYear;
     } else {
       // Per-yillik breakdown yo'q (eski snapshot) — 4 yillik jamini yillarga taqsimlaymiz
-      regionalLatestUsd = (uzbekistanUsd + otherTwelveUsd) / 4;
+      regionalLatestUsd = otherTwelveUsd / 4; // UZ chiqarib, faqat 12 qo'shnilar
       uzbLatestUsd = uzbekistanUsd / 4;
       latestYearLabel = '2024';
     }
 
-    /* Agar UZ ma'lumoti yo'q bo'lsa (TARGET_COUNTRIES da UZ yo'q edi) yoki ikkisi ham nol —
-       null qaytaramiz va fetchProductImportTotalsLive ishga tushsin. */
-    if(uzbekistanUsd <= 0 || otherTwelveUsd <= 0) return null;
+    /* MUHIM: faqat IKKALASI ham 0 bo'lsagina null qaytaramiz.
+       UZ importi 0 bo'lishi normal — UZ eksportchi bo'lsa UZ import qilmaydi.
+       Bu holda prioritet hisoblanadi, faqat uzbImport=0 bo'ladi (level Processed/Downstream bo'lsa B bo'lishi mumkin). */
+    if(uzbekistanUsd <= 0 && otherTwelveUsd <= 0) return null;
 
     /* Top 3 boshqa davlatlarni ham qaytaramiz, prompt'da kontekst uchun foydali. */
     otherCountries.sort(function(a,b){ return b.usd - a.usd; });
@@ -316,6 +323,7 @@ async function fetchProductImportTotalsLive(productInfo, comp){
     var otherCountries = [];
     var liveYearTotals = {'2021':0,'2022':0,'2023':0,'2024':0};
     var liveUzYears = {'2021':0,'2022':0,'2023':0,'2024':0};
+    var liveNbYearTotals = {'2021':0,'2022':0,'2023':0,'2024':0}; // 12 qo'shnilar faqat (UZ siz)
     respData.countries.forEach(function(c){
       /* import_usd = 2021-2024 yig'indisi (comtrade.js da totalValue sifatida hisoblanadi) */
       var usd = Number(c.import_usd || 0) || 0;
@@ -329,7 +337,11 @@ async function fetchProductImportTotalsLive(productInfo, comp){
         ['2021','2022','2023','2024'].forEach(function(yr){
           var yv = Number(c.year_imports[yr] || 0) || 0;
           liveYearTotals[yr] += yv;
-          if(code === 'UZ') liveUzYears[yr] += yv;
+          if(code === 'UZ'){
+            liveUzYears[yr] += yv;
+          } else {
+            liveNbYearTotals[yr] += yv; // 12 qo'shnilar faqat
+          }
         });
       }
       if(code === 'UZ'){
@@ -347,15 +359,15 @@ async function fetchProductImportTotalsLive(productInfo, comp){
 
     otherCountries.sort(function(a,b){ return b.usd - a.usd; });
 
-    // Приоритет uchun bir yillik (eng so'nggi) raqamlar
-    var _liveLatest = ['2024','2023','2022','2021'].filter(function(y){ return liveYearTotals[y] > 0; })[0] || '';
+    // Приоритет uchun bir yillik (eng so'nggi) raqamlar — 12 qo'shnilar faqat (Excel bilan identik)
+    var _liveLatest = ['2024','2023','2022','2021'].filter(function(y){ return liveNbYearTotals[y] > 0; })[0] || '';
     var liveRegionalLatest, liveUzLatest, liveLatestLabel;
     if(_liveLatest){
-      liveRegionalLatest = liveYearTotals[_liveLatest];
+      liveRegionalLatest = liveNbYearTotals[_liveLatest]; // 12 qo'shnilar faqat
       liveUzLatest = Number(liveUzYears[_liveLatest] || 0) || 0;
       liveLatestLabel = _liveLatest;
     } else {
-      liveRegionalLatest = (uzUsd + otherUsd) / 4;
+      liveRegionalLatest = otherUsd / 4; // UZ chiqarib, faqat 12 qo'shnilar o'rtacha yillik
       liveUzLatest = uzUsd / 4;
       liveLatestLabel = '2024';
     }

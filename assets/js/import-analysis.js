@@ -2043,8 +2043,9 @@ function renderImportResults(countries, prod, source, targetCountries){
     var _uzRowForPr = countries.filter(function(c){
       return String(c.code||'').toUpperCase()==='UZ' || /uzbek/i.test(String(c.name||''));
     })[0];
+    // Jami 4-yillik total ishlatamiz (Jami import ustuniga mos) — per-year ($5-6M) thresholdga yetmaydi
     var _uzbImportForPr = _uzRowForPr
-      ? (_investAiLatestYearVal(_uzRowForPr.year_imports, '2024') || Number(_uzRowForPr.import_usd||0) || 0)
+      ? (Number(_uzRowForPr.import_usd||0) || _investAiLatestYearVal(_uzRowForPr.year_imports, '2024') || 0)
       : 0;
     var tHtml = '<table class="ta-table" style="width:100%;font-size:.78rem">';
     tHtml += '<thead><tr><th style="min-width:140px">Davlat</th><th>Jami import</th><th style="min-width:110px">Ulush</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Trend</th><th title="Excel «Главная панель» bilan bir xil darajalash — bozor hajmi + mahsulot darajasi" style="min-width:120px">Приоритет</th></tr></thead><tbody>';
@@ -2080,8 +2081,8 @@ function renderImportResults(countries, prod, source, targetCountries){
       var rowId2 = 'impDemoRow2_'+idx;
       var detailId2 = 'impDemoDetail2_'+idx;
       // Приоритет — Excel "Главная панель" bilan bir xil grading.
-      // regionalDemand = shu davlatning eng so'nggi yillik importi (bozor hajmi).
-      var _crDemand = _investAiLatestYearVal(yi, '2024') || Number(c.import_usd||0) || 0;
+      // Jami 4-yillik total ishlatamiz: per-year ($5-6M) thresholdga yetmaydi, total ($20M) to'g'riroq.
+      var _crDemand = Number(c.import_usd||0) || _investAiLatestYearVal(yi, '2024') || 0;
       var _crPr = (c.status==='ok' || _crDemand>0)
         ? window.computeInvestPriority(_crDemand, _uzbImportForPr, _prodLevel)
         : null;
