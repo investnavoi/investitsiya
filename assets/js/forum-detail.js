@@ -632,13 +632,12 @@ window.clearInvestorGeoFilter = clearInvestorGeoFilter;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ПРИОРИТЕТ (Feature 3) — Davlat tanlangandan keyin "🎯 Приоритет" tugmasi.
-   Shu davlatdagi mavjud kompaniyalarni Excel "Главная панель" Приоритет ustuni
-   bilan AYNAN bir xil darajalashda (A — Стратегический / B — Высокий /
-   C — Средний / D — Низкий) toifalarga ajratib ko'rsatadi.
-   Har bir kompaniya prioriteti — uning mahsuloti (productId / HS kodi) bo'yicha:
-   bozor talabi (regional import) + O'zbekiston importi + mahsulot darajasi.
-   Har kartada: kompaniya nomi, email, soha + "AI Tahlil va Email" tugmasi
-   (openInvestorAiWorkspace orqali tahlil qilib, xat yozish mumkin).
+   Qadamlar:
+     1) Firestore importSnapshots'dan sinxron tekshirish (tez)
+     2) Snapshot topilmagan mahsulotlar uchun UN Comtrade'dan jonli ma'lumot olish
+        — mahsulot HS kodi bo'yicha guruhlab API chaqiruvlarni kamaytiradi
+     3) Barcha ma'lumot to'plangach Excel "Главная панель" bilan identik formula
+        yordamida A→B→C→D darajalash
    ═══════════════════════════════════════════════════════════════════════════ */
 window.showInvestorCountryPriority = async function(stateCode){
   var code = String(stateCode || _investorGeoFilterStateCode || '').toUpperCase();
@@ -647,17 +646,26 @@ window.showInvestorCountryPriority = async function(stateCode){
     if(typeof toast==='function') toast('⚠️ Prioritet moduli yuklanmagan','error'); return;
   }
 
-  var cName = (window._investorGeoStateStats && window._investorGeoStateStats[code] && window._investorGeoStateStats[code].name) || code;
-  _openInvestorPriorityModal('<div style="padding:46px;text-align:center;color:var(--text3);font-size:.85rem">⏳ Import ma\'lumotlari yuklanmoqda va prioritet hisoblanmoqda...</div>', cName);
+  var cName = (window._investorGeoStateStats && window._investorGeoStateStats[code] &&
+               window._investorGeoStateStats[code].name) || code;
 
-  // Import snapshotlarini yuklash — prioritet hisoblash uchun zarur (Comtrade importlari)
+  function _loadingHtml(msg){
+    return '<div style="padding:40px 46px;text-align:center">' +
+      '<div style="font-size:1.8rem;margin-bottom:12px">⏳</div>' +
+      '<div style="color:var(--text2);font-size:.9rem;font-weight:600">' + msg + '</div>' +
+      '<div style="margin-top:10px;color:var(--text3);font-size:.75rem">Iltimos kuting…</div>' +
+      '</div>';
+  }
+
+  _openInvestorPriorityModal(_loadingHtml('Import ma\'lumotlari yuklanmoqda…'), cName);
+
+  // 1) Firestore importSnapshots'ni yuklash
   try { if(typeof ensureCollectionLoaded === 'function') await ensureCollectionLoaded('importSnapshots'); } catch(_e){}
 
-  // Davlat kompaniyalari — xarita bilan AYNAN bir xil filter + group dedup
+  // 2) Davlat kompaniyalarini filter + dedup
   var co = DB.investorCompanies || [];
   var rawRecords = co.filter(function(c){
-    if(typeof getInvestorGeoStateCode === 'function') return getInvestorGeoStateCode(c, {}) === code;
-    return false;
+    return (typeof getInvestorGeoStateCode === 'function') ? getInvestorGeoStateCode(c, {}) === code : false;
   });
   var seen = Object.create(null);
   var countryCompanies = [];
@@ -671,42 +679,101 @@ window.showInvestorCountryPriority = async function(stateCode){
   });
 
   if(!countryCompanies.length){
-    _openInvestorPriorityModal('<div style="padding:46px;text-align:center;color:var(--text3)">Bu davlat uchun kompaniya yozuvi topilmadi.</div>', cName);
+    _openInvestorPriorityModal(
+      '<div style="padding:46px;text-align:center;color:var(--text3)">Bu davlat uchun kompaniya yozuvi topilmadi.</div>',
+      cName);
     return;
   }
 
-  // Har bir kompaniya uchun prioritet (mahsuloti bo'yicha) — Excel bilan bir xil
-  var buckets = { A:[], B:[], C:[], D:[] };
-  countryCompanies.forEach(function(rec){
-    var productInfo = {
+  // 3) Har kompaniyaning mahsulotini aniqlash va mahsulot kaliti (HS4 yoki productId)
+  function _buildProductInfo(rec){
+    return {
       productId: rec.productId || rec.mahsulotProductId || '',
-      hsCode: rec.mahsulotHs || rec.productHs || rec.hsCode || '',
+      hsCode:    rec.mahsulotHs || rec.productHs || rec.hsCode || '',
       displayName: rec.mahsulotNomi || rec.soha || ''
     };
-    var regional = 0, uz = 0, year = '', hasData = false;
-    try {
-      var totals = (typeof getCompanyProductImportTotals === 'function')
-        ? getCompanyProductImportTotals(productInfo, rec) : null;
-      if(totals){
-        regional = Number(totals.regionalLatestUsd || 0) || 0;
-        uz = Number(totals.uzbLatestUsd || 0) || 0;
-        year = totals.latestYear || '';
-        // Fallback: per-yillik ma'lumot yo'q bo'lsa, 12 qo'shni totalini 4 ga bo'lamiz (UZ siz)
-        if(!(regional > 0)) regional = Number(totals.otherTwelveUsd || 0) / 4;
-        hasData = regional > 0;
+  }
+  function _productKey(pi){
+    if(pi.productId) return 'pid_' + String(pi.productId);
+    var hs = String(pi.hsCode || '').replace(/\D/g,'').slice(0,4);
+    if(hs.length >= 2) return 'hs_' + hs;
+    return 'unknown';
+  }
+
+  // 4) Avval barcha mahsulotlar uchun snapshot tekshirish (sinxron, tez)
+  var productTotals = Object.create(null); // key → totals | null
+  var needLive = [];  // { key, productInfo, rep } — jonli fetch kerak bo'lganlar
+
+  countryCompanies.forEach(function(rec){
+    var pi = _buildProductInfo(rec);
+    var key = _productKey(pi);
+    if(key in productTotals) return; // allaqachon tekshirilgan
+
+    var t = (typeof getCompanyProductImportTotals === 'function')
+      ? getCompanyProductImportTotals(pi, rec) : null;
+    productTotals[key] = t;
+
+    if(!t && key !== 'unknown'){
+      // Snapshot yo'q — jonli fetch kerak
+      needLive.push({ key: key, productInfo: pi, rep: rec });
+    }
+  });
+
+  // 5) Snapshot topilmagan mahsulotlar uchun UN Comtrade jonli so'rov
+  if(needLive.length > 0 && typeof fetchProductImportTotalsLive === 'function'){
+    for(var li = 0; li < needLive.length; li++){
+      var item = needLive[li];
+      _openInvestorPriorityModal(
+        _loadingHtml(
+          'UN Comtrade ma\'lumoti olinmoqda…<br>' +
+          '<span style="font-size:.7rem;opacity:.7">' +
+          (li + 1) + ' / ' + needLive.length + ' — ' +
+          (item.productInfo.displayName || item.productInfo.hsCode || 'HS ' + item.productInfo.hsCode) +
+          '</span>'
+        ),
+        cName
+      );
+      try {
+        var liveTotals = await fetchProductImportTotalsLive(item.productInfo, item.rep);
+        productTotals[item.key] = liveTotals || null;
+      } catch(_e){
+        productTotals[item.key] = null;
       }
-    } catch(_e){}
+      // Keyingi so'rovdan oldin kichik pauza (API rate-limit uchun)
+      if(li < needLive.length - 1){
+        await new Promise(function(res){ setTimeout(res, 400); });
+      }
+    }
+  }
+
+  // 6) Barcha kompaniyalar uchun prioritet hisoblash
+  var buckets = { A:[], B:[], C:[], D:[] };
+  countryCompanies.forEach(function(rec){
+    var pi = _buildProductInfo(rec);
+    var key = _productKey(pi);
+    var totals = productTotals[key] || null;
+
+    var regional = 0, uz = 0, year = '', hasData = false;
+    if(totals){
+      regional = Number(totals.regionalLatestUsd || 0) || 0;
+      uz      = Number(totals.uzbLatestUsd || 0) || 0;
+      year    = totals.latestYear || '';
+      if(!(regional > 0)) regional = Number(totals.otherTwelveUsd || 0) / 4;
+      hasData = regional > 0;
+    }
+
     var level = (typeof investAiInferLevel === 'function')
-      ? investAiInferLevel({ name_en: productInfo.displayName, main_sector: rec.soha || '', usage: '' })
+      ? investAiInferLevel({ name_en: pi.displayName, main_sector: rec.soha || '', usage: '' })
       : '';
     var meta = window.computeInvestPriority(regional, uz, level);
-    rec._prMeta = meta;
-    rec._prRegional = regional;
-    rec._prUz = uz;
-    rec._prYear = year;
-    rec._prLevel = level;
-    rec._prHasData = hasData;
-    rec._prProductName = productInfo.displayName || '';
+
+    rec._prMeta       = meta;
+    rec._prRegional   = regional;
+    rec._prUz         = uz;
+    rec._prYear       = year;
+    rec._prLevel      = level;
+    rec._prHasData    = hasData;
+    rec._prProductName = pi.displayName || '';
     (buckets[meta.code] || buckets.D).push(rec);
   });
 
