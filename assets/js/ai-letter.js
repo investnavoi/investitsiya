@@ -2268,14 +2268,14 @@ function renderAiAnalysis(analysis, scope){
       var annualGasMwh = investSum / 3000;
       var gasSaving = (gasC_adj - gasU_adj) * annualGasMwh;
       var gasPct = Math.min(70, Math.round((1 - gasU_adj/gasC_adj) * 100));
-      var gasDescCache = '1,800 UZS/m³ vs $'+(gasC * 0.01055).toFixed(2)+'/m³';
+      var gasDescCache = '$0.14/m³ vs $'+(gasC * 0.01055).toFixed(2)+'/m³';
       totalAnnualSaving += gasSaving;
       savingsBreakdown.push({label:'Tabiiy gaz tejamkorlik', value:gasSaving, pct:gasPct+'%', color:'#F59E0B', desc:gasDescCache});
       unitItems.push({
         label: 'Tabiiy gaz',
         iconKey: 'Tabiiy gaz tejamkorlik',
         color: '#F59E0B',
-        uzLabel: '1,800 UZS/m³',
+        uzLabel: '$0.14/m³',
         cLabel: '$' + (gasC * 0.01055).toFixed(2) + '/m³',
         unit: 'sanoat gaz tarifi (kubometr)',
         pctNum: gasPct,
@@ -2447,7 +2447,7 @@ function buildOfficialAnalysisLines(analysis){
     var gasU_f = Number(gas.uzbekistan) < 5 ? 8 : Number(gas.uzbekistan);
     var gasC_f = Math.max(Number(gas.country), gasU_f + 0.5);
     var gd_f = Math.min(70, Math.round(((gasC_f - gasU_f) / gasC_f) * 100));
-    var gasUzLabel_f = '1,800 UZS/m³ (state-subsidised industrial tariff)';
+    var gasUzLabel_f = '$0.14/m³ (state-subsidised industrial tariff)';
     var gasCm3_f = '$' + (gasC_f * 0.01055).toFixed(2) + '/m³';
     lines.push('Industrial natural gas: ' + gasUzLabel_f + ' in Uzbekistan vs ' + gasCm3_f + ' in ' + countryName + ' — ~' + gd_f + '% cheaper (IEA ' + (gas.uzbekistanYear||'n/a') + ').');
   }
@@ -2503,7 +2503,7 @@ function buildUzbAdvantageLines(analysis){
     var gasC_adv = Math.max(Number(gas.country), gasU_adv + 0.5);
     var gd = Math.min(70, relPct(gasC_adv, gasU_adv));
     if(gd >= 20){
-      var gasUzLabel = '1,800 UZS/m³ (state-subsidised industrial tariff)';
+      var gasUzLabel = '$0.14/m³ (state-subsidised industrial tariff)';
       var gasCm3_adv = '$' + (gasC_adv * 0.01055).toFixed(2) + '/m³';
       out.push('Industrial natural gas in Uzbekistan is ~'+gd+'% cheaper than '+countryName+' ('+gasUzLabel+' vs '+gasCm3_adv+'; IEA '+(gas.uzbekistanYear||'n/a')+').');
     }
@@ -2545,7 +2545,7 @@ function buildNavoiFezIncentivesBlock(investUsd){
   lines.push('• Zone size: 564 ha dedicated industrial park in Navoi city + Karmana and Nurota sub-zones.');
   lines.push('• Simplified visa and residency procedures for foreign specialists and their families.');
   lines.push('• Navoi International Airport: direct cargo routes to Seoul Incheon (ICN), Frankfurt (FRA), Dubai (DXB), Mumbai — Central Asia\'s largest cargo hub by throughput.');
-  lines.push('• Industrial natural gas tariff (Uzbekistan): 1,800 UZS/m³ (state-subsidised industrial tariff, approx. $0.14/m³ at 2024 exchange rate). RULE: This figure MUST appear in the email — cite it exactly as "1,800 UZS/m³".');
+  lines.push('• Industrial natural gas tariff (Uzbekistan): $0.14/m³ (state-subsidised industrial tariff). RULE: This figure MUST appear in the email — cite it exactly as "$0.14/m³".');
   lines.push('NOTE: Do NOT invent additional incentive figures. The above are the verified official terms.');
   return lines.join('\n');
 }
@@ -3653,8 +3653,8 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     'Do not skip any metric. Use all of them.\n\n' +
     (importTotalsBlock ? importTotalsBlock + '\n\n' : '') +
     '⚠️ MANDATORY — UZBEKISTAN GAS PRICE (must appear in the email body, no exceptions):\n' +
-    '• Industrial natural gas tariff in Uzbekistan: 1,800 UZS/m³ (state-subsidised industrial tariff).\n' +
-    '  Write it EXACTLY as "1,800 UZS/m³" — do NOT convert to MWh, do NOT omit.\n\n' +
+    '• Industrial natural gas tariff in Uzbekistan: $0.14/m³ (state-subsidised industrial tariff).\n' +
+    '  Write it EXACTLY as "$0.14/m³" — do NOT convert to MWh, do NOT write in UZS, do NOT omit.\n\n' +
     fezBlock +
     '\n\n' +
     (_noCountry
@@ -3928,9 +3928,9 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     ' 21. HS CODE MANDATORY: The HS code of the product in scope (e.g. "HS 251611") MUST be explicitly ' +
     '     cited at least once in the email body. This is a standard trade reference that professional ' +
     '     executives and procurement managers recognise — omitting it makes the email look generic.\n' +
-    ' 22. GAS PRICE MANDATORY: The Uzbekistan industrial natural gas tariff of 1,800 UZS/m³ from the ' +
-    '     VERIFIED DATA block MUST appear in the email body, cited exactly as "1,800 UZS/m³". Do not ' +
-    '     omit it, do not convert it to another unit, and do not replace it with a generic description.\n\n' +
+    ' 22. GAS PRICE MANDATORY: The Uzbekistan industrial natural gas tariff of $0.14/m³ from the ' +
+    '     VERIFIED DATA block MUST appear in the email body, cited exactly as "$0.14/m³". Do not ' +
+    '     omit it, do not write it in UZS, do not convert it to MWh, do not replace it with a generic description.\n\n' +
     'EXAMPLES — calibrate your voice from these (DO NOT copy the wording):\n' +
     '  Weak (AI-sounding, full of clichés):\n' +
     '    "I hope this email finds you well. I am writing to introduce the Navoi Free Economic Zone, ' +
