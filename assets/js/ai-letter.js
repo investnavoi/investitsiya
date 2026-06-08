@@ -2545,6 +2545,7 @@ function buildNavoiFezIncentivesBlock(investUsd){
   lines.push('• Zone size: 564 ha dedicated industrial park in Navoi city + Karmana and Nurota sub-zones.');
   lines.push('• Simplified visa and residency procedures for foreign specialists and their families.');
   lines.push('• Navoi International Airport: direct cargo routes to Seoul Incheon (ICN), Frankfurt (FRA), Dubai (DXB), Mumbai — Central Asia\'s largest cargo hub by throughput.');
+  lines.push('• Industrial natural gas tariff (Uzbekistan): 1,800 UZS/m³ (state-subsidised industrial tariff, approx. $0.14/m³ at 2024 exchange rate). RULE: This figure MUST appear in the email — cite it exactly as "1,800 UZS/m³".');
   lines.push('NOTE: Do NOT invent additional incentive figures. The above are the verified official terms.');
   return lines.join('\n');
 }
@@ -3615,11 +3616,11 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       ' (source: ' + _importTotals.source + ') — THESE TWO FIGURES ARE MANDATORY IN ¶1:\n' +
       '• Uzbekistan total imports 2021–2024: ' + _uzShort +
       ' (USD ' + Math.round(_importTotals.uzbekistanUsd).toLocaleString('en-US') + ')\n' +
-      '• Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia combined total imports 2021–2024: ' + _otShort +
-      ' (USD ' + Math.round(_importTotals.otherTwelveUsd).toLocaleString('en-US') + ')\n' +
+      '• Twelve land-accessible regional markets combined total imports 2021–2024: ' + _otShort +
+      ' (USD ' + Math.round(_importTotals.otherTwelveUsd).toLocaleString('en-US') + ') [Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan, Mongolia]\n' +
       '• Combined 13-market total 2021–2024: ' + _allShort + '\n' +
-      (_topOthersStr ? '• Top 3 within these 12 land-accessible neighbors: ' + _topOthersStr + '\n' : '') +
-      'RULE: ¶1 of the email MUST cite BOTH the Uzbekistan figure (' + _uzShort + ') AND the 12-neighbors ' +
+      (_topOthersStr ? '• Top 3 within the twelve land-accessible markets: ' + _topOthersStr + '\n' : '') +
+      'RULE: ¶1 of the email MUST cite BOTH the Uzbekistan figure (' + _uzShort + ') AND the twelve-land-accessible-markets ' +
       'figure (' + _otShort + ') explicitly, with the 2021–2024 period and the UN Comtrade source. ' +
       'These two numbers are the entire reason this product matters for Navoi — they quantify the ' +
       'addressable regional demand. Do NOT round them away, do NOT skip either one. ' +
@@ -3736,11 +3737,11 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       NUMBERS, not adjectives. \n' +
     '       MANDATORY TWO-FIGURE RULE: If a "13-MARKET IMPORT TOTALS" block is present in the VERIFIED ' +
     '       DATA above, ¶1 MUST cite BOTH the "Uzbekistan total imports 2021–2024" figure AND the ' +
-    '       "Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia combined total imports 2021–2024" figure, explicitly, with the ' +
+    '       "Twelve land-accessible regional markets combined total imports 2021–2024" figure, explicitly, with the ' +
     '       period and source. These two numbers are the quantitative core of ¶1 — they show the ' +
     '       recipient how big the addressable market is. Cite them as cumulative 2021–2024 totals ' +
-    '       (e.g. "Uzbekistan imported [$X] of [product] in 2021–2024, while Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia ' +
-    '       combined imported [$Y] over the same period (UN Comtrade)"). Round them no further ' +
+    '       (e.g. "Uzbekistan imported [$X] of [product] in 2021–2024, while the twelve land-accessible ' +
+    '       regional markets combined imported [$Y] over the same period (UN Comtrade)"). Round them no further ' +
     '       than the data block already does — do not say "around $50M" if the block says "$48.2M".\n' +
     '       In addition, ¶1 SHOULD also contain figures for: (i) current Navoi/Uzbekistan supply ' +
     '       (tons/units/m²/$), (ii) the unmet-demand gap a new facility would absorb, when available ' +
@@ -3756,7 +3757,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '           scale, while demand is large → say so plainly with numbers: "Uzbekistan already ' +
     '           produces [product] at [N facilities / ~X tons/year], but not yet at mass-production ' +
     '           scale. Even so, the country imported [$Z exact UZ total] in 2021-2024 (UN Comtrade), ' +
-    '           and Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia a further [$Y exact total]. The resource base ' +
+    '           and the twelve land-accessible regional markets a further [$Y exact total]. The resource base ' +
     '           and existing know-how are already here; what is missing is scale." Make clear the ' +
     '           opportunity is to industrialise an existing capability into mass output.\n' +
     '       (b) IF the finished product is NOT made in Uzbekistan, but its inputs, components or ' +
@@ -3764,23 +3765,17 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '           mineral, intermediate good, or existing plant): "Uzbekistan does not yet manufacture ' +
     '           [product], yet [specific local input A] and [input B] are already produced/mined in ' +
     '           Navoi at [figure]. The finished product is still imported: [$Z exact UZ total] in ' +
-    '           2021-2024, with [$Y exact total] more across Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia (UN Comtrade). ' +
+    '           2021-2024, with [$Y exact total] more across the twelve land-accessible regional markets (UN Comtrade). ' +
     '           A facility here would convert local inputs into finished, export-grade output."\n' +
     '       (c) IF there is no current production AND no obvious local inputs → greenfield framing: ' +
-    '           "Uzbekistan imported [$Z exact UZ total] of [product] in 2021-2024, and Russia, Kazakhstan, ' +
-    '           Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, ' +
-    '           Pakistan and Mongolia a combined [$Y exact total] (UN Comtrade). [Specific Navoi ' +
+    '           "Uzbekistan imported [$Z exact UZ total] of [product] in 2021-2024, and the twelve ' +
+    '           land-accessible regional markets a combined [$Y exact total] (UN Comtrade). [Specific Navoi ' +
     '           resource A], [resource B] and Trans-Caspian rail access support a new facility of up ' +
     '           to [N tons]/year, enough to displace a meaningful share of those imports."\n' +
     '       In ALL three structures the two exact 2021-2024 import totals are mandatory and must be ' +
     '       copied verbatim from the data block. Choose import-side framing (demand a Navoi facility ' +
     '       would serve) by default; use export-side framing only if the data block is explicitly ' +
     '       about Uzbek export capacity for this product.\n' +
-    '       DEMAND ON A YEARLY BASIS: in addition to the cumulative 2021-2024 totals, also express the ' +
-    '       demand as an approximate annual run-rate so the recipient grasps the yearly scale — divide ' +
-    '       the cumulative figure by the number of years (e.g. "$8.4M over 2021-2024, roughly $2.1M a ' +
-    '       year"). This is allowed arithmetic on the supplied figure, not a new invented number. Do ' +
-    '       this for BOTH the Uzbekistan total and the 12-market total where it reads naturally.\n' +
     '       UZBEK PRODUCTION / LOCAL INPUTS: if the intelligence shows Uzbekistan can already make this ' +
     '       product, or already mines/produces its raw inputs or components in Navoi, state that plainly ' +
     '       with the figure — it is the core of our pitch (we have the resource, you have the demand/' +
@@ -3890,7 +3885,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     "promising market", "significant potential", "strategic location" — these are adjectives ' +
     '     dressed as facts. Replace them with figures.\n' +
     ' 19. TWO IMPORT TOTALS MANDATORY: If the VERIFIED DATA contains a "13-MARKET IMPORT TOTALS" ' +
-    '     block, ¶1 MUST cite both the Uzbekistan 2021–2024 total AND the 12-land-accessible-neighbors 2021–2024 ' +
+    '     block, ¶1 MUST cite both the Uzbekistan 2021–2024 total AND the twelve land-accessible regional markets 2021–2024 ' +
     '     total verbatim from the data block, with the period and "UN Comtrade" source. Skipping ' +
     '     either of these two figures is a hard fail — the entire ¶1 is invalid and must be ' +
     '     rewritten. These two numbers quantify the addressable regional demand and are the reason ' +
@@ -3913,7 +3908,13 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '           a sourced range be used. NEVER for the two cumulative 2021–2024 import totals.\n' +
     '     If you genuinely cannot produce any defensible figure for ¶1 after using both data sources, ' +
     '     replace ¶1 with a Navoi-resource fact (mineral reserves, FEZ output, existing plants) plus ' +
-    '     the FEZ scale figure — but NEVER write "unspecified" or "unknown".\n\n' +
+    '     the FEZ scale figure — but NEVER write "unspecified" or "unknown".\n' +
+    ' 21. HS CODE MANDATORY: The HS code of the product in scope (e.g. "HS 251611") MUST be explicitly ' +
+    '     cited at least once in the email body. This is a standard trade reference that professional ' +
+    '     executives and procurement managers recognise — omitting it makes the email look generic.\n' +
+    ' 22. GAS PRICE MANDATORY: The Uzbekistan industrial natural gas tariff of 1,800 UZS/m³ from the ' +
+    '     VERIFIED DATA block MUST appear in the email body, cited exactly as "1,800 UZS/m³". Do not ' +
+    '     omit it, do not convert it to another unit, and do not replace it with a generic description.\n\n' +
     'EXAMPLES — calibrate your voice from these (DO NOT copy the wording):\n' +
     '  Weak (AI-sounding, full of clichés):\n' +
     '    "I hope this email finds you well. I am writing to introduce the Navoi Free Economic Zone, ' +
