@@ -747,6 +747,8 @@ window.showInvestorCountryPriority = async function(stateCode){
   }
 
   // 6) Barcha kompaniyalar uchun prioritet hisoblash
+  // MUHIM: 4-yillik JAMI (otherTwelveUsd/uzbekistanUsd) ishlatamiz — Feature 1 country table bilan bir xil.
+  // Per-yillik (regionalLatestUsd) ko'p mahsulot uchun juda kichik ($3M/yil → D) bo'lib qoladi.
   var buckets = { A:[], B:[], C:[], D:[] };
   countryCompanies.forEach(function(rec){
     var pi = _buildProductInfo(rec);
@@ -755,11 +757,15 @@ window.showInvestorCountryPriority = async function(stateCode){
 
     var regional = 0, uz = 0, year = '', hasData = false;
     if(totals){
-      regional = Number(totals.regionalLatestUsd || 0) || 0;
-      uz      = Number(totals.uzbLatestUsd || 0) || 0;
-      year    = totals.latestYear || '';
-      if(!(regional > 0)) regional = Number(totals.otherTwelveUsd || 0) / 4;
-      hasData = regional > 0;
+      // 4-yillik JAMI (2021-2024) — Feature 1 country table bilan bir xil yondashuv
+      regional = Number(totals.otherTwelveUsd || 0) || 0;
+      uz       = Number(totals.uzbekistanUsd  || 0) || 0;
+      // Agar total yo'q (jonli fetch per-yillik qaytargan bo'lsa), per-yillik × 4 taxminan
+      if(!(regional > 0)) regional = Number(totals.regionalLatestUsd || 0) * 4;
+      if(!(uz > 0))       uz       = Number(totals.uzbLatestUsd      || 0) * 4;
+      // So'nggi yil label (faqat ko'rsatish uchun)
+      year     = totals.period || (totals.latestYear ? '2021-' + totals.latestYear : '2021-2024');
+      hasData  = regional > 0;
     }
 
     var level = (typeof investAiInferLevel === 'function')
@@ -767,13 +773,14 @@ window.showInvestorCountryPriority = async function(stateCode){
       : '';
     var meta = window.computeInvestPriority(regional, uz, level);
 
-    rec._prMeta       = meta;
-    rec._prRegional   = regional;
-    rec._prUz         = uz;
-    rec._prYear       = year;
-    rec._prLevel      = level;
-    rec._prHasData    = hasData;
+    rec._prMeta        = meta;
+    rec._prRegional    = regional;
+    rec._prUz          = uz;
+    rec._prYear        = year;
+    rec._prLevel       = level;
+    rec._prHasData     = hasData;
     rec._prProductName = pi.displayName || '';
+    rec._prProductKey  = key;
     (buckets[meta.code] || buckets.D).push(rec);
   });
 
@@ -790,49 +797,98 @@ function _investorPriorityFmtUsd(v){
 
 function _renderInvestorPriorityGroups(buckets, total){
   var order = ['A','B','C','D'];
-  var out = '<div style="font-size:.76rem;color:var(--text3);margin-bottom:6px;line-height:1.5">' +
-    'Jami <b style="color:var(--text)">' + total + '</b> ta kompaniya. Darajalash Excel «Главная панель» ' +
-    'Приоритет ustuni bilan bir xil: <b>bozor talabi</b> + <b>O\'zbekiston importi</b> + <b>mahsulot darajasi</b>.' +
-    '</div>';
-  var any = false;
+
+  // Barcha kompaniyalarni mahsulot kaliti bo'yicha guruhlash
+  // Har bir mahsulot guruhi: { key, productName, meta, companies[] }
+  var productGroups = Object.create(null); // productKey → group
   order.forEach(function(codeKey){
-    var list = buckets[codeKey] || [];
-    if(!list.length) return;
-    any = true;
-    var meta = list[0]._prMeta || window.computeInvestPriority(0,0,'');
-    out += '<div style="display:flex;align-items:center;gap:10px;margin:18px 0 10px">' +
-      '<span style="width:30px;height:30px;border-radius:9px;flex:none;background:' + meta.color + ';color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:.95rem">' + meta.code + '</span>' +
-      '<span style="font-weight:800;color:var(--text);font-size:.92rem">' + escHtml(meta.label) + '</span>' +
-      '<span style="font-size:.7rem;color:var(--text3)">' + list.length + ' ta kompaniya</span>' +
+    (buckets[codeKey] || []).forEach(function(rec){
+      var pk = rec._prProductKey || 'unknown';
+      if(!productGroups[pk]){
+        productGroups[pk] = {
+          key:      pk,
+          name:     rec._prProductName || rec.soha || '—',
+          meta:     rec._prMeta || window.computeInvestPriority(0,0,''),
+          regional: rec._prRegional,
+          uz:       rec._prUz,
+          year:     rec._prYear,
+          level:    rec._prLevel,
+          hasData:  rec._prHasData,
+          companies:[]
+        };
+      }
+      productGroups[pk].companies.push(rec);
+    });
+  });
+
+  // Mahsulot guruhlarini prioritet bo'yicha saralash (A → D, keyin kompaniya soni)
+  var prOrder = {A:0,B:1,C:2,D:3};
+  var sortedGroups = Object.keys(productGroups).map(function(k){ return productGroups[k]; })
+    .sort(function(a,b){
+      var pa = prOrder[a.meta.code] || 3;
+      var pb = prOrder[b.meta.code] || 3;
+      if(pa !== pb) return pa - pb;
+      return b.companies.length - a.companies.length;
+    });
+
+  var out = '<div style="font-size:.76rem;color:var(--text3);margin-bottom:10px;line-height:1.6">' +
+    'Jami <b style="color:var(--text)">' + total + '</b> ta kompaniya, ' +
+    '<b style="color:var(--text)">' + sortedGroups.length + '</b> xil mahsulot. ' +
+    'Darajalash: <b>4-yillik bozor talabi</b> (2021-2024) + <b>UZ importi</b> + <b>mahsulot darajasi</b>. ' +
+    '<span style="color:#7C3AED">Bir xil mahsulotdagi kompaniyalar bir xil bozor darajasini oladi — bu to\'g\'ri.</span>' +
     '</div>';
-    list.forEach(function(rec){
+
+  if(!sortedGroups.length){
+    return out + '<div style="padding:30px;text-align:center;color:var(--text3)">Prioritet hisoblab bo\'lmadi.</div>';
+  }
+
+  sortedGroups.forEach(function(grp){
+    var meta = grp.meta;
+    var cList = grp.companies;
+    // Mahsulot bo'limi sarlavhasi
+    out += '<div style="display:flex;align-items:flex-start;gap:10px;margin:20px 0 8px;padding:10px 12px;' +
+      'border-radius:10px;background:' + meta.bg + ';border:1px solid ' + meta.color + '33">' +
+      '<span style="width:32px;height:32px;border-radius:9px;flex:none;background:' + meta.color + ';color:#fff;' +
+      'font-weight:800;display:flex;align-items:center;justify-content:center;font-size:1rem">' + meta.code + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:800;color:var(--text);font-size:.9rem">' + escHtml(meta.label) + '</div>' +
+        '<div style="font-size:.72rem;color:var(--text2);margin-top:1px">' +
+          escHtml(grp.name.length > 60 ? grp.name.slice(0,60)+'…' : grp.name) + '</div>' +
+        (grp.hasData
+          ? '<div style="font-size:.65rem;color:var(--text3);margin-top:3px">' +
+              '12-davlat bozori (2021-2024): <b style="color:' + meta.color + '">' + _investorPriorityFmtUsd(grp.regional) + '</b>' +
+              ' · UZ import: <b>' + _investorPriorityFmtUsd(grp.uz) + '</b>' +
+              (grp.level ? ' · Daraja: <b>' + escHtml(grp.level) + '</b>' : '') +
+              ' · <span style="color:var(--text3)">' + cList.length + ' ta kompaniya</span>' +
+            '</div>'
+          : '<div style="font-size:.65rem;color:var(--text3);margin-top:3px">Import ma\'lumoti yo\'q · ' + cList.length + ' ta kompaniya</div>') +
+      '</div>' +
+    '</div>';
+
+    // Kompaniyalar
+    cList.forEach(function(rec){
       var name = String(rec.kompaniya || '—');
       var soha = String(rec.soha || rec.mahsulotNomi || '—');
       var email = String(rec.email || '').trim();
       var idAttr = String(rec.id || '').replace(/'/g, "\\'");
-      var demandStr = rec._prHasData
-        ? ('Bozor talabi: <b>' + _investorPriorityFmtUsd(rec._prRegional) + '</b>' + (rec._prYear ? ' (' + escHtml(String(rec._prYear)) + ')' : '') +
-           ' · UZ import: <b>' + _investorPriorityFmtUsd(rec._prUz) + '</b>')
-        : '<span style="color:var(--text3)">Import ma\'lumoti yo\'q — mahsulot darajasi bo\'yicha baholandi</span>';
-      out += '<div style="border:1px solid var(--border);border-left:3px solid ' + meta.color + ';border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff">' +
+      out += '<div style="border:1px solid var(--border);border-left:3px solid ' + meta.color + ';' +
+        'border-radius:10px;padding:9px 12px;margin-bottom:6px;margin-left:8px;' +
+        'display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff">' +
         '<div style="min-width:0;flex:1">' +
-          '<div style="font-weight:700;color:var(--text);font-size:.85rem">' + escHtml(name) + '</div>' +
-          '<div style="font-size:.7rem;color:var(--text2);margin-top:2px">' + escHtml(soha) + '</div>' +
+          '<div style="font-weight:700;color:var(--text);font-size:.84rem">' + escHtml(name) + '</div>' +
+          '<div style="font-size:.68rem;color:var(--text2);margin-top:1px">' + escHtml(soha) + '</div>' +
           (email
-            ? '<div style="font-size:.66rem;color:#0ea5e9;margin-top:2px">✉️ ' + escHtml(email) + '</div>'
+            ? '<div style="font-size:.64rem;color:#0ea5e9;margin-top:2px">✉️ ' + escHtml(email) + '</div>'
             : '<div style="font-size:.62rem;color:var(--text3);margin-top:2px">✉️ Email yo\'q</div>') +
-          '<div style="font-size:.6rem;color:var(--text3);margin-top:4px">' + demandStr +
-            (rec._prLevel ? ' · Daraja: <b>' + escHtml(rec._prLevel) + '</b>' : '') + '</div>' +
         '</div>' +
         '<button type="button" onclick="_openInvestorAiFromPriority(\'' + idAttr + '\')" ' +
-          'style="flex:none;background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap">' +
+          'style="flex:none;background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none;' +
+          'border-radius:8px;padding:7px 11px;font-size:.68rem;font-weight:700;cursor:pointer;white-space:nowrap">' +
           '🤖 AI Tahlil va Email</button>' +
       '</div>';
     });
   });
-  if(!any){
-    out += '<div style="padding:30px;text-align:center;color:var(--text3)">Prioritet hisoblab bo\'lmadi.</div>';
-  }
+
   return out;
 }
 
