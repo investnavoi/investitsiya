@@ -2268,18 +2268,16 @@ function renderAiAnalysis(analysis, scope){
       var annualGasMwh = investSum / 3000;
       var gasSaving = (gasC_adj - gasU_adj) * annualGasMwh;
       var gasPct = Math.min(70, Math.round((1 - gasU_adj/gasC_adj) * 100));
-      var gasDescCache = (gasU < 5)
-        ? 'Davlat subsidiyali narx — taxminiy $'+gasU_adj.toFixed(1)+'/MWh'
-        : '$'+gasU.toFixed(1)+'/MWh vs $'+gasC.toFixed(1)+'/MWh';
+      var gasDescCache = '1,800 UZS/m³ vs $'+(gasC * 0.01055).toFixed(2)+'/m³';
       totalAnnualSaving += gasSaving;
       savingsBreakdown.push({label:'Tabiiy gaz tejamkorlik', value:gasSaving, pct:gasPct+'%', color:'#F59E0B', desc:gasDescCache});
       unitItems.push({
         label: 'Tabiiy gaz',
         iconKey: 'Tabiiy gaz tejamkorlik',
         color: '#F59E0B',
-        uzLabel: (gasU < 5 ? '~$' : '$') + gasU_adj.toFixed(1) + '/MWh',
-        cLabel: '$' + gasC.toFixed(1) + '/MWh',
-        unit: gasU < 5 ? 'davlat subsidiyali narx (taxminiy minimum)' : 'sanoat gaz tarifi',
+        uzLabel: '1,800 UZS/m³',
+        cLabel: '$' + (gasC * 0.01055).toFixed(2) + '/m³',
+        unit: 'sanoat gaz tarifi (kubometr)',
         pctNum: gasPct,
         pctText: gasPct + '% arzon'
       });
@@ -2449,8 +2447,9 @@ function buildOfficialAnalysisLines(analysis){
     var gasU_f = Number(gas.uzbekistan) < 5 ? 8 : Number(gas.uzbekistan);
     var gasC_f = Math.max(Number(gas.country), gasU_f + 0.5);
     var gd_f = Math.min(70, Math.round(((gasC_f - gasU_f) / gasC_f) * 100));
-    var gasUzLabel_f = Number(gas.uzbekistan) < 5 ? 'state-subsidised (~$' + gasU_f.toFixed(1) + '/MWh est.)' : aiFmtMwh(gas.uzbekistan);
-    lines.push('Industrial natural gas: ' + gasUzLabel_f + ' in Uzbekistan vs ' + aiFmtMwh(gasC_f) + ' in ' + countryName + ' — ~' + gd_f + '% cheaper (IEA ' + (gas.uzbekistanYear||'n/a') + ').');
+    var gasUzLabel_f = '1,800 UZS/m³ (state-subsidised industrial tariff)';
+    var gasCm3_f = '$' + (gasC_f * 0.01055).toFixed(2) + '/m³';
+    lines.push('Industrial natural gas: ' + gasUzLabel_f + ' in Uzbekistan vs ' + gasCm3_f + ' in ' + countryName + ' — ~' + gd_f + '% cheaper (IEA ' + (gas.uzbekistanYear||'n/a') + ').');
   }
 
   return lines;
@@ -2504,10 +2503,9 @@ function buildUzbAdvantageLines(analysis){
     var gasC_adv = Math.max(Number(gas.country), gasU_adv + 0.5);
     var gd = Math.min(70, relPct(gasC_adv, gasU_adv));
     if(gd >= 20){
-      var gasUzLabel = Number(gas.uzbekistan) < 5
-        ? 'state-subsidised (~$'+gasU_adv.toFixed(1)+'/MWh est.)'
-        : aiFmtMwh(gas.uzbekistan);
-      out.push('Industrial natural gas in Uzbekistan is ~'+gd+'% cheaper than '+countryName+' ('+gasUzLabel+' vs '+aiFmtMwh(gasC_adv)+'; IEA '+(gas.uzbekistanYear||'n/a')+').');
+      var gasUzLabel = '1,800 UZS/m³ (state-subsidised industrial tariff)';
+      var gasCm3_adv = '$' + (gasC_adv * 0.01055).toFixed(2) + '/m³';
+      out.push('Industrial natural gas in Uzbekistan is ~'+gd+'% cheaper than '+countryName+' ('+gasUzLabel+' vs '+gasCm3_adv+'; IEA '+(gas.uzbekistanYear||'n/a')+').');
     }
   }
 
@@ -3617,11 +3615,11 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       ' (source: ' + _importTotals.source + ') — THESE TWO FIGURES ARE MANDATORY IN ¶1:\n' +
       '• Uzbekistan total imports 2021–2024: ' + _uzShort +
       ' (USD ' + Math.round(_importTotals.uzbekistanUsd).toLocaleString('en-US') + ')\n' +
-      '• Other 12 regional markets combined total imports 2021–2024: ' + _otShort +
+      '• Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia combined total imports 2021–2024: ' + _otShort +
       ' (USD ' + Math.round(_importTotals.otherTwelveUsd).toLocaleString('en-US') + ')\n' +
       '• Combined 13-market total 2021–2024: ' + _allShort + '\n' +
-      (_topOthersStr ? '• Top 3 within the other 12: ' + _topOthersStr + '\n' : '') +
-      'RULE: ¶1 of the email MUST cite BOTH the Uzbekistan figure (' + _uzShort + ') AND the other-12 ' +
+      (_topOthersStr ? '• Top 3 within these 12 land-accessible neighbors: ' + _topOthersStr + '\n' : '') +
+      'RULE: ¶1 of the email MUST cite BOTH the Uzbekistan figure (' + _uzShort + ') AND the 12-neighbors ' +
       'figure (' + _otShort + ') explicitly, with the 2021–2024 period and the UN Comtrade source. ' +
       'These two numbers are the entire reason this product matters for Navoi — they quantify the ' +
       'addressable regional demand. Do NOT round them away, do NOT skip either one. ' +
@@ -3715,17 +3713,34 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       This identification sentence is NOT subject to the "I am writing to" ban below — that ban ' +
     '       applies to corporate-cliché versions ("I am writing to introduce", "I am writing to outline"). ' +
     '       Formal diplomatic identification with a clear referent ("regarding [product]", "concerning ' +
-    '       [sector]") is required and expected. Then a blank line, then ¶1.\n' +
+    '       [sector]") is required and expected. Then a blank line, then ¶COMPLIMENT.\n' +
+    '  ¶COMPLIMENT — COMPANY RECOGNITION (mandatory, 1–2 sentences, immediately after the identification ' +
+    '       sentence and before the market data paragraph): Write one or two sentences that make the ' +
+    '       recipient feel their company is specifically and precisely the most ideal partner for this ' +
+    '       Navoi FEZ opportunity. This is NOT generic flattery — it must be grounded in something the ' +
+    '       company actually does: their product expertise, their proven production capacity, their ' +
+    '       known technology, their supply chain position, or a specific recent fact from the COMPANY ' +
+    '       & RECIPIENT INTELLIGENCE block. The tone is that of a senior official who has genuinely ' +
+    '       researched this company and concluded they are the most fitting match — confident and ' +
+    '       specific, not enthusiastic or gushing. The recipient should feel singled out as the most ' +
+    '       natural and best-suited partner, not as one name on a long list. Cite one concrete, ' +
+    '       verifiable fact about the company that makes them an ideal match for what Navoi specifically ' +
+    '       offers in this sector. Avoid all banned phrases (leverage, best-in-class, strategic alignment, ' +
+    '       ideal opportunity, synergies). Use forms such as: "Of all the [product] manufacturers ' +
+    '       operating in [country], [Company]\'s [specific capacity/expertise/market position] makes it ' +
+    '       the most natural fit for the Navoi FEZ in this sector." or "[Company]\'s [specific product ' +
+    '       line / production scale / export reach / known technology] is precisely the profile this ' +
+    '       opportunity calls for." Then a blank line, then ¶1.\n' +
     '  ¶1 — NAVOI SUPPLY-AND-DEMAND REALITY for this specific product. This paragraph is the entire ' +
     '       reason you are writing — it must answer "how big is the market gap, and why Navoi?" with ' +
     '       NUMBERS, not adjectives. \n' +
     '       MANDATORY TWO-FIGURE RULE: If a "13-MARKET IMPORT TOTALS" block is present in the VERIFIED ' +
     '       DATA above, ¶1 MUST cite BOTH the "Uzbekistan total imports 2021–2024" figure AND the ' +
-    '       "Other 12 regional markets combined total imports 2021–2024" figure, explicitly, with the ' +
+    '       "Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia combined total imports 2021–2024" figure, explicitly, with the ' +
     '       period and source. These two numbers are the quantitative core of ¶1 — they show the ' +
     '       recipient how big the addressable market is. Cite them as cumulative 2021–2024 totals ' +
-    '       (e.g. "Uzbekistan imported [$X] of [product] in 2021–2024, while the other twelve regional ' +
-    '       markets combined imported [$Y] over the same period (UN Comtrade)"). Round them no further ' +
+    '       (e.g. "Uzbekistan imported [$X] of [product] in 2021–2024, while Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia ' +
+    '       combined imported [$Y] over the same period (UN Comtrade)"). Round them no further ' +
     '       than the data block already does — do not say "around $50M" if the block says "$48.2M".\n' +
     '       In addition, ¶1 SHOULD also contain figures for: (i) current Navoi/Uzbekistan supply ' +
     '       (tons/units/m²/$), (ii) the unmet-demand gap a new facility would absorb, when available ' +
@@ -3741,7 +3756,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '           scale, while demand is large → say so plainly with numbers: "Uzbekistan already ' +
     '           produces [product] at [N facilities / ~X tons/year], but not yet at mass-production ' +
     '           scale. Even so, the country imported [$Z exact UZ total] in 2021-2024 (UN Comtrade), ' +
-    '           and the other twelve regional markets a further [$Y exact total]. The resource base ' +
+    '           and Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia a further [$Y exact total]. The resource base ' +
     '           and existing know-how are already here; what is missing is scale." Make clear the ' +
     '           opportunity is to industrialise an existing capability into mass output.\n' +
     '       (b) IF the finished product is NOT made in Uzbekistan, but its inputs, components or ' +
@@ -3749,11 +3764,12 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '           mineral, intermediate good, or existing plant): "Uzbekistan does not yet manufacture ' +
     '           [product], yet [specific local input A] and [input B] are already produced/mined in ' +
     '           Navoi at [figure]. The finished product is still imported: [$Z exact UZ total] in ' +
-    '           2021-2024, with [$Y exact total] more across the other twelve markets (UN Comtrade). ' +
+    '           2021-2024, with [$Y exact total] more across Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan and Mongolia (UN Comtrade). ' +
     '           A facility here would convert local inputs into finished, export-grade output."\n' +
     '       (c) IF there is no current production AND no obvious local inputs → greenfield framing: ' +
-    '           "Uzbekistan imported [$Z exact UZ total] of [product] in 2021-2024, and the other ' +
-    '           twelve regional markets a combined [$Y exact total] (UN Comtrade). [Specific Navoi ' +
+    '           "Uzbekistan imported [$Z exact UZ total] of [product] in 2021-2024, and Russia, Kazakhstan, ' +
+    '           Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, ' +
+    '           Pakistan and Mongolia a combined [$Y exact total] (UN Comtrade). [Specific Navoi ' +
     '           resource A], [resource B] and Trans-Caspian rail access support a new facility of up ' +
     '           to [N tons]/year, enough to displace a meaningful share of those imports."\n' +
     '       In ALL three structures the two exact 2021-2024 import totals are mandatory and must be ' +
@@ -3874,7 +3890,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '     "promising market", "significant potential", "strategic location" — these are adjectives ' +
     '     dressed as facts. Replace them with figures.\n' +
     ' 19. TWO IMPORT TOTALS MANDATORY: If the VERIFIED DATA contains a "13-MARKET IMPORT TOTALS" ' +
-    '     block, ¶1 MUST cite both the Uzbekistan 2021–2024 total AND the other-12-markets 2021–2024 ' +
+    '     block, ¶1 MUST cite both the Uzbekistan 2021–2024 total AND the 12-land-accessible-neighbors 2021–2024 ' +
     '     total verbatim from the data block, with the period and "UN Comtrade" source. Skipping ' +
     '     either of these two figures is a hard fail — the entire ¶1 is invalid and must be ' +
     '     rewritten. These two numbers quantify the addressable regional demand and are the reason ' +
@@ -3886,7 +3902,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       figure", "while specific figures...remain", "while exact numbers are not available", ' +
     '       "details are limited", "concrete figures are limited", "estimated between X and Y", ' +
     '       "ranges from X to Y" (when applied to the two MANDATORY 2021–2024 import totals).\n' +
-    '     The two MANDATORY import totals (Uzbekistan 2021–2024 cumulative AND other-12-markets ' +
+    '     The two MANDATORY import totals (Uzbekistan 2021–2024 cumulative AND the 12 land-accessible neighbors ' +
     '     2021–2024 cumulative) are SUPPLIED AS EXACT NUMBERS in the VERIFIED DATA block. You MUST ' +
     '     copy them verbatim — never round them into ranges. Citing "between $15M and $25M" instead ' +
     '     of the exact figure provided is a hard fail.\n' +
