@@ -190,6 +190,10 @@ function getCompanyProductImportTotals(productInfo, comp){
     var otherTwelveUsd = 0;
     var otherCountries = [];
     var allCountries = snap.countries || [];
+    // Per-yillik jamilar — Приоритет (Excel "Главная панель") bir yillik raqamga
+    // tayanadi, shu sabab bu yerda ham eng so'nggi mavjud yilni hisoblaymiz.
+    var yearTotals = {'2021':0,'2022':0,'2023':0,'2024':0};
+    var uzYearVals = {'2021':0,'2022':0,'2023':0,'2024':0};
 
     allCountries.forEach(function(c){
       /* c.u = import_usd (2021-2024 jami). c.y = {year: usd, ...} per-yillik.
@@ -202,6 +206,14 @@ function getCompanyProductImportTotals(productInfo, comp){
       }
       var usd = baseUsd;
       var code = String(c.c||'').toUpperCase();
+      // Per-yillik yig'indilar (barcha 13 davlat, UZ ham)
+      if(c.y && typeof c.y === 'object'){
+        ['2021','2022','2023','2024'].forEach(function(yr){
+          var yv = Number((c.y)[yr] || 0) || 0;
+          yearTotals[yr] += yv;
+          if(code === 'UZ') uzYearVals[yr] += yv;
+        });
+      }
       if(code === 'UZ'){
         uzbekistanUsd += usd;
       } else {
@@ -209,6 +221,20 @@ function getCompanyProductImportTotals(productInfo, comp){
         if(usd > 0) otherCountries.push({name: c.n || code, usd: usd});
       }
     });
+
+    // Eng so'nggi mavjud yil (2024→2021) — regional jami shu yil uchun > 0 bo'lgan yil
+    var _latestYear = ['2024','2023','2022','2021'].filter(function(y){ return yearTotals[y] > 0; })[0] || '';
+    var regionalLatestUsd, uzbLatestUsd, latestYearLabel;
+    if(_latestYear){
+      regionalLatestUsd = yearTotals[_latestYear];                 // analysisValue ekvivalenti (UZ ham ichida)
+      uzbLatestUsd = Number(uzYearVals[_latestYear] || 0) || 0;    // uzbValue ekvivalenti
+      latestYearLabel = _latestYear;
+    } else {
+      // Per-yillik breakdown yo'q (eski snapshot) — 4 yillik jamini yillarga taqsimlaymiz
+      regionalLatestUsd = (uzbekistanUsd + otherTwelveUsd) / 4;
+      uzbLatestUsd = uzbekistanUsd / 4;
+      latestYearLabel = '2024';
+    }
 
     /* Agar UZ ma'lumoti yo'q bo'lsa (TARGET_COUNTRIES da UZ yo'q edi) yoki ikkisi ham nol —
        null qaytaramiz va fetchProductImportTotalsLive ishga tushsin. */
@@ -222,6 +248,10 @@ function getCompanyProductImportTotals(productInfo, comp){
       uzbekistanUsd: uzbekistanUsd,
       otherTwelveUsd: otherTwelveUsd,
       combinedUsd: uzbekistanUsd + otherTwelveUsd,
+      // Приоритет uchun bir yillik (eng so'nggi) raqamlar
+      regionalLatestUsd: regionalLatestUsd,
+      uzbLatestUsd: uzbLatestUsd,
+      latestYear: latestYearLabel,
       topOthers: topOthers,
       productName: snap.productName || productInfo.displayName || '',
       hsCode: snap.hsCode || productInfo.hsCode || '',
@@ -284,6 +314,8 @@ async function fetchProductImportTotalsLive(productInfo, comp){
     /* 13 davlat natijasini parse qilish */
     var uzUsd = 0, otherUsd = 0;
     var otherCountries = [];
+    var liveYearTotals = {'2021':0,'2022':0,'2023':0,'2024':0};
+    var liveUzYears = {'2021':0,'2022':0,'2023':0,'2024':0};
     respData.countries.forEach(function(c){
       /* import_usd = 2021-2024 yig'indisi (comtrade.js da totalValue sifatida hisoblanadi) */
       var usd = Number(c.import_usd || 0) || 0;
@@ -293,6 +325,13 @@ async function fetchProductImportTotalsLive(productInfo, comp){
         });
       }
       var code = String(c.code || '').toUpperCase();
+      if(c.year_imports && typeof c.year_imports === 'object'){
+        ['2021','2022','2023','2024'].forEach(function(yr){
+          var yv = Number(c.year_imports[yr] || 0) || 0;
+          liveYearTotals[yr] += yv;
+          if(code === 'UZ') liveUzYears[yr] += yv;
+        });
+      }
       if(code === 'UZ'){
         uzUsd = usd;
       } else {
@@ -308,10 +347,26 @@ async function fetchProductImportTotalsLive(productInfo, comp){
 
     otherCountries.sort(function(a,b){ return b.usd - a.usd; });
 
+    // Приоритет uchun bir yillik (eng so'nggi) raqamlar
+    var _liveLatest = ['2024','2023','2022','2021'].filter(function(y){ return liveYearTotals[y] > 0; })[0] || '';
+    var liveRegionalLatest, liveUzLatest, liveLatestLabel;
+    if(_liveLatest){
+      liveRegionalLatest = liveYearTotals[_liveLatest];
+      liveUzLatest = Number(liveUzYears[_liveLatest] || 0) || 0;
+      liveLatestLabel = _liveLatest;
+    } else {
+      liveRegionalLatest = (uzUsd + otherUsd) / 4;
+      liveUzLatest = uzUsd / 4;
+      liveLatestLabel = '2024';
+    }
+
     return {
       uzbekistanUsd: uzUsd,
       otherTwelveUsd: otherUsd,
       combinedUsd: uzUsd + otherUsd,
+      regionalLatestUsd: liveRegionalLatest,
+      uzbLatestUsd: liveUzLatest,
+      latestYear: liveLatestLabel,
       topOthers: otherCountries.slice(0, 3),
       productName: productInfo.displayName || '',
       hsCode: hsCode,
@@ -1959,6 +2014,39 @@ function renderAiAnalysis(analysis, scope){
   var gas = metrics.naturalGasPrice || {};
   if(titleEl) titleEl.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="vertical-align:text-bottom;margin-right:4px"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#4361EE" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Iqtisodiy Tahlil — ' + escapeHtmlText(countryName) + ' vs O\'zbekiston';
 
+  /* ── ПРИОРИТЕТ banneri — Excel "Главная панель" bilan bir xil darajalash ──
+     To'liq kenglikdagi karta: mahsulotning investitsiya prioriteti. */
+  var _pr = analysis && analysis.priority;
+  if(_pr && _pr.code){
+    var _prFmtUsd = function(v){
+      v = Number(v||0)||0;
+      if(v >= 1e9) return '$' + (v/1e9).toFixed(1) + ' mlrd';
+      if(v >= 1e6) return '$' + (v/1e6).toFixed(1) + ' mln';
+      if(v >= 1e3) return '$' + Math.round(v/1e3) + ' ming';
+      return '$' + Math.round(v);
+    };
+    var _prYear = _pr.year ? (' · ' + escapeHtmlText(String(_pr.year)) + '-yil') : '';
+    grid.push(
+      '<div style="grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;'+
+      'background:'+_pr.bg+';border:1px solid '+_pr.color+'40">'+
+        '<div style="width:46px;height:46px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;'+
+        'background:'+_pr.color+';color:#fff;font-weight:800;font-size:1.35rem;line-height:1">'+escapeHtmlText(_pr.code)+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+            '<span style="font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:'+_pr.color+'">Инвестиционный приоритет</span>'+
+            '<span style="font-size:.6rem;color:var(--text3)">Excel «Главная панель» bilan bir xil</span>'+
+          '</div>'+
+          '<div style="font-size:1rem;font-weight:800;color:var(--text);margin-top:2px">'+escapeHtmlText(_pr.label)+'</div>'+
+          '<div style="font-size:.7rem;color:var(--text2);margin-top:3px">'+
+            'Bozor talabi: <b>'+_prFmtUsd(_pr.regionalUsd)+'</b>'+_prYear+
+            ' · O\'zbekiston importi: <b>'+_prFmtUsd(_pr.uzbUsd)+'</b>'+
+            (_pr.level ? ' · Daraja: <b>'+escapeHtmlText(_pr.level)+'</b>' : '')+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    );
+  }
+
   grid.push(buildAiMetricCard(
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     'YaIM / kishi',
@@ -3472,6 +3560,37 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       console.warn('[email] jonli Comtrade xato:', eL && eL.message);
     }
   }
+  /* ── ПРИОРИТЕТ — Excel "Главная панель" bilan AYNAN bir xil darajalash ──
+     Mahsulot uchun bir martalik prioritet (bozor talabi + UZ importi + daraja). */
+  try {
+    if(_importTotals && typeof window.computeInvestPriority === 'function'){
+      var _prLevel = (typeof investAiInferLevel === 'function')
+        ? investAiInferLevel({ name_en: productInfo.displayName || _importTotals.productName || '',
+                               main_sector: (productInfo.sector || ''), usage: (productInfo.usage || '') })
+        : '';
+      var _prRegional = Number(_importTotals.regionalLatestUsd);
+      if(!(_prRegional > 0)) _prRegional = Number(_importTotals.combinedUsd || 0) / 4; // fallback
+      var _prUz = Number(_importTotals.uzbLatestUsd);
+      if(!(_prUz >= 0)) _prUz = Number(_importTotals.uzbekistanUsd || 0) / 4;
+      var _prMeta = window.computeInvestPriority(_prRegional, _prUz, _prLevel);
+      if(analysis && _prMeta){
+        analysis.priority = {
+          code: _prMeta.code,
+          label: _prMeta.label,
+          ru: _prMeta.ru,
+          color: _prMeta.color,
+          bg: _prMeta.bg,
+          level: _prLevel,
+          regionalUsd: _prRegional,
+          uzbUsd: _prUz,
+          year: _importTotals.latestYear || '',
+          productName: _importTotals.productName || productInfo.displayName || '',
+          hsCode: _importTotals.hsCode || productInfo.hsCode || ''
+        };
+      }
+    }
+  } catch(ePr){ console.warn('[email] priority hisoblash xato:', ePr && ePr.message); }
+
   var importTotalsBlock = '';
   if(_importTotals && (_importTotals.uzbekistanUsd > 0 || _importTotals.otherTwelveUsd > 0)){
     var _uzShort = _formatImportUsdShort(_importTotals.uzbekistanUsd);

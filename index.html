@@ -48,7 +48,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/apollo-config.js"></script>
 <script src="assets/js/apollo.js" defer></script>
 <script src="assets/js/snov.js" defer></script>
-<script src="assets/js/ai-letter.js?v=wage-fallback-v1" defer></script>
+<script src="assets/js/ai-letter.js?v=priority-v1" defer></script>
 <script src="assets/js/settings.js?v=comtrade2-key-v1" defer></script>
 <script>
 /* Inline stub — defer scripts hali yuklanmagan paytda foydalanuvchi bosib yuborsa, xato chiqmasin */
@@ -68,12 +68,12 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/pipeline-crm.js" defer></script>
 <script src="assets/js/finder.js?v=apollo-org-enrich-country-v26" defer></script>
 <script src="assets/js/finder-world-map.js" defer></script>
-<script src="assets/js/import-analysis.js?v=product-priority-v35" defer></script>
+<script src="assets/js/import-analysis.js?v=priority-v36" defer></script>
 <script src="assets/js/products.js?v=product-priority-v25" defer></script>
 <script src="assets/js/email-modal.js" defer></script>
 <script src="assets/js/investor-companies.js"></script>
 <script src="assets/js/excel-media.js" defer></script>
-<script src="assets/js/forum-detail.js?v=apollo-multi-lead-records-v13"></script>
+<script src="assets/js/forum-detail.js?v=priority-v1"></script>
 <script src="assets/js/intl-forums.js"></script>
 <script src="assets/js/csv-import.js" defer></script>
 <script src="assets/js/admin-lists.js"></script>
@@ -1113,6 +1113,7 @@ setTimeout(function(){
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
           <button class="ta-btn ta-btn-sm" id="btnEmbassyUzb" onclick="openEmbassyModal('uzb')" style="display:none;background:#059669;color:#fff;border:none;border-radius:8px;font-size:.7rem">🏛️ <span id="btnEmbassyUzbLabel">UZB elchixona</span></button>
           <button class="ta-btn ta-btn-sm" id="btnEmbassyForeign" onclick="openEmbassyModal('foreign')" style="display:none;background:#0EA5E9;color:#fff;border:none;border-radius:8px;font-size:.7rem">🏛️ <span id="btnEmbassyForeignLabel">Xorij elchixona</span></button>
+          <button class="ta-btn ta-btn-sm" id="btnInvestorPriority" type="button" onclick="showInvestorCountryPriority()" style="background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none;border-radius:8px;font-size:.7rem">🎯 Приоритет</button>
           <button class="ta-btn ta-btn-sm" type="button" onclick="clearInvestorGeoFilter()" style="background:var(--ta-gray-100);color:var(--ta-gray-600);border:none;border-radius:8px">Filtrni tozalash</button>
         </div>
       </div>

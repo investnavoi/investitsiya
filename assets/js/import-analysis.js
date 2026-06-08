@@ -2036,8 +2036,18 @@ function renderImportResults(countries, prod, source, targetCountries){
     }catch(e){ console.warn('jsvectormap error:', e); }
 
     // Country table (like screenshot 2 — Davlat, Jami import, Ulush, 2021-2024, Trend) — expandable rows
+    // ── Приоритет ustuni uchun kontekst (Excel "Главная панель" bilan bir xil grading) ──
+    // Mahsulotning qayta ishlanish darajasi (Raw/Processed/Downstream) — barcha qatorlar uchun bir xil.
+    var _prodLevel = (typeof investAiInferLevel === 'function') ? investAiInferLevel(prod || {}) : '';
+    // O'zbekiston importi (agar UZ tanlangan davlatlar orasida bo'lsa) — A darajasi mezoni uchun.
+    var _uzRowForPr = countries.filter(function(c){
+      return String(c.code||'').toUpperCase()==='UZ' || /uzbek/i.test(String(c.name||''));
+    })[0];
+    var _uzbImportForPr = _uzRowForPr
+      ? (_investAiLatestYearVal(_uzRowForPr.year_imports, '2024') || Number(_uzRowForPr.import_usd||0) || 0)
+      : 0;
     var tHtml = '<table class="ta-table" style="width:100%;font-size:.78rem">';
-    tHtml += '<thead><tr><th style="min-width:140px">Davlat</th><th>Jami import</th><th style="min-width:110px">Ulush</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Trend</th></tr></thead><tbody>';
+    tHtml += '<thead><tr><th style="min-width:140px">Davlat</th><th>Jami import</th><th style="min-width:110px">Ulush</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>Trend</th><th title="Excel «Главная панель» bilan bir xil darajalash — bozor hajmi + mahsulot darajasi" style="min-width:120px">Приоритет</th></tr></thead><tbody>';
     countries.forEach(function(c, idx){
       var tc = getTargetMeta(c);
       var pct = total > 0 ? Math.round((c.import_usd||0)/total*100) : 0;
@@ -2069,6 +2079,14 @@ function renderImportResults(countries, prod, source, targetCountries){
       var trendColor = cagr !== null ? (cagr >= 0 ? 'var(--ta-success-600)' : 'var(--ta-error-600)') : 'var(--ta-gray-400)';
       var rowId2 = 'impDemoRow2_'+idx;
       var detailId2 = 'impDemoDetail2_'+idx;
+      // Приоритет — Excel "Главная панель" bilan bir xil grading.
+      // regionalDemand = shu davlatning eng so'nggi yillik importi (bozor hajmi).
+      var _crDemand = _investAiLatestYearVal(yi, '2024') || Number(c.import_usd||0) || 0;
+      var _crPr = (c.status==='ok' || _crDemand>0)
+        ? window.computeInvestPriority(_crDemand, _uzbImportForPr, _prodLevel)
+        : null;
+      var _crPrCell = _crPr ? window.investPriorityBadge(_crPr, {full:true, size:'.68rem'})
+                            : '<span style="color:var(--ta-gray-400)">—</span>';
       tHtml += '<tr id="'+rowId2+'" style="cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'var(--ta-gray-50)\'" onmouseout="var d=document.getElementById(\''+detailId2+'\');if(d&&d.style.display===\'none\')this.style.background=\'\'">' +
         '<td><div style="display:flex;align-items:center;gap:.5rem"><img class="country-flag-round" src="'+flagSrc+'" onerror="this.style.display=\'none\'" alt="" style="width:28px;height:28px"> <span style="font-weight:600">'+(tc.label||c.name||'—')+'</span></div></td>' +
         '<td style="'+totalStyle+'">'+totalFmt+'</td>' +
@@ -2078,9 +2096,10 @@ function renderImportResults(countries, prod, source, targetCountries){
         '<td>'+fmtY('2023')+'</td>' +
         '<td>'+fmtY('2024')+'</td>' +
         '<td style="font-weight:600;color:'+trendColor+'">'+trendFmt+'</td>' +
+        '<td>'+_crPrCell+'</td>' +
       '</tr>';
       // Inline detail row — full accordion with year > partner breakdown
-      var detH = '<tr id="'+detailId2+'" style="display:none"><td colspan="8" style="padding:0;border-bottom:2px solid var(--ta-gray-200)">';
+      var detH = '<tr id="'+detailId2+'" style="display:none"><td colspan="9" style="padding:0;border-bottom:2px solid var(--ta-gray-200)">';
       detH += '<div style="padding:0">';
       // Build year accordion from c.products
       var dProducts = Array.isArray(c.products) ? c.products : [];
@@ -3156,6 +3175,50 @@ function investAiInferPriority(entry){
   if(regionalDemand >= 5000000) return 'Priority C';
   return 'Priority D';
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   YAGONA PRIORITET HISOBLAGICH — Excel "Главная панель" varag'idagi
+   Приоритет ustuni bilan AYNAN bir xil o'lchov/darajalash.
+   Uchala sahifada (Kompaniya qidiruvi davlatlar jadvali, Investorlar bazasi
+   AI tahlil kartasi, Investorlar bazasi "Приоритет" tugmasi) shu funksiya
+   ishlatiladi — natija hamma joyda bir xil bo'lishi uchun.
+
+   Mezonlar (investAiInferPriority bilan IDENTIK):
+     • regionalDemand ≥ $50M VA uzbImport ≥ $1M               → A — Стратегический
+     • regionalDemand ≥ $15M VA (uzbImport ≥ $250K YOKI
+       qayta ishlangan/yuqori qiymatli mahsulot)              → B — Высокий
+     • regionalDemand ≥ $5M                                    → C — Средний
+     • aks holda                                               → D — Низкий
+   ════════════════════════════════════════════════════════════════════════ */
+window.computeInvestPriority = function(regionalDemand, uzbImport, level){
+  regionalDemand = Number(regionalDemand || 0) || 0;
+  uzbImport = Number(uzbImport || 0) || 0;
+  level = String(level || '');
+  var code;
+  if(regionalDemand >= 50000000 && uzbImport >= 1000000) code = 'A';
+  else if(regionalDemand >= 15000000 && (uzbImport >= 250000 || /Processed|Downstream/.test(level))) code = 'B';
+  else if(regionalDemand >= 5000000) code = 'C';
+  else code = 'D';
+  var META = {
+    A: { code:'A', label:'A — Стратегический', ru:'Стратегический', uz:'Strategik',  color:'#059669', bg:'rgba(5,150,105,.12)',  rank:4 },
+    B: { code:'B', label:'B — Высокий',        ru:'Высокий',        uz:'Yuqori',     color:'#2563EB', bg:'rgba(37,99,235,.12)',  rank:3 },
+    C: { code:'C', label:'C — Средний',        ru:'Средний',        uz:"O'rta",      color:'#D97706', bg:'rgba(217,119,6,.12)',  rank:2 },
+    D: { code:'D', label:'D — Низкий',         ru:'Низкий',         uz:'Past',       color:'#6B7280', bg:'rgba(107,114,128,.12)',rank:1 }
+  };
+  return META[code];
+};
+/* Kichik HTML rozetka (badge) — jadval kataklari va kartalar uchun */
+window.investPriorityBadge = function(meta, opts){
+  opts = opts || {};
+  if(!meta) return '';
+  var full = opts.full !== false; // default: to'liq label ("B — Высокий")
+  var txt = full ? meta.label : meta.code;
+  var size = opts.size || '.7rem';
+  return '<span title="'+meta.label+'" style="display:inline-flex;align-items:center;gap:4px;'+
+    'padding:2px 9px;border-radius:999px;font-size:'+size+';font-weight:700;line-height:1.4;white-space:nowrap;'+
+    'color:'+meta.color+';background:'+meta.bg+';border:1px solid '+meta.color+'33">'+
+    '<span style="width:7px;height:7px;border-radius:50%;background:'+meta.color+';flex:none"></span>'+txt+'</span>';
+};
 
 function investAiInferFeasibility(priority){
   if(priority === 'Priority A') return 'High';

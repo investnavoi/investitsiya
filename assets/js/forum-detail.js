@@ -630,6 +630,175 @@ function clearInvestorGeoFilter(){
 }
 window.clearInvestorGeoFilter = clearInvestorGeoFilter;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ПРИОРИТЕТ (Feature 3) — Davlat tanlangandan keyin "🎯 Приоритет" tugmasi.
+   Shu davlatdagi mavjud kompaniyalarni Excel "Главная панель" Приоритет ustuni
+   bilan AYNAN bir xil darajalashda (A — Стратегический / B — Высокий /
+   C — Средний / D — Низкий) toifalarga ajratib ko'rsatadi.
+   Har bir kompaniya prioriteti — uning mahsuloti (productId / HS kodi) bo'yicha:
+   bozor talabi (regional import) + O'zbekiston importi + mahsulot darajasi.
+   Har kartada: kompaniya nomi, email, soha + "AI Tahlil va Email" tugmasi
+   (openInvestorAiWorkspace orqali tahlil qilib, xat yozish mumkin).
+   ═══════════════════════════════════════════════════════════════════════════ */
+window.showInvestorCountryPriority = async function(stateCode){
+  var code = String(stateCode || _investorGeoFilterStateCode || '').toUpperCase();
+  if(!code){ if(typeof toast==='function') toast('⚠️ Avval xaritadan davlat tanlang','error'); return; }
+  if(typeof window.computeInvestPriority !== 'function'){
+    if(typeof toast==='function') toast('⚠️ Prioritet moduli yuklanmagan','error'); return;
+  }
+
+  var cName = (window._investorGeoStateStats && window._investorGeoStateStats[code] && window._investorGeoStateStats[code].name) || code;
+  _openInvestorPriorityModal('<div style="padding:46px;text-align:center;color:var(--text3);font-size:.85rem">⏳ Import ma\'lumotlari yuklanmoqda va prioritet hisoblanmoqda...</div>', cName);
+
+  // Import snapshotlarini yuklash — prioritet hisoblash uchun zarur (Comtrade importlari)
+  try { if(typeof ensureCollectionLoaded === 'function') await ensureCollectionLoaded('importSnapshots'); } catch(_e){}
+
+  // Davlat kompaniyalari — xarita bilan AYNAN bir xil filter + group dedup
+  var co = DB.investorCompanies || [];
+  var rawRecords = co.filter(function(c){
+    if(typeof getInvestorGeoStateCode === 'function') return getInvestorGeoStateCode(c, {}) === code;
+    return false;
+  });
+  var seen = Object.create(null);
+  var countryCompanies = [];
+  rawRecords.forEach(function(r){
+    var k = (typeof getInvestorCompanyGroupKey === 'function')
+      ? getInvestorCompanyGroupKey(r)
+      : String(r.kompaniya || r.id || '').toLowerCase().trim();
+    if(!k || seen[k]) return;
+    seen[k] = true;
+    countryCompanies.push(r);
+  });
+
+  if(!countryCompanies.length){
+    _openInvestorPriorityModal('<div style="padding:46px;text-align:center;color:var(--text3)">Bu davlat uchun kompaniya yozuvi topilmadi.</div>', cName);
+    return;
+  }
+
+  // Har bir kompaniya uchun prioritet (mahsuloti bo'yicha) — Excel bilan bir xil
+  var buckets = { A:[], B:[], C:[], D:[] };
+  countryCompanies.forEach(function(rec){
+    var productInfo = {
+      productId: rec.productId || rec.mahsulotProductId || '',
+      hsCode: rec.mahsulotHs || rec.productHs || rec.hsCode || '',
+      displayName: rec.mahsulotNomi || rec.soha || ''
+    };
+    var regional = 0, uz = 0, year = '', hasData = false;
+    try {
+      var totals = (typeof getCompanyProductImportTotals === 'function')
+        ? getCompanyProductImportTotals(productInfo, rec) : null;
+      if(totals){
+        regional = Number(totals.regionalLatestUsd || 0) || 0;
+        uz = Number(totals.uzbLatestUsd || 0) || 0;
+        year = totals.latestYear || '';
+        if(!(regional > 0)) regional = Number(totals.combinedUsd || 0) / 4;
+        hasData = regional > 0;
+      }
+    } catch(_e){}
+    var level = (typeof investAiInferLevel === 'function')
+      ? investAiInferLevel({ name_en: productInfo.displayName, main_sector: rec.soha || '', usage: '' })
+      : '';
+    var meta = window.computeInvestPriority(regional, uz, level);
+    rec._prMeta = meta;
+    rec._prRegional = regional;
+    rec._prUz = uz;
+    rec._prYear = year;
+    rec._prLevel = level;
+    rec._prHasData = hasData;
+    rec._prProductName = productInfo.displayName || '';
+    (buckets[meta.code] || buckets.D).push(rec);
+  });
+
+  _openInvestorPriorityModal(_renderInvestorPriorityGroups(buckets, countryCompanies.length), cName);
+};
+
+function _investorPriorityFmtUsd(v){
+  v = Number(v || 0) || 0;
+  if(v >= 1e9) return '$' + (v/1e9).toFixed(1) + ' mlrd';
+  if(v >= 1e6) return '$' + (v/1e6).toFixed(1) + ' mln';
+  if(v >= 1e3) return '$' + Math.round(v/1e3) + ' ming';
+  return '$' + Math.round(v);
+}
+
+function _renderInvestorPriorityGroups(buckets, total){
+  var order = ['A','B','C','D'];
+  var out = '<div style="font-size:.76rem;color:var(--text3);margin-bottom:6px;line-height:1.5">' +
+    'Jami <b style="color:var(--text)">' + total + '</b> ta kompaniya. Darajalash Excel «Главная панель» ' +
+    'Приоритет ustuni bilan bir xil: <b>bozor talabi</b> + <b>O\'zbekiston importi</b> + <b>mahsulot darajasi</b>.' +
+    '</div>';
+  var any = false;
+  order.forEach(function(codeKey){
+    var list = buckets[codeKey] || [];
+    if(!list.length) return;
+    any = true;
+    var meta = list[0]._prMeta || window.computeInvestPriority(0,0,'');
+    out += '<div style="display:flex;align-items:center;gap:10px;margin:18px 0 10px">' +
+      '<span style="width:30px;height:30px;border-radius:9px;flex:none;background:' + meta.color + ';color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:.95rem">' + meta.code + '</span>' +
+      '<span style="font-weight:800;color:var(--text);font-size:.92rem">' + escHtml(meta.label) + '</span>' +
+      '<span style="font-size:.7rem;color:var(--text3)">' + list.length + ' ta kompaniya</span>' +
+    '</div>';
+    list.forEach(function(rec){
+      var name = String(rec.kompaniya || '—');
+      var soha = String(rec.soha || rec.mahsulotNomi || '—');
+      var email = String(rec.email || '').trim();
+      var idAttr = String(rec.id || '').replace(/'/g, "\\'");
+      var demandStr = rec._prHasData
+        ? ('Bozor talabi: <b>' + _investorPriorityFmtUsd(rec._prRegional) + '</b>' + (rec._prYear ? ' (' + escHtml(String(rec._prYear)) + ')' : '') +
+           ' · UZ import: <b>' + _investorPriorityFmtUsd(rec._prUz) + '</b>')
+        : '<span style="color:var(--text3)">Import ma\'lumoti yo\'q — mahsulot darajasi bo\'yicha baholandi</span>';
+      out += '<div style="border:1px solid var(--border);border-left:3px solid ' + meta.color + ';border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff">' +
+        '<div style="min-width:0;flex:1">' +
+          '<div style="font-weight:700;color:var(--text);font-size:.85rem">' + escHtml(name) + '</div>' +
+          '<div style="font-size:.7rem;color:var(--text2);margin-top:2px">' + escHtml(soha) + '</div>' +
+          (email
+            ? '<div style="font-size:.66rem;color:#0ea5e9;margin-top:2px">✉️ ' + escHtml(email) + '</div>'
+            : '<div style="font-size:.62rem;color:var(--text3);margin-top:2px">✉️ Email yo\'q</div>') +
+          '<div style="font-size:.6rem;color:var(--text3);margin-top:4px">' + demandStr +
+            (rec._prLevel ? ' · Daraja: <b>' + escHtml(rec._prLevel) + '</b>' : '') + '</div>' +
+        '</div>' +
+        '<button type="button" onclick="_openInvestorAiFromPriority(\'' + idAttr + '\')" ' +
+          'style="flex:none;background:linear-gradient(135deg,#7C3AED,#4361EE);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap">' +
+          '🤖 AI Tahlil va Email</button>' +
+      '</div>';
+    });
+  });
+  if(!any){
+    out += '<div style="padding:30px;text-align:center;color:var(--text3)">Prioritet hisoblab bo\'lmadi.</div>';
+  }
+  return out;
+}
+
+function _openInvestorPriorityModal(inner, cName){
+  var ov = document.getElementById('investorPriorityOverlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'investorPriorityOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.55);display:flex;align-items:flex-start;justify-content:center;padding:4vh 16px;overflow:auto';
+    ov.addEventListener('click', function(ev){ if(ev.target === ov) window.closeInvestorPriorityModal(); });
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'flex';
+  ov.innerHTML = '<div style="background:#fff;border-radius:16px;max-width:760px;width:100%;box-shadow:0 24px 60px rgba(15,23,42,.3);overflow:hidden;max-height:92vh;display:flex;flex-direction:column">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:16px 20px;border-bottom:1px solid var(--border,#e5e7eb);flex:none">' +
+      '<div style="font-family:Sora,sans-serif;font-weight:800;font-size:1.02rem;color:var(--text)">🎯 Инвестиционный приоритет' + (cName ? ' — ' + escHtml(cName) : '') + '</div>' +
+      '<button type="button" onclick="window.closeInvestorPriorityModal()" style="flex:none;background:var(--ta-gray-100,#f3f4f6);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:1rem;color:var(--text2,#475569)">✕</button>' +
+    '</div>' +
+    '<div style="padding:16px 20px;overflow:auto">' + inner + '</div>' +
+  '</div>';
+}
+window.closeInvestorPriorityModal = function(){
+  var ov = document.getElementById('investorPriorityOverlay');
+  if(ov){ ov.style.display = 'none'; ov.innerHTML = ''; }
+};
+window._openInvestorAiFromPriority = function(id){
+  window.closeInvestorPriorityModal();
+  if(typeof openInvestorAiWorkspace === 'function'){
+    openInvestorAiWorkspace(String(id));
+  } else if(typeof toast === 'function'){
+    toast('⚠️ AI workspace topilmadi', 'error');
+  }
+};
+
 /* Embassy moved to assets/js/embassy.js */
 
 function getInvestorGeoTooltipHtml(info){
