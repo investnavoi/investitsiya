@@ -2969,18 +2969,10 @@ async function buildAiTransportAnalysis(countryInfo, comp){
   var foreign = srData && srData.foreign; // Raqam 1: kompaniya davlati -> Navoiy (import xarajati)
   var routes = AI_TRANSPORT_TARGETS.map(function(target){
     var nRow = navoiMap[target.iso3];
-    // RAQAM 1 (foreign) — kompaniya davlatidan O'zbekistongacha (Navoiy). Barcha qatorlar
-    // uchun bir xil import-baza. JSON/SeaRates'dan kelsa real, aks holda korridor formula.
-    var estimate;
-    if(foreign && Number.isFinite(Number(foreign.cost))){
-      estimate = {
-        foreignCost: Math.round(Number(foreign.cost)),
-        foreignDays: Math.max(1, Math.round(Number(foreign.days) || 7)),
-        foreignMode: 'FCL 20ft (→Navoiy)'
-      };
-    } else {
-      estimate = estimateAiExportRoute(sourceHub, target);
-    }
+    // RAQAM 1 (foreign) — kompaniya hubidan HAR BIR maqsad davlatga (per-destination).
+    // Har qator uchun alohida hisoblash — bir xil qiymat EMAS!
+    // foreign (company→Navoiy) faqat email matnida ishlatiladi, jadval uchun EMAS.
+    var estimate = estimateAiExportRoute(sourceHub, target);
     // RAQAM 2 (navoi) — Navoiydan qo'shni bozorga. JSON keshidan (real SeaRates) yoki model.
     var navoiCost, navoiDays, navoiMode, navoiReal = false;
     if(nRow && Number.isFinite(Number(nRow.navoiCost))){
