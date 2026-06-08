@@ -3617,7 +3617,7 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       '• Uzbekistan total imports 2021–2024: ' + _uzShort +
       ' (USD ' + Math.round(_importTotals.uzbekistanUsd).toLocaleString('en-US') + ')\n' +
       '• Twelve land-accessible regional markets combined total imports 2021–2024: ' + _otShort +
-      ' (USD ' + Math.round(_importTotals.otherTwelveUsd).toLocaleString('en-US') + ') [Russia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Azerbaijan, Georgia, Armenia, Afghanistan, Iran, Pakistan, Mongolia]\n' +
+      ' (USD ' + Math.round(_importTotals.otherTwelveUsd).toLocaleString('en-US') + ')\n' +
       '• Combined 13-market total 2021–2024: ' + _allShort + '\n' +
       (_topOthersStr ? '• Top 3 within the twelve land-accessible markets: ' + _topOthersStr + '\n' : '') +
       'RULE: ¶1 of the email MUST cite BOTH the Uzbekistan figure (' + _uzShort + ') AND the twelve-land-accessible-markets ' +
@@ -3652,6 +3652,9 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     'COVERAGE RULE: Every bullet point in this data block MUST appear somewhere in the email body. ' +
     'Do not skip any metric. Use all of them.\n\n' +
     (importTotalsBlock ? importTotalsBlock + '\n\n' : '') +
+    '⚠️ MANDATORY — UZBEKISTAN GAS PRICE (must appear in the email body, no exceptions):\n' +
+    '• Industrial natural gas tariff in Uzbekistan: 1,800 UZS/m³ (state-subsidised industrial tariff).\n' +
+    '  Write it EXACTLY as "1,800 UZS/m³" — do NOT convert to MWh, do NOT omit.\n\n' +
     fezBlock +
     '\n\n' +
     (_noCountry
@@ -3813,10 +3816,15 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '       against [country]\'s $[X]/MWh — at [Y]MW and 8,000 hours/year that is roughly $[Z]K in ' +
     '       annual savings. Labour costs follow the same pattern: [UZ figure] versus [country figure]. ' +
     '       Corporate income tax is [UZ%] versus [country%]."\n' +
-    '  ¶3 — REGULATORY FRAMEWORK AND ALL REMAINING ADVANTAGES: Cover ALL FEZ incentive terms: ' +
-    '       tax holiday (exact years from the data block), property tax exemption, 0% import customs ' +
-    '       on technological equipment AND raw materials, land allocation terms if listed. Reference ' +
-    '       the specific Presidential Decree number (e.g. "Decree No. 820"). Then add ALL logistics ' +
+    '  ¶3 — REGULATORY FRAMEWORK AND ALL REMAINING ADVANTAGES: This paragraph MUST open with a ' +
+    '       conditional FEZ-participant framing — begin with a sentence such as: "Should [Company] ' +
+    '       take up Navoi FEZ participant status, the following terms apply as currently codified under ' +
+    '       Presidential Decrees PF-4059 and PP-5057:" or "As a Navoi FEZ participant, [Company] would ' +
+    '       qualify for the following, as codified under Presidential Decrees PF-4059 and PP-5057:". ' +
+    '       Do NOT start this paragraph with a statement of the incentives directly — always open with ' +
+    '       the IF/SHOULD conditional first. Then cover ALL FEZ incentive terms from the data block: ' +
+    '       tax holiday (exact years), property tax exemption, 0% import customs on technological ' +
+    '       equipment AND raw materials, land allocation terms if listed. Then add ALL logistics ' +
     '       and transport data from the LOGISTICS section, and ALL tariff advantages from the TARIFFS ' +
     '       section. Every line in the data block must appear in the email — either in ¶2 or ¶3. ' +
     '       Frame the whole paragraph as legal certainty and infrastructure fact, not a sales claim.\n' +
@@ -3849,6 +3857,14 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     '  4. NEVER use bullet points in the email body. Prose only.\n' +
     '  5. NEVER invent a number. Every figure must come from the VERIFIED DATA block or the market intelligence. ' +
     '     If you are unsure whether a number is in the data, do not write it.\n' +
+    '  5b. NEVER derive or write per-year averages from the cumulative import totals. Do NOT write ' +
+    '     sentences such as "This represents an annual average of $X", "equates to roughly $X a year", ' +
+    '     "approximately $X per year", or any arithmetic division of the 2021-2024 cumulative figures. ' +
+    '     Cite only the cumulative totals as provided — do not compute or mention per-year rates.\n' +
+    '  5c. NEVER name individual countries when referring to the twelve land-accessible regional markets. ' +
+    '     Write ONLY "twelve land-accessible regional markets" — never add "including Russia, Kazakhstan" ' +
+    '     or any country name from that group, not even as examples. If a country appears in the ' +
+    '     "Top 3" list in the data block, you may cite it there — otherwise, no individual country names.\n' +
     '  6. NEVER use these energy phrases: "virtually free", "near-zero", "effectively free", "100% cheaper", ' +
     '     "almost free". For subsidised gas write "state-subsidised industrial tariff" or "highly competitive".\n' +
     '  7. NEVER use "guaranteed" about incentives. Say "under current Presidential Decree" or "as currently codified".\n' +
