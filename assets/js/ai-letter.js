@@ -272,9 +272,11 @@ function getCompanyProductImportTotals(productInfo, comp){
   }
 }
 
-/* USD raqamini "$48.2M" / "$1.4B" kabi qisqa shaklga aylantirish (email ichida). */
+/* USD raqamini "$48.2M" / "$1.4B" kabi qisqa shaklga aylantirish (email ichida).
+   $50K dan kam bo'lsa "under $50K" deb ko'rsatiladi — emailda $0 / $3K kabi raqamlar chiqmasligi uchun. */
 function _formatImportUsdShort(usd){
   var n = Number(usd||0) || 0;
+  if(n < 50000) return 'under $50K';
   if(n >= 1e9) return '$' + (n/1e9).toFixed(2).replace(/\.?0+$/,'') + 'B';
   if(n >= 1e6) return '$' + (n/1e6).toFixed(1).replace(/\.0$/,'') + 'M';
   if(n >= 1e3) return '$' + (n/1e3).toFixed(0) + 'K';
@@ -3928,9 +3930,13 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
     ' 21. HS CODE MANDATORY: The HS code of the product in scope (e.g. "HS 251611") MUST be explicitly ' +
     '     cited at least once in the email body. This is a standard trade reference that professional ' +
     '     executives and procurement managers recognise — omitting it makes the email look generic.\n' +
-    ' 22. GAS PRICE MANDATORY: The Uzbekistan industrial natural gas tariff of $0.14/m³ from the ' +
-    '     VERIFIED DATA block MUST appear in the email body, cited exactly as "$0.14/m³". Do not ' +
-    '     omit it, do not write it in UZS, do not convert it to MWh, do not replace it with a generic description.\n\n' +
+    ' 22. GAS PRICE — ABSOLUTE RULES:\n' +
+    '     (a) MUST appear in the email body: cite the Uzbekistan gas tariff exactly as "$0.14/m³".\n' +
+    '     (b) NEVER write "1,800 UZS/m³" or any UZS figure — the UZS price is FORBIDDEN in the email.\n' +
+    '     (c) NEVER write "/MWh" for gas — always per cubic metre (/m³).\n' +
+    '     (d) If the COMPANY & RECIPIENT INTELLIGENCE block or any other source mentions "1,800 UZS/m³" ' +
+    '         or any UZS gas figure, IGNORE IT. The ONLY valid figure is "$0.14/m³" from the ⚠️ MANDATORY block.\n' +
+    '     (e) Do not paraphrase — write the number "$0.14/m³" explicitly. "State-subsidised" alone is not enough.\n\n' +
     'EXAMPLES — calibrate your voice from these (DO NOT copy the wording):\n' +
     '  Weak (AI-sounding, full of clichés):\n' +
     '    "I hope this email finds you well. I am writing to introduce the Navoi Free Economic Zone, ' +
@@ -4000,7 +4006,10 @@ async function buildAiLetterPackage(comp, lang, sharedAnalysis, sharedTariff, op
       '"could present an opportunity"), and never use corporate clichés ("leverage", "synergies", "robust ' +
       'ecosystem", "strategic alignment", em-dashes). You use only the figures provided. ' +
       'You write in the first person, you reference one specific decree or incentive, ' +
-      'you make one concrete ask, and you stop.';
+      'you make one concrete ask, and you stop. ' +
+      'CRITICAL DATA RULE: The Uzbekistan industrial natural gas tariff is $0.14/m³. ' +
+      'You MUST write it as "$0.14/m³" — NEVER as "1,800 UZS/m³", never in UZS, never in MWh. ' +
+      'If the intelligence block mentions UZS gas price, ignore it and use $0.14/m³ from the data block.';
 
     if(hasOpenAI){
       /* ── Stage 1: research THIS company specifically. We want concrete hooks to open with. ── */
