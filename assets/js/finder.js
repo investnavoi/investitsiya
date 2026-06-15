@@ -4316,7 +4316,11 @@ async function runCompanyFinder(source){
 
   var isTop100Global = (source === 'apollo') && !apolloExporterCountries.length;
   var isApolloPerCountry = (source === 'apollo') && apolloExporterCountries.length > 0;
-  var TOP100_CAP = 10; // global rejim: eski qiymat (email filter bilan 10 tani topish yetarli)
+  // Global rejim cap: foydalanuvchi tanlagan "nechta" sozlamasini hurmat qiladi (default 40).
+  // Avval qattiq 10 edi — shu sabab har doim faqat ~10 ta bir xil yirik kompaniya chiqardi.
+  var TOP100_CAP = isTop100Global
+    ? Math.max(40, Math.min(100, parseInt((document.getElementById('finder-count')||{}).value, 10) || 40))
+    : 10;
   var APOLLO_PER_COUNTRY_CAP = 3; // per-country rejim: har bir eksportyor davlatdan nechta kompaniya
   if(isTop100Global){
     requestedCount = TOP100_CAP;
@@ -4351,7 +4355,8 @@ async function runCompanyFinder(source){
 
   // ═══ TOP 100: Confirmation before API calls ═══
   if(isTop100Global){
-    var estimatedCredits = 1;
+    // ~6 org search + har bir kompaniya uchun 1 people search (+ enrichment).
+    var estimatedCredits = 6 + TOP100_CAP;
     var confirmed = await new Promise(function(resolve){
       var overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
@@ -4593,10 +4598,12 @@ async function runCompanyFinder(source){
         var sizeRange = sizeRanges[si];
         document.getElementById('finderProgressText').textContent = '🏆 Apollo Top: xodimlar '+sizeRange+' — qidirilmoqda... ('+top100Results.length+'/'+TOP100_CAP+')';
         try {
+          // per_page — cap'dan kattaroq: moslik filtridan keyin ham yetarli qolishi uchun.
+          var orgPerPage100 = Math.min(100, Math.max(50, TOP100_CAP));
           var orgReq100 = {
             search_type:'organizations',
             page:1,
-            per_page:TOP100_CAP,
+            per_page:orgPerPage100,
             api_key:apolloKey,
             organization_num_employees_ranges:[sizeRange],
             q_keywords: softQuery100
