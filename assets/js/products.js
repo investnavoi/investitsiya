@@ -730,9 +730,9 @@ function attachTopScrollbar(scrollEl){
   scrollEl.parentNode.insertBefore(top, scrollEl);
 
   function sizeSpacer(){
-    spacer.style.width = table.scrollWidth + 'px';
-    // Agar gorizontal scroll kerak bo'lmasa, tepa barni yashiramiz
-    top.style.display = (table.scrollWidth > scrollEl.clientWidth + 2) ? '' : 'none';
+    // Spacer'ni jadval kengligi bilan teng qilamiz — har doim ko'rinadi
+    var w = Math.max(table.scrollWidth, table.offsetWidth, scrollEl.scrollWidth);
+    spacer.style.width = w + 'px';
   }
   sizeSpacer();
 
@@ -751,8 +751,8 @@ function attachTopScrollbar(scrollEl){
   } else {
     window.addEventListener('resize', sizeSpacer);
   }
-  // Render tugagach o'lcham aniqlashishi uchun
-  setTimeout(sizeSpacer, 60);
+  setTimeout(sizeSpacer, 100);
+  setTimeout(sizeSpacer, 500);
 }
 window.attachTopScrollbar = attachTopScrollbar;
 

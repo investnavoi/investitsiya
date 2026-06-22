@@ -1692,19 +1692,19 @@ body{padding:0!important;}
 .tc-head{padding:.75rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;background:transparent;}
 .tc-title{font-size:.82rem;font-weight:600;color:var(--text);}
 .tc-actions{display:flex;gap:.4rem;flex-wrap:wrap;}
-.tscroll{overflow-x:auto;scrollbar-width:auto;scrollbar-color:rgba(67,97,238,.5) rgba(67,97,238,.08);}
+.tscroll{overflow-x:scroll;scrollbar-width:auto;scrollbar-color:rgba(67,97,238,.5) rgba(67,97,238,.08);}
 .tscroll::-webkit-scrollbar{height:14px;}
 .tscroll::-webkit-scrollbar-track{background:rgba(67,97,238,.07);border-radius:20px;}
 .tscroll::-webkit-scrollbar-thumb{background:rgba(67,97,238,.5);border-radius:20px;border:3px solid transparent;background-clip:padding-box;}
 .tscroll::-webkit-scrollbar-thumb:hover{background:rgba(67,97,238,.72);background-clip:padding-box;}
 
-/* Tepadagi nusxa scroll (mahsulotlar jadvali uchun — JS bilan sinxronlanadi) */
-.tscroll-top{overflow-x:auto;overflow-y:hidden;scrollbar-width:auto;scrollbar-color:rgba(67,97,238,.5) rgba(67,97,238,.08);margin-bottom:8px;background:transparent;}
+/* Tepadagi nusxa scroll — har doim ko'rinadi */
+.tscroll-top{overflow-x:scroll;overflow-y:hidden;scrollbar-width:auto;scrollbar-color:rgba(67,97,238,.5) rgba(67,97,238,.08);margin-bottom:4px;}
 .tscroll-top::-webkit-scrollbar{height:14px;}
 .tscroll-top::-webkit-scrollbar-track{background:rgba(67,97,238,.07);border-radius:20px;}
 .tscroll-top::-webkit-scrollbar-thumb{background:rgba(67,97,238,.5);border-radius:20px;border:3px solid transparent;background-clip:padding-box;}
 .tscroll-top::-webkit-scrollbar-thumb:hover{background:rgba(67,97,238,.72);background-clip:padding-box;}
-.tscroll-top > div{height:18px;}
+.tscroll-top > div{height:1px;}
 .tscroll table.ai-detail-tbl{width:100%;border-collapse:collapse;font-size:.82rem;}
 .tscroll table.ai-detail-tbl thead th{text-align:left;padding:.65rem .8rem;font-weight:700;color:var(--text);font-size:.74rem;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid rgba(67,97,238,.18);white-space:nowrap;}
 .tscroll table.ai-detail-tbl tbody td{padding:.6rem .8rem;color:var(--text2);border-bottom:1px solid rgba(67,97,238,.09);vertical-align:top;white-space:nowrap;}
