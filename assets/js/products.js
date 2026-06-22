@@ -114,7 +114,11 @@ function findInvestAiHistoryIndexForRaw(raw){
 function _syncExpandBody(){
   var srcBody = document.getElementById('productSection'+PRODUCT_ACTIVE_SECTION.charAt(0).toUpperCase()+PRODUCT_ACTIVE_SECTION.slice(1)+'Body');
   var expandBody = document.getElementById('resursExpandBody');
-  if(srcBody && expandBody) expandBody.innerHTML = srcBody.innerHTML;
+  if(srcBody && expandBody){
+    expandBody.innerHTML = srcBody.innerHTML;
+    // innerHTML-klon JS listener'larni yo'qotadi — tepa scrollbar'ni qayta ulaymiz
+    if(typeof refreshProductTopScrollbars === 'function') setTimeout(refreshProductTopScrollbars, 0);
+  }
 }
 
 function focusProductRawAnalysis(section, rawId){
@@ -634,6 +638,8 @@ function resursSlideClick(section){
   var srcBody = document.getElementById('productSection'+section.charAt(0).toUpperCase()+section.slice(1)+'Body');
   if(srcBody){
     expandBody.innerHTML = srcBody.innerHTML;
+    // innerHTML-klon JS listener'larni yo'qotadi \u2014 tepa scrollbar'ni qayta ulaymiz
+    if(typeof refreshProductTopScrollbars === 'function') setTimeout(refreshProductTopScrollbars, 0);
     // Update meta badge
     var sectionRaws = getSectionRawMaterials(section);
     var sectionProds = getSectionProducts(section);
@@ -714,15 +720,23 @@ window.cleanRawMaterialLabel = cleanRawMaterialLabel;
 
 /* Jadval ustiga pastdagi bilan sinxron gorizontal scroll bar qoʻshadi.
    Foydalanuvchi tepadan ham, pastdan ham gorizontal aylantira oladi. */
+/* Berilgan .tscroll konteyneriga TEPADAN sinxron gorizontal scroll bar ulaydi.
+   MUHIM: innerHTML-klon JS listener'larni yo'qotadi, shuning uchun bu funksiya
+   KO'RINADIGAN jadvalga, nusxalashdan KEYIN chaqirilishi kerak. Idempotent —
+   qayta chaqirilsa eski tepa barni olib tashlab, yangisini quradi. */
 function attachTopScrollbar(scrollEl){
   if(!scrollEl) return;
   var table = scrollEl.querySelector('table');
   if(!table) return;
-  // Avvalgi tepa scrollni olib tashlaymiz (qayta render bo'lsa dublikat bo'lmasin)
+
+  // Bu konteyner uchun avvalgi tepa scrollni olib tashlaymiz (klon-dublikatlar ham)
   var prev = scrollEl.previousElementSibling;
-  if(prev && prev.classList && prev.classList.contains('tscroll-top')){
-    prev.parentNode.removeChild(prev);
+  while(prev && prev.classList && prev.classList.contains('tscroll-top')){
+    var toRemove = prev;
+    prev = prev.previousElementSibling;
+    toRemove.parentNode.removeChild(toRemove);
   }
+
   var top = document.createElement('div');
   top.className = 'tscroll-top';
   var spacer = document.createElement('div');
@@ -730,9 +744,9 @@ function attachTopScrollbar(scrollEl){
   scrollEl.parentNode.insertBefore(top, scrollEl);
 
   function sizeSpacer(){
-    // Spacer'ni jadval kengligi bilan teng qilamiz — har doim ko'rinadi
-    var w = Math.max(table.scrollWidth, table.offsetWidth, scrollEl.scrollWidth);
-    spacer.style.width = w + 'px';
+    // Pastki konteynerning aynan scroll kengligini olamiz → tepa va past BIR XIL
+    var w = scrollEl.scrollWidth || table.scrollWidth || table.offsetWidth || 0;
+    if(w > 0) spacer.style.width = w + 'px';
   }
   sizeSpacer();
 
@@ -748,13 +762,30 @@ function attachTopScrollbar(scrollEl){
     var ro = new ResizeObserver(function(){ sizeSpacer(); });
     ro.observe(table);
     ro.observe(scrollEl);
+    scrollEl._topScrollRO = ro;
   } else {
     window.addEventListener('resize', sizeSpacer);
   }
-  setTimeout(sizeSpacer, 100);
-  setTimeout(sizeSpacer, 500);
+  // Klon DOM'ga joylashgach (layout) qayta o'lchaymiz
+  if(window.requestAnimationFrame) requestAnimationFrame(sizeSpacer);
+  setTimeout(sizeSpacer, 80);
+  setTimeout(sizeSpacer, 350);
+  scrollEl._sizeTopScroll = sizeSpacer;
 }
 window.attachTopScrollbar = attachTopScrollbar;
+
+/* Hujjatdagi BARCHA ko'rinadigan mahsulot jadvallariga tepa scrollbar ulaydi.
+   Render yoki innerHTML-nusxalashdan keyin chaqiriladi. */
+function refreshProductTopScrollbars(){
+  var nodes = document.querySelectorAll('.prod-tscroll');
+  for(var i=0;i<nodes.length;i++){
+    var el = nodes[i];
+    // Yashirin (display:none) bo'lsa o'tkazib yuboramiz — keyin ko'ringanda qayta chaqiriladi
+    if(el.offsetParent === null && el.getClientRects().length === 0) continue;
+    attachTopScrollbar(el);
+  }
+}
+window.refreshProductTopScrollbars = refreshProductTopScrollbars;
 
 function renderInlineProductSection(section){
   section = normalizeProductSection(section);
@@ -835,9 +866,10 @@ function renderInlineProductSection(section){
     '<div class="tscroll prod-tscroll"><table class="ta-table"><thead><tr><th>#</th><th>Mahsulot</th><th>Xomashyo</th><th>HS Kod</th><th>Soha</th><th>Import</th><th>Amal</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>' +
     '<div style="padding:.8rem 0 0 0;font-size:.72rem;color:var(--text3)">Jami mahsulotlar: '+filteredProds.length+'</div>';
   syncProductRawAiPanelState(section);
-  // Tepada ham gorizontal scroll bar qo'shamiz (pastdagi bilan sinxron)
-  var _pscroll = body.querySelector('.prod-tscroll');
-  if(_pscroll && typeof attachTopScrollbar === 'function') attachTopScrollbar(_pscroll);
+  // Tepa scroll barlarni yangilaymiz (ko'rinadigan jadvallarga, layout'dan keyin)
+  if(typeof refreshProductTopScrollbars === 'function'){
+    setTimeout(refreshProductTopScrollbars, 0);
+  }
 }
 
 function formatBilingualProductName(p){
