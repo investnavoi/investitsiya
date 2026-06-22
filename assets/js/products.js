@@ -457,6 +457,7 @@ function renderProductRawAiBlock(section, sectionRaws, sectionProds){
         '</div>' +
       '</div>' +
       '<div class="prod-ai-preview">'+(preview || '<span class="prod-ai-preview-more">Mahsulotlar hali kiritilmagan</span>')+'</div>' +
+      '<div style="margin:.6rem 0;border:1px solid var(--ta-gray-100,#eef0f5);border-radius:10px;background:#fff">'+buildProductCompositionHtml(raw)+'</div>' +
       '<div class="prod-ai-note">Kreativ yondashuv sifatida bu panel xomashyodan boshlab investitsiya tahlilini shu joyning o\'zida ochadi. AI natija tayyor bo\'lgach, shu yerning o\'zida ko\'rasiz va kerak bo\'lsa to\'liq AI Invest Tahlili sahifasiga o\'tasiz.</div>' +
       '<div class="prod-ai-divider"></div>' +
       '<div class="tcard prod-ai-inline-card" id="productRawAiProgressCard" style="display:none">' +
@@ -710,7 +711,13 @@ function renderInlineProductSection(section){
 
   var rowsHtml = filteredProds.length ? filteredProds.map(function(p,i){
     var rm = sectionRaws.find(function(r){ return r.id == p.raw_id; });
-    return '<tr><td>'+(i+1)+'</td><td><b>'+formatBilingualProductName(p)+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--ta-gray-400);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:(p.raw_name||'—'))+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td style="white-space:nowrap"><button class="ta-btn ta-btn-primary ta-btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="margin-right:3px" title="Prezentatsiya">📊</button><button class="ta-btn ta-btn-danger ta-btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+    var compRowId = 'comp-' + section + '-' + p.id;
+    var compToggle = '<span class="prod-comp-toggle" onclick="event.stopPropagation();toggleProductComposition(\''+compRowId+'\', this)" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;font-size:.58rem;font-weight:700;color:#465fff;cursor:pointer;user-select:none">' +
+        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>' +
+        'Tarkibi <span class="prod-comp-caret">▾</span></span>';
+    var mainRow = '<tr><td>'+(i+1)+'</td><td><b>'+formatBilingualProductName(p)+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--ta-gray-400);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'<br>'+compToggle+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:(p.raw_name||'—'))+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td style="white-space:nowrap"><button class="ta-btn ta-btn-primary ta-btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="margin-right:3px" title="Prezentatsiya">📊</button><button class="ta-btn ta-btn-danger ta-btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+    var compRow = '<tr id="'+compRowId+'" class="prod-comp-row" style="display:none"><td colspan="7" style="background:var(--ta-gray-50,#f8fafc);padding:.3rem .6rem;border-top:none">'+buildProductCompositionHtml(p)+'</td></tr>';
+    return mainRow + compRow;
   }).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text3)">Bu bo\'limda mahsulot qo\'shilmagan</td></tr>';
 
   body.innerHTML =
