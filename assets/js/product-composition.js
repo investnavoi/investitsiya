@@ -257,8 +257,10 @@ async function enhanceCompositionAI(uid){
 function toggleProductComposition(rowId, triggerEl){
   var row = document.getElementById(rowId);
   if(!row) return;
-  var isHidden = row.style.display === 'none' || !row.style.display;
-  row.style.display = isHidden ? '' : 'none';
+  // Hozir yashiringanmi? (inline 'none' YOKI hisoblangan display 'none')
+  var isHidden = row.style.display === 'none' ||
+                 (row.style.display === '' && (window.getComputedStyle ? getComputedStyle(row).display === 'none' : true));
+  row.style.display = isHidden ? 'table-row' : 'none';
   if(triggerEl){
     triggerEl.classList.toggle('is-open', isHidden);
     var caret = triggerEl.querySelector('.prod-comp-caret');
