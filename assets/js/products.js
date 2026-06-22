@@ -87,7 +87,9 @@ function doesInvestAiMaterialMatchRaw(material, raw){
 }
 
 function getRawDisplayName(raw){
-  return raw ? (raw.name_uz || raw.name_en || '—') : '—';
+  if(!raw) return '—';
+  var nm = raw.name_uz || raw.name_en || '—';
+  return (typeof cleanRawMaterialLabel === 'function') ? cleanRawMaterialLabel(nm) : nm;
 }
 
 function getRawAnalysisMaterialName(raw){
@@ -676,6 +678,40 @@ function renderProducts(){
   // Populate selects
   populateProductSelects();
 }
+/* Xomashyo chip/yorligʻini tozalaydi (FAQAT koʻrsatish uchun — data oʻzgarmaydi).
+   Navoiyazot xomashyolari toʻliq mahsulot tavsifi bilan kelgan, ularni qisqartiradi:
+     "Urea, 46.2%, packed in 50 kg polypropylene bags (new product)"  → "Urea"
+     "Synthetic food-grade acetic acid, 99.5%"                        → "Acetic acid"
+     "Inorganic chemicals; inorganic or organic compounds of ..."     → "Inorganic chemicals"
+     "Technical methanol, grade \"a\" (new product)"                   → "Methanol" */
+function cleanRawMaterialLabel(name){
+  var s = String(name || '').trim();
+  if(!s) return '—';
+  var original = s;
+  // 1) Birinchi vergulgacha (foiz / qadoq / grade tavsiflarini kesib tashlaydi)
+  var beforeComma = s.split(',')[0].trim();
+  if(beforeComma.length >= 3) s = beforeComma;
+  // 2) Birinchi nuqtali vergulgacha (HS bob uslubidagi uzun nomlar)
+  s = s.split(';')[0].trim();
+  // 3) Qavs ichidagi izohlar: "(new product)", "(100% basis)", "(high endurance)"
+  s = s.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  // 4) Foiz / grade / minimum boʻlaklari
+  s = s.replace(/\b\d+(\.\d+)?\s*%.*/i, '').trim();
+  s = s.replace(/\s(grade|minimum|at least|content of|content)\b.*/i, '').trim();
+  // 5) "and articles made thereof" kabi quyruqlar
+  s = s.replace(/\s+and articles?( made)?( thereof)?$/i, '').trim();
+  // 6) Boshlangʻich sifatlovchilarni olib tashlash (bir nechta marta)
+  var qual = /^(synthetic|technical|dilute|crude|refined|food-grade|pure|commercial)\s+/i;
+  var guard = 0;
+  while(qual.test(s) && guard++ < 5) s = s.replace(qual, '').trim();
+  // 7) Quyruqdagi tinish belgilari
+  s = s.replace(/[\s,;:–-]+$/, '').trim();
+  if(!s) return original;
+  // 8) Bosh harfni katta qilish
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+window.cleanRawMaterialLabel = cleanRawMaterialLabel;
+
 function renderInlineProductSection(section){
   section = normalizeProductSection(section);
   var bodyId = 'productSection' + section.charAt(0).toUpperCase() + section.slice(1) + 'Body';
@@ -699,7 +735,7 @@ function renderInlineProductSection(section){
           var isActive = PRODUCT_ACTIVE_SECTION === section && String(PRODUCT_SECTION_RAW_FILTER || '') === String(r.id);
           var hasHistory = findInvestAiHistoryIndexForRaw(r) >= 0;
           return '<span class="prod-chip '+(isActive ? 'is-active' : '')+'" onclick="focusProductRawAnalysis(\''+section+'\',\''+r.id+'\')">' +
-            '<span class="prod-chip-label">'+escapeHtmlText(r.name_uz||r.name_en||'\u2014')+'</span>' +
+            '<span class="prod-chip-label" title="'+escapeHtmlText(r.name_uz||r.name_en||'\u2014')+'">'+escapeHtmlText(cleanRawMaterialLabel(r.name_uz||r.name_en))+'</span>' +
             '<span class="prod-chip-count">'+cnt+'</span>' +
             (hasHistory ? '<span class="prod-chip-ai" title="AI tahlil mavjud">AI</span>' : '') +
             '<span class="prod-chip-x" onclick="event.stopPropagation();deleteRawMaterial(\''+r.id+'\')" title="O\'chirish">×</span>' +
@@ -715,7 +751,7 @@ function renderInlineProductSection(section){
     var compToggle = '<span class="prod-comp-toggle" onclick="event.stopPropagation();toggleProductComposition(\''+compRowId+'\', this)" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;font-size:.58rem;font-weight:700;color:#465fff;cursor:pointer;user-select:none">' +
         '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>' +
         'Tarkibi <span class="prod-comp-caret">▾</span></span>';
-    var mainRow = '<tr><td>'+(i+1)+'</td><td><b>'+formatBilingualProductName(p)+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--ta-gray-400);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'<br>'+compToggle+'</td><td style="font-size:.7rem">'+(rm?rm.name_uz:(p.raw_name||'—'))+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td style="white-space:nowrap"><button class="ta-btn ta-btn-primary ta-btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="margin-right:3px" title="Prezentatsiya">📊</button><button class="ta-btn ta-btn-danger ta-btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
+    var mainRow = '<tr><td>'+(i+1)+'</td><td><b>'+formatBilingualProductName(p)+'</b>'+(p.description?'<div style="font-size:.55rem;color:var(--ta-gray-400);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.description+'</div>':'')+'<br>'+compToggle+'</td><td style="font-size:.7rem" title="'+escapeHtmlText(rm?(rm.name_uz||rm.name_en||''):(p.raw_name||''))+'">'+escapeHtmlText(cleanRawMaterialLabel(rm?(rm.name_uz||rm.name_en):(p.raw_name||'—')))+'</td><td style="font-size:.65rem">'+(p.hs_code||'—')+'</td><td style="font-size:.65rem">'+(p.main_sector||p.usage||p.price||'—').toString().slice(0,40)+'</td><td style="font-size:.6rem">'+(p.import_info||'—').toString().slice(0,40)+'</td><td style="white-space:nowrap"><button class="ta-btn ta-btn-primary ta-btn-sm" onclick="generateProductPPTX(\''+p.id+'\')" style="margin-right:3px" title="Prezentatsiya">📊</button><button class="ta-btn ta-btn-danger ta-btn-sm" onclick="deleteProduct(\''+p.id+'\')">🗑</button></td></tr>';
     var compRow = '<tr id="'+compRowId+'" class="prod-comp-row" style="display:none"><td colspan="7" style="background:var(--ta-gray-50,#f8fafc);padding:.3rem .6rem;border-top:none">'+buildProductCompositionHtml(p)+'</td></tr>';
     return mainRow + compRow;
   }).join('') : '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text3)">Bu bo\'limda mahsulot qo\'shilmagan</td></tr>';
