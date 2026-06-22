@@ -3030,7 +3030,9 @@ _renderInvestorCompaniesMain = function(){
   var _taBaseTotal = Object.keys(_taBaseGroupKeys).length;
 
   var co = allCo.filter(function(r){
-    if(_isImporterRec(r)) return false;
+    // Importyorlarni faqat oddiy ko'rinishda yashiramiz. Davlat tanlangan bo'lsa (geo filter)
+    // o'sha davlatdagi BARCHA kompaniyalar — importyor/xaridorlar ham — barcha sohalardan ko'rinishi kerak.
+    if(!_investorGeoFilterStateCode && _isImporterRec(r)) return false;
     if(_investorGeoFilterStateCode){
       // {} ishlatamiz — xarita statsByCountry'ni qurganda ham {} ishlatadi, mos kelishi shart
       if(getInvestorGeoStateCode(r, {}) !== _investorGeoFilterStateCode) return false;
@@ -3337,7 +3339,14 @@ _renderInvestorCompaniesMain = function(){
     if(nm && !_groupByName[nm]) _groupByName[nm] = g;
   });
   // GROUP DARAJASIDA importyor guruhlarni butunlay tashlash (jadvalda IMPORTYOR badge'i ko'rinmasin)
-  grouped = grouped.filter(function(g){ return g._role !== 'importer'; });
+  // LEKIN: davlat tanlangan bo'lsa (xarita geo filter), o'sha davlatdagi BARCHA kompaniyalar
+  // (importyorlar/xaridorlar ham) ko'rsatilishi kerak — aks holda:
+  //   1) ayrim davlatlar bo'sh chiqadi ("Ma'lumot topilmadi"), garchi xaritada soni bor bo'lsa-da
+  //   2) faqat bir sohali eksportyorlar qolib, "barcha sohalardan" ko'rsatilmaydi
+  grouped = grouped.filter(function(g){
+    if(_investorGeoFilterStateCode) return true;   // davlat filtri faol — hammasini ko'rsatamiz
+    return g._role !== 'importer';
+  });
   // ═══ Parent → children map qurish (IKKALA yo'nalishdan) ═══
   // 1) Eksportyor record._partners[].role='importer' → child importerlar
   // 2) Importer record._partnerOf[].role='exporter' → bu importer parent eksportyorning bolasi
@@ -3554,12 +3563,13 @@ _renderInvestorCompaniesMain = function(){
         (Array.isArray(rec0._partnerOf) && rec0._partnerOf.length) ||
         (Array.isArray(rec0._partners) && rec0._partners.length)
       ));
-      if(!hasLinkage){
+      // Davlat tanlangan bo'lsa — linkage bo'lmasa ham ko'rsatamiz (o'sha davlatdagi barcha kompaniyalar)
+      if(!hasLinkage && !_investorGeoFilterStateCode){
         _visited[g.key] = true;
         g._isHiddenChild = true;
         return;
       }
-      // Linkage bor — ko'rsatamiz
+      // Linkage bor YOKI davlat filtri faol — ko'rsatamiz
     }
     _visited[g.key] = true;
     _displayCounter++;
