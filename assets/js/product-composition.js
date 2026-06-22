@@ -257,17 +257,18 @@ async function enhanceCompositionAI(uid){
 function toggleProductComposition(rowId, triggerEl){
   var row = document.getElementById(rowId);
   if(!row) return;
-  // Hozir yashiringanmi? (inline 'none' YOKI hisoblangan display 'none')
-  var isHidden = row.style.display === 'none' ||
-                 (row.style.display === '' && (window.getComputedStyle ? getComputedStyle(row).display === 'none' : true));
-  row.style.display = isHidden ? 'table-row' : 'none';
+  // Sodda holatni tekshir: hozir display:none bo'lsami?
+  var isCurrentlyHidden = row.style.display === 'none';
+  // Toggle
+  row.style.display = isCurrentlyHidden ? 'table-row' : 'none';
+  // Caret yangilash
   if(triggerEl){
-    triggerEl.classList.toggle('is-open', isHidden);
     var caret = triggerEl.querySelector('.prod-comp-caret');
-    if(caret) caret.textContent = isHidden ? '▴' : '▾';
+    if(caret) caret.textContent = isCurrentlyHidden ? '▴' : '▾';
+    triggerEl.classList.toggle('is-open', !isCurrentlyHidden);
   }
-  // Ochilganda: aniq emas + AI kaliti bor + hali enhance qilinmagan bo'lsa → avto AI
-  if(isHidden){
+  // Ochilganda: aniq emas bo'lsa AI avtomatik chaqirish
+  if(isCurrentlyHidden){
     var box = row.querySelector('.prod-composition[data-specific="0"]');
     if(box && box.id && typeof getOpenAIKey === 'function' && getOpenAIKey() && !box._aiTried){
       box._aiTried = true;
