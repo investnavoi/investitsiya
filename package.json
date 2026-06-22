@@ -6,6 +6,8 @@
     "dev": "vite",
     "build": "node scripts/build-prod.js",
     "preview": "vite preview --outDir dist",
+    "check": "node scripts/check-syntax.cjs",
+    "test": "node scripts/check-syntax.cjs",
     "admin:grant": "node scripts/set-admin-claim.cjs",
     "admin:revoke": "node scripts/set-admin-claim.cjs"
   },

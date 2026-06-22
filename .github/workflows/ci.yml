@@ -1,0 +1,49 @@
+name: CI
+
+# Har push (main) va har Pull Request'da avtomatik tekshiruv.
+# Maqsad: sintaksis xatosi yoki buzilgan build jonli saytga chiqib ketmasin.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ── 1) Tez sintaksis tekshiruvi (dependency kerak emas) ──
+  syntax:
+    name: JS sintaksis tekshiruvi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Barcha JS fayllar sintaksisini tekshirish
+        run: node scripts/check-syntax.cjs
+
+  # ── 2) Production build ishlayotganini tekshirish ──
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Dependency o'rnatish
+        run: npm ci || npm install
+      - name: Build
+        run: npm run build
+      - name: Build natijasini tekshirish (dist papkasi)
+        run: |
+          if [ ! -d dist ]; then
+            echo "❌ dist papkasi yaratilmadi — build muvaffaqiyatsiz"
+            exit 1
+          fi
+          if [ ! -f dist/index.html ]; then
+            echo "❌ dist/index.html yo'q"
+            exit 1
+          fi
+          echo "✅ Build muvaffaqiyatli — dist/index.html mavjud"
