@@ -139,7 +139,7 @@ function focusProductRawAnalysis(section, rawId){
 window.focusProductRawAnalysis = focusProductRawAnalysis;
 
 window.filterProductsByRaw = function(rawId){
-  filterProductsByRaw(rawId);
+  _filterProductsByRawCore(rawId);   // ichki yadro (rekursiyani oldini olish uchun)
   _syncExpandBody();
 };
 
@@ -1341,7 +1341,9 @@ document.addEventListener('click', function(e){
   }
 });
 
-function filterProductsByRaw(rawId){
+// Ichki yadro — chip filtrlash. Public chaqiruv window.filterProductsByRaw
+// orqali bo'ladi (u qo'shimcha _syncExpandBody() ham qiladi).
+function _filterProductsByRawCore(rawId){
   PRODUCT_SECTION_RAW_FILTER = rawId || '';
   if(!rawId){
     PRODUCT_AI_STATE.open = false;
