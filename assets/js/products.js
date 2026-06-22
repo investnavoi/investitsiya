@@ -712,6 +712,50 @@ function cleanRawMaterialLabel(name){
 }
 window.cleanRawMaterialLabel = cleanRawMaterialLabel;
 
+/* Jadval ustiga pastdagi bilan sinxron gorizontal scroll bar qoʻshadi.
+   Foydalanuvchi tepadan ham, pastdan ham gorizontal aylantira oladi. */
+function attachTopScrollbar(scrollEl){
+  if(!scrollEl) return;
+  var table = scrollEl.querySelector('table');
+  if(!table) return;
+  // Avvalgi tepa scrollni olib tashlaymiz (qayta render bo'lsa dublikat bo'lmasin)
+  var prev = scrollEl.previousElementSibling;
+  if(prev && prev.classList && prev.classList.contains('tscroll-top')){
+    prev.parentNode.removeChild(prev);
+  }
+  var top = document.createElement('div');
+  top.className = 'tscroll-top';
+  var spacer = document.createElement('div');
+  top.appendChild(spacer);
+  scrollEl.parentNode.insertBefore(top, scrollEl);
+
+  function sizeSpacer(){
+    spacer.style.width = table.scrollWidth + 'px';
+    // Agar gorizontal scroll kerak bo'lmasa, tepa barni yashiramiz
+    top.style.display = (table.scrollWidth > scrollEl.clientWidth + 2) ? '' : 'none';
+  }
+  sizeSpacer();
+
+  var lock = false;
+  top.addEventListener('scroll', function(){
+    if(lock) return; lock = true; scrollEl.scrollLeft = top.scrollLeft; lock = false;
+  });
+  scrollEl.addEventListener('scroll', function(){
+    if(lock) return; lock = true; top.scrollLeft = scrollEl.scrollLeft; lock = false;
+  });
+
+  if(window.ResizeObserver){
+    var ro = new ResizeObserver(function(){ sizeSpacer(); });
+    ro.observe(table);
+    ro.observe(scrollEl);
+  } else {
+    window.addEventListener('resize', sizeSpacer);
+  }
+  // Render tugagach o'lcham aniqlashishi uchun
+  setTimeout(sizeSpacer, 60);
+}
+window.attachTopScrollbar = attachTopScrollbar;
+
 function renderInlineProductSection(section){
   section = normalizeProductSection(section);
   var bodyId = 'productSection' + section.charAt(0).toUpperCase() + section.slice(1) + 'Body';
@@ -788,9 +832,12 @@ function renderInlineProductSection(section){
         ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap"><span style="font-size:.7rem;color:var(--text3)">📊 Excel faylni shu yerga tashlang yoki</span><label style="font-size:.7rem;color:#059669;font-weight:700;cursor:pointer;text-decoration:underline">tanlang<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)"></label></div>'
         : '<div style="font-size:2rem;margin-bottom:.4rem">📊</div><div style="font-size:.82rem;font-weight:700;color:var(--text)">Excel faylni shu yerga tashlang</div><div style="font-size:.65rem;color:var(--text3);margin-top:4px">Import "'+getProductSectionLabel(section)+'" bo\'limiga yoziladi</div><input type="file" accept=".xlsx,.xls" style="display:none" onchange="importProductsExcel(this)">') +
     '</div>' +
-    '<div class="tscroll"><table class="ta-table"><thead><tr><th>#</th><th>Mahsulot</th><th>Xomashyo</th><th>HS Kod</th><th>Soha</th><th>Import</th><th>Amal</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>' +
+    '<div class="tscroll prod-tscroll"><table class="ta-table"><thead><tr><th>#</th><th>Mahsulot</th><th>Xomashyo</th><th>HS Kod</th><th>Soha</th><th>Import</th><th>Amal</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>' +
     '<div style="padding:.8rem 0 0 0;font-size:.72rem;color:var(--text3)">Jami mahsulotlar: '+filteredProds.length+'</div>';
   syncProductRawAiPanelState(section);
+  // Tepada ham gorizontal scroll bar qo'shamiz (pastdagi bilan sinxron)
+  var _pscroll = body.querySelector('.prod-tscroll');
+  if(_pscroll && typeof attachTopScrollbar === 'function') attachTopScrollbar(_pscroll);
 }
 
 function formatBilingualProductName(p){
