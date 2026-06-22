@@ -1705,6 +1705,14 @@ body{padding:0!important;}
 .tscroll-top::-webkit-scrollbar-thumb{background:rgba(67,97,238,.5);border-radius:20px;border:3px solid transparent;background-clip:padding-box;}
 .tscroll-top::-webkit-scrollbar-thumb:hover{background:rgba(67,97,238,.72);background-clip:padding-box;}
 .tscroll-top > div{height:1px;}
+
+/* Mahsulot jadvali — tabiiy kenglikda (max-content) bo'lsin, shunda kataklar
+   o'ralmay, jadval konteynerdan kengroq bo'lsa GORIZONTAL SCROLL ishlaydi.
+   min-width:100% — kontent tor bo'lsa ham konteynerni to'ldiradi. */
+.prod-tscroll > table.ta-table{width:max-content !important;min-width:100%;}
+.prod-tscroll .ta-table thead th,
+.prod-tscroll .ta-table tbody tr:not(.prod-comp-row) td{white-space:nowrap;}
+
 .tscroll table.ai-detail-tbl{width:100%;border-collapse:collapse;font-size:.82rem;}
 .tscroll table.ai-detail-tbl thead th{text-align:left;padding:.65rem .8rem;font-weight:700;color:var(--text);font-size:.74rem;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid rgba(67,97,238,.18);white-space:nowrap;}
 .tscroll table.ai-detail-tbl tbody td{padding:.6rem .8rem;color:var(--text2);border-bottom:1px solid rgba(67,97,238,.09);vertical-align:top;white-space:nowrap;}
