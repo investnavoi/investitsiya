@@ -230,8 +230,49 @@ function ijUpdate(){
 }
 function ijSave(){
   if(!isAdmin){toast('🔐 Avval admin sifatida kiring!','error');return;}
+  var vals={};
+  IJ_KEYS.forEach(function(k){ vals[k]=parseInt((document.getElementById('ij-'+k)||{}).value)||0; });
+  var payload={ id:'ijroIntizomi', values:vals, updatedAt:new Date().toISOString() };
+  // 1. localStorage — darhol, offline'da ham ishlaydi, reload'da tiklanadi
+  try{ localStorage.setItem('_ijIntizomi', JSON.stringify(payload)); }catch(e){}
+  // 2. Firestore — cross-device (best-effort; xato bo'lsa localStorage baribir saqlaydi)
+  if(typeof window.fbSetDoc==='function') window.fbSetDoc('appMeta','ijroIntizomi',payload);
   toast('💾 Ijro intizomi ma\'lumotlari saqlandi!');
 }
+// Boot'da saqlangan Ijro Intizomi qiymatlarini tiklaydi
+function ijLoad(){
+  try{
+    var raw=localStorage.getItem('_ijIntizomi');
+    if(raw){
+      var p=JSON.parse(raw);
+      if(p && p.values){
+        IJ_KEYS.forEach(function(k){
+          var el=document.getElementById('ij-'+k);
+          if(el && p.values[k]!=null) el.value=p.values[k];
+        });
+      }
+    }
+  }catch(e){}
+  try{ if(typeof ijUpdate==='function') ijUpdate(); }catch(e){}
+  // Cross-device: Firestore'dan eng yangisini olib qo'llaymiz (best-effort, auth kerak)
+  if(typeof window.fbGetDoc==='function' && window._currentUser){
+    window.fbGetDoc('appMeta','ijroIntizomi').then(function(remote){
+      if(!remote || !remote.values) return;
+      var localTs=0;
+      try{ localTs=Date.parse((JSON.parse(localStorage.getItem('_ijIntizomi')||'{}')||{}).updatedAt)||0; }catch(e){}
+      var remoteTs=Date.parse(remote.updatedAt)||0;
+      if(remoteTs>=localTs){
+        IJ_KEYS.forEach(function(k){
+          var el=document.getElementById('ij-'+k);
+          if(el && remote.values[k]!=null) el.value=remote.values[k];
+        });
+        try{ localStorage.setItem('_ijIntizomi', JSON.stringify(remote)); }catch(e){}
+        try{ if(typeof ijUpdate==='function') ijUpdate(); }catch(e){}
+      }
+    }).catch(function(){});
+  }
+}
+window.ijLoad = ijLoad;
 function ijReset(){
   if(!isAdmin){toast('🔐 Avval admin sifatida kiring!','error');return;}
   IJ_KEYS.forEach(k=>{const el=document.getElementById('ij-'+k);if(el)el.value=0;});
@@ -247,6 +288,7 @@ function _bootApp(){
   const dateStr=`${now.getDate()} ${MONTHS_UZ[now.getMonth()]} ${now.getFullYear()}`;
   document.getElementById('ijDate').textContent=`${dateStr} — kunlik hisobot`;
   document.getElementById('ijDateSmall').textContent=dateStr;
+  if(typeof ijLoad === 'function') ijLoad();
   if(typeof applyFinderUiDefaults === 'function') applyFinderUiDefaults();
 
   // Close modals on overlay click

@@ -112,6 +112,31 @@ async function fbLoadSettings(){
 window.fbLoadSettings = fbLoadSettings;
 
 /* ═══════════════════════════════════════
+   Generic single-doc helpers
+   Kichik vidjetlar (masalan Ijro Intizomi) uchun bitta hujjatni
+   Firestore'ga saqlash / o'qish. Har doim best-effort — xato bo'lsa
+   localStorage fallback ishlaydi, sayt qulamaydi.
+═══════════════════════════════════════ */
+window.fbSetDoc = async function(col, id, data){
+  try {
+    await setDoc(doc(db, col, String(id)), data, { merge: true });
+    return true;
+  } catch(e){
+    console.warn('fbSetDoc('+col+'/'+id+') error:', e && e.message);
+    return false;
+  }
+};
+window.fbGetDoc = async function(col, id){
+  try {
+    const snap = await getDoc(doc(db, col, String(id)));
+    return snap.exists() ? snap.data() : null;
+  } catch(e){
+    console.warn('fbGetDoc('+col+'/'+id+') error:', e && e.message);
+    return null;
+  }
+};
+
+/* ═══════════════════════════════════════
    Per-user cross-device settings sync
    Stored in users/{uid} — theme, language, Gmail config, prefs.
 ═══════════════════════════════════════ */
@@ -249,6 +274,13 @@ function _loadCacheAndRenderFast(){
       window._lazyLoaded[col] = true;
     }
   }
+  // finderResults Firestore kolleksiyasi emas (finder sessiyada hosil qiladi) —
+  // faqat local backup'dan tiklaymiz, shunda CRM dashboard reload'dan keyin ham
+  // finder leadlarini ko'radi va son 0 bo'lib qolmaydi.
+  try {
+    var _finderBackup = getLocalCollectionBackup('finderResults');
+    if(_finderBackup.length) DB.finderResults = _finderBackup;
+  } catch(e){}
   if(cached){
     console.log('⚡ Keshdan tezkor render');
     renderAll();
@@ -272,21 +304,20 @@ async function _loadOneCollection(col){
   return _sortRows(rows);
 }
 
-// Apply loaded rows to DB + cache + handle entrepreneurs fallback + seed defaults
+// Apply loaded rows to DB + cache + handle backup fallback + seed defaults
 function _applyCollectionToDb(col, rows, batchRef){
-  if(col==='entrepreneurs' && rows.length===0){
-    var localBackup = getLocalCollectionBackup('entrepreneurs');
-    if(localBackup.length){
-      rows.push.apply(rows, localBackup);
-      console.log('♻️ Tadbirkorlar local backupdan tiklandi:', localBackup.length);
-    }
-  }
-  // investorCompanies uchun ham fallback: Firebase bo'sh javob qaytarsa local backup'dan tiklaymiz
-  if(col==='investorCompanies' && rows.length===0){
-    var icBackup = getLocalCollectionBackup('investorCompanies');
-    if(icBackup.length){
-      rows.push.apply(rows, icBackup);
-      console.log('♻️ Investor kompaniyalar local backupdan tiklandi:', icBackup.length);
+  // ═══ DATA-LOSS GUARD (barcha kolleksiyalar uchun) ═══
+  // Firebase bo'sh javob qaytarsa (tranzient xato, qoida muammosi yoki tarmoq),
+  // lekin bizda to'la local backup bo'lsa — ma'lumotni O'CHIRMAYMIZ, backup'dan
+  // tiklaymiz. Ilgari bu himoya faqat entrepreneurs + investorCompanies uchun edi;
+  // endi investors/zoom/forums va boshqalar ham himoyalangan.
+  // Qasddan tozalash (fbDeleteCollection/fbSaveCollection) backup'ni ham yangilaydi,
+  // shuning uchun bu guard faqat TASODIFIY bo'shlikda ishga tushadi.
+  if(rows.length === 0){
+    var _guardBackup = getLocalCollectionBackup(col);
+    if(_guardBackup.length){
+      rows.push.apply(rows, _guardBackup);
+      console.log('♻️ '+col+' local backupdan tiklandi (data-loss guard):', _guardBackup.length);
     }
   }
   DB[col] = rows;
@@ -476,6 +507,8 @@ window.fbSaveCollection = async function(colName, records){
     // Add new records
     records.forEach(r => batch.set(doc(db, colName, String(r.id)), r));
     await batch.commit();
+    // Data-loss guard bilan mos: qasddan yozilgan to'plamni backup'ga ham yozamiz
+    setLocalCollectionBackup(colName, Array.isArray(records) ? records : []);
   } catch(e){ console.error('fbSaveCollection error:', e); }
 };
 
@@ -484,10 +517,13 @@ window.fbDeleteCollection = async function(colName){
   try {
     const colRef = collection(db, colName);
     const snap = await getDocs(colRef);
-    if(snap.empty) return;
+    if(snap.empty){ setLocalCollectionBackup(colName, []); return; }
     const batch = writeBatch(db);
     snap.forEach(d => batch.delete(d.ref));
     await batch.commit();
+    // Qasddan tozalash — backup'ni ham bo'shatamiz, aks holda data-loss guard
+    // keyingi reload'da o'chirilgan yozuvlarni qaytadan tiriltiradi.
+    setLocalCollectionBackup(colName, []);
     console.log('🗑 Firebase: '+colName+' — '+snap.size+' ta yozuv o\'chirildi');
   } catch(e){ console.error('fbDeleteCollection error:', e); }
 };

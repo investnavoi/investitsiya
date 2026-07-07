@@ -5385,6 +5385,18 @@ function _fmtTaSectionHeader(role, count){
 
 // Final override: keep one company row-group and show multiple contacts under that company.
 function renderFinderTable(results){
+  // ═══ CRM sync (data-loss guard) ═══
+  // Finder natijalarini DB.finderResults'ga va local backup'ga ko'chiramiz, shunda
+  // CRM dashboard ularni sanaydi va sahifa yangilanganda yo'qolmaydi. Bu faqat
+  // render-vaqti ko'chirish — finder qidiruv mantig'iga umuman tegmaydi.
+  try {
+    if(Array.isArray(_finderResults)){
+      DB.finderResults = _finderResults.slice();
+      if(typeof setLocalCollectionBackup === 'function'){
+        setLocalCollectionBackup('finderResults', DB.finderResults);
+      }
+    }
+  } catch(_e){}
   updateFinderModeUI();
   var tb = document.getElementById('finder-tbody');
   if(!tb) return;
