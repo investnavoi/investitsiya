@@ -197,7 +197,15 @@ function getEmailStatusBadge(r){
   const notifs = (typeof _notifications !== 'undefined' && _notifications) ? _notifications : [];
   const hasReply = notifs.some(function(n){ return n.fromEmail && n.fromEmail.toLowerCase()===r.email.toLowerCase(); });
   if(hasReply) return '<span class="email-reply-badge" onclick="openCompanyReply(\''+r.email+'\')" style="cursor:pointer"><span style="width:7px;height:7px;border-radius:50%;background:#7C3AED;display:inline-block"></span>Javob keldi</span>';
-  if(r.emailSent) return '<span class="email-sent-badge"><span style="width:7px;height:7px;border-radius:50%;background:#059669;display:inline-block"></span>Yuborildi</span>';
+  if(r.emailSent){
+    // Kim va qachon yuborgani — boshqalar dublikat yubormasligi uchun
+    var _by = (typeof memberName === 'function' && r.sentBy) ? memberName(r.sentBy) : '';
+    var _when = r.emailSentDate || (r.emailSentAt ? String(r.emailSentAt).slice(0,10) : '');
+    var _extra = (_by || _when)
+      ? '<span style="font-size:.56rem;color:var(--text3);display:block;margin-top:2px">'+(_by?'👤 '+escHtml(_by):'')+(_by&&_when?' · ':'')+(_when?escHtml(_when):'')+'</span>'
+      : '';
+    return '<span class="email-sent-badge"><span style="width:7px;height:7px;border-radius:50%;background:#059669;display:inline-block"></span>Yuborildi</span>'+_extra;
+  }
   return '<span class="email-unsent-badge"><span style="width:7px;height:7px;border-radius:50%;background:#D97706;display:inline-block"></span>Yuborilmagan</span>';
 }
 

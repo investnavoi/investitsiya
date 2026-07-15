@@ -41,25 +41,28 @@
 
   /* Sahifa kirish nazorati — har sahifa uchun MINIMUM rol.
      Ro'yxatda yo'q sahifa = superadmin only (fail-closed, xavfsiz). */
+  // HAMMA sahifa barcha foydalanuvchilarga KO'RINADI. Rol farqi = KO'RISH vs TAHRIRLASH
+  // (edit huquqi isAdmin/canWorkLeads orqali cheklanadi, sahifani yashirish orqali emas).
   window.PAGE_ACCESS = {
-    myteam:'member',     // shaxsiy dashboard (hammaning uy sahifasi)
-    investor:'member',   // Investorlar bazasi (leadlar — asosiy ish)
-    finder:'member',     // Kompaniya qidiruvi
+    myteam:'member',     // Dashboard — hammaning shaxsiy uy sahifasi
+    // Bo'lim ma'lumotlari
+    investors:'member',  // Investorlar tashriflari
+    local:'member',      // Mahalliy tadbirkorlar
+    zoom:'member',       // Zoom uchrashuvlar
+    // Mahsulot outreach
     products:'member',   // Mahsulotlar
-    import:'member',     // Import tahlili
-    trade:'member',      // Jahon savdosi
-    ailetter:'member',
-    materialai:'member',
-    // admin (Shahzod) — hamma monitoring/ma'lumot sahifalarini KO'RADI (lekin edit yo'q)
-    pipeline:'admin',    // Outreach statistikasi / to'liq CRM (monitoring)
-    overview:'admin',    // Umumiy ma'lumotlar
-    investors:'admin',   // Investorlar tashriflari
-    local:'admin',       // Mahalliy tadbirkorlar
-    zoom:'admin',        // Zoom uchrashuvlar
-    forums:'admin',      // Forumlar
-    // faqat superadmin (Azizbek) — texnik sozlamalar
-    settings:'superadmin',
-    admin:'superadmin'
+    finder:'member',     // Kompaniya qidiruvi
+    investor:'member',   // Investorlar bazasi (leadlar)
+    pipeline:'member',   // Outreach statistikasi
+    // Forum outreach
+    trade:'member',      // Jahon tashqi savdosi
+    forums:'member',     // Forumlar
+    // qo'shimcha ish sahifalari
+    import:'member', ailetter:'member', materialai:'member', overview:'member',
+    // Sozlamalar — hamma kiradi (shaxsiy sozlamalar); global bo'limlar ichida
+    // faqat superadminga ko'rinadi (data-role-min="superadmin").
+    settings:'member',
+    admin:'superadmin'   // Admin panel — faqat superadmin
   };
 
   /* Rol imkoniyatlari (capabilities):
@@ -670,6 +673,25 @@
       '</div>';
   }
   window.renderMyPage = renderMyPage;
+
+  /* Sozlamalar sahifasidagi "Mening shaxsiy sozlamalarim" bloki — HAMMA uchun */
+  window.mountPersonalSettings = function(){
+    var host = document.getElementById('personalSettingsBody');
+    if(!host) return;
+    var me = getCurrentMember();
+    var mailbox = (typeof getPrimaryMailboxEmail === 'function') ? getPrimaryMailboxEmail() : (localStorage.getItem('_myEmail') || '');
+    var connected = !!mailbox;
+    host.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+        '<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4361EE,#7C3AED);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">'+escOpt(me?me.name.charAt(0):'?')+'</div>'+
+        '<div><div style="font-weight:700;color:var(--text)">'+escOpt(me?me.name:(currentAuthEmail()||'—'))+'</div><div style="font-size:.72rem;color:var(--text3)">'+escOpt(me?me.roleLabel:'Jamoa ro\'yxatida yo\'q')+'</div></div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:12px;flex-wrap:wrap">'+
+        '<span style="font-size:1.1rem">'+(connected?'✅':'⚠️')+'</span>'+
+        '<div style="flex:1;min-width:170px"><div style="font-size:.8rem;font-weight:700;color:var(--text)">'+(connected?'Email ulangan':'Email ulanmagan')+'</div><div style="font-size:.72rem;color:var(--text3)">'+(connected?escOpt(mailbox):'Xat yuborish uchun o\'z pochtangizni ulang')+'</div></div>'+
+        '<button type="button" onclick="if(typeof openGmailSetup===\'function\')openGmailSetup()" style="background:'+(connected?'var(--ta-gray-100)':'#4361EE')+';color:'+(connected?'var(--text)':'#fff')+';border:none;border-radius:9px;padding:8px 14px;font-size:.74rem;font-weight:700;cursor:pointer">'+(connected?'O\'zgartirish':'📧 Emailni ulash')+'</button>'+
+      '</div>';
+  };
 
   /* ── Backfill: eski leadlarga yetishmayotgan maydonlarni to'ldirish ──
      Xavfsiz va idempotent — faqat YO'Q maydonlarni qo'shadi, mavjudlarga

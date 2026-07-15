@@ -435,6 +435,10 @@ async function loadFromFirestore(){
     // 3. Heavy collections (tradeData, tradeSnapshots, importSnapshots) load ON DEMAND only
     //    when user navigates to that page (via showPage → ensureCollectionLoaded).
     _setCacheTimestamp();
+
+    // 4. Real-time — boshqa xodim email yuborsa / mas'ul o'zgartirsa, hammaga darrov
+    //    ko'rinadi (dublikat yuborishning oldi olinadi).
+    _subscribeInvestorCompanies();
   } catch(e){
     console.error('Firebase load error:', e);
     const loadEl = document.getElementById('fb-loading');
@@ -443,6 +447,46 @@ async function loadFromFirestore(){
     renderOverview();
     if(typeof applyTranslations==='function') applyTranslations();
   }
+}
+
+// Real-time listener — investorCompanies o'zgarishlarini hammaga jonli yetkazadi.
+// Maqsad: kimdir email yuborsa / mas'ul biriktirsa, boshqalar darrov ko'radi va
+// dublikat email yubormaydi.
+var _icSnapTimer = null;
+function _subscribeInvestorCompanies(){
+  if(window._icUnsub) return; // faqat bir marta o'rnatiladi
+  try {
+    window._icUnsub = onSnapshot(collection(db, 'investorCompanies'), function(snap){
+      // Faqat BOSHQA foydalanuvchi o'zgarishiga reaksiya — o'z yozuvimiz echo'sini o'tkazamiz
+      var remote = snap.docChanges().some(function(ch){ return !ch.doc.metadata.hasPendingWrites; });
+      if(!remote) return;
+      var rows = [];
+      snap.forEach(function(d){
+        var row = d.data();
+        if(row && (row.id === undefined || row.id === null || String(row.id).trim() === '')) row.id = d.id;
+        rows.push(row);
+      });
+      DB.investorCompanies = _sortRows(rows);
+      setLocalCollectionBackup('investorCompanies', DB.investorCompanies);
+      if(_icSnapTimer) clearTimeout(_icSnapTimer);
+      _icSnapTimer = setTimeout(function(){
+        // Dashboard/statistika har doim xavfsiz yangilanadi
+        try { if(typeof renderMyPage === 'function' && document.getElementById('page-myteam') && document.getElementById('page-myteam').classList.contains('active')) renderMyPage(); } catch(e){}
+        try { if(typeof renderTeamDashboard === 'function') renderTeamDashboard(); } catch(e){}
+        // Leadlar jadvalini faqat foydalanuvchi ish jarayonida BO'LMAGANDA yangilaymiz
+        // (email modal / AI ochiq bo'lsa yoki soha tahrirlanayotgan bo'lsa — tegmaymiz).
+        var busy = (document.getElementById('emailModal') && document.getElementById('emailModal').classList.contains('open'))
+          || window._investorAiOpen || window._finderAiOpen || window._investorSohaEditId;
+        if(!busy){
+          try { if(typeof renderInvestorCompanies === 'function' && document.getElementById('page-investor') && document.getElementById('page-investor').classList.contains('active')) renderInvestorCompanies(); } catch(e){}
+        }
+        console.log('🔄 Real-time: investorCompanies yangilandi ('+rows.length+' ta)');
+      }, 1200);
+    }, function(err){
+      console.warn('investorCompanies real-time listener xatosi:', err && err.message);
+    });
+    console.log('📡 Real-time listener yoqildi: investorCompanies');
+  } catch(e){ console.warn('Real-time subscribe xatosi:', e && e.message); }
 }
 
 // Manual refresh — force Firebase reload regardless of cache

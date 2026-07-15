@@ -242,7 +242,7 @@ function _showPageInner(id){
       Promise.all([window.ensureCollectionLoaded('tradeData'), window.ensureCollectionLoaded('tradeSnapshots'), window.ensureCollectionLoaded('tradeSnapshotChunks')]);
     }
   }
-  else if(id==='settings'){if(typeof loadSettings==='function')loadSettings();if(typeof checkTgStatus==='function')checkTgStatus();}
+  else if(id==='settings'){if(typeof mountPersonalSettings==='function')mountPersonalSettings();if(typeof loadSettings==='function')loadSettings();if(typeof checkTgStatus==='function')checkTgStatus();}
 
   // Re-trigger AOS animations — same as first load
   replayAllAnimations(pg);

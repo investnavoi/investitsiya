@@ -143,6 +143,49 @@ window.filterProductsByRaw = function(rawId){
   _syncExpandBody();
 };
 
+/* ── HS kod / mahsulot nomi bo'yicha qidiruv (Mahsulotlar sahifasi tepasida) ── */
+function searchProductsHs(q){
+  var results = document.getElementById('prodHsResults');
+  var countEl = document.getElementById('prodHsCount');
+  if(!results) return;
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  q = String(q||'').trim().toLowerCase();
+  if(q.length < 2){ results.style.display='none'; results.innerHTML=''; if(countEl) countEl.textContent=''; return; }
+  var digits = q.replace(/\D/g,'');
+  var all = (DB.products||[]);
+  var matched = all.filter(function(p){
+    var hs = String(p.hs_code||'').toLowerCase();
+    if(digits && digits.length >= 2 && hs.indexOf(digits) !== -1) return true;
+    var nu = String(p.name_uz||'').toLowerCase();
+    var ne = String(p.name_en||'').toLowerCase();
+    return nu.indexOf(q) !== -1 || ne.indexOf(q) !== -1;
+  });
+  if(countEl) countEl.textContent = matched.length + ' ta topildi';
+  var shown = matched.slice(0, 80);
+  function rawName(rid){
+    var r = (DB.rawMaterials||[]).find(function(x){ return String(x.id) === String(rid); });
+    return r ? (typeof getRawDisplayName === 'function' ? getRawDisplayName(r) : (r.name_uz || r.name_en || '')) : '';
+  }
+  if(!shown.length){
+    results.style.display='block';
+    results.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text3);font-size:.82rem">Hech narsa topilmadi</div>';
+    return;
+  }
+  results.innerHTML = shown.map(function(p){
+    var nm = p.name_uz || p.name_en || '—';
+    var hs = p.hs_code || '—';
+    var rn = rawName(p.raw_id);
+    var jump = p.raw_id ? ('onclick="filterProductsByRaw(\''+String(p.raw_id).replace(/\x27/g,"")+'\');var c=document.getElementById(\'rawMaterialsCard\');if(c){c.style.display=\'block\';c.scrollIntoView({behavior:\'smooth\',block:\'start\'});}"') : '';
+    return '<div '+jump+' style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);'+(p.raw_id?'cursor:pointer':'')+'" onmouseover="this.style.background=\'rgba(70,95,255,.05)\'" onmouseout="this.style.background=\'\'">'+
+      '<span style="font-family:ui-monospace,monospace;font-size:.76rem;font-weight:700;color:#4361EE;background:rgba(67,97,238,.08);border-radius:6px;padding:4px 9px;min-width:66px;text-align:center;flex-shrink:0">'+esc(hs)+'</span>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:var(--text)">'+esc(nm)+'</div>'+(rn?'<div style="font-size:.66rem;color:var(--text3);margin-top:1px">📦 '+esc(rn)+'</div>':'')+'</div>'+
+      (p.raw_id?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>':'')+
+    '</div>';
+  }).join('');
+  results.style.display='block';
+}
+window.searchProductsHs = searchProductsHs;
+
 // Expose function helpers for other modules (import-analysis) to trigger chip re-render.
 // PRODUCT_ACTIVE_SECTION is already auto-exposed on window via top-level `var`.
 window.renderInlineProductSection = renderInlineProductSection;
