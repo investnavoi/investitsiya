@@ -5,6 +5,7 @@ dist/
 *.log
 .DS_Store
 scripts/service-account.json
+backups/
 .firebaserc
 .env
 .env.local

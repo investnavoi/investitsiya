@@ -18,7 +18,8 @@ function openEmailModal(id){
       '<div style="font-size:.6rem;color:#059669;margin-top:4px">💾 O\'zgarishlar avtomatik saqlanadi</div>'+
     '</div>';
   document.getElementById('emailRcpt').innerHTML=`${escHtml(co.rahbar||'')} &lt;${escHtml(co.email||'')}&gt;`
-    + (co.emailSent ? `<span class="email-sent-badge" style="margin-left:8px">✅ ${co.emailSentDate||''} da yuborilgan</span>` : '');
+    + (co.emailSent ? `<span class="email-sent-badge" style="margin-left:8px">✅ ${co.emailSentDate||''} da yuborilgan</span>` : '')
+    + (typeof preSendLeadWarning === 'function' ? preSendLeadWarning(co) : '');
   var msgEl = document.getElementById('emailMsg');
   if(msgEl){
     msgEl.value = co.aiLetterData.body || '';
@@ -448,6 +449,7 @@ async function sendViaEmailJS(fullMsg){
       rec.emailSent=true;
       rec.emailSentDate=new Date().toISOString().split('T')[0];
       rec.sentByMailbox = mailboxEmail || '';
+      if(typeof markLeadEmailSent==='function') markLeadEmailSent(rec, mailboxEmail || '');
       if(typeof fbSave==='function') fbSave('investorCompanies',rec);
     }
     recordMailboxActivity(mailboxEmail, 'cold', 1);

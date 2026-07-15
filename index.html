@@ -66,16 +66,17 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/auto-translate.js" defer></script>
 <script src="assets/js/admin-login.js" defer></script>
 <script src="assets/js/admin-forms.js" defer></script>
-<script src="assets/js/pipeline-crm.js" defer></script>
+<script src="assets/js/pipeline-crm.js?v=team-dash-v1" defer></script>
 <script src="assets/js/finder.js?v=crm-sync-v28" defer></script>
 <script src="assets/js/finder-world-map.js" defer></script>
 <script src="assets/js/import-analysis.js?v=priority-v37" defer></script>
 <script src="assets/js/product-composition.js?v=toggle-fix-v4" defer></script>
 <script src="assets/js/products.js?v=fix-recursion-v32" defer></script>
-<script src="assets/js/email-modal.js" defer></script>
-<script src="assets/js/investor-companies.js"></script>
+<script src="assets/js/email-modal.js?v=presend-warn-v1" defer></script>
+<script src="assets/js/investor-companies.js?v=dedup-owner-v1"></script>
 <script src="assets/js/excel-media.js" defer></script>
-<script src="assets/js/forum-detail.js?v=no-partner-panel-v6"></script>
+<script src="assets/js/team.js?v=team-owner-v1"></script>
+<script src="assets/js/forum-detail.js?v=team-owner-v7"></script>
 <script src="assets/js/intl-forums.js"></script>
 <script src="assets/js/csv-import.js" defer></script>
 <script src="assets/js/admin-lists.js"></script>
@@ -1089,7 +1090,8 @@ setTimeout(function(){
     <div class="ta-card" id="icTableCard" style="overflow:visible;display:none">
       <div class="ta-card-head" style="padding:1.1rem 1.5rem">
         <div class="ta-card-title" style="font-size:1.05rem;font-weight:700" data-i18n="ic_table_title">Kompaniyalar ro'yxati</div>
-        <div class="ta-card-actions" style="gap:.5rem;align-items:center">
+        <div class="ta-card-actions" style="gap:.5rem;align-items:center;flex-wrap:wrap">
+          <div id="icTeamToolbar" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap"></div>
           <span id="selectedCount" style="font-size:.72rem;color:var(--ta-gray-400);font-weight:500">0 ta tanlangan</span>
           <button class="ta-btn ta-btn-sm" onclick="exportSelectedToExcel()" id="bulkExcelBtn" style="display:none;background:#16A34A;color:#fff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13l2 2 4-4M8 18h8"/></svg> Excel export</button>
           <button class="ta-btn ta-btn-sm ta-btn-primary" onclick="generateBulkAiLetters()" id="bulkAiBtn" style="display:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2a4 4 0 014 4v1a1 1 0 001 1h1a4 4 0 010 8h-1a1 1 0 00-1 1v1a4 4 0 01-8 0v-1a1 1 0 00-1-1H6a4 4 0 010-8h1a1 1 0 001-1V6a4 4 0 014-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> AI xat yozish</button>
@@ -2146,6 +2148,9 @@ setTimeout(function(){
     <div class="crm-section" id="crm-sec-dashboard">
       <!-- KPI Tree -->
       <div id="crm-kpi-tree" style="margin-bottom:1.4rem"></div>
+
+      <!-- Jamoa monitoringi (team.js) -->
+      <div id="team-dashboard"></div>
 
       <!-- Top yo'nalishlar (full width, first) -->
       <div style="margin-bottom:1rem">

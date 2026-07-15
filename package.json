@@ -9,7 +9,9 @@
     "check": "node scripts/check-syntax.cjs",
     "test": "node scripts/check-syntax.cjs",
     "admin:grant": "node scripts/set-admin-claim.cjs",
-    "admin:revoke": "node scripts/set-admin-claim.cjs"
+    "admin:revoke": "node scripts/set-admin-claim.cjs",
+    "backup": "node scripts/backup-firestore.cjs",
+    "restore": "node scripts/restore-firestore.cjs"
   },
   "devDependencies": {
     "terser": "^5.36.0",

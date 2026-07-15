@@ -3636,6 +3636,8 @@ _renderInvestorCompaniesMain = function(){
 
   // Pagination — faqat visible (non-hidden-child) kompaniyalar bo'yicha
   var visibleGroups = grouped.filter(function(g){ return !g._isHiddenChild; });
+  // "Mening leadlarim" / "Mas'ulsiz" owner filtri (team.js)
+  if(typeof applyOwnerFilterToGroups === 'function') visibleGroups = applyOwnerFilterToGroups(visibleGroups);
   // KPI ni jadvaldagi soniga moslashtirish — visibleGroups.length = jadvaldagi 279 ta
   // Hamma statistika visibleGroups dan hisoblanadi
   var visibleApolloGroups = Object.create(null);
@@ -4058,6 +4060,7 @@ _renderInvestorCompaniesMain = function(){
         '<div class="ic-company-name-2line" style="font-size:.85rem;font-weight:700;color:#111827" title="'+tgEscapeAttr(compName)+'">'+escHtml(compName)+'</div>' +
         (companyRec.website ? '<div style="font-size:.66rem;color:#6366F1;margin-top:1px">'+escHtml(companyRec.website)+'</div>' : '') +
         locationLine +
+        (typeof ownerBadgeHtml === 'function' ? ownerBadgeHtml(companyRec) : '') +
         _importerCountLine +
         _hoverImporterBadge +
       '</div></div>';
@@ -4226,6 +4229,7 @@ _renderInvestorCompaniesMain = function(){
   if(bulkDeleteBtn) bulkDeleteBtn.style.display = isAdmin ? 'inline-flex' : 'none';
   if(checkAll) checkAll.style.display = isAdmin ? 'inline-block' : 'none';
   if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
+  if(typeof mountTeamToolbar === 'function') mountTeamToolbar();
 };
 
 window._icSelectedIds = window._icSelectedIds || new Set();
@@ -4680,6 +4684,7 @@ async function executeBulkSend(){
           rec.emailSent=true;
           rec.emailSentDate=new Date().toISOString().split('T')[0];
           rec.sentByMailbox = mailboxEmail || '';
+          if(typeof markLeadEmailSent==='function') markLeadEmailSent(rec, mailboxEmail || '');
           if(typeof fbSave==='function') fbSave('investorCompanies',rec);
         }
         recordMailboxActivity(mailboxEmail, 'cold', 1);

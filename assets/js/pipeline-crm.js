@@ -719,6 +719,7 @@ function inRange(it, range){
 }
 
 function renderCrmDashboard(){
+  if(typeof renderTeamDashboard === 'function') renderTeamDashboard();
   var allCo = DB.investorCompanies||[];
   var allInv = DB.investors||[];
   var allZoom = DB.zoom||[];

@@ -6,6 +6,16 @@ async function addInvestorCo(){
   const rahb = document.getElementById('ic-rahbar').value.trim();
   const soha = document.getElementById('ic-soha').value.trim();
   if(!komp||!rahb||!soha){toast(t('toast_fill'),'error');return;}
+  // Dublikat himoyasi — normalize qilingan nom bo'yicha tekshiramiz
+  if(typeof findDuplicateCompany === 'function'){
+    var dup = findDuplicateCompany(komp);
+    if(dup){
+      var dupOwner = (typeof memberName === 'function' && dup.assignedTo) ? (' — Mas\'ul: ' + memberName(dup.assignedTo)) : '';
+      if(!confirm('⚠️ "' + komp + '" nomli kompaniya allaqachon bazada bor' + dupOwner + '.\n\nBaribir yangi yozuv sifatida qo\'shilsinmi?')) return;
+    }
+  }
+  var _me = (typeof getCurrentMember === 'function') ? getCurrentMember() : null;
+  var _nowIso = new Date().toISOString();
   const rec = {
     id: nextId(DB.investorCompanies||[]),
     kompaniya: komp,
@@ -19,8 +29,14 @@ async function addInvestorCo(){
     website: (document.getElementById('ic-website')||{}).value||'',
     manba: 'Qo\'lda kiritildi',
     holat: 'Yangi',
+    status: 'new',
     sana: new Date().toISOString().slice(0,10),
-    emailSent: false
+    emailSent: false,
+    // Jamoa maydonlari — qo'shgan odam avtomatik mas'ul bo'ladi
+    createdBy: _me ? _me.id : '',
+    assignedTo: _me ? _me.id : '',
+    createdAt: _nowIso,
+    lastActivityAt: _nowIso
   };
   if(!DB.investorCompanies) DB.investorCompanies = [];
   DB.investorCompanies.push(rec);
