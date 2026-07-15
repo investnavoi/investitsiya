@@ -139,6 +139,11 @@ function toggleSidebarSection(section){
 var _showPageRaf = 0;
 function showPage(id){
   if(id==='admin'&&!isAdmin){openAdminOrLogin();return;}
+  // RBAC — rol aniqlangan (login qilingan) bo'lsa, ruxsat yo'q sahifaga kirishni to'sadi
+  if(typeof getCurrentRole==='function' && getCurrentRole() && typeof canAccessPage==='function' && !canAccessPage(id)){
+    if(typeof toast==='function') toast('⛔ Bu sahifaga ruxsatingiz yo\'q');
+    id = 'myteam';
+  }
   if(_showPageRaf) cancelAnimationFrame(_showPageRaf);
   _showPageRaf = requestAnimationFrame(function(){
     _showPageInner(id);
@@ -146,6 +151,7 @@ function showPage(id){
 }
 
 function _showPageInner(id){
+  if(typeof applyRoleNav === 'function') applyRoleNav();
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   document.querySelectorAll('.tn-tab, .sb-tab').forEach(function(t){ t.classList.remove('active'); });
   var pg=document.getElementById('page-'+id);
@@ -164,7 +170,7 @@ function _showPageInner(id){
   }catch(e){}
   var titles={
     overview:"Umumiy ma'lumotlar",
-    myteam:'Mening sahifam',
+    myteam:'Dashboard',
     investors:'Investorlar tashriflari',
     local:'Mahalliy tadbirkorlar',
     zoom:'Zoom uchrashuvlar',

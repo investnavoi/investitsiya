@@ -14,20 +14,50 @@
 (function(){
   'use strict';
 
-  /* ── Jamoa a'zolari ──────────────────────────────────────────────
-     email — kishining tizimga kirish (login) emaili. To'ldirilsa, joriy
-     foydalanuvchi avtomatik aniqlanadi. Bo'sh bo'lsa ham ishlaydi: har kim
-     toolbar'dagi "Men:" tugmasidan o'zini bir marta tanlaydi (localStorage).
-     Yangi a'zo qo'shish / emailni to'g'rilash uchun shu ro'yxatni tahrirlang. */
+  /* ── Jamoa a'zolari va rollari ────────────────────────────────────
+     role: 'superadmin' | 'admin' | 'member'
+       - superadmin (Azizbek, texnik lead): HAMMA narsani ko'radi — sozlamalar,
+         admin panel, boshqa ma'lumotlar.
+       - admin (Shahzod): monitoring + koordinatsiya (CRM/statistika), lekin
+         sozlamalar va texnik/boshqa ma'lumotlar ko'rinmaydi.
+       - member (qolgan outreach a'zolar): FAQAT o'z dashboardi (shaxsiy +
+         jamoa statistikasi) va ish sahifalari (leadlar, qidiruv, mahsulotlar).
+     email: tizimga KIRISH emaili — kimligini shu bo'yicha aniqlaymiz. Har a'zoning
+     haqiqiy login emailini shu yerga yozing (bo'sh bo'lsa u 'member' darajasida
+     cheklangan ko'rinishda bo'ladi — xavfsizlik uchun eng past huquq).  */
   window.TEAM_MEMBERS = window.TEAM_MEMBERS || [
-    { id:'azizbek', name:'Azizbek', roleLabel:"Texnik + Lead",           role:'tech_lead',   email:'' },
-    { id:'shahzod', name:'Shahzod', roleLabel:"Monitoring + Koordinator", role:'coordinator', email:'' },
-    { id:'suhrob',  name:'Suhrob',  roleLabel:"Lead outreach",            role:'outreach',    email:'' },
-    { id:'azo4',    name:"A'zo 4",  roleLabel:"Lead outreach",            role:'outreach',    email:'' },
-    { id:'azo5',    name:"A'zo 5",  roleLabel:"Lead outreach",            role:'outreach',    email:'' },
-    { id:'azo6',    name:"A'zo 6",  roleLabel:"Lead outreach",            role:'outreach',    email:'' },
-    { id:'azo7',    name:"A'zo 7",  roleLabel:"Lead outreach",            role:'outreach',    email:'' }
+    { id:'azizbek', name:'Azizbek', roleLabel:"Texnik lead (superadmin)", role:'superadmin', email:'bltvazbk@gmail.com' },
+    { id:'shahzod', name:'Shahzod', roleLabel:"Monitoring + Koordinator (admin)", role:'admin', email:'' },
+    { id:'suhrob',  name:'Suhrob',  roleLabel:"Lead outreach",            role:'member', email:'' },
+    { id:'azo4',    name:"A'zo 4",  roleLabel:"Lead outreach",            role:'member', email:'' },
+    { id:'azo5',    name:"A'zo 5",  roleLabel:"Lead outreach",            role:'member', email:'' },
+    { id:'azo6',    name:"A'zo 6",  roleLabel:"Lead outreach",            role:'member', email:'' },
+    { id:'azo7',    name:"A'zo 7",  roleLabel:"Lead outreach",            role:'member', email:'' }
   ];
+
+  /* Rol darajalari — kattaroq raqam = kengroq huquq */
+  window.ROLE_RANK = { member:1, admin:2, superadmin:3 };
+
+  /* Sahifa kirish nazorati — har sahifa uchun MINIMUM rol.
+     Ro'yxatda yo'q sahifa = superadmin only (fail-closed, xavfsiz). */
+  window.PAGE_ACCESS = {
+    myteam:'member',     // shaxsiy dashboard (hammaning uy sahifasi)
+    investor:'member',   // Investorlar bazasi (leadlar — asosiy ish)
+    finder:'member',     // Kompaniya qidiruvi
+    products:'member',   // Mahsulotlar
+    import:'member',     // Import tahlili
+    trade:'member',      // Jahon savdosi
+    ailetter:'member',
+    materialai:'member',
+    pipeline:'admin',    // Outreach statistikasi / to'liq CRM (monitoring)
+    overview:'admin',    // Umumiy ma'lumotlar
+    investors:'superadmin', // Investorlar tashriflari (boshqa ma'lumotlar)
+    local:'superadmin',
+    zoom:'superadmin',
+    forums:'superadmin',
+    settings:'superadmin',  // Sozlamalar — faqat superadmin
+    admin:'superadmin'      // Admin panel — faqat superadmin
+  };
 
   function members(){ return Array.isArray(window.TEAM_MEMBERS) ? window.TEAM_MEMBERS : []; }
 
@@ -52,26 +82,87 @@
         || localStorage.getItem('_myEmail') || '').toLowerCase().trim();
     } catch(e){ return ''; }
   }
+  /* HAQIQIY a'zo — faqat login emaili bo'yicha (huquq/rol shundan olinadi) */
+  function getRealMember(){ return teamMemberByEmail(currentAuthEmail()); }
+  window.getRealMember = getRealMember;
+
+  function getRealRole(){
+    var m = getRealMember();
+    if(m && m.role) return m.role;
+    return currentAuthEmail() ? 'member' : null; // tanilmagan email → eng past huquq
+  }
+  window.getRealRole = getRealRole;
+
+  /* Superadmin boshqa a'zoning ko'rinishini sinab ko'rishi mumkin (preview).
+     Bu FAQAT haqiqiy superadmin uchun ishlaydi va dashboard identifikatsiyasiga
+     hamda nav ko'rinishiga ta'sir qiladi — shunda u aynan member nimani ko'rishini
+     ko'radi. Preview banneri orqali istalgan vaqt chiqib ketadi. */
+  function getPreviewMemberId(){ try { return localStorage.getItem('_previewMemberId') || ''; } catch(e){ return ''; } }
+  function isRealSuperadmin(){ var m = getRealMember(); return !!m && m.role === 'superadmin'; }
+
   function getCurrentMember(){
-    var byEmail = teamMemberByEmail(currentAuthEmail());
-    if(byEmail) return byEmail;
-    try {
-      var manual = localStorage.getItem('_myTeamMemberId');
-      if(manual) return teamMemberById(manual);
-    } catch(e){}
-    return null;
+    if(isRealSuperadmin()){
+      var pv = getPreviewMemberId();
+      if(pv){ var m = teamMemberById(pv); if(m) return m; }
+    }
+    return getRealMember();
   }
   function getCurrentMemberId(){ var m = getCurrentMember(); return m ? m.id : ''; }
 
-  function setMyTeamMember(id){
-    try { localStorage.setItem('_myTeamMemberId', String(id||'')); } catch(e){}
-    if(typeof toast === 'function'){
-      var m = teamMemberById(id);
-      toast('👤 Siz: ' + (m ? m.name : '—'));
-    }
-    rerenderIc();
+  /* Amaldagi rol — preview holatida previewlangan a'zoning roli (superadmin uchun) */
+  function getCurrentRole(){
+    var m = getCurrentMember();
+    if(m && m.role) return m.role;
+    return currentAuthEmail() ? 'member' : null;
   }
-  window.setMyTeamMember = setMyTeamMember;
+  window.getCurrentRole = getCurrentRole;
+  window.getCurrentMember = getCurrentMember;
+  window.getCurrentMemberId = getCurrentMemberId;
+
+  function setPreviewMember(id){
+    if(!isRealSuperadmin()){ if(typeof toast==='function') toast('⛔ Faqat superadmin'); return; }
+    try { localStorage.setItem('_previewMemberId', String(id||'')); } catch(e){}
+    if(typeof applyRoleNav === 'function') applyRoleNav();
+    rerenderIc();
+    try { if(typeof renderMyPage === 'function') renderMyPage(); } catch(e){}
+  }
+  window.setPreviewMember = setPreviewMember;
+  window.exitPreview = function(){
+    try { localStorage.removeItem('_previewMemberId'); } catch(e){}
+    if(typeof applyRoleNav === 'function') applyRoleNav();
+    rerenderIc();
+    try { if(typeof renderMyPage === 'function') renderMyPage(); } catch(e){}
+    if(typeof toast === 'function') toast('👁️ Preview yopildi');
+  };
+  window.isInPreview = function(){ return isRealSuperadmin() && !!getPreviewMemberId(); };
+
+  /* ── Sahifa kirish nazorati (RBAC) ─────────────────────────────── */
+  function roleRank(role){ return (window.ROLE_RANK && window.ROLE_RANK[role]) || 0; }
+  function canAccessPage(pageId){
+    var required = (window.PAGE_ACCESS && window.PAGE_ACCESS[pageId]) || 'superadmin'; // fail-closed
+    var role = getCurrentRole();
+    if(!role) return false;
+    return roleRank(role) >= roleRank(required);
+  }
+  window.canAccessPage = canAccessPage;
+
+  /* Sidebar nav + [data-role-min] elementlarni rol bo'yicha ko'rsatish/yashirish */
+  function applyRoleNav(){
+    var role = getCurrentRole();
+    document.querySelectorAll('#sidebar-menu a[id^="tab-"]').forEach(function(a){
+      var pid = a.id.slice(4);
+      var li = a.closest ? a.closest('li') : a.parentNode;
+      if(li) li.style.display = canAccessPage(pid) ? '' : 'none';
+    });
+    document.querySelectorAll('[data-role-min]').forEach(function(el){
+      var req = el.getAttribute('data-role-min') || 'superadmin';
+      el.style.display = (roleRank(role) >= roleRank(req)) ? '' : 'none';
+    });
+    // Bo'sh bo'lib qolgan "Sozlamalar" ajratuvchisini ham yashiramiz (superadmin bo'lmasa)
+    var settingsDivider = document.getElementById('nav-settings-divider');
+    if(settingsDivider) settingsDivider.style.display = canAccessPage('settings') ? '' : 'none';
+  }
+  window.applyRoleNav = applyRoleNav;
 
   /* ── Lead status enum ──────────────────────────────────────────── */
   window.LEAD_STATUSES = ['new','email_sent','replied','meeting','loi','contract','not_interested'];
@@ -475,18 +566,32 @@
     var me = getCurrentMember();
     var T = computeTeamStats();
 
-    // Kim ekani noma'lum bo'lsa — o'zini tanlashni so'raymiz
+    // Login emaili jamoa ro'yxatida topilmasa — cheklangan ko'rinish (o'zini tanlash YO'Q)
     if(!me){
-      var pick = members().map(function(m){
-        return '<button type="button" onclick="setMyTeamMember(\''+m.id+'\')" style="text-align:left;border:1px solid var(--border);background:var(--card);border-radius:10px;padding:10px 14px;cursor:pointer;color:var(--text)"><b>'+escOpt(m.name)+'</b><div style="font-size:.66rem;color:var(--text3)">'+escOpt(m.roleLabel)+'</div></button>';
-      }).join('');
-      host.innerHTML = '<div style="max-width:520px;margin:2rem auto;text-align:center">'+
-        '<div style="font-size:2.4rem">👤</div>'+
-        '<h3 style="margin:.5rem 0;color:var(--text)">Siz kimsiz?</h3>'+
-        '<p style="color:var(--text3);font-size:.85rem;margin-bottom:1.2rem">Shaxsiy sahifangizni ko\'rish uchun o\'zingizni tanlang. Bu ushbu qurilmada eslab qolinadi.</p>'+
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left">'+pick+'</div>'+
+      host.innerHTML = '<div style="max-width:560px;margin:2.5rem auto;text-align:center;padding:0 1rem">'+
+        '<div style="font-size:2.4rem">🔒</div>'+
+        '<h3 style="margin:.5rem 0;color:var(--text)">Ko\'rinish cheklangan</h3>'+
+        '<p style="color:var(--text3);font-size:.85rem;margin-bottom:.6rem">Siz kirgan email (<b>'+escOpt(currentAuthEmail()||'—')+'</b>) jamoa ro\'yxatida topilmadi.</p>'+
+        '<p style="color:var(--text3);font-size:.8rem">Shaxsiy statistikangizni ko\'rish uchun texnik lead (Azizbek) sizning emailingizni jamoaga qo\'shishi kerak.</p>'+
       '</div>';
       return;
+    }
+    // Superadmin preview banneri
+    var previewBanner = '';
+    if(window.isInPreview && window.isInPreview()){
+      previewBanner = '<div style="background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:12px;padding:10px 16px;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
+        '<span style="font-size:.8rem;font-weight:600">👁️ Preview: siz <b>'+escOpt(me.name)+'</b>ning ko\'rinishini sinab ko\'ryapsiz</span>'+
+        '<button type="button" onclick="exitPreview()" style="background:#92400E;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.72rem;font-weight:700;cursor:pointer">Chiqish</button>'+
+      '</div>';
+    }
+    // Superadmin uchun "boshqa a'zo ko'rinishini sinash" tanlagichi
+    var previewPicker = '';
+    if(isRealSuperadmin()){
+      var pvOpts = ['<option value="">— A\'zo ko\'rinishini sinash —</option>'];
+      members().forEach(function(m){
+        pvOpts.push('<option value="'+m.id+'"'+(getPreviewMemberId()===m.id?' selected':'')+'>'+escOpt(m.name)+' · '+escOpt(m.roleLabel)+'</option>');
+      });
+      previewPicker = '<select onchange="setPreviewMember(this.value)" title="Superadmin: boshqa a\'zo nimani ko\'rishini sinang" style="font-size:.7rem;font-weight:600;border:1px solid var(--border);border-radius:8px;padding:6px 10px;background:var(--card);color:var(--text);cursor:pointer">'+pvOpts.join('')+'</select>';
     }
 
     var s = T.stats[me.id] || { assigned:0, sent:0, today:0, replied:0, meeting:0, loi:0, contract:0 };
@@ -531,6 +636,7 @@
 
     host.innerHTML =
       '<div style="max-width:1100px;margin:0 auto;padding:1.2rem 1.6rem">'+
+        previewBanner +
         // Salom + rol
         '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:1.2rem">'+
           '<div style="display:flex;align-items:center;gap:14px">'+
@@ -538,7 +644,9 @@
             '<div><h2 style="margin:0;font-size:1.15rem;color:var(--text)">Salom, '+escOpt(me.name)+'! 👋</h2>'+
             '<div style="font-size:.75rem;color:var(--text3)">'+escOpt(me.roleLabel)+'</div></div>'+
           '</div>'+
-          '<button type="button" onclick="setOwnerFilter(\'mine\');showPage(\'investor\')" style="background:#4361EE;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer">👤 Mening leadlarim →</button>'+
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+ previewPicker +
+            '<button type="button" onclick="setOwnerFilter(\'mine\');showPage(\'investor\')" style="background:#4361EE;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer">👤 Mening leadlarim →</button>'+
+          '</div>'+
         '</div>'+
         // Email ulanish holati
         '<div style="background:'+(connected?'rgba(5,150,105,.06)':'rgba(217,119,6,.06)')+';border:1px solid '+(connected?'rgba(5,150,105,.2)':'rgba(217,119,6,.25)')+';border-radius:14px;padding:14px 18px;margin-bottom:1.2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
@@ -599,12 +707,10 @@
     var host = document.getElementById('icTeamToolbar');
     if(!host) return;
     var me = getCurrentMember();
-    var meOpts = ['<option value="">— Men kimman? —</option>'];
-    members().forEach(function(m){
-      meOpts.push('<option value="'+m.id+'"'+(me && me.id===m.id?' selected':'')+'>'+escOpt(m.name)+' · '+escOpt(m.roleLabel)+'</option>');
-    });
-    host.innerHTML =
-      '<select id="icWhoAmI" onchange="setMyTeamMember(this.value)" title="Ushbu qurilmada kim ishlayapti" style="font-size:.7rem;font-weight:600;border:1px solid var(--ta-gray-200);border-radius:8px;padding:4px 8px;background:#fff;color:#1F2937;cursor:pointer">'+meOpts.join('')+'</select>'+
+    var whoHtml = me
+      ? '<span title="Siz shu sifatda kirgansiz" style="font-size:.68rem;color:var(--ta-gray-600);display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:var(--ta-gray-100);border-radius:8px"><span style="width:7px;height:7px;border-radius:50%;background:#4361EE"></span>'+escOpt(me.name)+'</span>'
+      : '';
+    host.innerHTML = whoHtml +
       '<button id="icMyLeadsBtn" data-active="0" type="button" onclick="setOwnerFilter(\'mine\')" style="font-size:.7rem;font-weight:600;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;background:var(--ta-gray-100);color:var(--ta-gray-700)">👤 Mening leadlarim</button>'+
       '<button id="icUnassignedBtn" data-active="0" type="button" onclick="setOwnerFilter(\'unassigned\')" style="font-size:.7rem;font-weight:600;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;background:var(--ta-gray-100);color:var(--ta-gray-700)">🅾️ Mas\'ulsiz</button>';
     updateOwnerFilterButtons();

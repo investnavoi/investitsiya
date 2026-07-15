@@ -542,9 +542,9 @@ function _kickoffFirstFirestoreLoad(){
     if(pageFromUrl && typeof showPage==='function'){
       showPage(pageFromUrl);
     } else if(typeof showPage==='function'){
-      showPage('investors');
+      showPage('myteam');
     }
-  }catch(e){ if(typeof showPage==='function') showPage('investors'); }
+  }catch(e){ if(typeof showPage==='function') showPage('myteam'); }
   loadFromFirestore();
 }
 

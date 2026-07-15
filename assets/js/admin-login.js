@@ -126,13 +126,18 @@ function applyAdminUI(admin, user){
   const av = document.getElementById('navAvatar');
   const un = document.getElementById('navUname');
   const lbl = document.getElementById('adminTabLabel');
-  if(av) av.textContent = admin ? 'S' : (user ? (String(user.email || 'X').charAt(0).toUpperCase()) : 'B');
+  /* Joriy jamoa a'zosi (login emaili bo'yicha) — ism/rolni shundan olamiz */
+  var member = (typeof getCurrentMember === 'function') ? getCurrentMember() : null;
+  if(av) av.textContent = member ? String(member.name || 'X').charAt(0).toUpperCase()
+    : (user ? String(user.email || 'X').charAt(0).toUpperCase() : 'B');
   if(un){
-    if(admin) un.textContent = 'Shahzod Barnoqulov';
+    if(member) un.textContent = member.name;
     else if(user) un.textContent = user.displayName || user.email || "Foydalanuvchi";
     else un.textContent = "Bo'lim Xodimi";
   }
-  if(lbl) lbl.textContent = admin ? 'Admin Panel' : (user ? 'Profil' : 'Kirish');
+  if(lbl) lbl.textContent = member ? member.roleLabel : (user ? 'Profil' : 'Kirish');
+  /* RBAC — nav elementlarini rol bo'yicha ko'rsatish/yashirish */
+  if(typeof applyRoleNav === 'function') applyRoleNav();
   const ijLock = document.getElementById('ijLockOverlay');
   if(ijLock) ijLock.classList.toggle('hidden', admin);
   /* Show/hide admin-only UI elements */
