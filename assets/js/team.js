@@ -364,19 +364,17 @@
   }
   window.teamRerenderIc = rerenderIc;
 
-  /* ── Jamoa dashboardi (Shahzod monitoringi uchun) ──────────────── */
-  function renderTeamDashboard(){
-    var host = document.getElementById('team-dashboard');
-    if(!host) return;
+  /* ── Jamoa statistikasini hisoblash (dashboard + shaxsiy sahifa ishlatadi) ── */
+  function computeTeamStats(){
     var list = (window.DB && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
     var today = new Date().toISOString().slice(0,10);
-
     var stats = {};
-    members().forEach(function(m){ stats[m.id] = { assigned:0, sent:0, today:0, replied:0, meeting:0, loi:0, contract:0 }; });
+    members().forEach(function(m){
+      stats[m.id] = { id:m.id, name:m.name, roleLabel:m.roleLabel, role:m.role,
+        assigned:0, sent:0, today:0, replied:0, meeting:0, loi:0, contract:0 };
+    });
     var funnel = { 'new':0, email_sent:0, replied:0, meeting:0, loi:0, contract:0, not_interested:0 };
-    var unassigned = 0, totalSent = 0, totalReplied = 0;
-    var normMap = {};
-
+    var unassigned = 0, totalSent = 0, totalReplied = 0, normMap = {};
     list.forEach(function(r){
       var st = getLeadStatus(r);
       if(funnel[st] != null) funnel[st]++;
@@ -399,10 +397,23 @@
       var k = normalizeCompanyName(r.kompaniya);
       if(k){ (normMap[k] = normMap[k] || []).push(r); }
     });
-
     var dupGroups = Object.keys(normMap).filter(function(k){ return normMap[k].length > 1; });
-    var respRate = totalSent ? Math.round(totalReplied / totalSent * 100) : 0;
-    var todayTotal = members().reduce(function(s,m){ return s + stats[m.id].today; }, 0);
+    return {
+      stats: stats, funnel: funnel, unassigned: unassigned,
+      totalSent: totalSent, totalReplied: totalReplied, dupGroups: dupGroups,
+      todayTotal: members().reduce(function(s,m){ return s + stats[m.id].today; }, 0),
+      respRate: totalSent ? Math.round(totalReplied / totalSent * 100) : 0
+    };
+  }
+  window.computeTeamStats = computeTeamStats;
+
+  /* ── Jamoa dashboardi (Shahzod monitoringi uchun) ──────────────── */
+  function renderTeamDashboard(){
+    var host = document.getElementById('team-dashboard');
+    if(!host) return;
+    var T = computeTeamStats();
+    var stats = T.stats, funnel = T.funnel, unassigned = T.unassigned;
+    var respRate = T.respRate, todayTotal = T.todayTotal, dupGroups = T.dupGroups;
 
     function stat(v){ return '<span style="font-variant-numeric:tabular-nums;font-weight:700">'+v+'</span>'; }
 
@@ -456,6 +467,106 @@
       '</div>';
   }
   window.renderTeamDashboard = renderTeamDashboard;
+
+  /* ── "Mening sahifam" — har foydalanuvchining shaxsiy sahifasi ──── */
+  function renderMyPage(){
+    var host = document.getElementById('myteam-content');
+    if(!host) return;
+    var me = getCurrentMember();
+    var T = computeTeamStats();
+
+    // Kim ekani noma'lum bo'lsa — o'zini tanlashni so'raymiz
+    if(!me){
+      var pick = members().map(function(m){
+        return '<button type="button" onclick="setMyTeamMember(\''+m.id+'\')" style="text-align:left;border:1px solid var(--border);background:var(--card);border-radius:10px;padding:10px 14px;cursor:pointer;color:var(--text)"><b>'+escOpt(m.name)+'</b><div style="font-size:.66rem;color:var(--text3)">'+escOpt(m.roleLabel)+'</div></button>';
+      }).join('');
+      host.innerHTML = '<div style="max-width:520px;margin:2rem auto;text-align:center">'+
+        '<div style="font-size:2.4rem">👤</div>'+
+        '<h3 style="margin:.5rem 0;color:var(--text)">Siz kimsiz?</h3>'+
+        '<p style="color:var(--text3);font-size:.85rem;margin-bottom:1.2rem">Shaxsiy sahifangizni ko\'rish uchun o\'zingizni tanlang. Bu ushbu qurilmada eslab qolinadi.</p>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left">'+pick+'</div>'+
+      '</div>';
+      return;
+    }
+
+    var s = T.stats[me.id] || { assigned:0, sent:0, today:0, replied:0, meeting:0, loi:0, contract:0 };
+    var mailbox = (typeof getPrimaryMailboxEmail === 'function') ? getPrimaryMailboxEmail() : (localStorage.getItem('_myEmail') || '');
+    var connected = !!mailbox;
+
+    // KPI kartalari
+    function kpi(label, val, color){
+      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;flex:1;min-width:120px">'+
+        '<div style="font-size:1.8rem;font-weight:800;color:'+color+';font-variant-numeric:tabular-nums;line-height:1">'+val+'</div>'+
+        '<div style="font-size:.72rem;color:var(--text3);margin-top:6px">'+label+'</div>'+
+      '</div>';
+    }
+    var kpis = [
+      kpi('Mening leadlarim', s.assigned, '#4361EE'),
+      kpi('Yuborilgan email', s.sent, '#3B82F6'),
+      kpi('Bugun', s.today, '#0EA5E9'),
+      kpi('Javob keldi', s.replied, '#8B5CF6'),
+      kpi('Uchrashuv', s.meeting, '#0EA5E9'),
+      kpi('LOI / Shartnoma', (s.loi + s.contract), '#059669')
+    ].join('');
+
+    // Sheriklar reytingi — email + javob + uchrashuv bo'yicha
+    var board = members().map(function(m){ return T.stats[m.id]; })
+      .sort(function(a,b){ return (b.sent - a.sent) || (b.replied - a.replied); });
+    var maxSent = Math.max(1, board[0] ? board[0].sent : 1);
+    var boardRows = board.map(function(st, i){
+      var isMe = st.id === me.id;
+      var pct = Math.round(st.sent / maxSent * 100);
+      return '<tr style="'+(isMe?'background:rgba(67,97,238,.06)':'')+'">'+
+        '<td style="padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text3);font-variant-numeric:tabular-nums">'+(i+1)+'</td>'+
+        '<td style="padding:9px 10px;border-bottom:1px solid var(--border)"><b style="color:var(--text)">'+escOpt(st.name)+'</b>'+(isMe?' <span style="font-size:.6rem;color:#4361EE;font-weight:700">(siz)</span>':'')+'<div style="font-size:.6rem;color:var(--text3)">'+escOpt(st.roleLabel)+'</div></td>'+
+        '<td style="padding:9px 10px;border-bottom:1px solid var(--border);min-width:120px">'+
+          '<div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:6px;background:var(--ta-gray-100, #eef1f8);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(isMe?'#4361EE':'#93A4E8')+';border-radius:99px"></div></div>'+
+          '<b style="font-variant-numeric:tabular-nums;color:var(--text);font-size:.8rem">'+st.sent+'</b></div>'+
+        '</td>'+
+        '<td style="padding:9px 10px;border-bottom:1px solid var(--border);text-align:center;color:#8B5CF6;font-variant-numeric:tabular-nums">'+st.replied+'</td>'+
+        '<td style="padding:9px 10px;border-bottom:1px solid var(--border);text-align:center;color:#0EA5E9;font-variant-numeric:tabular-nums">'+st.meeting+'</td>'+
+        '<td style="padding:9px 10px;border-bottom:1px solid var(--border);text-align:center;color:#059669;font-variant-numeric:tabular-nums">'+(st.loi + st.contract)+'</td>'+
+      '</tr>';
+    }).join('');
+
+    host.innerHTML =
+      '<div style="max-width:1100px;margin:0 auto;padding:1.2rem 1.6rem">'+
+        // Salom + rol
+        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:1.2rem">'+
+          '<div style="display:flex;align-items:center;gap:14px">'+
+            '<div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#4361EE,#7C3AED);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:800">'+escOpt(me.name.charAt(0))+'</div>'+
+            '<div><h2 style="margin:0;font-size:1.15rem;color:var(--text)">Salom, '+escOpt(me.name)+'! 👋</h2>'+
+            '<div style="font-size:.75rem;color:var(--text3)">'+escOpt(me.roleLabel)+'</div></div>'+
+          '</div>'+
+          '<button type="button" onclick="setOwnerFilter(\'mine\');showPage(\'investor\')" style="background:#4361EE;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer">👤 Mening leadlarim →</button>'+
+        '</div>'+
+        // Email ulanish holati
+        '<div style="background:'+(connected?'rgba(5,150,105,.06)':'rgba(217,119,6,.06)')+';border:1px solid '+(connected?'rgba(5,150,105,.2)':'rgba(217,119,6,.25)')+';border-radius:14px;padding:14px 18px;margin-bottom:1.2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
+          '<div style="display:flex;align-items:center;gap:10px">'+
+            '<span style="font-size:1.3rem">'+(connected?'✅':'⚠️')+'</span>'+
+            '<div><div style="font-size:.82rem;font-weight:700;color:var(--text)">'+(connected?'Email ulangan':'Email ulanmagan')+'</div>'+
+            '<div style="font-size:.72rem;color:var(--text3)">'+(connected?escOpt(mailbox):'Email yuborish uchun o\'z pochtangizni ulang')+'</div></div>'+
+          '</div>'+
+          '<button type="button" onclick="(typeof openGmailSetup===\'function\'?openGmailSetup():showPage(\'settings\'))" style="background:'+(connected?'var(--ta-gray-100)':'#D97706')+';color:'+(connected?'var(--text)':'#fff')+';border:none;border-radius:10px;padding:8px 14px;font-size:.74rem;font-weight:700;cursor:pointer">'+(connected?'Sozlash':'📧 Emailni ulash')+'</button>'+
+        '</div>'+
+        // KPI
+        '<div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Mening natijalarim</div>'+
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1.6rem">'+kpis+'</div>'+
+        // Sheriklar reytingi
+        '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden">'+
+          '<div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
+            '<div style="font-size:.9rem;font-weight:700;color:var(--text)">🏆 Jamoa reytingi</div>'+
+            '<div style="font-size:.68rem;color:var(--text3)">Bugun jami: '+T.todayTotal+' email · Javob: '+T.respRate+'%</div>'+
+          '</div>'+
+          '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem;min-width:560px">'+
+            '<thead><tr style="color:var(--text3);font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;text-align:left">'+
+              '<th style="padding:8px 10px">#</th><th style="padding:8px 10px">A\'zo</th><th style="padding:8px 10px">Email (jami)</th>'+
+              '<th style="padding:8px 10px;text-align:center">Javob</th><th style="padding:8px 10px;text-align:center">Uchrashuv</th><th style="padding:8px 10px;text-align:center">LOI+</th>'+
+            '</tr></thead><tbody>'+boardRows+'</tbody></table></div>'+
+        '</div>'+
+      '</div>';
+  }
+  window.renderMyPage = renderMyPage;
 
   /* ── Backfill: eski leadlarga yetishmayotgan maydonlarni to'ldirish ──
      Xavfsiz va idempotent — faqat YO'Q maydonlarni qo'shadi, mavjudlarga

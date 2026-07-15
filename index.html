@@ -75,12 +75,12 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/email-modal.js?v=presend-warn-v1" defer></script>
 <script src="assets/js/investor-companies.js?v=dedup-owner-v1"></script>
 <script src="assets/js/excel-media.js" defer></script>
-<script src="assets/js/team.js?v=team-owner-v1"></script>
+<script src="assets/js/team.js?v=team-mypage-v2"></script>
 <script src="assets/js/forum-detail.js?v=team-owner-v7"></script>
 <script src="assets/js/intl-forums.js"></script>
 <script src="assets/js/csv-import.js" defer></script>
 <script src="assets/js/admin-lists.js"></script>
-<script src="assets/js/navigation.js?v=no-auto-trade-v1"></script>
+<script src="assets/js/navigation.js?v=myteam-page-v2"></script>
 <script src="assets/js/render-pages.js?v=pie-others-v1"></script>
 <script src="assets/js/app-init.js?v=ijsave-persist-v1"></script>
 <script src="assets/js/gmail.js" defer></script>
@@ -385,6 +385,12 @@ setTimeout(function(){
           </a>
         </li>
         <!-- Investor Database -->
+        <li class="nav-item">
+          <a class="nav-link" href="javascript:void(0)" onclick="showPage('myteam')" id="tab-myteam">
+            <i class="icon"><svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="4" fill="currentColor" opacity="0.4"/><path d="M4 20c0-3.314 3.582-6 8-6s8 2.686 8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></i>
+            <span class="item-name">Mening sahifam</span>
+          </a>
+        </li>
         <li class="nav-item nav-outreach">
           <a class="nav-link" href="javascript:void(0)" onclick="showPage('investor')" id="tab-investor">
             <i class="icon"><svg class="icon-20" width="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.9488 14.54C8.49884 14.54 5.58789 15.1038 5.58789 17.2795C5.58789 19.4562 8.51765 20.0001 11.9488 20.0001C15.3988 20.0001 18.3098 19.4364 18.3098 17.2606C18.3098 15.084 15.38 14.54 11.9488 14.54Z" fill="currentColor"></path><path opacity="0.4" d="M11.949 12.467C14.2851 12.467 16.1583 10.5831 16.1583 8.23351C16.1583 5.88306 14.2851 4 11.949 4C9.61293 4 7.73975 5.88306 7.73975 8.23351C7.73975 10.5831 9.61293 12.467 11.949 12.467Z" fill="currentColor"></path></svg></i>
@@ -2077,6 +2083,10 @@ setTimeout(function(){
 </div>
 
 <!-- ===== PAGE: PIPELINE (M5+M6: Outreach + CRM) ===== -->
+<div class="page" id="page-myteam">
+  <div id="myteam-content"></div>
+</div>
+
 <div class="page" id="page-pipeline">
   <div style="max-width:1600px;margin:0 auto;padding:1.2rem 1.8rem;">
     <!-- TailAdmin-style header -->

@@ -164,6 +164,7 @@ function _showPageInner(id){
   }catch(e){}
   var titles={
     overview:"Umumiy ma'lumotlar",
+    myteam:'Mening sahifam',
     investors:'Investorlar tashriflari',
     local:'Mahalliy tadbirkorlar',
     zoom:'Zoom uchrashuvlar',
@@ -191,6 +192,7 @@ function _showPageInner(id){
 
   // Render section content
   if(id==='overview')renderOverview();
+  else if(id==='myteam'){ if(typeof renderMyPage==='function') renderMyPage(); }
   else if(id==='investors')renderInvestors();
   else if(id==='local')renderLocal();
   else if(id==='zoom')renderZoom();
