@@ -11,7 +11,8 @@
     "admin:grant": "node scripts/set-admin-claim.cjs",
     "admin:revoke": "node scripts/set-admin-claim.cjs",
     "backup": "node scripts/backup-firestore.cjs",
-    "restore": "node scripts/restore-firestore.cjs"
+    "restore": "node scripts/restore-firestore.cjs",
+    "import:apollo-bulk": "node scripts/import-apollo-bulk.cjs"
   },
   "devDependencies": {
     "terser": "^5.36.0",
