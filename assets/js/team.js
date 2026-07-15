@@ -27,6 +27,7 @@
      cheklangan ko'rinishda bo'ladi — xavfsizlik uchun eng past huquq).  */
   window.TEAM_MEMBERS = window.TEAM_MEMBERS || [
     { id:'azizbek', name:'Azizbek', roleLabel:"Texnik lead (superadmin)", role:'superadmin', email:'bltvazbk@gmail.com' },
+    { id:'azizbek_out', name:'Azizbek (outreach)', roleLabel:"Lead outreach", role:'member', email:'azizbek.investnavoi@gmail.com' },
     { id:'shahzod', name:'Shahzod', roleLabel:"Monitoring + Koordinator (admin)", role:'admin', email:'' },
     { id:'suhrob',  name:'Suhrob',  roleLabel:"Lead outreach",            role:'member', email:'' },
     { id:'azo4',    name:"A'zo 4",  roleLabel:"Lead outreach",            role:'member', email:'' },
@@ -49,15 +50,32 @@
     trade:'member',      // Jahon savdosi
     ailetter:'member',
     materialai:'member',
+    // admin (Shahzod) — hamma monitoring/ma'lumot sahifalarini KO'RADI (lekin edit yo'q)
     pipeline:'admin',    // Outreach statistikasi / to'liq CRM (monitoring)
     overview:'admin',    // Umumiy ma'lumotlar
-    investors:'superadmin', // Investorlar tashriflari (boshqa ma'lumotlar)
-    local:'superadmin',
-    zoom:'superadmin',
-    forums:'superadmin',
-    settings:'superadmin',  // Sozlamalar — faqat superadmin
-    admin:'superadmin'      // Admin panel — faqat superadmin
+    investors:'admin',   // Investorlar tashriflari
+    local:'admin',       // Mahalliy tadbirkorlar
+    zoom:'admin',        // Zoom uchrashuvlar
+    forums:'admin',      // Forumlar
+    // faqat superadmin (Azizbek) — texnik sozlamalar
+    settings:'superadmin',
+    admin:'superadmin'
   };
+
+  /* Rol imkoniyatlari (capabilities):
+       editGlobal — global ma'lumot/sozlamalarni tahrirlash (qo'shish/o'chirish, settings).
+       workLeads  — o'z leadlari bilan ishlash (email yuborish, status, mas'ul, band qilish).
+     - superadmin (Azizbek): hammasini ko'radi VA tahrirlaydi.
+     - admin (Shahzod): hammasini KO'RADI, lekin TAHRIRLAMAYDI (view-only).
+     - member (outreach): o'z leadlari bilan ishlaydi; global tahrir yo'q. */
+  window.ROLE_CAPS = {
+    superadmin: { editGlobal:true,  workLeads:true },
+    admin:      { editGlobal:false, workLeads:false },
+    member:     { editGlobal:false, workLeads:true }
+  };
+  function caps(){ return (window.ROLE_CAPS && window.ROLE_CAPS[getCurrentRole()]) || { editGlobal:false, workLeads:false }; }
+  window.canEditGlobal = function(){ return !!caps().editGlobal; };
+  window.canWorkLeads  = function(){ return !!caps().workLeads; };
 
   function members(){ return Array.isArray(window.TEAM_MEMBERS) ? window.TEAM_MEMBERS : []; }
 
@@ -72,69 +90,30 @@
     return members().find(function(m){ return m.email && String(m.email).toLowerCase().trim() === e; }) || null;
   }
 
-  /* Joriy foydalanuvchini aniqlash:
-     1) login emaili TEAM_MEMBERS bilan mos kelsa — o'sha a'zo;
-     2) aks holda — localStorage'dagi qo'lda tanlangan a'zo ("Men:" tugmasi). */
+  /* Joriy foydalanuvchi — FAQAT tizimga kirish (login) emaili bo'yicha aniqlanadi.
+     Rol/huquqlar shundan olinadi. O'zini qo'lda tanlash (self-elevation) YO'Q. */
   function currentAuthEmail(){
     try {
       return String((window._currentUser && window._currentUser.email)
-        || localStorage.getItem('_auth_email')
-        || localStorage.getItem('_myEmail') || '').toLowerCase().trim();
+        || localStorage.getItem('_auth_email') || '').toLowerCase().trim();
     } catch(e){ return ''; }
   }
-  /* HAQIQIY a'zo — faqat login emaili bo'yicha (huquq/rol shundan olinadi) */
-  function getRealMember(){ return teamMemberByEmail(currentAuthEmail()); }
-  window.getRealMember = getRealMember;
-
-  function getRealRole(){
-    var m = getRealMember();
-    if(m && m.role) return m.role;
-    return currentAuthEmail() ? 'member' : null; // tanilmagan email → eng past huquq
-  }
-  window.getRealRole = getRealRole;
-
-  /* Superadmin boshqa a'zoning ko'rinishini sinab ko'rishi mumkin (preview).
-     Bu FAQAT haqiqiy superadmin uchun ishlaydi va dashboard identifikatsiyasiga
-     hamda nav ko'rinishiga ta'sir qiladi — shunda u aynan member nimani ko'rishini
-     ko'radi. Preview banneri orqali istalgan vaqt chiqib ketadi. */
-  function getPreviewMemberId(){ try { return localStorage.getItem('_previewMemberId') || ''; } catch(e){ return ''; } }
-  function isRealSuperadmin(){ var m = getRealMember(); return !!m && m.role === 'superadmin'; }
-
-  function getCurrentMember(){
-    if(isRealSuperadmin()){
-      var pv = getPreviewMemberId();
-      if(pv){ var m = teamMemberById(pv); if(m) return m; }
-    }
-    return getRealMember();
-  }
+  function getCurrentMember(){ return teamMemberByEmail(currentAuthEmail()); }
   function getCurrentMemberId(){ var m = getCurrentMember(); return m ? m.id : ''; }
-
-  /* Amaldagi rol — preview holatida previewlangan a'zoning roli (superadmin uchun) */
   function getCurrentRole(){
     var m = getCurrentMember();
     if(m && m.role) return m.role;
-    return currentAuthEmail() ? 'member' : null;
+    return currentAuthEmail() ? 'member' : null; // tanilmagan email → eng past huquq
   }
   window.getCurrentRole = getCurrentRole;
   window.getCurrentMember = getCurrentMember;
   window.getCurrentMemberId = getCurrentMemberId;
 
-  function setPreviewMember(id){
-    if(!isRealSuperadmin()){ if(typeof toast==='function') toast('⛔ Faqat superadmin'); return; }
-    try { localStorage.setItem('_previewMemberId', String(id||'')); } catch(e){}
-    if(typeof applyRoleNav === 'function') applyRoleNav();
-    rerenderIc();
-    try { if(typeof renderMyPage === 'function') renderMyPage(); } catch(e){}
-  }
-  window.setPreviewMember = setPreviewMember;
-  window.exitPreview = function(){
-    try { localStorage.removeItem('_previewMemberId'); } catch(e){}
-    if(typeof applyRoleNav === 'function') applyRoleNav();
-    rerenderIc();
-    try { if(typeof renderMyPage === 'function') renderMyPage(); } catch(e){}
-    if(typeof toast === 'function') toast('👁️ Preview yopildi');
-  };
-  window.isInPreview = function(){ return isRealSuperadmin() && !!getPreviewMemberId(); };
+  /* window.isAdmin ni ROL bo'yicha sinxronlash — global tahrir huquqi faqat superadminda.
+     Bu Firebase custom-claim'ga bog'liqlikni yo'qotadi: superadmin login qilsa darrov
+     hamma amalni bajaradi, sahifa almashganda qayta-qayta login so'ralmaydi. */
+  function syncRoleAdmin(){ try { window.isAdmin = window.canEditGlobal(); } catch(e){} }
+  window.syncRoleAdmin = syncRoleAdmin;
 
   /* ── Sahifa kirish nazorati (RBAC) ─────────────────────────────── */
   function roleRank(role){ return (window.ROLE_RANK && window.ROLE_RANK[role]) || 0; }
@@ -207,7 +186,7 @@
   function findDuplicateCompany(name, excludeId){
     var key = normalizeCompanyName(name);
     if(!key) return null;
-    var list = (window.DB && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
+    var list = (typeof DB !== "undefined" && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
     return list.find(function(r){
       if(excludeId != null && String(r.id) === String(excludeId)) return false;
       return normalizeCompanyName(r.kompaniya) === key;
@@ -218,7 +197,7 @@
 
   /* ── Yordamchi: record'ni DB.investorCompanies dan topish ──────── */
   function findRec(id){
-    var list = (window.DB && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
+    var list = (typeof DB !== "undefined" && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
     return list.find(function(r){ return String(r.id) === String(id); }) || null;
   }
 
@@ -457,7 +436,7 @@
 
   /* ── Jamoa statistikasini hisoblash (dashboard + shaxsiy sahifa ishlatadi) ── */
   function computeTeamStats(){
-    var list = (window.DB && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
+    var list = (typeof DB !== "undefined" && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
     var today = new Date().toISOString().slice(0,10);
     var stats = {};
     members().forEach(function(m){
@@ -576,45 +555,53 @@
       '</div>';
       return;
     }
-    // Superadmin preview banneri
-    var previewBanner = '';
-    if(window.isInPreview && window.isInPreview()){
-      previewBanner = '<div style="background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;border-radius:12px;padding:10px 16px;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
-        '<span style="font-size:.8rem;font-weight:600">👁️ Preview: siz <b>'+escOpt(me.name)+'</b>ning ko\'rinishini sinab ko\'ryapsiz</span>'+
-        '<button type="button" onclick="exitPreview()" style="background:#92400E;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.72rem;font-weight:700;cursor:pointer">Chiqish</button>'+
-      '</div>';
-    }
-    // Superadmin uchun "boshqa a'zo ko'rinishini sinash" tanlagichi
-    var previewPicker = '';
-    if(isRealSuperadmin()){
-      var pvOpts = ['<option value="">— A\'zo ko\'rinishini sinash —</option>'];
-      members().forEach(function(m){
-        pvOpts.push('<option value="'+m.id+'"'+(getPreviewMemberId()===m.id?' selected':'')+'>'+escOpt(m.name)+' · '+escOpt(m.roleLabel)+'</option>');
-      });
-      previewPicker = '<select onchange="setPreviewMember(this.value)" title="Superadmin: boshqa a\'zo nimani ko\'rishini sinang" style="font-size:.7rem;font-weight:600;border:1px solid var(--border);border-radius:8px;padding:6px 10px;background:var(--card);color:var(--text);cursor:pointer">'+pvOpts.join('')+'</select>';
-    }
 
+    var list = (typeof DB !== "undefined" && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
     var s = T.stats[me.id] || { assigned:0, sent:0, today:0, replied:0, meeting:0, loi:0, contract:0 };
     var mailbox = (typeof getPrimaryMailboxEmail === 'function') ? getPrimaryMailboxEmail() : (localStorage.getItem('_myEmail') || '');
     var connected = !!mailbox;
+    var myWon = s.loi + s.contract;
 
-    // KPI kartalari
-    function kpi(label, val, color){
-      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;flex:1;min-width:120px">'+
-        '<div style="font-size:1.8rem;font-weight:800;color:'+color+';font-variant-numeric:tabular-nums;line-height:1">'+val+'</div>'+
+    // Mening leadlarim va ularning bosqichlari (voronka)
+    var myLeads = list.filter(function(r){ return getLeadOwner(r) === me.id; });
+    var myFunnel = { 'new':0, email_sent:0, replied:0, meeting:0, loi:0, contract:0, not_interested:0 };
+    myLeads.forEach(function(r){ var st = getLeadStatus(r); if(myFunnel[st] != null) myFunnel[st]++; });
+
+    var FUNNEL_ORDER = ['new','email_sent','replied','meeting','loi','contract'];
+    function funnelBars(counts){
+      var max = 1;
+      FUNNEL_ORDER.forEach(function(st){ if((counts[st]||0) > max) max = counts[st]; });
+      return FUNNEL_ORDER.map(function(st){
+        var c = counts[st] || 0, pct = Math.round(c / max * 100);
+        var col = (window.LEAD_STATUS_COLORS && window.LEAD_STATUS_COLORS[st]) || '#4361EE';
+        return '<div style="margin-bottom:10px">'+
+          '<div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:4px">'+
+            '<span style="color:var(--text3)">'+window.LEAD_STATUS_LABELS[st]+'</span>'+
+            '<b style="font-variant-numeric:tabular-nums;color:var(--text)">'+c+'</b></div>'+
+          '<div style="height:10px;background:var(--ta-gray-100,#eef1f8);border-radius:99px;overflow:hidden">'+
+            '<div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:99px;transition:width .5s"></div></div>'+
+        '</div>';
+      }).join('');
+    }
+
+    // Katta KPI kartalari (ikonka + raqam)
+    function kpi(icon, label, val, color){
+      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:15px 18px;flex:1;min-width:132px;position:relative">'+
+        '<div style="position:absolute;top:12px;right:14px;font-size:1.05rem;opacity:.55">'+icon+'</div>'+
+        '<div style="font-size:2rem;font-weight:800;color:'+color+';font-variant-numeric:tabular-nums;line-height:1">'+val+'</div>'+
         '<div style="font-size:.72rem;color:var(--text3);margin-top:6px">'+label+'</div>'+
       '</div>';
     }
     var kpis = [
-      kpi('Mening leadlarim', s.assigned, '#4361EE'),
-      kpi('Yuborilgan email', s.sent, '#3B82F6'),
-      kpi('Bugun', s.today, '#0EA5E9'),
-      kpi('Javob keldi', s.replied, '#8B5CF6'),
-      kpi('Uchrashuv', s.meeting, '#0EA5E9'),
-      kpi('LOI / Shartnoma', (s.loi + s.contract), '#059669')
+      kpi('📋','Mening leadlarim', s.assigned, '#4361EE'),
+      kpi('✉️','Yuborilgan email', s.sent, '#3B82F6'),
+      kpi('☀️','Bugun yuborilgan', s.today, '#0EA5E9'),
+      kpi('💬','Javob keldi', s.replied, '#8B5CF6'),
+      kpi('🤝','Uchrashuv', s.meeting, '#0EA5E9'),
+      kpi('⭐','LOI / Shartnoma', myWon, '#059669')
     ].join('');
 
-    // Sheriklar reytingi — email + javob + uchrashuv bo'yicha
+    // Sheriklar reytingi
     var board = members().map(function(m){ return T.stats[m.id]; })
       .sort(function(a,b){ return (b.sent - a.sent) || (b.replied - a.replied); });
     var maxSent = Math.max(1, board[0] ? board[0].sent : 1);
@@ -634,37 +621,45 @@
       '</tr>';
     }).join('');
 
+    function panel(title, sub, inner){
+      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
+          '<div style="font-size:.85rem;font-weight:700;color:var(--text)">'+title+'</div>'+
+          (sub?'<div style="font-size:.66rem;color:var(--text3)">'+sub+'</div>':'')+
+        '</div>'+ inner +'</div>';
+    }
+
     host.innerHTML =
-      '<div style="max-width:1100px;margin:0 auto;padding:1.2rem 1.6rem">'+
-        previewBanner +
+      '<div style="max-width:1160px;margin:0 auto;padding:1.2rem 1.6rem">'+
         // Salom + rol
-        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:1.2rem">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:1rem">'+
           '<div style="display:flex;align-items:center;gap:14px">'+
             '<div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#4361EE,#7C3AED);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:800">'+escOpt(me.name.charAt(0))+'</div>'+
             '<div><h2 style="margin:0;font-size:1.15rem;color:var(--text)">Salom, '+escOpt(me.name)+'! 👋</h2>'+
             '<div style="font-size:.75rem;color:var(--text3)">'+escOpt(me.roleLabel)+'</div></div>'+
           '</div>'+
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+ previewPicker +
-            '<button type="button" onclick="setOwnerFilter(\'mine\');showPage(\'investor\')" style="background:#4361EE;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer">👤 Mening leadlarim →</button>'+
-          '</div>'+
+          '<button type="button" onclick="setOwnerFilter(\'mine\');showPage(\'investor\')" style="background:#4361EE;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer">👤 Mening leadlarim →</button>'+
         '</div>'+
-        // Email ulanish holati
-        '<div style="background:'+(connected?'rgba(5,150,105,.06)':'rgba(217,119,6,.06)')+';border:1px solid '+(connected?'rgba(5,150,105,.2)':'rgba(217,119,6,.25)')+';border-radius:14px;padding:14px 18px;margin-bottom:1.2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
-          '<div style="display:flex;align-items:center;gap:10px">'+
-            '<span style="font-size:1.3rem">'+(connected?'✅':'⚠️')+'</span>'+
-            '<div><div style="font-size:.82rem;font-weight:700;color:var(--text)">'+(connected?'Email ulangan':'Email ulanmagan')+'</div>'+
-            '<div style="font-size:.72rem;color:var(--text3)">'+(connected?escOpt(mailbox):'Email yuborish uchun o\'z pochtangizni ulang')+'</div></div>'+
-          '</div>'+
-          '<button type="button" onclick="(typeof openGmailSetup===\'function\'?openGmailSetup():showPage(\'settings\'))" style="background:'+(connected?'var(--ta-gray-100)':'#D97706')+';color:'+(connected?'var(--text)':'#fff')+';border:none;border-radius:10px;padding:8px 14px;font-size:.74rem;font-weight:700;cursor:pointer">'+(connected?'Sozlash':'📧 Emailni ulash')+'</button>'+
+        // Email ulanish — ixcham bir qatorli
+        '<div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:1.4rem;font-size:.78rem;flex-wrap:wrap">'+
+          '<span style="font-size:1rem">'+(connected?'✅':'⚠️')+'</span>'+
+          '<span style="color:var(--text3)">Mening emailim:</span>'+
+          '<b style="color:var(--text)">'+(connected?escOpt(mailbox):'ulanmagan')+'</b>'+
+          '<button type="button" onclick="(typeof openGmailSetup===\'function\'?openGmailSetup():showPage(\'settings\'))" style="margin-left:auto;background:'+(connected?'transparent':'#D97706')+';color:'+(connected?'#4361EE':'#fff')+';border:'+(connected?'1px solid var(--border)':'none')+';border-radius:8px;padding:5px 12px;font-size:.72rem;font-weight:600;cursor:pointer">'+(connected?'O\'zgartirish':'📧 Emailni ulash')+'</button>'+
         '</div>'+
         // KPI
         '<div style="font-size:.72rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Mening natijalarim</div>'+
-        '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1.6rem">'+kpis+'</div>'+
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1.4rem">'+kpis+'</div>'+
+        // Voronkalar — 2 ustun (responsive)
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:1.4rem">'+
+          panel('📊 Mening voronkam', myLeads.length+' ta lead', funnelBars(myFunnel))+
+          panel('👥 Jamoa voronkasi', 'Barcha leadlar', funnelBars(T.funnel))+
+        '</div>'+
         // Sheriklar reytingi
-        '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden">'+
+        '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">'+
           '<div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
             '<div style="font-size:.9rem;font-weight:700;color:var(--text)">🏆 Jamoa reytingi</div>'+
-            '<div style="font-size:.68rem;color:var(--text3)">Bugun jami: '+T.todayTotal+' email · Javob: '+T.respRate+'%</div>'+
+            '<div style="font-size:.68rem;color:var(--text3)">Bugun jami: '+T.todayTotal+' email · Javob: '+T.respRate+'% · Mas\'ulsiz: '+T.unassigned+'</div>'+
           '</div>'+
           '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem;min-width:560px">'+
             '<thead><tr style="color:var(--text3);font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;text-align:left">'+
@@ -682,7 +677,7 @@
      Eski data buzilmaydi; owner biriktirilmaydi (bo'sh qoldiriladi). */
   window.backfillLeadFields = async function(){
     if(!window.isAdmin){ if(typeof toast==='function') toast('⛔ Faqat admin'); return; }
-    var list = (window.DB && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
+    var list = (typeof DB !== "undefined" && Array.isArray(DB.investorCompanies)) ? DB.investorCompanies : [];
     var changed = 0;
     for(var i=0;i<list.length;i++){
       var r = list[i], dirty = false;

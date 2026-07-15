@@ -2,7 +2,8 @@
    EMAIL MODAL
 ═══════════════════════════════════════ */
 function openEmailModal(id){
-  if(!isAdmin){toast('⚠️ Email yuborish uchun admin sifatida kiring!','error');openAdminOrLogin();return;}
+  if(!window._currentUser){toast('⚠️ Avval tizimga kiring','error');openAdminOrLogin();return;}
+  if(typeof canWorkLeads==='function' && !canWorkLeads()){toast('⛔ Sizda email yuborish huquqi yo\'q (faqat ko\'rish)','error');return;}
   const co=DB.investorCompanies.find(r=>String(r.id)===String(id));
   if(!co||!co.email){toast('Email manzil topilmadi','error');return;}
   var hasAi = co.aiLetterData && co.aiLetterData.body;

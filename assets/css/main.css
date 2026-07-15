@@ -46,6 +46,18 @@ aside.sidebar{
     1px 0 0 rgba(255,255,255,.6) inset,
     4px 0 32px rgba(15,23,42,.04) !important;
 }
+/* Sidebar scroll — menyu balandroq bo'lsa aylantirib ko'rish mumkin */
+aside.sidebar .sidebar-body{
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  max-height:calc(100vh - 63px);
+  scrollbar-width:thin;
+  scrollbar-color:rgba(70,95,255,.4) transparent;
+}
+aside.sidebar .sidebar-body::-webkit-scrollbar{width:8px;}
+aside.sidebar .sidebar-body::-webkit-scrollbar-thumb{background:rgba(70,95,255,.32);border-radius:8px;}
+aside.sidebar .sidebar-body::-webkit-scrollbar-thumb:hover{background:rgba(70,95,255,.55);}
+aside.sidebar .sidebar-body::-webkit-scrollbar-track{background:transparent;}
 [data-bs-theme="dark"] aside.sidebar{
   background:rgba(26,29,46,.55) !important;
   backdrop-filter:blur(24px) saturate(180%);

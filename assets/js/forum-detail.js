@@ -2934,6 +2934,8 @@ function getInvestorCompanyGroupKey(rec){
 }
 
 _renderInvestorCompaniesMain = function(){
+  // Lead bilan ishlash huquqi (email/AI/tanlash) — superadmin + member. Admin(Shahzod)=view-only.
+  var _canWork = (typeof canWorkLeads === 'function') ? canWorkLeads() : isAdmin;
   // Avvalgi render'lardan qoldirilgan in-memory synthetic record'larni DB'dan olib tashlaymiz
   // (avvalgi bug — har render'da DB.investorCompanies o'sib boryotgan edi)
   if(Array.isArray(DB.investorCompanies)){
@@ -4163,7 +4165,7 @@ _renderInvestorCompaniesMain = function(){
       }
       html += '<tr class="ic-group-row'+(_isParent?' ic-row-parent':'')+(_isChild?' ic-row-child':'')+'" data-group="'+groupIdx+'" data-group-bg="'+_groupBg+'" data-group-hover="'+_groupHoverBg+'" id="investor-row-'+rec.id+'" style="'+_hiddenChildStyle+'background:'+_groupBg+';transition:background .15s;'+_groupBorderLeft+groupBorderStyle+'"'+_hoverHandlers+_hiddenChildAttrs+'>';
       if(recIdx === 0){
-        html += '<td rowspan="'+recs.length+'" style="padding-left:1.25rem;vertical-align:middle">'+(isAdmin ? ('<input type="checkbox" class="ic-check" data-ids="'+tgEscapeAttr(groupIds)+'" onchange="saveIcCheck(this);updateSelectedCount()" style="width:18px;height:18px;border-radius:5px;accent-color:#465fff;cursor:pointer">') : '')+'</td>';
+        html += '<td rowspan="'+recs.length+'" style="padding-left:1.25rem;vertical-align:middle">'+(_canWork ? ('<input type="checkbox" class="ic-check" data-ids="'+tgEscapeAttr(groupIds)+'" onchange="saveIcCheck(this);updateSelectedCount()" style="width:18px;height:18px;border-radius:5px;accent-color:#465fff;cursor:pointer">') : '')+'</td>';
         html += '<td rowspan="'+recs.length+'" style="font-size:.82rem;color:#374151;font-weight:600;vertical-align:middle">'+rowNumber+'</td>';
         html += '<td rowspan="'+recs.length+'" style="vertical-align:middle">'+companyHtml+'</td>';
       }
@@ -4188,11 +4190,11 @@ _renderInvestorCompaniesMain = function(){
       html += '<td style="vertical-align:middle">' +
         '<div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap">' +
         _srcBadge +
-        (isAdmin
+        (_canWork
           ? '<button style="'+_abtn+'background:transparent;padding:0" onclick="openInvestorAiWorkspace(\''+rec.id+'\')" title="AI xat va tahlil"><svg width="26" height="26" viewBox="0 0 24 24"><defs><radialGradient id="aiGrad'+rec.id+'" cx="50%" cy="40%" r="65%"><stop offset="0%" stop-color="#FFB554"/><stop offset="100%" stop-color="#F57C00"/></radialGradient></defs><circle cx="12" cy="12" r="11" fill="url(#aiGrad'+rec.id+')"/><text x="12" y="16" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="11" fill="#fff">Ai</text></svg></button>' +
             (rec.email ? '<button style="'+_abtn+'background:#EFF4FF;color:#3B82F6" onclick="openEmailModal(\''+rec.id+'\')" title="Xabar yuborish" onmouseover="this.style.background=\'#3B82F6\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#EFF4FF\';this.style.color=\'#3B82F6\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 20.5H7c-3 0-5-1.5-5-5v-7c0-3.5 2-5 5-5h10c3 0 5 1.5 5 5v7c0 3.5-2 5-5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 9l-3.13 2.5c-1.03.82-2.72.82-3.75 0L7 9" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
             (rec.email ? '<button style="'+_abtn+'background:'+(rec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+';color:'+(rec.emailSchedule?.active?'#059669':'#6B7280')+'" onclick="openScheduleModal(\''+rec.id+'\')" title="Email rejalashtirish" onmouseover="this.style.background=\''+(rec.emailSchedule?.active?'#059669':'#6B7280')+'\';this.style.color=\'#fff\'" onmouseout="this.style.background=\''+(rec.emailSchedule?.active?'#ECFDF5':'#F3F4F6')+'\';this.style.color=\''+(rec.emailSchedule?.active?'#059669':'#6B7280')+'\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.69 13.7h.01M15.69 16.7h.01M11.99 13.7h.02M11.99 16.7h.02M8.29 13.7h.02M8.29 16.7h.02" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : '') +
-            '<button style="'+_abtn+'background:#FEF3F2;color:#EF4444" onclick="deleteRecord(\'investorCompanies\',\''+rec.id+'\')" title="O\'chirish" onmouseover="this.style.background=\'#EF4444\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#FEF3F2\';this.style.color=\'#EF4444\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 5.98c-3.33-.33-6.68-.5-10.02-.5-1.98 0-3.96.1-5.94.3L3 5.98M8.5 4.97l.22-1.31C8.88 2.71 9 2 10.69 2h2.62c1.69 0 1.82.75 1.97 1.67l.22 1.3M18.85 9.14l-.65 10.07C18.09 20.78 18 22 15.21 22H8.79C6 22 5.91 20.78 5.8 19.21L5.15 9.14M10.33 16.5h3.33M9.5 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
+            (isAdmin?'<button style="'+_abtn+'background:#FEF3F2;color:#EF4444" onclick="deleteRecord(\'investorCompanies\',\''+rec.id+'\')" title="O\'chirish" onmouseover="this.style.background=\'#EF4444\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#FEF3F2\';this.style.color=\'#EF4444\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 5.98c-3.33-.33-6.68-.5-10.02-.5-1.98 0-3.96.1-5.94.3L3 5.98M8.5 4.97l.22-1.31C8.88 2.71 9 2 10.69 2h2.62c1.69 0 1.82.75 1.97 1.67l.22 1.3M18.85 9.14l-.65 10.07C18.09 20.78 18 22 15.21 22H8.79C6 22 5.91 20.78 5.8 19.21L5.15 9.14M10.33 16.5h3.33M9.5 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>':'')
           : '') +
         '</div></td>';
       html += '</tr>';
@@ -4220,14 +4222,14 @@ _renderInvestorCompaniesMain = function(){
   var bulkAiBtn = document.getElementById('bulkAiBtn');
   var bulkExcelBtn = document.getElementById('bulkExcelBtn');
   var checkAll = document.getElementById('checkAll');
-  if(bulkBtn) bulkBtn.style.display = isAdmin ? 'inline-flex' : 'none';
-  if(bulkAiBtn) bulkAiBtn.style.display = isAdmin ? 'inline-flex' : 'none';
-  if(bulkExcelBtn) bulkExcelBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  if(bulkBtn) bulkBtn.style.display = _canWork ? 'inline-flex' : 'none';
+  if(bulkAiBtn) bulkAiBtn.style.display = _canWork ? 'inline-flex' : 'none';
+  if(bulkExcelBtn) bulkExcelBtn.style.display = _canWork ? 'inline-flex' : 'none';
   var bulkSchedBtn = document.getElementById('bulkSchedBtn');
-  if(bulkSchedBtn) bulkSchedBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  if(bulkSchedBtn) bulkSchedBtn.style.display = _canWork ? 'inline-flex' : 'none';
   var bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
   if(bulkDeleteBtn) bulkDeleteBtn.style.display = isAdmin ? 'inline-flex' : 'none';
-  if(checkAll) checkAll.style.display = isAdmin ? 'inline-block' : 'none';
+  if(checkAll) checkAll.style.display = _canWork ? 'inline-block' : 'none';
   if(typeof mountInvestorAiWorkspace === 'function') mountInvestorAiWorkspace();
   if(typeof mountTeamToolbar === 'function') mountTeamToolbar();
 };
@@ -4564,7 +4566,8 @@ function getSelectedIds(){
 }
 
 function sendBulkEmail(){
-  if(!isAdmin){toast('⚠️ Email yuborish uchun admin sifatida kiring!','error');openAdminOrLogin();return;}
+  if(!window._currentUser){toast('⚠️ Avval tizimga kiring','error');openAdminOrLogin();return;}
+  if(typeof canWorkLeads==='function' && !canWorkLeads()){toast('⛔ Sizda email yuborish huquqi yo\'q (faqat ko\'rish)','error');return;}
   const ids = getSelectedIds();
   if(!ids.length){ toast('⚠️ Avval kompaniyalarni tanlang!','error'); return; }
   const targets = ids.map(id=>DB.investorCompanies.find(r=>String(r.id)===String(id))).filter(r=>r&&r.email);

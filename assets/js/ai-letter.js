@@ -4648,7 +4648,8 @@ async function generateInvestorAiLetter(){
 }
 
 async function generateBulkAiLetters(){
-  if(!isAdmin){toast('⚠️ AI xat yozish uchun admin sifatida kiring!','error');openAdminOrLogin();return;}
+  if(!window._currentUser){toast('⚠️ Avval tizimga kiring','error');openAdminOrLogin();return;}
+  if(typeof canWorkLeads==='function' && !canWorkLeads()){toast('⛔ Sizda AI xat yozish huquqi yo\'q (faqat ko\'rish)','error');return;}
   var ids = getSelectedIds();
   if(!ids.length){ toast('⚠️ Avval kompaniyalarni tanlang!','error'); return; }
 

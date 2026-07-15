@@ -123,6 +123,11 @@ function applyAdminUI(admin, user){
     }
   } catch(e){}
 
+  /* MUHIM: isAdmin (global tahrir huquqi) ROL bo'yicha aniqlanadi — Firebase
+     custom-claim'ga bog'liq emas. Superadmin login qilsa darrov hamma amalni
+     bajaradi, sahifa almashganda qayta-qayta login so'ralmaydi. */
+  if(typeof syncRoleAdmin === 'function'){ syncRoleAdmin(); admin = window.isAdmin; }
+
   const av = document.getElementById('navAvatar');
   const un = document.getElementById('navUname');
   const lbl = document.getElementById('adminTabLabel');
