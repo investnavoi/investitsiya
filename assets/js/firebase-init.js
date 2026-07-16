@@ -528,6 +528,30 @@ window.fbSave = async function(colName, record){
   }
 };
 
+// Bulk ADD — ko'p yozuvni batch bilan qo'shadi (mavjudlarni O'CHIRMAYDI).
+// Apollo bulk import kabi katta yuklashlar uchun. writeBatch = 500/commit limiti.
+window.fbBulkAdd = async function(colName, records, onProgress){
+  if(!Array.isArray(records) || !records.length) return 0;
+  var written = 0;
+  for(var i=0;i<records.length;i+=450){
+    var batch = writeBatch(db);
+    records.slice(i, i+450).forEach(function(r){ batch.set(doc(db, colName, String(r.id)), r); });
+    await batch.commit();
+    written += Math.min(450, records.length - i);
+    if(typeof onProgress === 'function'){ try { onProgress(written, records.length); } catch(_e){} }
+  }
+  // DB + local backup yangilash (id bo'yicha merge)
+  try {
+    if(!Array.isArray(DB[colName])) DB[colName] = [];
+    var byId = Object.create(null);
+    DB[colName].forEach(function(x){ byId[String(x.id)] = x; });
+    records.forEach(function(r){ byId[String(r.id)] = r; });
+    DB[colName] = Object.keys(byId).map(function(k){ return byId[k]; });
+    setLocalCollectionBackup(colName, DB[colName]);
+  } catch(e){}
+  return written;
+};
+
 // Delete single record
 window.fbDelete = async function(colName, id){
   try {

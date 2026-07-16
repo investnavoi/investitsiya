@@ -24,7 +24,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 </script>
 <!-- Firebase -->
 <!-- Firebase init -->
-<script type="module" src="assets/js/firebase-init.js?v=realtime-v5"></script>
+<script type="module" src="assets/js/firebase-init.js?v=bulkadd-v6"></script>
 <script type="module" src="assets/js/firebase-auth.js"></script>
 <!-- Hope UI CSS -->
 <link rel="stylesheet" href="assets/css/libs.min.css">
@@ -73,7 +73,7 @@ if(window.simplemaps_worldmap_mapdata && window.simplemaps_worldmap_mapdata.main
 <script src="assets/js/product-composition.js?v=toggle-fix-v4" defer></script>
 <script src="assets/js/products.js?v=hs-search-v33" defer></script>
 <script src="assets/js/email-modal.js?v=canwork-v2" defer></script>
-<script src="assets/js/investor-companies.js?v=dedup-owner-v1"></script>
+<script src="assets/js/investor-companies.js?v=apollo-import-v2"></script>
 <script src="assets/js/excel-media.js" defer></script>
 <script src="assets/js/team.js?v=pageaccess-v6"></script>
 <script src="assets/js/forum-detail.js?v=sentby-badge-v9"></script>
@@ -3416,6 +3416,20 @@ setTimeout(function(){
             <button class="btn btn-ghost" onclick="cancelIcExcel()">Bekor qilish</button>
           </div>
         </div>
+      </div>
+
+      <!-- Apollo BULK JSON import (5719 kompaniya) — faqat superadmin -->
+      <div class="form-card" data-role-min="superadmin" style="border:1px dashed rgba(5,150,105,.4);background:rgba(5,150,105,.03)">
+        <div class="form-title"><div class="form-title-icon">🚀</div> Apollo bulk import (apollo-bulk-results.json)</div>
+        <div style="font-size:.72rem;color:var(--text3);margin-bottom:.8rem;line-height:1.6">
+          Avval to'plangan <b>5719 ta kompaniya</b> <code style="background:rgba(15,23,42,.06);padding:1px 5px;border-radius:4px">apollo-bulk-results.json</code> faylida qolgan edi. Shu faylni yuklang — dublikatlar avtomatik tashlanadi, faqat yangilari bazaga qo'shiladi.
+          <br><span style="color:var(--ta-warning-600,#D97706)">⚠️ Bu yozuvlarda email yo'q — kompaniya + rahbar nomi sifatida tushadi (email keyin to'ldiriladi).</span>
+        </div>
+        <label class="btn btn-green btn-sm" style="cursor:pointer">
+          📂 apollo-bulk-results.json tanlash
+          <input type="file" accept=".json,application/json" style="display:none" onchange="importApolloBulkFile(this)">
+        </label>
+        <div id="apolloBulkImportStatus" style="font-size:.74rem;color:var(--text2);margin-top:.7rem;font-weight:600"></div>
       </div>
 
       <!-- Manual entry form -->

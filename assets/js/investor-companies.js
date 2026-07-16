@@ -47,6 +47,59 @@ async function addInvestorCo(){
   toast('✅ Kompaniya saqlandi!');
 }
 
+/* ── Apollo BULK import (apollo-bulk-results.json faylini yuklab, bazaga qo'shish) ──
+   5719 ta kompaniya faylda qolgan edi — bu yerdan yuklab bazaga import qilinadi.
+   Login sessiyasidan foydalanadi (service-account kerak emas). Faqat superadmin. */
+async function importApolloBulkFile(input){
+  var file = (input.files||[])[0];
+  if(input) input.value = '';
+  if(!file) return;
+  if(typeof canEditGlobal === 'function' && !canEditGlobal()){ toast('⛔ Bu amal faqat superadmin uchun','error'); return; }
+  var statusEl = document.getElementById('apolloBulkImportStatus');
+  var setS = function(t){ if(statusEl) statusEl.textContent = t; };
+  setS('📂 Fayl o\'qilmoqda...');
+  var text;
+  try { text = await file.text(); } catch(e){ setS('❌ Faylni o\'qib bo\'lmadi'); return; }
+  var arr;
+  try { arr = JSON.parse(text); } catch(e){ setS('❌ Fayl JSON emas'); toast('❌ Noto\'g\'ri fayl','error'); return; }
+  if(!Array.isArray(arr)){ setS('❌ JSON massiv kutilgan edi'); return; }
+
+  var norm = (typeof normalizeCompanyName === 'function') ? normalizeCompanyName : function(s){ return String(s||'').toLowerCase().trim(); };
+  var existing = Object.create(null);
+  (DB.investorCompanies||[]).forEach(function(r){ var k = norm(r.kompaniya); if(k) existing[k] = true; });
+  var seen = Object.create(null);
+  var toAdd = [];
+  var nowIso = new Date().toISOString();
+  arr.forEach(function(r){
+    var name = String(r.kompaniya || r.name || '').trim();
+    var k = norm(name);
+    if(!k || existing[k] || seen[k]) return;
+    seen[k] = true;
+    toAdd.push({
+      id: 'abulk_' + k.replace(/\s+/g,'_').slice(0,60),
+      kompaniya: name, rahbar: r.rahbar||'', lavozim: r.lavozim||'',
+      email: r.email||'', telefon: r.telefon||'',
+      davlat: r.davlat||'', shahar: r.shahar||'', soha: r.soha||'',
+      linkedin: r.linkedin||'', website: r.website||'', photoUrl: r.photoUrl||'',
+      manba: r.manba || 'Apollo.io (bulk)', holat: 'Yangi', status: 'new',
+      sana: r.sana || nowIso.slice(0,10), emailSent: false, needsEmail: !r.email,
+      assignedTo: '', createdBy: 'import:apollo-bulk', createdAt: nowIso, lastActivityAt: nowIso
+    });
+  });
+
+  if(!toAdd.length){ setS('✅ Yangi kompaniya yo\'q — hammasi bazada bor'); toast('Yangi kompaniya topilmadi'); return; }
+  if(!confirm('Faylda ' + arr.length + ' ta yozuv. Ulardan ' + toAdd.length + ' tasi YANGI (bazada yo\'q).\n\n' + toAdd.length + ' ta kompaniyani bazaga qo\'shamizmi?')){ setS('Bekor qilindi'); return; }
+  setS('⏳ Yozilmoqda... 0/' + toAdd.length);
+  try {
+    await window.fbBulkAdd('investorCompanies', toAdd, function(w,t){ setS('⏳ Yozilmoqda... ' + w + '/' + t); });
+    setS('✅ ' + toAdd.length + ' ta kompaniya qo\'shildi! Jami baza: ' + (DB.investorCompanies||[]).length);
+    toast('✅ ' + toAdd.length + ' ta kompaniya import qilindi');
+    if(typeof renderInvestorCompanies === 'function') renderInvestorCompanies();
+    if(typeof renderAdminLists === 'function') renderAdminLists();
+  } catch(e){ setS('❌ Xato: ' + (e && e.message || e)); toast('❌ Import xatosi','error'); }
+}
+window.importApolloBulkFile = importApolloBulkFile;
+
 function clearIcForm(){
   ['ic-kompaniya','ic-rahbar','ic-lavozim','ic-soha','ic-email','ic-telefon','ic-davlat','ic-linkedin','ic-website'].forEach(id=>{
     const el = document.getElementById(id);
