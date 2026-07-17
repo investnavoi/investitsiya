@@ -32,6 +32,28 @@ vercel                # preview deploy
 vercel --prod         # production deploy
 ```
 
+### Vercel Environment Variables (AI proxy uchun MAJBURIY)
+
+Sayt Vercel'ga chiqqach, AI kalitlari **brauzerga tushmaydi** — ular serverda
+(`/api/openai`, `/api/gemini`) turadi. Buning uchun Vercel → Settings →
+Environment Variables ga quyidagilarni qo'shing:
+
+| O'zgaruvchi | Qiymat | Majburiy |
+|---|---|---|
+| `OPENAI_API_KEY` | `sk-proj-...` | ✅ ha |
+| `GEMINI_API_KEY` | `AIzaSy...` | ✅ ha |
+| `GEMINI_API_KEY_2` | zaxira Gemini kaliti (kvota tugasa avtomatik o'tadi) | ixtiyoriy |
+| `FIREBASE_WEB_API_KEY` | `AIzaSyBSsZMH6jJCw6dsX479PWusBU9lxTyoVuM` | ✅ ha — **token tekshirish uchun** |
+| `ALLOWED_ORIGINS` | `https://<loyiha>.vercel.app` (vergul bilan bir nechta) | ixtiyoriy |
+
+> 🔒 **Nega token tekshiruvi:** `/api/openai` — internetda ochiq URL. Tekshiruvsiz
+> istalgan odam uni chaqirib sizning OpenAI kreditingizni sarflashi mumkin edi.
+> Har so'rovda foydalanuvchining Firebase ID tokeni tekshiriladi.
+
+> ℹ️ **Ko'chish xavfsiz:** proxy topilmasa (masalan hali GitHub Pages'da bo'lsangiz),
+> mijoz avtomatik eski usulga — Sozlamalardagi kalit bilan to'g'ridan-to'g'ri
+> chaqiruvga qaytadi. Ya'ni ikkala hostingda ham ishlaydi.
+
 > ⚠️ Firebase/Firestore mijoz tomonida ishlaydi — Vercel'da qo'shimcha maxfiy
 > kalit shart emas. Rejalashtirilgan email (GitHub Actions) esa alohida ishlaydi
 > va Vercel'ga bog'liq emas.

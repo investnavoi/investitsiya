@@ -16,7 +16,9 @@ const ROOT = path.resolve(__dirname, '..');
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.vite']);
 
 // Tekshiriladigan papkalar
-const TARGET_DIRS = ['assets/js', 'scripts'];
+// api/ — Vercel serverless funksiyalari (AI proxy). Avval qamralmagan edi,
+// ya'ni u yerdagi sintaksis xatosi CI'dan o'tib ketardi.
+const TARGET_DIRS = ['assets/js', 'scripts', 'api'];
 
 function collectJsFiles(dir, out){
   let entries;

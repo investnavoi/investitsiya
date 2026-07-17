@@ -29,8 +29,8 @@
   window.TEAM_MEMBERS = window.TEAM_MEMBERS || [
     { id:'azizbek', name:'Azizbek', roleLabel:"Texnik lead (superadmin)", role:'superadmin', email:'bltvazbk@gmail.com' },
     { id:'azizbek_out', name:'Azizbek (outreach)', roleLabel:"Lead outreach", role:'member', email:'azizbek.investnavoi@gmail.com' },
-    { id:'shahzod', name:'Shahzod', roleLabel:"Monitoring + Koordinator (admin)", role:'admin', email:'' },
-    { id:'suhrob',  name:'Suhrob',  roleLabel:"Lead outreach",            role:'member', email:'' },
+    { id:'shahzod', name:'Shahzod', roleLabel:"Monitoring + Koordinator (admin)", role:'admin', email:'thelivezoneuz@gmail.com' },
+    { id:'suhrob',  name:'Suhrob',  roleLabel:"Lead outreach",            role:'member', email:'suhrobjonergashev0@gmail.com' },
     { id:'azo4',    name:"A'zo 4",  roleLabel:"Lead outreach",            role:'member', email:'' },
     { id:'azo5',    name:"A'zo 5",  roleLabel:"Lead outreach",            role:'member', email:'' },
     { id:'azo6',    name:"A'zo 6",  roleLabel:"Lead outreach",            role:'member', email:'' },

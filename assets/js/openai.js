@@ -22,6 +22,39 @@ function getOpenAIKey(){
 }
 
 /* ────────────────────────────────────────
+   AI proxy orqali yuborish — kalit SERVERDA qoladi, brauzerga tushmaydi.
+   Agar proxy mavjud bo'lmasa (masalan GitHub Pages'da serverless yo'q),
+   bir marta belgilab qo'yamiz va eski usulga (brauzerdagi kalit) qaytamiz.
+   Shu sababli bu o'zgarish ikkala hostingda ham xavfsiz ishlaydi.
+──────────────────────────────────────── */
+async function _openaiFetch(body, signal){
+  var canProxy = (typeof AI_PROXY_BASE !== 'undefined') && AI_PROXY_BASE && window._aiProxyDown !== true;
+  if(canProxy){
+    var idToken = (typeof getFirebaseIdToken === 'function') ? await getFirebaseIdToken() : '';
+    if(idToken){
+      var r = await fetch(AI_PROXY_BASE + '/openai', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + idToken },
+        body: JSON.stringify(body),
+        signal: signal
+      });
+      /* 404/405 = proxy yo'q (statik hosting) → eski usulga qaytamiz */
+      if(r.status !== 404 && r.status !== 405) return r;
+      window._aiProxyDown = true;
+      console.warn('ℹ️ AI proxy topilmadi — brauzerdagi kalit bilan to\'g\'ridan-to\'g\'ri chaqiriladi.');
+    }
+  }
+  var key = getOpenAIKey();
+  if(!key) throw new Error('OpenAI kalit yo\'q. Sayt Vercel\'ga deploy qilinsa kalit serverda bo\'ladi; aks holda ⚙️ Sozlamalardan kiriting.');
+  return fetch(OPENAI_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + key },
+    body: JSON.stringify(body),
+    signal: signal
+  });
+}
+
+/* ────────────────────────────────────────
    Asosiy chaqiruv. messages = [{role,content}, ...]
    opts:
      model            — model nomi (default gpt-4o)
@@ -35,9 +68,7 @@ function getOpenAIKey(){
 ──────────────────────────────────────── */
 async function callOpenAI(messages, opts){
   opts = opts || {};
-  var key = getOpenAIKey();
-  if(!key) throw new Error('OpenAI API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
-
+  /* Kalit tekshiruvi endi _openaiFetch ichida — proxy ishlatilsa kalit umuman kerak emas */
   var useSearch = !!opts.webSearch;
   var model = opts.model || (useSearch ? OPENAI_MODEL_SEARCH : OPENAI_MODEL_DEFAULT);
   /* o-series (o1, o3, o4-mini …) → max_completion_tokens + reasoning_effort, NO temperature/max_tokens */
@@ -65,12 +96,7 @@ async function callOpenAI(messages, opts){
   var to = setTimeout(function(){ ctrl.abort(); }, Number(opts.timeoutMs) || defaultTimeout);
   var resp;
   try {
-    resp = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + key },
-      body: JSON.stringify(body),
-      signal: ctrl.signal
-    });
+    resp = await _openaiFetch(body, ctrl.signal);
   } catch(e){
     clearTimeout(to);
     if(e && e.name === 'AbortError') throw new Error('OpenAI so\'rovi vaqtdan oshdi (timeout)');
@@ -98,7 +124,14 @@ async function callOpenAI(messages, opts){
 async function callOpenAIStream(messages, opts, onChunk){
   opts = opts || {};
   var key = getOpenAIKey();
-  if(!key) throw new Error('OpenAI API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
+  /* Proxy rejimi: kalit brauzerda yo'q. Streaming'ni proxy qo'llab-quvvatlamaydi,
+     shuning uchun oddiy (stream'siz) chaqiruvga tushamiz va matnni bir marta beramiz.
+     Chatbot ishlaydi — faqat token-token yozilmaydi. */
+  if(!key){
+    var _out = await callOpenAI(messages, opts);
+    if(typeof onChunk === 'function' && _out && _out.content) onChunk(_out.content);
+    return _out;
+  }
 
   var model = opts.model || OPENAI_MODEL_DEFAULT;
   var body = {

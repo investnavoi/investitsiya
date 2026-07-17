@@ -25,12 +25,39 @@ function getAllGeminiKeys(){
 function geminiUrl(model, key){
   return 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + (key || getGeminiKey());
 }
+/* AI proxy orqali chaqirish — kalit SERVERDA qoladi (brauzerga tushmaydi).
+   Faqat brauzerda kalit YO'Q bo'lganda ishlatiladi. Proxy topilmasa (statik
+   hosting) bir marta belgilanadi va eski usulga qaytiladi. */
+async function _geminiViaProxy(body){
+  if(typeof AI_PROXY_BASE === 'undefined' || !AI_PROXY_BASE || window._aiProxyDown === true) return null;
+  var idToken = (typeof getFirebaseIdToken === 'function') ? await getFirebaseIdToken() : '';
+  if(!idToken) return null;
+  var r = await fetch(AI_PROXY_BASE + '/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + idToken },
+    body: JSON.stringify({ model: GEMINI_MODELS[0], payload: body })
+  });
+  if(r.status === 404 || r.status === 405){
+    window._aiProxyDown = true;
+    console.warn('ℹ️ AI proxy topilmadi — Gemini brauzerdagi kalit bilan chaqiriladi.');
+    return null;
+  }
+  var d = await r.json().catch(function(){ return {}; });
+  if(r.ok && d.candidates && d.candidates[0]) return d;
+  throw new Error('Gemini (proxy): ' + ((d.error && d.error.message) || d.error || ('Status ' + r.status)));
+}
+
 async function callGemini(body, _retryCount, _keyIdx){
   var retryCount = _retryCount || 0;
   var keyIdx = _keyIdx || 0;
   var maxRetries = 2;
   var keys = getAllGeminiKeys();
-  if(!keys.length) throw new Error('Gemini API kalit yo\'q. ⚙️ Sozlamalar sahifasidan kiriting.');
+  /* Kalit brauzerda yo'q → server proxy orqali urinib ko'ramiz */
+  if(!keys.length){
+    var viaProxy = await _geminiViaProxy(body);
+    if(viaProxy) return viaProxy;
+  }
+  if(!keys.length) throw new Error('Gemini kalit yo\'q. Sayt Vercel\'ga deploy qilinsa kalit serverda bo\'ladi; aks holda ⚙️ Sozlamalardan kiriting.');
   var key = keys[keyIdx];
   if(!key) throw new Error('Gemini API kalit yo\'q.');
 

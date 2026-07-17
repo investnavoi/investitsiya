@@ -245,12 +245,40 @@ function getLocalCollectionBackup(colName){
 }
 window.getLocalCollectionBackup = getLocalCollectionBackup;
 
+/* localStorage backup — offline/data-loss himoyasi uchun ikkilamchi tarmoq
+   (asosiy offline kesh = Firestore persistentLocalCache/IndexedDB).
+
+   MUAMMO (5000+ lead import qilingandan keyin): bu funksiya HAR fbSave'da butun
+   massivni JSON.stringify qilardi (~5MB) va localStorage kvotasi (~5MB) to'lgach
+   xatoni JIMGINA yutardi. Natija: sayt sekinlashdi VA backup aslida yozilmay,
+   data-loss guard shu kolleksiya uchun bilinmasdan o'chib qolgan edi.
+
+   YECHIM: (1) debounce — ketma-ket saqlashlar bitta yozuvga birlashadi;
+           (2) kvota to'lsa — jim yutmaymiz: ogohlantiramiz va shu kolleksiya
+               uchun backupni o'chiramiz (qayta-qayta 5MB stringify qilmaslik uchun). */
+var _backupTimers = Object.create(null);
+var _backupDisabled = Object.create(null);
+var _BACKUP_DEBOUNCE_MS = 1500;
+
 function setLocalCollectionBackup(colName, rows){
-  try {
-    localStorage.setItem('_backup_'+colName, JSON.stringify(Array.isArray(rows) ? rows : []));
-  } catch(e){}
+  if(_backupDisabled[colName]) return;              // kvota to'lgan — urinmaymiz
+  var data = Array.isArray(rows) ? rows.slice() : [];
+  if(_backupTimers[colName]) clearTimeout(_backupTimers[colName]);
+  _backupTimers[colName] = setTimeout(function(){
+    _backupTimers[colName] = null;
+    try {
+      localStorage.setItem('_backup_'+colName, JSON.stringify(data));
+    } catch(e){
+      _backupDisabled[colName] = true;
+      try { localStorage.removeItem('_backup_'+colName); } catch(_e){}
+      console.warn('⚠️ localStorage backup o\'chirildi: ' + colName + ' (' + data.length +
+        ' ta yozuv localStorage kvotasiga sig\'madi). Offline zaxira shu kolleksiya uchun ' +
+        'ishlamaydi — asosiy kesh sifatida Firestore IndexedDB ishlatiladi.');
+    }
+  }, _BACKUP_DEBOUNCE_MS);
 }
 window.setLocalCollectionBackup = setLocalCollectionBackup;
+window.isBackupDisabled = function(col){ return !!_backupDisabled[col]; };
 
 // Load all data from Firestore and replace DB — OPTIMIZED: parallel + cache
 function _sortRows(rows){

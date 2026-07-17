@@ -1,3 +1,22 @@
+/* ═══ AI PROXY (OpenAI / Gemini) ═══
+   Maqsad: AI kalitlari BRAUZERGA TUSHMASIN — ular Vercel env'da (server) turadi.
+   Vercel'da deploy qilinganda /api/openai va /api/gemini mavjud bo'ladi.
+   GitHub Pages'da serverless funksiya yo'q → mijoz avtomatik eski usulga
+   (Sozlamalardagi kalit bilan to'g'ridan-to'g'ri chaqiruv) qaytadi.
+   Ya'ni ikkala hostingda ham ishlaydi, ko'chish xavfsiz. */
+var AI_PROXY_BASE = '/api';
+
+/* Firebase ID token — AI proxy uni tekshiradi (aks holda proxy ochiq bo'lib,
+   istalgan odam bizning kreditimizni sarflagan bo'lardi). */
+async function getFirebaseIdToken(){
+  try {
+    if(window._fbAuth && window._fbAuth.currentUser){
+      return await window._fbAuth.currentUser.getIdToken();
+    }
+  } catch(e){}
+  return '';
+}
+
 /* ═══ API PROXY ENDPOINTS ═══ */
 var COMTRADE_PROXY = 'https://navoiy-api-proxy.vercel.app/api/comtrade';
 var TRADEATLAS_PROXY = 'https://navoiy-api-proxy.vercel.app/api/tradeatlas';
