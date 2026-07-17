@@ -8,8 +8,10 @@
     "preview": "vite preview --outDir dist",
     "check": "node scripts/check-syntax.cjs",
     "test": "node scripts/check-syntax.cjs",
+    "role:set": "node scripts/set-role-claim.cjs",
+    "role:list": "node scripts/set-role-claim.cjs --list",
+    "rules:deploy": "firebase deploy --only firestore:rules",
     "admin:grant": "node scripts/set-admin-claim.cjs",
-    "admin:revoke": "node scripts/set-admin-claim.cjs",
     "backup": "node scripts/backup-firestore.cjs",
     "restore": "node scripts/restore-firestore.cjs",
     "import:apollo-bulk": "node scripts/import-apollo-bulk.cjs"

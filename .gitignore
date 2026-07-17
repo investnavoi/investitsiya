@@ -6,6 +6,9 @@ dist/
 .DS_Store
 scripts/service-account.json
 backups/
+# Apollo bulk natijalari — shaxsiy ma'lumot (ism, telefon). Hech qachon commit qilinmasin.
+apollo-bulk-results.json
+apollo-bulk-progress.json
 .firebaserc
 .env
 .env.local

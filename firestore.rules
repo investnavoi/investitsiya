@@ -2,141 +2,144 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /* ═══════════════════════════════════════
-       Helper functions
-    ═══════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════════════
+       ROL MODELI (server tomonda majburlanadi — mijoz kodiga ishonmaymiz)
+
+       Rol Firebase custom claim'da saqlanadi:  { role: '...', admin: bool }
+       O'rnatish:  node scripts/set-role-claim.cjs <email> <role>
+
+         superadmin  — HAMMASINI ko'radi va TAHRIRLAYDI (Azizbek, texnik lead)
+         admin       — HAMMASINI ko'radi, lekin TAHRIRLAMAYDI (Shahzod, monitoring)
+         member      — ko'radi + FAQAT o'z lead ishini bajaradi (email, status, mas'ul)
+
+       Eski akkauntlarda faqat `admin: true` claim bo'lsa — superadmin deb qaraladi
+       (migratsiya davri uchun; rollar o'rnatilgach bu fallback olib tashlanadi).
+    ═══════════════════════════════════════════════════════════════ */
+
     function isAuthed() {
       return request.auth != null;
     }
 
-    /* READ — sayt faqat ruxsat etilgan login/parollar bilan kirilgan foydalanuvchilarga
-       ochiq. Public foydalanuvchilar saytni ko'ra olmaydi.
-       Avval `return true;` edi (public access), endi auth talab qilinadi. */
-    function publicRead() {
-      return isAuthed();
+    function role() {
+      return isAuthed() ? request.auth.token.get('role', '') : '';
     }
 
-    /* Domain whitelist disabled — any authenticated user can read.
-       To enable, replace return isAuthed() with:
-         return isAuthed() && request.auth.token.email != null
-           && request.auth.token.email.matches('.*@yourdomain[.]com$'); */
-    function hasAllowedEmail() {
-      return isAuthed();
+    /* Legacy: eski `admin:true` claim (rol hali o'rnatilmagan) → superadmin */
+    function legacyAdmin() {
+      return isAuthed() && request.auth.token.get('admin', false) == true && role() == '';
     }
 
-    function isAdmin() {
-      return isAuthed() && request.auth.token.admin == true;
+    function isSuperadmin() { return role() == 'superadmin' || legacyAdmin(); }
+    function isTeamAdmin()  { return role() == 'admin'; }
+    function isMember()     { return role() == 'member'; }
+
+    /* Lead ustida ishlash huquqi: superadmin + member. admin (Shahzod) = faqat ko'radi. */
+    function canWorkLeads() { return isSuperadmin() || isMember(); }
+
+    /* Tanilgan jamoa a'zosi */
+    function isTeam() { return isSuperadmin() || isTeamAdmin() || isMember(); }
+
+    /* ─── Lead ishi paytida O'ZGARISHI mumkin bo'lgan maydonlar ───
+       member faqat shu maydonlarni tegishi mumkin: kompaniya nomi, emaili,
+       davlati kabi asosiy ma'lumotni o'zgartira olmaydi va o'chira olmaydi. */
+    function onlyLeadWorkFields() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'assignedTo', 'reservedBy', 'reservedAt',
+        'status', 'holat',
+        'emailSent', 'emailSentDate', 'emailSentAt', 'sentBy', 'sentByMailbox',
+        'emailSchedule', 'aiLetterData',
+        'activityLog', 'lastActivityAt', 'updatedBy', 'updatedAt',
+        'needsEmail', 'izoh', 'soha'
+      ]);
     }
 
     /* ═══════════════════════════════════════
-       Collections — default DENY, allow explicitly
-       READ — public (har kim, kirishsiz ham ko'radi)
-       WRITE — faqat admin (funksiyalar cheklangan)
+       GLOBAL MA'LUMOTLAR — hamma o'qiydi, faqat superadmin yozadi
     ═══════════════════════════════════════ */
+    match /investors/{id}      { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /local/{id}          { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /zoom/{id}           { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /forums/{id}         { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /rawMaterials/{id}   { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /products/{id}       { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /entrepreneurs/{id}  { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /settings/{id}       { allow read: if isAuthed(); allow write: if isSuperadmin(); }
 
-    /* Public-read collections (investors list, raw materials, products, forums, etc.) */
-    match /investors/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /rawMaterials/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /products/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /forums/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /local/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /zoom/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /entrepreneurs/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-
-    /* Investor Companies (leads/CRM) — public read */
+    /* ═══════════════════════════════════════
+       LEADLAR (CRM yadrosi)
+       - o'qish: har qanday kirgan foydalanuvchi
+       - yaratish/o'chirish: faqat superadmin (bulk import ham shu yerda)
+       - yangilash: superadmin hammasini; member FAQAT lead-ish maydonlarini
+    ═══════════════════════════════════════ */
     match /investorCompanies/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
+      allow read:   if isAuthed();
+      allow create: if isSuperadmin();
+      allow delete: if isSuperadmin();
+      allow update: if isSuperadmin()
+                    || (canWorkLeads() && onlyLeadWorkFields());
     }
 
-    /* Trade Atlas / import data — public read */
-    match /tradeData/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /tradeSnapshots/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /tradeSnapshotChunks/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /importSnapshots/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
-    }
-    match /taFirmSnapshots/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
+    /* ═══════════════════════════════════════
+       SAVDO / IMPORT DATASETLARI — o'qish hammaga, yozish superadmin
+    ═══════════════════════════════════════ */
+    match /tradeData/{id}           { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /tradeSnapshots/{id}      { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /tradeSnapshotChunks/{id} { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /importSnapshots/{id}     { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+    match /taFirmSnapshots/{id}     { allow read: if isAuthed(); allow write: if isSuperadmin(); }
+
+    /* ═══════════════════════════════════════
+       JAMOA FAOLIYATI — har a'zo o'z ishini yozadi
+       ⚠️ AVVAL YETISHMAYOTGAN EDI → default deny → har yuklashda xato berardi
+    ═══════════════════════════════════════ */
+    match /crmActivities/{id} {
+      allow read:   if isAuthed();
+      allow create: if canWorkLeads();
+      allow update: if canWorkLeads();
+      allow delete: if isSuperadmin();
     }
 
-    /* Settings — public read, admin write */
-    match /settings/{id} {
-      allow read: if publicRead();
-      allow write: if isAdmin();
+    /* AI tahlil tarixi va elchixona xatlari — jamoaviy */
+    match /investAiHistory/{id} { allow read: if isAuthed(); allow write: if isTeam(); }
+    match /embassyLetters/{id}  { allow read: if isAuthed(); allow write: if isTeam(); }
+
+    /* Ijro Intizomi vidjeti va boshqa app meta
+       ⚠️ AVVAL YETISHMAYOTGAN EDI → default deny */
+    match /appMeta/{id} {
+      allow read:  if isAuthed();
+      allow write: if isSuperadmin();
     }
 
-    /* Embassy AI Letters — saqlangan AI xatlar (cross-device sync) */
-    match /embassyLetters/{id} {
-      allow read: if publicRead();
-      allow write: if isAuthed();
-    }
-
-    /* AI Invest Analyzer history — public read (jamoaviy tahlil),
-       autentifikatsiya qilingan foydalanuvchilar yoza oladi */
-    match /investAiHistory/{id} {
-      allow read: if publicRead();
-      allow write: if isAuthed();
-    }
-
-    /* API Keys — READ uchun har qanday auth qilingan foydalanuvchi (chatbot + AI email
-       generatsiyasi kalitlarni o'qib olishi kerak). WRITE faqat admin uchun. Sayt faqat
-       ruxsat etilgan login/parollar bilan kirilgani uchun risk past — har bir
-       foydalanuvchi ishonchli xodim hisoblanadi. */
+    /* ═══════════════════════════════════════
+       API KALITLAR
+       ⚠️ HOZIRCHA: har qanday jamoa a'zosi o'qiy oladi — chunki AI xat/chatbot
+       brauzerdan to'g'ridan-to'g'ri OpenAI/Gemini'ga murojaat qiladi va kalit kerak.
+       TO'G'RI YECHIM (rejada): AI chaqiruvlarini ham Vercel proxy orqali o'tkazish,
+       shunda kalit brauzerga umuman tushmaydi va bu qoida superadmin'ga cheklanadi.
+    ═══════════════════════════════════════ */
     match /apiKeys/{id} {
-      allow read: if isAuthed();
-      allow write: if isAdmin();
+      allow read:  if isTeam();
+      allow write: if isSuperadmin();
     }
 
-    /* User profile docs (if created) — each user can read/write their own */
+    /* ═══════════════════════════════════════
+       FOYDALANUVCHI PROFILI — har kim faqat o'zinikini
+    ═══════════════════════════════════════ */
     match /users/{uid} {
-      allow read: if isAuthed() && request.auth.uid == uid;
-      allow write: if isAuthed() && request.auth.uid == uid;
-      /* Admins can read/write all user docs */
-      allow read, write: if isAdmin();
+      allow read, write: if isAuthed() && request.auth.uid == uid;
+      allow read, write: if isSuperadmin();
     }
 
-    /* Audit logs — admin read, auth users can write their own action */
+    /* Audit loglari — superadmin o'qiydi, a'zo faqat o'z yozuvini yaratadi */
     match /auditLogs/{id} {
-      allow read: if isAdmin();
-      allow create: if isAuthed()
-        && request.resource.data.uid == request.auth.uid;
+      allow read:   if isSuperadmin();
+      allow create: if isAuthed() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if false;
     }
 
-    /* Default — deny everything else */
+    /* ═══════════════════════════════════════
+       Qolgan hammasi — RAD ETILADI (fail-closed)
+    ═══════════════════════════════════════ */
     match /{document=**} {
       allow read, write: if false;
     }

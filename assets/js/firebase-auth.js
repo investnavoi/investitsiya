@@ -57,14 +57,17 @@ async function initAuth(){
         applyAuthState(null);
         return;
       }
-      /* Get ID token with custom claims */
+      /* Get ID token with custom claims.
+         ROL — yagona ishonchli manba shu claim (Firestore qoidalari ham shuni o'qiydi).
+         Eski akkauntda faqat admin:true bo'lsa → superadmin deb qaraymiz (migratsiya). */
       try {
         const tokenResult = await user.getIdTokenResult(true);
-        const isAdminUser = tokenResult.claims && tokenResult.claims.admin === true;
-        applyAuthState({ user: user, isAdmin: isAdminUser });
+        const claims = (tokenResult && tokenResult.claims) || {};
+        const roleClaim = claims.role || (claims.admin === true ? 'superadmin' : '');
+        applyAuthState({ user: user, isAdmin: claims.admin === true, role: roleClaim });
       } catch(e){
         console.error('Token fetch error:', e);
-        applyAuthState({ user: user, isAdmin: false });
+        applyAuthState({ user: user, isAdmin: false, role: '' });
       }
     } else {
       applyAuthState(null);
@@ -76,6 +79,8 @@ async function initAuth(){
 function applyAuthState(state){
   if(state && state.user){
     window._currentUser = state.user;
+    /* Server tomonidan berilgan ROL — mijoz buni o'zgartira olmaydi (token ichida) */
+    window._authRole = (state && state.role) || '';
     window.isAdmin = !!state.isAdmin;
     if(typeof applyAdminUI === 'function') applyAdminUI(!!state.isAdmin, state.user);
     /* Cache minimal session flag (NOT trusted — server enforces via Firestore rules) */
@@ -83,17 +88,20 @@ function applyAuthState(state){
       localStorage.setItem('_auth_uid', state.user.uid);
       localStorage.setItem('_auth_email', state.user.email || '');
       localStorage.setItem('_auth_admin', state.isAdmin ? '1' : '0');
+      localStorage.setItem('_auth_role', window._authRole);
     } catch(e){}
     /* Pull cross-device user settings from Firebase (theme, lang, Gmail config, prefs) */
     try { if(typeof window.loadUserSettings === 'function') window.loadUserSettings(); } catch(e){}
   } else {
     window._currentUser = null;
+    window._authRole = '';
     window.isAdmin = false;
     if(typeof applyAdminUI === 'function') applyAdminUI(false, null);
     try {
       localStorage.removeItem('_auth_uid');
       localStorage.removeItem('_auth_email');
       localStorage.removeItem('_auth_admin');
+      localStorage.removeItem('_auth_role');
       localStorage.removeItem('_adminLoggedIn');
     } catch(e){}
   }
@@ -147,10 +155,13 @@ window.fbRefreshClaims = async function(){
   if(!window._fbAuth || !window._fbAuth.currentUser) return null;
   try {
     const tokenResult = await window._fbAuth.currentUser.getIdTokenResult(true);
-    const isAdminUser = tokenResult.claims && tokenResult.claims.admin === true;
+    const claims = (tokenResult && tokenResult.claims) || {};
+    const isAdminUser = claims.admin === true;
+    window._authRole = claims.role || (isAdminUser ? 'superadmin' : '');
     window.isAdmin = !!isAdminUser;
+    try { localStorage.setItem('_auth_role', window._authRole); } catch(e){}
     if(typeof applyAdminUI === 'function') applyAdminUI(!!isAdminUser, window._fbAuth.currentUser);
-    return tokenResult.claims;
+    return claims;
   } catch(e){
     console.error('Refresh claims error:', e);
     return null;

@@ -552,6 +552,35 @@ window.fbBulkAdd = async function(colName, records, onProgress){
   return written;
 };
 
+/* saveDB() — joriy xotiradagi (DB) kolleksiyalarni Firestore'ga saqlaydi.
+   AVVAL BU FUNKSIYA UMUMAN MAVJUD EMAS EDI: pipeline-crm.js va embassy.js uni
+   `typeof saveDB==='function'` guard bilan chaqirar edi → jimgina HECH NARSA
+   qilmasdi (CRM import ishlamas edi).
+
+   MUHIM DIZAYN QARORI: bu faqat UPSERT qiladi — hech narsani O'CHIRMAYDI.
+   Shu sababli tasodifiy "reset" bosilsa ham Firestore bo'shab qolmaydi. */
+window.saveDB = async function(cols){
+  var list = (Array.isArray(cols) && cols.length)
+    ? cols
+    : ['investorCompanies','investors','zoom','forums','local','entrepreneurs'];
+  if(typeof window.canEditGlobal === 'function' && !window.canEditGlobal()){
+    if(typeof toast === 'function') toast('⛔ Saqlash uchun superadmin huquqi kerak','error');
+    return 0;
+  }
+  var total = 0;
+  for(var i=0;i<list.length;i++){
+    var col = list[i];
+    var recs = Array.isArray(DB[col])
+      ? DB[col].filter(function(r){ return r && r.id !== undefined && r.id !== null && String(r.id).trim() !== ''; })
+      : [];
+    if(!recs.length) continue;
+    try { total += await window.fbBulkAdd(col, recs); }
+    catch(e){ console.error('saveDB('+col+') error:', e && e.message); }
+  }
+  console.log('💾 saveDB: ' + total + ' ta yozuv saqlandi (' + list.join(', ') + ')');
+  return total;
+};
+
 // Delete single record
 window.fbDelete = async function(colName, id){
   try {

@@ -14,17 +14,18 @@
 (function(){
   'use strict';
 
-  /* ── Jamoa a'zolari va rollari ────────────────────────────────────
-     role: 'superadmin' | 'admin' | 'member'
-       - superadmin (Azizbek, texnik lead): HAMMA narsani ko'radi — sozlamalar,
-         admin panel, boshqa ma'lumotlar.
-       - admin (Shahzod): monitoring + koordinatsiya (CRM/statistika), lekin
-         sozlamalar va texnik/boshqa ma'lumotlar ko'rinmaydi.
-       - member (qolgan outreach a'zolar): FAQAT o'z dashboardi (shaxsiy +
-         jamoa statistikasi) va ish sahifalari (leadlar, qidiruv, mahsulotlar).
-     email: tizimga KIRISH emaili — kimligini shu bo'yicha aniqlaymiz. Har a'zoning
-     haqiqiy login emailini shu yerga yozing (bo'sh bo'lsa u 'member' darajasida
-     cheklangan ko'rinishda bo'ladi — xavfsizlik uchun eng past huquq).  */
+  /* ── Jamoa a'zolari (ISM/KO'RINISH uchun) ─────────────────────────
+     ⚠️ MUHIM: bu ro'yxat HUQUQ BERMAYDI. Haqiqiy rol Firebase custom claim'da:
+        node scripts/set-role-claim.cjs <email> <superadmin|admin|member>
+     Firestore qoidalari faqat o'sha claim'ni tekshiradi. Bu yerdagi `role`
+     maydoni — claim hali o'rnatilmagan holat uchun ko'rinish fallback'i xolos.
+
+     Rollar ma'nosi (qoidalarda ham xuddi shunday):
+       superadmin — hammasini ko'radi VA tahrirlaydi (Azizbek, texnik lead)
+       admin      — hammasini ko'radi, TAHRIRLAMAYDI (Shahzod, monitoring)
+       member     — ko'radi + faqat o'z lead ishini (email, status, mas'ul)
+
+     email — tizimga KIRISH emaili; ism va avatar shu bo'yicha topiladi. */
   window.TEAM_MEMBERS = window.TEAM_MEMBERS || [
     { id:'azizbek', name:'Azizbek', roleLabel:"Texnik lead (superadmin)", role:'superadmin', email:'bltvazbk@gmail.com' },
     { id:'azizbek_out', name:'Azizbek (outreach)', roleLabel:"Lead outreach", role:'member', email:'azizbek.investnavoi@gmail.com' },
@@ -103,10 +104,31 @@
   }
   function getCurrentMember(){ return teamMemberByEmail(currentAuthEmail()); }
   function getCurrentMemberId(){ var m = getCurrentMember(); return m ? m.id : ''; }
+
+  /* ── ROL — YAGONA ISHONCHLI MANBA: Firebase custom claim ──────────
+     window._authRole firebase-auth.js da token claim'idan o'rnatiladi.
+     Firestore qoidalari ham AYNAN shu claim'ni tekshiradi → mijoz va server
+     bir xil qarorga keladi (avval ular kelishmas edi).
+     Rolni o'rnatish:  node scripts/set-role-claim.cjs <email> <role>
+
+     TEAM_MEMBERS ro'yxati endi faqat ISM/ko'rinish uchun — u HUQUQ BERMAYDI.
+     Claim bo'lmasa: eng past huquq ('member'). Bu holatda ham server baribir
+     yozishga ruxsat bermaydi, ya'ni mijozni aldash foyda bermaydi. */
+  function authRoleClaim(){
+    var r = '';
+    try { r = String(window._authRole || localStorage.getItem('_auth_role') || ''); }
+    catch(e){ r = String(window._authRole || ''); }
+    r = r.trim();
+    return (window.ROLE_RANK && window.ROLE_RANK[r]) ? r : '';
+  }
+  window.authRoleClaim = authRoleClaim;
+
   function getCurrentRole(){
-    var m = getCurrentMember();
-    if(m && m.role) return m.role;
-    return currentAuthEmail() ? 'member' : null; // tanilmagan email → eng past huquq
+    var claim = authRoleClaim();
+    if(claim) return claim;                    // server bergan rol — ustuvor
+    if(!currentAuthEmail()) return null;        // login qilinmagan
+    var m = getCurrentMember();                 // claim yo'q (migratsiya/localhost)
+    return (m && m.role) ? m.role : 'member';   // eng past huquq
   }
   window.getCurrentRole = getCurrentRole;
   window.getCurrentMember = getCurrentMember;

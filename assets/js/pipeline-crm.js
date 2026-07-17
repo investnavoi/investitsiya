@@ -670,15 +670,19 @@ function importCrmData(evt){
   evt.target.value='';
 }
 
+/* CRM sozlamalarini tiklash.
+   MUHIM: bu serverdagi ma'lumotni O'CHIRMAYDI — faqat shu qurilmadagi CRM
+   sozlamalari (bosqichlar, sabablar, rollar, bildirishnomalar) tozalanadi va
+   ko'rinish yangilanadi. Leadlar/investorlar Firestore'da saqlanib qoladi.
+   (Avval bu tugma "qaytarib bo'lmaydi" deb ogohlantirar, lekin aslida hech
+   narsa o'chmasdi — xabar yolg'on edi.) */
 function resetCrmData(){
-  if(!confirm('Haqiqatan ham barcha CRM ma\'lumotlarini o\'chirmoqchimisiz? Bu amalni qaytarib bo\'lmaydi!')) return;
-  DB.investorCompanies=[];DB.investors=[];DB.zoom=[];DB.forums=[];DB.finderResults=[];
-  if(typeof saveDB==='function') saveDB();
+  if(!confirm('CRM sozlamalarini (bosqichlar, sabablar, rollar, bildirishnomalar) shu qurilmada tiklaymizmi?\n\nLeadlar va investorlar O\'CHMAYDI — ular serverda saqlanib qoladi.')) return;
   localStorage.removeItem('_crmPipelineStages');localStorage.removeItem('_crmLossReasons');
   localStorage.removeItem('_crmQuestionCats');localStorage.removeItem('_crmUserRoles');
   localStorage.removeItem('_crmNotifications');
   renderCrmSettings();
-  if(typeof toast==='function') toast('🗑️ Barcha CRM ma\'lumotlari tozalandi','success');
+  if(typeof toast==='function') toast('🔄 CRM sozlamalari tiklandi (ma\'lumotlar saqlanib qoldi)','success');
 }
 
 /* ═══ CRM EXECUTIVE DASHBOARD ═══ */
