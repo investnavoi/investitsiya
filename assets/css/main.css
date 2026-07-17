@@ -3291,7 +3291,12 @@ body{padding:0!important;}
   color:#64748b;
   cursor:pointer;
   margin:0;
+  /* Yorliq ("HS / FIRMA", "YIL", "MANBA") ikki qatorga bo'linib ketmasin */
+  white-space:nowrap;
+  flex-shrink:0;
 }
+/* Pill ichidagi input qolgan joyni egallasin (yorliq siqib qo'ymasin) */
+.finder-pill-inline input[type="text"]{ min-width:0; }
 .finder-pill select,
 .finder-filters .finder-pill select,
 .finder-search .finder-pill select{
@@ -3947,11 +3952,13 @@ input[type="time"]{-webkit-appearance:none;}
   .mailbox-add-form{grid-template-columns:1fr}
   .trade-subtabs{padding:.7rem .7rem .15rem}
 }
-/* ===== AI CHATBOT WIDGET ===== */
-.chat-fab{position:fixed;left:1.2rem;bottom:1.5rem;z-index:350;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;box-shadow:0 4px 20px rgba(66,133,244,.5);transition:all .2s;}
+/* ===== AI CHATBOT WIDGET =====
+   Pufak PASTKI-O'NGDA. Avval pastki-CHAPDA edi va sidebar'ning pastki
+   elementlarini ("Sozlamalar", "Texnik Lead") to'sib qo'yardi. */
+.chat-fab{position:fixed;right:1.2rem;bottom:1.5rem;z-index:350;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;box-shadow:0 4px 20px rgba(66,133,244,.5);transition:all .2s;}
 .chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(66,133,244,.6)}
 .chat-fab .dot{position:absolute;top:2px;right:2px;width:12px;height:12px;background:#EA4335;border-radius:50%;border:2px solid var(--bg);display:none}
-.chat-panel{position:fixed;left:1.2rem;bottom:5rem;z-index:2147483645!important;width:560px;max-width:calc(100vw - 2rem);height:740px;max-height:calc(100vh - 7rem);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;animation:fadeUp .2s ease}
+.chat-panel{position:fixed;right:1.2rem;bottom:5rem;z-index:2147483645!important;width:560px;max-width:calc(100vw - 2rem);height:740px;max-height:calc(100vh - 7rem);background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;animation:fadeUp .2s ease}
 .chat-panel.open{display:flex}
 .chat-head{background:linear-gradient(135deg,#4285F4,#34A853);padding:14px 16px;display:flex;align-items:center;gap:10px}
 .chat-head-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px}
@@ -3981,7 +3988,7 @@ input[type="time"]{-webkit-appearance:none;}
 /* Drag-drop holati */
 .chat-panel.chat-drag-over{border:2px dashed #4285F4;background:rgba(66,133,244,.03)}
 .chat-panel.chat-drag-over .chat-msgs::after{content:'📎 So\'rovnomani bu yerga tashlang';display:flex;align-items:center;justify-content:center;position:absolute;inset:60px 0 60px 0;background:rgba(66,133,244,.08);border:2px dashed #4285F4;border-radius:12px;font-size:1rem;color:#4285F4;font-weight:600;pointer-events:none;z-index:10}
-@media(max-width:600px){.chat-panel{left:.5rem;right:.5rem;bottom:4.5rem;width:auto;height:calc(100vh - 6rem)}.chat-fab{left:.8rem;bottom:.8rem;width:48px;height:48px;font-size:20px}}
+@media(max-width:600px){.chat-panel{left:.5rem;right:.5rem;bottom:4.5rem;width:auto;height:calc(100vh - 6rem)}.chat-fab{right:.8rem;bottom:.8rem;width:48px;height:48px;font-size:20px}}
 /* ═══ CUSTOM COLLAPSIBLE SELECT ═══ */
 .custom-select-wrap{position:relative;width:100%;}
 .custom-select-display{cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:38px;user-select:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:28px!important;background:var(--card)!important;color:var(--text);}
